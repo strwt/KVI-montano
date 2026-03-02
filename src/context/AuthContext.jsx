@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-component */
-import { createContext, useContext, useState, useEffect } from 'react'
+import { createContext, useContext, useEffect, useState } from 'react'
 import dayjs from 'dayjs'
 
 const AuthContext = createContext(null)
@@ -7,22 +7,63 @@ const AuthContext = createContext(null)
 const DEFAULT_COMMITTEES = ['Operations', 'Logistics', 'Outreach']
 const DEFAULT_MEMBER_CATEGORY = 'General Member'
 const RECRUITMENT_STORAGE_KEY = 'kusgan_recruitments'
+const DEFAULT_PROFILE_IMAGE = '/image-removebg-preview.png'
+
+const parseStoredJson = (value, fallback) => {
+  if (!value) return fallback
+  try {
+    return JSON.parse(value)
+  } catch {
+    return fallback
+  }
+}
+
+const omitPassword = (account = {}) => {
+  const { password: _PASSWORD, ...userWithoutPassword } = account
+  return userWithoutPassword
+}
+
+const enrichUserWithProfileImage = (user = {}) => ({
+  ...user,
+  profileImage: user.profileImage || DEFAULT_PROFILE_IMAGE,
+})
 
 const buildFallbackIdNumber = (user) => {
   if (user.idNumber) return user.idNumber
   if (user.email) {
     return user.email.split('@')[0].replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
   }
-  return `USER${user.id}`
+  return `USER${user.id || Date.now()}`
 }
 
 const normalizeUsers = (storedUsers = []) => {
-  return storedUsers.map(user => ({
-    ...user,
-    idNumber: buildFallbackIdNumber(user),
-    committee: user.committee || 'Unassigned',
-    category: user.category || (user.role === 'admin' ? 'Administrator' : DEFAULT_MEMBER_CATEGORY),
-  }))
+  return storedUsers.map(rawUser => {
+    const user = enrichUserWithProfileImage(rawUser)
+    return {
+      ...user,
+      idNumber: buildFallbackIdNumber(user),
+      committee: user.committee || 'Unassigned',
+      category: user.category || (user.role === 'admin' ? 'Administrator' : DEFAULT_MEMBER_CATEGORY),
+      accountStatus: user.accountStatus || 'Active',
+      status: user.status || 'active',
+      memberSince: user.memberSince || new Date().toISOString(),
+    }
+  })
+}
+
+const ensureUniqueUserIds = (users = []) => {
+  const usedIds = new Set()
+  return users.map((user, index) => {
+    let candidateId = user.id
+    if (candidateId === undefined || candidateId === null || usedIds.has(String(candidateId))) {
+      candidateId = Date.now() + index
+      while (usedIds.has(String(candidateId))) {
+        candidateId += 1
+      }
+    }
+    usedIds.add(String(candidateId))
+    return { ...user, id: candidateId }
+  })
 }
 
 const DEMO_ADMIN = {
@@ -35,46 +76,36 @@ const DEMO_ADMIN = {
   role: 'admin',
   committee: 'Leadership',
   category: 'Administrator',
+  status: 'active',
+  memberSince: new Date().toISOString(),
+  profileImage: DEFAULT_PROFILE_IMAGE,
 }
 
 const ensureDemoAdmin = (users = []) => {
-  const hasAdmin = users.some(
+  const adminIndex = users.findIndex(
     u => (u.idNumber || '').toLowerCase() === DEMO_ADMIN.idNumber.toLowerCase()
   )
 
-  if (hasAdmin) {
-    return users.map(u => {
-      if ((u.idNumber || '').toLowerCase() === DEMO_ADMIN.idNumber.toLowerCase()) {
-        return { ...u, ...DEMO_ADMIN, id: u.id || DEMO_ADMIN.id }
-      }
-      return u
-    })
+  if (adminIndex >= 0) {
+    const merged = [...users]
+    merged[adminIndex] = {
+      ...merged[adminIndex],
+      ...DEMO_ADMIN,
+      id: merged[adminIndex].id ?? DEMO_ADMIN.id,
+      profileImage: merged[adminIndex].profileImage || DEMO_ADMIN.profileImage,
+    }
+    return ensureUniqueUserIds(merged)
   }
 
-  return [DEMO_ADMIN, ...users]
+  return ensureUniqueUserIds([DEMO_ADMIN, ...users])
 }
 
-const parseStoredJson = (value, fallback) => {
-  if (!value) return fallback
-  try {
-    return JSON.parse(value)
-  } catch {
-    return fallback
-  }
-}
-
-const omitPassword = (account) => {
-  const { password: _PASSWORD, ...userWithoutPassword } = account
-  return userWithoutPassword
-}
-
-// Dummy accounts stored in localStorage
 const getStoredUsers = () => {
-  const stored = localStorage.getItem('kusgan_users')
-  if (stored) {
-    return JSON.parse(stored).map(enrichUserWithProfileImage)
+  const stored = parseStoredJson(localStorage.getItem('kusgan_users'), null)
+  if (Array.isArray(stored)) {
+    return ensureDemoAdmin(normalizeUsers(stored))
   }
-  // Default dummy accounts
+
   return ensureDemoAdmin(normalizeUsers([
     {
       id: 2,
@@ -86,6 +117,7 @@ const getStoredUsers = () => {
       role: 'member',
       committee: 'Operations',
       category: 'Field Volunteer',
+      status: 'active',
     },
     {
       id: 3,
@@ -97,28 +129,24 @@ const getStoredUsers = () => {
       role: 'member',
       committee: 'Outreach',
       category: 'Coordinator',
+      status: 'active',
     },
   ]))
 }
 
 const getStoredCommittees = () => {
-  const stored = localStorage.getItem('kusgan_committees')
-  if (stored) {
-    try {
-      const parsed = JSON.parse(stored)
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed
-      }
-    } catch {
-      localStorage.removeItem('kusgan_committees')
-    }
-  }
-  return DEFAULT_COMMITTEES
+  const parsed = parseStoredJson(localStorage.getItem('kusgan_committees'), null)
+  return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_COMMITTEES
 }
 
 const getStoredCurrentUser = () => {
-  const stored = localStorage.getItem('kusgan_current_user')
-  return stored ? enrichUserWithProfileImage(JSON.parse(stored)) : null
+  const parsed = parseStoredJson(localStorage.getItem('kusgan_current_user'), null)
+  return parsed ? enrichUserWithProfileImage(parsed) : null
+}
+
+const getStoredRecruitments = () => {
+  const parsed = parseStoredJson(localStorage.getItem(RECRUITMENT_STORAGE_KEY), [])
+  return Array.isArray(parsed) ? parsed : []
 }
 
 const getTodayDateKey = () => {
@@ -131,13 +159,13 @@ const getTodayDateKey = () => {
 
 const recordDailyPresence = (loggedInUser) => {
   const activityKey = 'kusgan_login_activity'
-  const stored = localStorage.getItem(activityKey)
-  const activity = stored ? JSON.parse(stored) : []
+  const stored = parseStoredJson(localStorage.getItem(activityKey), [])
+  const activity = Array.isArray(stored) ? stored : []
   const todayKey = getTodayDateKey()
   const timestamp = new Date().toISOString()
 
   const existingIndex = activity.findIndex(
-    (entry) => entry.date === todayKey && entry.userId === loggedInUser.id
+    entry => entry.date === todayKey && String(entry.userId) === String(loggedInUser.id)
   )
 
   const payload = {
@@ -159,33 +187,27 @@ const recordDailyPresence = (loggedInUser) => {
   localStorage.setItem(activityKey, JSON.stringify(activity))
 }
 
-const getStoredRecruitments = () => {
-  const stored = localStorage.getItem(RECRUITMENT_STORAGE_KEY)
-  if (!stored) return []
-  try {
-    const parsed = JSON.parse(stored)
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    localStorage.removeItem(RECRUITMENT_STORAGE_KEY)
-    return []
-  }
-}
-
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(getStoredCurrentUser)
   const [users, setUsers] = useState(getStoredUsers)
+  const [committees, setCommittees] = useState(getStoredCommittees)
+  const [recruitments, setRecruitments] = useState(getStoredRecruitments)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Initialize users in localStorage if not present
     if (!localStorage.getItem('kusgan_users')) {
       localStorage.setItem('kusgan_users', JSON.stringify(getStoredUsers()))
+    }
+    if (!localStorage.getItem('kusgan_committees')) {
+      localStorage.setItem('kusgan_committees', JSON.stringify(getStoredCommittees()))
+    }
+    if (!localStorage.getItem(RECRUITMENT_STORAGE_KEY)) {
+      localStorage.setItem(RECRUITMENT_STORAGE_KEY, JSON.stringify(getStoredRecruitments()))
     }
     setLoading(false)
   }, [])
 
   useEffect(() => {
-    // Persist current user to localStorage
     if (user) {
       localStorage.setItem('kusgan_current_user', JSON.stringify(user))
     } else {
@@ -194,7 +216,6 @@ export function AuthProvider({ children }) {
   }, [user])
 
   useEffect(() => {
-    // Persist users to localStorage
     localStorage.setItem('kusgan_users', JSON.stringify(users))
   }, [users])
 
@@ -213,10 +234,13 @@ export function AuthProvider({ children }) {
     )
 
     if (foundUser) {
-      const userWithoutPassword = omitPassword(foundUser)
+      const enriched = enrichUserWithProfileImage(foundUser)
+      const userWithoutPassword = omitPassword(enriched)
       setUser(userWithoutPassword)
+      recordDailyPresence(userWithoutPassword)
       return { success: true, user: userWithoutPassword }
     }
+
     return { success: false, message: 'Invalid ID Number or Password' }
   }
 
@@ -235,6 +259,7 @@ export function AuthProvider({ children }) {
     if (exists) {
       return { success: false, message: 'ID Number already exists' }
     }
+
     const emailExists = users.find(
       u => (u.email || '').toLowerCase() === normalizedEmail
     )
@@ -252,10 +277,15 @@ export function AuthProvider({ children }) {
       role: 'member',
       committee: committees[0] || 'Unassigned',
       category: DEFAULT_MEMBER_CATEGORY,
+      status: 'active',
+      memberSince: new Date().toISOString(),
+      profileImage: DEFAULT_PROFILE_IMAGE,
     }
-    setUsers([...users, newUser])
+
+    setUsers(prev => ensureUniqueUserIds([...prev, newUser]))
     const userWithoutPassword = omitPassword(newUser)
     setUser(userWithoutPassword)
+    recordDailyPresence(userWithoutPassword)
     return { success: true, user: userWithoutPassword }
   }
 
@@ -296,6 +326,7 @@ export function AuthProvider({ children }) {
       if (u.id === user.id) {
         return {
           ...u,
+          ...updates,
           name,
           email,
           idNumber,
@@ -306,14 +337,60 @@ export function AuthProvider({ children }) {
 
     setUsers(updatedUsers)
     const updatedCurrent = updatedUsers.find(u => u.id === user.id)
-    const { password: _, ...userWithoutPassword } = updatedCurrent
+    const userWithoutPassword = omitPassword(updatedCurrent)
     setUser(userWithoutPassword)
     return { success: true, user: userWithoutPassword }
   }
 
-  const getAllMembers = () => {
-    return users.map(omitPassword)
+  const updateMember = (memberId, updates = {}) => {
+    const member = users.find(u => String(u.id) === String(memberId))
+    if (!member) {
+      return { success: false, message: 'Member not found.' }
+    }
+
+    const nextIdNumber = (updates.idNumber ?? updates.id ?? member.idNumber)?.toString().trim()
+    const nextEmail = (updates.email ?? member.email)?.toString().trim().toLowerCase()
+
+    if (!nextIdNumber || !nextEmail) {
+      return { success: false, message: 'ID Number and Email are required.' }
+    }
+
+    const idTaken = users.some(
+      u => String(u.id) !== String(memberId) && (u.idNumber || '').toLowerCase() === nextIdNumber.toLowerCase()
+    )
+    if (idTaken) {
+      return { success: false, message: 'ID Number already exists' }
+    }
+
+    const emailTaken = users.some(
+      u => String(u.id) !== String(memberId) && (u.email || '').toLowerCase() === nextEmail
+    )
+    if (emailTaken) {
+      return { success: false, message: 'Email already exists' }
+    }
+
+    const updatedUsers = users.map(u => {
+      if (String(u.id) !== String(memberId)) return u
+      return {
+        ...u,
+        ...updates,
+        idNumber: nextIdNumber,
+        email: nextEmail,
+        status: updates.status || u.status || 'active',
+      }
+    })
+
+    setUsers(updatedUsers)
+
+    if (user && String(user.id) === String(memberId)) {
+      const updatedCurrent = updatedUsers.find(u => String(u.id) === String(memberId))
+      setUser(omitPassword(updatedCurrent))
+    }
+
+    return { success: true }
   }
+
+  const getAllMembers = () => users.map(omitPassword)
 
   const createMember = (memberData) => {
     const name = memberData.name?.trim()
@@ -342,7 +419,6 @@ export function AuthProvider({ children }) {
     const idTaken = users.some(
       u => (u.idNumber || '').toLowerCase() === idNumber.toLowerCase()
     )
-
     if (idTaken) {
       return { success: false, message: 'ID Number already exists' }
     }
@@ -373,9 +449,13 @@ export function AuthProvider({ children }) {
       role: 'member',
       committee,
       category,
+      status: 'active',
+      memberSince: new Date().toISOString(),
+      profileImage: DEFAULT_PROFILE_IMAGE,
     }
 
-    setUsers(prev => [...prev, newUser])
+    setUsers(prev => ensureUniqueUserIds([...prev, newUser]))
+
     if (recruitment) {
       setRecruitments(prev =>
         prev.map(item =>
@@ -391,6 +471,7 @@ export function AuthProvider({ children }) {
         )
       )
     }
+
     return { success: true }
   }
 
@@ -528,18 +609,24 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      login, 
-      logout, 
-      register, 
+    <AuthContext.Provider value={{
+      user,
+      login,
+      logout,
+      register,
       updateCurrentUser,
       loading,
       getAllMembers,
       createMember,
       deleteMembers,
       updateMember,
-      users: users.map(({ password, ...u }) => u)
+      addCommittee,
+      deleteCommittee,
+      committees,
+      submitRecruitmentApplication,
+      rejectRecruitment,
+      getRecruitments,
+      users: users.map(omitPassword),
     }}>
       {children}
     </AuthContext.Provider>
