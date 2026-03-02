@@ -12,7 +12,7 @@ function Layout() {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
+    <div className="flex min-h-screen bg-gray-100 w-full overflow-x-hidden">
       {/* Mobile Toggle Button */}
       <button
         onClick={toggleSidebar}
@@ -24,7 +24,7 @@ function Layout() {
       <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
       
       <main 
-        className={`flex-1 p-6 transition-all duration-300 ${
+        className={`flex-1 px-3 py-4 sm:px-4 sm:py-5 md:px-6 md:py-6 pt-20 md:pt-6 transition-all duration-300 overflow-x-hidden ${
           sidebarOpen ? 'md:ml-64' : 'md:ml-20'
         }`}
       >

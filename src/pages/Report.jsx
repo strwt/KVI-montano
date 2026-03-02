@@ -1,15 +1,58 @@
+
 import { useMemo, useState } from 'react'
 import dayjs from 'dayjs'
+import {
+  Activity,
+  Flame,
+  HeartPulse,
+  Leaf,
+  FileText,
+  Filter,
+  BarChart3,
+  PieChart,
+  TrendingUp,
+  Download,
+  Search,
+  Loader2,
+} from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
 
-const getStoredReportEntries = () => {
-  const stored = localStorage.getItem('kusgan_report_entries')
-  return stored ? JSON.parse(stored) : []
+const CATEGORY_META = {
+  environmental: { label: 'Environmental', icon: Leaf, light: 'bg-green-50', text: 'text-green-700' },
+  'relief operation': { label: 'Relief Operation', icon: Activity, light: 'bg-blue-50', text: 'text-blue-700' },
+  'fire response': { label: 'Fire Response', icon: Flame, light: 'bg-orange-50', text: 'text-orange-700' },
+  notes: { label: 'Notes', icon: FileText, light: 'bg-indigo-50', text: 'text-indigo-700' },
+  medical: { label: 'Medical', icon: HeartPulse, light: 'bg-pink-50', text: 'text-pink-700' },
 }
 
-const getStoredAnnouncements = () => {
-  const stored = localStorage.getItem('kusgan_announcements')
-  return stored ? JSON.parse(stored) : []
+const CATEGORY_KEYS = Object.keys(CATEGORY_META)
+
+const CATEGORY_COLORS = {
+  environmental: '#22c55e',
+  'relief operation': '#3b82f6',
+  'fire response': '#f97316',
+  notes: '#6366f1',
+  medical: '#ec4899',
 }
+
+const REPORT_COLUMNS = [
+  { key: 'title', label: 'Event Title' },
+  { key: 'content', label: 'Content' },
+  { key: 'category', label: 'Category' },
+  { key: 'branch', label: 'Branch' },
+  { key: 'dateTime', label: 'Date and Time' },
+  { key: 'address', label: 'Address' },
+  { key: 'seedlingsUsed', label: 'Seedlings Used' },
+  { key: 'foodPacks', label: 'Food Packs' },
+  { key: 'familiesAccommodated', label: 'Families Accommodated' },
+  { key: 'gallons', label: 'Gallons' },
+  { key: 'tank', label: 'Tank' },
+  { key: 'cubicWater', label: 'Cubic Water' },
+  { key: 'respondedFireAccident', label: 'Responded Fire Accident' },
+  { key: 'trainings', label: 'Trainings' },
+  { key: 'medicalEquipmentUsed', label: 'Medical Equipment Used' },
+  { key: 'expenses', label: 'Expenses' },
+]
 
 const CURRENCY = new Intl.NumberFormat('en-US', {
   style: 'currency',
@@ -17,247 +60,687 @@ const CURRENCY = new Intl.NumberFormat('en-US', {
   maximumFractionDigits: 2,
 })
 
+const getStoredEvents = () => {
+  const stored = localStorage.getItem('kusgan_events')
+  if (!stored) return []
+  try {
+    const parsed = JSON.parse(stored)
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+const normalizeCategory = category => (category || '').toLowerCase()
+
+const resolveEventDate = event => {
+  const raw = event.dateTime || event.date || null
+  if (!raw || !dayjs(raw).isValid()) return null
+  return dayjs(raw)
+}
+
+const toNumber = value => {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+const getFieldValue = (event, key, fallbackKeys = []) => {
+  if (event?.categoryData && event.categoryData[key] !== undefined && event.categoryData[key] !== null && event.categoryData[key] !== '') {
+    return event.categoryData[key]
+  }
+  for (const fallbackKey of fallbackKeys) {
+    if (event?.[fallbackKey] !== undefined && event[fallbackKey] !== null && event[fallbackKey] !== '') {
+      return event[fallbackKey]
+    }
+  }
+  return ''
+}
+
+const getMostActiveMonthLabel = countByMonth => {
+  const entries = Object.entries(countByMonth)
+  if (entries.length === 0) return 'N/A'
+  const [monthKey] = entries.sort((a, b) => b[1] - a[1])[0]
+  return dayjs(`${monthKey}-01`).format('MMMM YYYY')
+}
+
+const getDateWindow = (preset, customStart, customEnd) => {
+  const now = dayjs()
+  if (preset === 'this_month') return { start: now.startOf('month'), end: now.endOf('month') }
+  if (preset === 'last_3_months') return { start: now.subtract(2, 'month').startOf('month'), end: now.endOf('month') }
+  if (preset === 'last_6_months') return { start: now.subtract(5, 'month').startOf('month'), end: now.endOf('month') }
+  if (preset === 'this_year') return { start: now.startOf('year'), end: now.endOf('year') }
+  if (preset === 'custom') {
+    const start = customStart && dayjs(customStart).isValid() ? dayjs(customStart).startOf('day') : null
+    const end = customEnd && dayjs(customEnd).isValid() ? dayjs(customEnd).endOf('day') : null
+    return { start, end }
+  }
+  return { start: null, end: null }
+}
+
+const escapeCsv = value => {
+  const safe = String(value ?? '')
+  if (safe.includes('"') || safe.includes(',') || safe.includes('\n')) {
+    return `"${safe.replace(/"/g, '""')}"`
+  }
+  return safe
+}
+
+const downloadBlob = (blob, filename) => {
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 2000)
+}
+
+let jsPdfLoaderPromise = null
+const loadJsPdf = () => {
+  if (typeof window === 'undefined') return Promise.resolve(null)
+  if (window.jspdf?.jsPDF) return Promise.resolve(window.jspdf.jsPDF)
+  if (jsPdfLoaderPromise) return jsPdfLoaderPromise
+
+  jsPdfLoaderPromise = new Promise((resolve, reject) => {
+    const existing = document.getElementById('jspdf-cdn')
+    if (existing && window.jspdf?.jsPDF) {
+      resolve(window.jspdf.jsPDF)
+      return
+    }
+    if (!existing) {
+      const script = document.createElement('script')
+      script.id = 'jspdf-cdn'
+      script.src = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js'
+      script.async = true
+      script.onload = () => resolve(window.jspdf?.jsPDF || null)
+      script.onerror = () => reject(new Error('Failed to load PDF library'))
+      document.body.appendChild(script)
+      return
+    }
+    existing.addEventListener('load', () => resolve(window.jspdf?.jsPDF || null))
+    existing.addEventListener('error', () => reject(new Error('Failed to load PDF library')))
+  })
+
+  return jsPdfLoaderPromise
+}
+
+const getIconThemeClass = categoryKey => {
+  if (categoryKey === 'environmental') return 'icon-theme-environmental'
+  if (categoryKey === 'relief operation') return 'icon-theme-relief'
+  if (categoryKey === 'fire response') return 'icon-theme-fire'
+  if (categoryKey === 'notes') return 'icon-theme-notes'
+  if (categoryKey === 'medical') return 'icon-theme-medical'
+  return ''
+}
+
 function Report() {
-  const [period, setPeriod] = useState('monthly')
-  const [selectedMonth, setSelectedMonth] = useState(dayjs().format('YYYY-MM'))
-  const [selectedQuarter, setSelectedQuarter] = useState(String(Math.floor(dayjs().month() / 3) + 1))
-  const [selectedYear, setSelectedYear] = useState(dayjs().year())
-  const [entries] = useState(getStoredReportEntries)
-  const [announcements] = useState(getStoredAnnouncements)
+  const { user } = useAuth()
+  const [events] = useState(getStoredEvents)
+  const [datePreset, setDatePreset] = useState('this_month')
+  const [customStartDate, setCustomStartDate] = useState(dayjs().startOf('month').format('YYYY-MM-DD'))
+  const [customEndDate, setCustomEndDate] = useState(dayjs().format('YYYY-MM-DD'))
+  const [selectedCategory, setSelectedCategory] = useState('all')
+  const [selectedBranch, setSelectedBranch] = useState('all')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [showExportMenu, setShowExportMenu] = useState(false)
+  const [exportingType, setExportingType] = useState('')
 
-  const filteredEntries = useMemo(() => {
-    return entries.filter((entry) => {
-      if (!entry?.date || !dayjs(entry.date).isValid()) return false
-      const entryDate = dayjs(entry.date)
+  const isAdmin = user?.role === 'admin'
+  const { start, end } = getDateWindow(datePreset, customStartDate, customEndDate)
 
-      if (period === 'monthly') {
-        return entryDate.format('YYYY-MM') === selectedMonth
-      }
+  const branchOptions = useMemo(() => {
+    return Array.from(
+      new Set(
+        events
+          .map(event => ({ ...event, _date: resolveEventDate(event), _category: normalizeCategory(event.category) }))
+          .filter(event => Boolean(event._date) && CATEGORY_KEYS.includes(event._category))
+          .filter(event => {
+            if (selectedCategory !== 'all' && event._category !== selectedCategory) return false
+            if (start && event._date.isBefore(start)) return false
+            if (end && event._date.isAfter(end)) return false
+            return Boolean(event.branch)
+          })
+          .map(event => event.branch)
+      )
+    ).sort((a, b) => a.localeCompare(b))
+  }, [events, selectedCategory, start, end])
 
-      if (period === 'quarterly') {
-        const quarter = Math.floor(entryDate.month() / 3) + 1
-        return quarter === Number(selectedQuarter) && entryDate.year() === Number(selectedYear)
-      }
+  const filteredEvents = useMemo(() => {
+    return events
+      .map(event => ({ ...event, _date: resolveEventDate(event), _category: normalizeCategory(event.category) }))
+      .filter(event => Boolean(event._date) && CATEGORY_KEYS.includes(event._category))
+      .filter(event => {
+        if (selectedCategory !== 'all' && event._category !== selectedCategory) return false
+        if (selectedBranch !== 'all' && event.branch !== selectedBranch) return false
+        if (start && event._date.isBefore(start)) return false
+        if (end && event._date.isAfter(end)) return false
 
-      return entryDate.year() === Number(selectedYear)
-    })
-  }, [entries, period, selectedMonth, selectedQuarter, selectedYear])
+        const searchLower = searchQuery.toLowerCase().trim()
+        if (!searchLower) return true
 
-  const notesFromAnnouncements = useMemo(() => {
-    return announcements.filter((a) => {
-      if (!a?.date || !dayjs(a.date).isValid()) return false
-      if (a.category !== 'notes') return false
-      const date = dayjs(a.date)
+        const bucket = [
+          event.title,
+          event.content,
+          event.address,
+          CATEGORY_META[event._category]?.label || event._category,
+          ...Object.values(event.categoryData || {}),
+        ]
+          .join(' ')
+          .toLowerCase()
 
-      if (period === 'monthly') return date.format('YYYY-MM') === selectedMonth
-      if (period === 'quarterly') {
-        const quarter = Math.floor(date.month() / 3) + 1
-        return quarter === Number(selectedQuarter) && date.year() === Number(selectedYear)
-      }
-      return date.year() === Number(selectedYear)
-    }).length
-  }, [announcements, period, selectedMonth, selectedQuarter, selectedYear])
+        return bucket.includes(searchLower)
+      })
+  }, [events, selectedCategory, selectedBranch, start, end, searchQuery])
 
-  const totals = useMemo(() => {
-    const byCategory = {
-      environmental: {
-        seedlings: 0,
-        expenses: 0,
-      },
-      'relief operation': {
-        foodPacks: 0,
-        expenses: 0,
-        familiesAccommodated: 0,
-      },
-      'fire response': {
-        gallonsWater: 0,
-        tankWater: 0,
-        cubicWater: 0,
-        responseFireAccident: 0,
-        expenses: 0,
-      },
-      notes: {
-        trainings: 0,
-      },
-      medical: {
-        medicalEquipmentsUsed: 0,
-        expenses: 0,
-      },
+  const stats = useMemo(() => {
+    const template = {
+      environmental: { eventCount: 0, seedlingsUsed: 0, expenses: 0, monthlyCount: {} },
+      'relief operation': { eventCount: 0, foodPacks: 0, familiesAccommodated: 0, expenses: 0, monthlyCount: {} },
+      'fire response': { eventCount: 0, gallons: 0, tank: 0, cubicWater: 0, expenses: 0 },
+      notes: { trainings: 0, monthlyTrainingCount: {}, monthlyEventCount: {} },
+      medical: { eventCount: 0, medicalEquipmentUsed: 0, expenses: 0 },
     }
 
-    filteredEntries.forEach((entry) => {
-      const category = entry.category
-      if (!byCategory[category]) return
+    filteredEvents.forEach(event => {
+      const category = event._category
+      const monthKey = event._date.format('YYYY-MM')
 
       if (category === 'environmental') {
-        byCategory.environmental.seedlings += Number(entry.seedlings || 0)
-        byCategory.environmental.expenses += Number(entry.expenses || 0)
+        template.environmental.eventCount += 1
+        template.environmental.seedlingsUsed += toNumber(getFieldValue(event, 'seedlingsUsed', ['seedlings']))
+        template.environmental.expenses += toNumber(getFieldValue(event, 'expenses', ['expenses']))
+        template.environmental.monthlyCount[monthKey] = (template.environmental.monthlyCount[monthKey] || 0) + 1
       }
 
       if (category === 'relief operation') {
-        byCategory['relief operation'].foodPacks += Number(entry.foodPacks || 0)
-        byCategory['relief operation'].expenses += Number(entry.expenses || 0)
-        byCategory['relief operation'].familiesAccommodated += Number(entry.familiesAccommodated || 0)
+        template['relief operation'].eventCount += 1
+        template['relief operation'].foodPacks += toNumber(getFieldValue(event, 'foodPacks', ['foodPacks']))
+        template['relief operation'].familiesAccommodated += toNumber(getFieldValue(event, 'familiesAccommodated', ['familiesAccommodated']))
+        template['relief operation'].expenses += toNumber(getFieldValue(event, 'expenses', ['expenses']))
+        template['relief operation'].monthlyCount[monthKey] = (template['relief operation'].monthlyCount[monthKey] || 0) + 1
       }
 
       if (category === 'fire response') {
-        byCategory['fire response'].gallonsWater += Number(entry.gallonsWater || 0)
-        byCategory['fire response'].tankWater += Number(entry.tankWater || 0)
-        byCategory['fire response'].cubicWater += Number(entry.cubicWater || 0)
-        byCategory['fire response'].responseFireAccident += Number(entry.responseFireAccident || 0)
-        byCategory['fire response'].expenses += Number(entry.expenses || 0)
+        template['fire response'].eventCount += 1
+        template['fire response'].gallons += toNumber(getFieldValue(event, 'gallons', ['gallonsWater']))
+        template['fire response'].tank += toNumber(getFieldValue(event, 'tank', ['tankWater']))
+        template['fire response'].cubicWater += toNumber(getFieldValue(event, 'cubicWater', ['cubicWater']))
+        template['fire response'].expenses += toNumber(getFieldValue(event, 'expenses', ['expenses']))
       }
 
       if (category === 'notes') {
-        byCategory.notes.trainings += Number(entry.trainings || 0)
+        const trainings = toNumber(getFieldValue(event, 'trainings', ['trainings']))
+        template.notes.trainings += trainings
+        template.notes.monthlyTrainingCount[monthKey] = (template.notes.monthlyTrainingCount[monthKey] || 0) + trainings
+        template.notes.monthlyEventCount[monthKey] = (template.notes.monthlyEventCount[monthKey] || 0) + 1
       }
 
       if (category === 'medical') {
-        byCategory.medical.medicalEquipmentsUsed += Number(entry.medicalEquipmentsUsed || 0)
-        byCategory.medical.expenses += Number(entry.expenses || 0)
+        template.medical.eventCount += 1
+        const medicalField = getFieldValue(event, 'medicalEquipmentUsed', ['medicalEquipmentsUsed'])
+        const asNumber = Number(medicalField)
+        if (String(medicalField).trim() !== '') {
+          if (Number.isFinite(asNumber)) template.medical.medicalEquipmentUsed += asNumber
+          else template.medical.medicalEquipmentUsed += String(medicalField).split(',').map(x => x.trim()).filter(Boolean).length || 1
+        }
+        template.medical.expenses += toNumber(getFieldValue(event, 'expenses', ['expenses']))
       }
     })
 
-    byCategory.notes.trainings += notesFromAnnouncements
-    return byCategory
-  }, [filteredEntries, notesFromAnnouncements])
+    return template
+  }, [filteredEvents])
 
-  const reportCards = [
-    {
-      title: 'Environmental',
-      items: [
-        { label: 'Total seedlings', value: totals.environmental.seedlings },
-        { label: 'Total expenses', value: CURRENCY.format(totals.environmental.expenses) },
-      ],
-    },
-    {
-      title: 'Relief Operation',
-      items: [
-        { label: 'Total food packs', value: totals['relief operation'].foodPacks },
-        { label: 'Expenses', value: CURRENCY.format(totals['relief operation'].expenses) },
-        { label: 'Total family accommodated', value: totals['relief operation'].familiesAccommodated },
-      ],
-    },
-    {
-      title: 'Fire Response',
-      items: [
-        {
-          label: 'Gallons, tank, cubic water',
-          value: `${totals['fire response'].gallonsWater} gal | ${totals['fire response'].tankWater} tank | ${totals['fire response'].cubicWater} m3`,
-        },
-        { label: 'Response fire accident', value: totals['fire response'].responseFireAccident },
-        { label: 'Expenses', value: CURRENCY.format(totals['fire response'].expenses) },
-      ],
-    },
-    {
-      title: 'Notes',
-      items: [
-        { label: 'Trainings', value: totals.notes.trainings },
-      ],
-    },
-    {
-      title: 'Medical',
-      items: [
-        { label: 'Medical equipments used', value: totals.medical.medicalEquipmentsUsed },
-        { label: 'Expenses', value: CURRENCY.format(totals.medical.expenses) },
-      ],
-    },
+  const eventCountByCategory = useMemo(() => {
+    return CATEGORY_KEYS.reduce((acc, key) => {
+      acc[key] = filteredEvents.filter(event => event._category === key).length
+      return acc
+    }, {})
+  }, [filteredEvents])
+
+  const monthlyTrend = useMemo(() => {
+    const months = {}
+    filteredEvents.forEach(event => {
+      const monthKey = event._date.format('YYYY-MM')
+      months[monthKey] = (months[monthKey] || 0) + 1
+    })
+    return Object.entries(months)
+      .sort((a, b) => dayjs(`${a[0]}-01`).valueOf() - dayjs(`${b[0]}-01`).valueOf())
+      .map(([month, count]) => ({ month, label: dayjs(`${month}-01`).format('MMM YY'), count }))
+  }, [filteredEvents])
+
+  const reportRows = useMemo(() => {
+    return filteredEvents.map(event => ({
+      title: event.title || '',
+      content: event.content || '',
+      category: CATEGORY_META[event._category]?.label || event._category,
+      branch: event.branch || '',
+      dateTime: event._date.format('YYYY-MM-DD HH:mm'),
+      address: event.address || '',
+      seedlingsUsed: getFieldValue(event, 'seedlingsUsed', ['seedlings']),
+      foodPacks: getFieldValue(event, 'foodPacks', ['foodPacks']),
+      familiesAccommodated: getFieldValue(event, 'familiesAccommodated', ['familiesAccommodated']),
+      gallons: getFieldValue(event, 'gallons', ['gallonsWater']),
+      tank: getFieldValue(event, 'tank', ['tankWater']),
+      cubicWater: getFieldValue(event, 'cubicWater', ['cubicWater']),
+      respondedFireAccident: getFieldValue(event, 'respondedFireAccident', ['responseFireAccident']),
+      trainings: getFieldValue(event, 'trainings', ['trainings']),
+      medicalEquipmentUsed: getFieldValue(event, 'medicalEquipmentUsed', ['medicalEquipmentsUsed']),
+      expenses: getFieldValue(event, 'expenses', ['expenses']),
+    }))
+  }, [filteredEvents])
+
+  const totalEvents = filteredEvents.length
+  const maxBarValue = Math.max(1, ...Object.values(eventCountByCategory))
+  const pieSegments = CATEGORY_KEYS.map(key => {
+    const value = eventCountByCategory[key]
+    const percent = totalEvents > 0 ? (value / totalEvents) * 100 : 0
+    return { key, value, percent }
+  })
+
+  const pieGradient = useMemo(() => {
+    if (totalEvents === 0) return 'conic-gradient(#e5e7eb 0 100%)'
+    let current = 0
+    const pieces = pieSegments.map(segment => {
+      const startPct = current
+      const endPct = current + segment.percent
+      current = endPct
+      return `${CATEGORY_COLORS[segment.key]} ${startPct}% ${endPct}%`
+    })
+    return `conic-gradient(${pieces.join(', ')})`
+  }, [pieSegments, totalEvents])
+
+  const trendMax = Math.max(1, ...monthlyTrend.map(item => item.count))
+  const trendPoints = monthlyTrend
+    .map((item, index) => {
+      const x = monthlyTrend.length > 1 ? (index / (monthlyTrend.length - 1)) * 100 : 50
+      const y = 100 - (item.count / trendMax) * 100
+      return `${x},${y}`
+    })
+    .join(' ')
+
+  const summaryCards = CATEGORY_KEYS.map(key => ({
+    key,
+    label: CATEGORY_META[key].label,
+    value: eventCountByCategory[key],
+    icon: CATEGORY_META[key].icon,
+    light: CATEGORY_META[key].light,
+    text: CATEGORY_META[key].text,
+  }))
+
+  const summaryLines = [
+    `Total Environmental Events: ${stats.environmental.eventCount}`,
+    `Total Seedlings Used: ${stats.environmental.seedlingsUsed}`,
+    `Environmental Expenses: ${CURRENCY.format(stats.environmental.expenses)}`,
+    `Total Relief Operations: ${stats['relief operation'].eventCount}`,
+    `Total Food Packs Distributed: ${stats['relief operation'].foodPacks}`,
+    `Total Families Accommodated: ${stats['relief operation'].familiesAccommodated}`,
+    `Relief Expenses: ${CURRENCY.format(stats['relief operation'].expenses)}`,
+    `Total Fire Responses: ${stats['fire response'].eventCount}`,
+    `Total Gallons Used: ${stats['fire response'].gallons}`,
+    `Total Tank Usage: ${stats['fire response'].tank}`,
+    `Total Cubic Water: ${stats['fire response'].cubicWater}`,
+    `Fire Response Expenses: ${CURRENCY.format(stats['fire response'].expenses)}`,
+    `Total Trainings Conducted: ${stats.notes.trainings}`,
+    `Most Active Training Month: ${getMostActiveMonthLabel(stats.notes.monthlyEventCount)}`,
+    `Total Medical Events: ${stats.medical.eventCount}`,
+    `Total Medical Equipment Used: ${stats.medical.medicalEquipmentUsed}`,
+    `Medical Expenses: ${CURRENCY.format(stats.medical.expenses)}`,
   ]
 
+  const downloadCsv = async () => {
+    const filename = `kusgan_report_${dayjs().format('YYYYMMDD_HHmmss')}.csv`
+    const lines = []
+    lines.push('KUSGAN Report Export')
+    lines.push(`Generated At,${dayjs().format('YYYY-MM-DD HH:mm:ss')}`)
+    lines.push(`Date Filter,${datePreset}`)
+    lines.push(`Category Filter,${selectedCategory}`)
+    lines.push(`Branch Filter,${selectedBranch}`)
+    lines.push(`Search Query,${searchQuery || 'N/A'}`)
+    lines.push('')
+    lines.push('Summary Statistics')
+    summaryLines.forEach(line => lines.push(escapeCsv(line)))
+    lines.push('')
+    lines.push(REPORT_COLUMNS.map(col => escapeCsv(col.label)).join(','))
+    reportRows.forEach(row => {
+      lines.push(REPORT_COLUMNS.map(col => escapeCsv(row[col.key])).join(','))
+    })
+
+    const csv = lines.join('\n')
+    downloadBlob(new Blob([csv], { type: 'text/csv;charset=utf-8;' }), filename)
+  }
+
+  const downloadDoc = async () => {
+    const filename = `kusgan_report_${dayjs().format('YYYYMMDD_HHmmss')}.doc`
+    const summaryHtml = summaryLines.map(line => `<li>${line}</li>`).join('')
+    const headerHtml = REPORT_COLUMNS.map(col => `<th style="border:1px solid #ddd;padding:8px;background:#f5f5f5;">${col.label}</th>`).join('')
+    const rowsHtml = reportRows
+      .map(
+        row =>
+          `<tr>${REPORT_COLUMNS.map(col => `<td style="border:1px solid #ddd;padding:8px;vertical-align:top;">${String(row[col.key] ?? '')}</td>`).join('')}</tr>`
+      )
+      .join('')
+
+    const html = `
+      <html>
+      <head><meta charset="utf-8" /><title>KUSGAN Report</title></head>
+      <body style="font-family:Arial,sans-serif;">
+        <h1>KUSGAN Report</h1>
+        <p>Date Generated: ${dayjs().format('YYYY-MM-DD HH:mm:ss')}</p>
+        <p>Filters - Date: ${datePreset}, Category: ${selectedCategory}, Branch: ${selectedBranch}, Search: ${searchQuery || 'N/A'}</p>
+        <h2>Summary Statistics</h2>
+        <ul>${summaryHtml}</ul>
+        <h2>Event Details</h2>
+        <table style="border-collapse:collapse;width:100%;font-size:12px;">
+          <thead><tr>${headerHtml}</tr></thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      </body>
+      </html>
+    `
+
+    downloadBlob(new Blob([html], { type: 'application/msword' }), filename)
+  }
+
+  const downloadPdf = async () => {
+    const JsPDF = await loadJsPdf()
+    if (!JsPDF) throw new Error('PDF generator unavailable')
+
+    const doc = new JsPDF({ unit: 'pt', format: 'a4' })
+    const pageWidth = doc.internal.pageSize.getWidth()
+    const margin = 36
+    let y = 42
+
+    doc.setFontSize(18)
+    doc.text('KUSGAN Report', margin, y)
+    y += 18
+    doc.setFontSize(10)
+    doc.text(`Generated: ${dayjs().format('YYYY-MM-DD HH:mm:ss')}`, margin, y)
+    y += 14
+    doc.text(`Filters - Date: ${datePreset} | Category: ${selectedCategory} | Branch: ${selectedBranch} | Search: ${searchQuery || 'N/A'}`, margin, y)
+    y += 18
+
+    doc.setFontSize(12)
+    doc.text('Summary Statistics', margin, y)
+    y += 12
+    doc.setFontSize(9)
+    summaryLines.forEach(line => {
+      const wrapped = doc.splitTextToSize(line, pageWidth - margin * 2)
+      wrapped.forEach(textLine => {
+        if (y > 780) {
+          doc.addPage()
+          y = 42
+        }
+        doc.text(`- ${textLine}`, margin, y)
+        y += 11
+      })
+    })
+
+    y += 10
+    doc.setFontSize(12)
+    doc.text('Event Details Table', margin, y)
+    y += 12
+    doc.setFontSize(8)
+
+    const headers = ['Title', 'Category', 'Branch', 'Date/Time', 'Address', 'Category Fields']
+    doc.setFillColor(245, 245, 245)
+    doc.rect(margin, y, pageWidth - margin * 2, 18, 'F')
+    headers.forEach((h, idx) => {
+      const x = margin + [6, 110, 190, 260, 340, 460][idx]
+      doc.text(h, x, y + 12)
+    })
+    y += 22
+
+    reportRows.forEach(row => {
+      const catFields = [
+        row.seedlingsUsed ? `Seedlings:${row.seedlingsUsed}` : '',
+        row.foodPacks ? `FoodPacks:${row.foodPacks}` : '',
+        row.familiesAccommodated ? `Families:${row.familiesAccommodated}` : '',
+        row.gallons ? `Gallons:${row.gallons}` : '',
+        row.tank ? `Tank:${row.tank}` : '',
+        row.cubicWater ? `Cubic:${row.cubicWater}` : '',
+        row.respondedFireAccident ? `Fire:${row.respondedFireAccident}` : '',
+        row.trainings ? `Trainings:${row.trainings}` : '',
+        row.medicalEquipmentUsed ? `Medical:${row.medicalEquipmentUsed}` : '',
+        row.expenses ? `Expenses:${row.expenses}` : '',
+      ]
+        .filter(Boolean)
+        .join(' | ')
+
+      const lines = [
+        doc.splitTextToSize(row.title || '', 100),
+        doc.splitTextToSize(row.category || '', 75),
+        doc.splitTextToSize(row.branch || '', 65),
+        doc.splitTextToSize(row.dateTime || '', 75),
+        doc.splitTextToSize(row.address || '', 130),
+        doc.splitTextToSize(catFields || '-', 95),
+      ]
+      const rowHeight = Math.max(...lines.map(arr => arr.length * 10)) + 6
+
+      if (y + rowHeight > 800) {
+        doc.addPage()
+        y = 42
+      }
+
+      doc.rect(margin, y, pageWidth - margin * 2, rowHeight)
+      const xPositions = [margin + 6, margin + 110, margin + 190, margin + 260, margin + 340, margin + 460]
+      lines.forEach((cellLines, i) => {
+        cellLines.forEach((line, lineIndex) => {
+          doc.text(line, xPositions[i], y + 11 + lineIndex * 10)
+        })
+      })
+      y += rowHeight
+    })
+
+    doc.save(`kusgan_report_${dayjs().format('YYYYMMDD_HHmmss')}.pdf`)
+  }
+
+  const handleExport = async type => {
+    if (!isAdmin || exportingType) return
+    setShowExportMenu(false)
+    setExportingType(type)
+
+    try {
+      if (type === 'csv') await downloadCsv()
+      if (type === 'pdf') await downloadPdf()
+      if (type === 'doc') await downloadDoc()
+    } catch (error) {
+      alert(error?.message || 'Failed to generate export.')
+    } finally {
+      setExportingType('')
+    }
+  }
+
   return (
-    <div className="animate-fade-in space-y-6">
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-800">Report</h2>
-          <p className="text-gray-500 mt-1">Overall report by period</p>
-        </div>
-
-        <div className="flex flex-wrap gap-3">
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">Filter</label>
-            <select
-              value={period}
-              onChange={(e) => setPeriod(e.target.value)}
-              className="px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-500"
-            >
-              <option value="monthly">Monthly</option>
-              <option value="quarterly">Quarterly</option>
-              <option value="annual">Annual</option>
-            </select>
+    <div className="animate-fade-in space-y-6 max-w-7xl 2xl:max-w-[1500px] mx-auto">
+      <div className="bg-white rounded-2xl shadow-md p-5 border border-gray-100 layout-glow">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+          <div className="flex items-center gap-2">
+            <Filter size={18} className="text-red-600" />
+            <h2 className="text-2xl font-bold text-gray-800">Report - Statistics Overview</h2>
           </div>
-
-          {period === 'monthly' && (
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">Month</label>
-              <input
-                type="month"
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
-                className="px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-500"
-              />
+          {isAdmin && (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowExportMenu(prev => !prev)}
+                disabled={Boolean(exportingType)}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-black transition-colors disabled:opacity-60"
+              >
+                {exportingType ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+                {exportingType ? `Generating ${exportingType.toUpperCase()}...` : 'Download / Export'}
+              </button>
+              {showExportMenu && !exportingType && (
+                <div className="absolute right-0 mt-2 w-52 bg-white border border-gray-200 rounded-lg shadow-lg z-20">
+                  <button type="button" onClick={() => handleExport('csv')} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50">Download as CSV</button>
+                  <button type="button" onClick={() => handleExport('pdf')} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50">Download as PDF</button>
+                  <button type="button" onClick={() => handleExport('doc')} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50">Download as DOC</button>
+                </div>
+              )}
             </div>
           )}
+        </div>
 
-          {period === 'quarterly' && (
+        <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-3">
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Date Range</label>
+            <select
+              value={datePreset}
+              onChange={e => setDatePreset(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+            >
+              <option value="this_month">This Month</option>
+              <option value="last_3_months">Last 3 Months</option>
+              <option value="last_6_months">Last 6 Months</option>
+              <option value="this_year">This Year</option>
+              <option value="all_time">All Time</option>
+              <option value="custom">Custom Range</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Category</label>
+            <select
+              value={selectedCategory}
+              onChange={e => {
+                setSelectedCategory(e.target.value)
+                setSelectedBranch('all')
+              }}
+              className="w-full px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+            >
+              <option value="all">All Categories</option>
+              {CATEGORY_KEYS.map(key => (
+                <option key={key} value={key}>{CATEGORY_META[key].label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Branch</label>
+            <select
+              value={selectedBranch}
+              onChange={e => setSelectedBranch(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+            >
+              <option value="all">All Branches</option>
+              {branchOptions.map(branch => (
+                <option key={branch} value={branch}>
+                  {branch}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="md:col-span-2">
+            <label className="block text-xs text-gray-500 mb-1">Search</label>
+            <div className="relative">
+              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Search by title, content, address, category..."
+                className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+              />
+            </div>
+          </div>
+          {datePreset === 'custom' && (
             <>
               <div>
-                <label className="block text-xs text-gray-500 mb-1">Quarter</label>
-                <select
-                  value={selectedQuarter}
-                  onChange={(e) => setSelectedQuarter(e.target.value)}
-                  className="px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-500"
-                >
-                  <option value="1">Q1</option>
-                  <option value="2">Q2</option>
-                  <option value="3">Q3</option>
-                  <option value="4">Q4</option>
-                </select>
+                <label className="block text-xs text-gray-500 mb-1">Start Date</label>
+                <input
+                  type="date"
+                  value={customStartDate}
+                  onChange={e => setCustomStartDate(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+                />
               </div>
               <div>
-                <label className="block text-xs text-gray-500 mb-1">Year</label>
+                <label className="block text-xs text-gray-500 mb-1">End Date</label>
                 <input
-                  type="number"
-                  min="2000"
-                  max="2100"
-                  value={selectedYear}
-                  onChange={(e) => setSelectedYear(e.target.value)}
-                  className="w-24 px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+                  type="date"
+                  value={customEndDate}
+                  onChange={e => setCustomEndDate(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-500"
                 />
               </div>
             </>
           )}
-
-          {period === 'annual' && (
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">Year</label>
-              <input
-                type="number"
-                min="2000"
-                max="2100"
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(e.target.value)}
-                className="w-24 px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-500"
-              />
-            </div>
-          )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {reportCards.map((card) => (
-          <div key={card.title} className="bg-white rounded-xl shadow-md p-5 border border-gray-100">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">{card.title}</h3>
-            <div className="space-y-2">
-              {card.items.map((item) => (
-                <div key={item.label} className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">{item.label}</span>
-                  <span className="font-semibold text-gray-800">{item.value}</span>
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
+        {summaryCards.map(card => (
+          <div key={card.key} className="bg-white rounded-xl shadow-md p-4 border border-gray-100 layout-glow">
+            <div className={`statcard-icon-3d ${getIconThemeClass(card.key)} w-10 h-10 rounded-lg ${card.light} flex items-center justify-center mb-3`}><card.icon size={18} className={card.text} /></div>
+            <p className="text-sm text-gray-600">{card.label}</p>
+            <p className="text-3xl font-bold text-gray-800">{card.value}</p>
+            <p className="text-xs text-gray-500 mt-1">events</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+        <div className="bg-white rounded-xl shadow-md p-5 border border-gray-100 layout-glow">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2"><BarChart3 size={18} className="text-red-600" />Events Per Category</h3>
+          <div className="space-y-3">
+            {CATEGORY_KEYS.map(key => (
+              <div key={key}>
+                <div className="flex items-center justify-between text-sm mb-1"><span className="text-gray-600">{CATEGORY_META[key].label}</span><span className="font-semibold text-gray-800">{eventCountByCategory[key]}</span></div>
+                <div className="w-full bg-gray-100 rounded-full h-2"><div className="h-2 rounded-full transition-all duration-300" style={{ width: `${(eventCountByCategory[key] / maxBarValue) * 100}%`, backgroundColor: CATEGORY_COLORS[key] }} /></div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-md p-5 border border-gray-100 layout-glow">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2"><PieChart size={18} className="text-red-600" />Category Distribution</h3>
+          <div className="flex flex-col items-center">
+            <div className="w-44 h-44 sm:w-48 sm:h-48 rounded-full mb-4" style={{ background: pieGradient }} />
+            <div className="w-full space-y-2">
+              {pieSegments.map(segment => (
+                <div key={segment.key} className="flex items-center justify-between text-sm">
+                  <span className="flex items-center gap-2 text-gray-600"><span className="w-3 h-3 rounded-sm" style={{ backgroundColor: CATEGORY_COLORS[segment.key] }} />{CATEGORY_META[segment.key].label}</span>
+                  <span className="font-semibold text-gray-800">{segment.value} ({segment.percent.toFixed(1)}%)</span>
                 </div>
               ))}
             </div>
           </div>
-        ))}
+        </div>
+
+        <div className="bg-white rounded-xl shadow-md p-5 border border-gray-100 layout-glow">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2"><TrendingUp size={18} className="text-red-600" />Monthly Trend</h3>
+          {monthlyTrend.length === 0 ? (
+            <p className="text-sm text-gray-500">No event data for the selected filters.</p>
+          ) : (
+            <>
+              <div className="w-full h-40 bg-gray-50 rounded-lg p-2"><svg viewBox="0 0 100 100" className="w-full h-full"><polyline fill="none" stroke="#ef4444" strokeWidth="2" points={trendPoints} />{monthlyTrend.map((item, index) => { const x = monthlyTrend.length > 1 ? (index / (monthlyTrend.length - 1)) * 100 : 50; const y = 100 - (item.count / trendMax) * 100; return <circle key={item.month} cx={x} cy={y} r="2.2" fill="#ef4444" /> })}</svg></div>
+              <div className="mt-3 space-y-1">{monthlyTrend.map(item => (<div key={item.month} className="flex items-center justify-between text-xs text-gray-600"><span>{item.label}</span><span className="font-medium text-gray-800">{item.count}</span></div>))}</div>
+            </>
+          )}
+        </div>
       </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="bg-white rounded-xl shadow-md p-5 border border-gray-100 layout-glow">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2"><Leaf size={18} className="text-green-600" />Environmental Statistics</h3>
+          <div className="space-y-2 text-sm">
+            <div className="flex flex-wrap justify-between gap-2"><span>Total Environmental Events</span><strong>{stats.environmental.eventCount}</strong></div>
+            <div className="flex flex-wrap justify-between gap-2"><span>Total Seedlings Used</span><strong>{stats.environmental.seedlingsUsed}</strong></div>
+            <div className="flex flex-wrap justify-between gap-2"><span>Total Expenses</span><strong>{CURRENCY.format(stats.environmental.expenses)}</strong></div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-md p-5 border border-gray-100 layout-glow">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2"><Activity size={18} className="text-blue-600" />Relief Operation Statistics</h3>
+          <div className="space-y-2 text-sm">
+            <div className="flex flex-wrap justify-between gap-2"><span>Total Relief Operations</span><strong>{stats['relief operation'].eventCount}</strong></div>
+            <div className="flex flex-wrap justify-between gap-2"><span>Total Food Packs Distributed</span><strong>{stats['relief operation'].foodPacks}</strong></div>
+            <div className="flex flex-wrap justify-between gap-2"><span>Total Families Accommodated</span><strong>{stats['relief operation'].familiesAccommodated}</strong></div>
+            <div className="flex flex-wrap justify-between gap-2"><span>Total Expenses</span><strong>{CURRENCY.format(stats['relief operation'].expenses)}</strong></div>
+            <div className="flex flex-wrap justify-between gap-2"><span>Most Active Month</span><strong>{getMostActiveMonthLabel(stats['relief operation'].monthlyCount)}</strong></div>
+          </div>
+        </div>
+      </div>
+
+      {!isAdmin && <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-sm text-yellow-800">Export feature is available to Admin users only.</div>}
     </div>
   )
 }

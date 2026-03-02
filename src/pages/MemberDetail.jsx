@@ -83,11 +83,19 @@ function MemberDetail() {
               <div className="space-y-3 mt-4">
                 <div className="flex items-center gap-3 text-gray-600">
                   <Mail size={18} className="text-gray-400" />
-                  <span>{member.email}</span>
+                  <span>{member.email || member.idNumber}</span>
                 </div>
                 <div className="flex items-center gap-3 text-gray-600">
                   <Calendar size={18} className="text-gray-400" />
                   <span>Joined {new Date().toLocaleDateString()}</span>
+                </div>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <span className="px-2 py-1 rounded bg-red-50 text-red-700 text-xs border border-red-200">
+                    Committee: {member.committee || 'Unassigned'}
+                  </span>
+                  <span className="px-2 py-1 rounded bg-blue-50 text-blue-700 text-xs border border-blue-200">
+                    Category: {member.category || 'General Member'}
+                  </span>
                 </div>
               </div>
             </div>
