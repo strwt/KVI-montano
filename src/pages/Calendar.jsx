@@ -685,6 +685,7 @@ function Calendar({ listOnly = false }) {
   const storedFilters = getStoredCalendarFilters()
   const [events, setEvents] = useState(getStoredEvents)
   const [selectedMonthKey, setSelectedMonthKey] = useState(null)
+  const [showAllMonths, setShowAllMonths] = useState(false)
   const [expandedItemId, setExpandedItemId] = useState(null)
   const [highlightedEventId, setHighlightedEventId] = useState(null)
   const [showEventForm, setShowEventForm] = useState(false)
@@ -898,6 +899,11 @@ function Calendar({ listOnly = false }) {
       }
     })
   }, [monthGroups, currentYear])
+
+  const visibleMonths = useMemo(() => {
+    if (showAllMonths) return allMonthsWithEvents
+    return allMonthsWithEvents.filter(month => month.hasEvents)
+  }, [allMonthsWithEvents, showAllMonths])
 
   const activeCategoryConfig = formData.category ? CATEGORY_CONFIG[formData.category] : null
   const selectedCategoryMeta = CATEGORY_META[formData.category]
@@ -1286,18 +1292,20 @@ function Calendar({ listOnly = false }) {
           <button
             type="button"
             onClick={() => {
+              const nextShowAll = !showAllMonths
               setSelectedMonthKey(null)
               setExpandedItemId(null)
               setSelectedDateFilter('')
+              setShowAllMonths(nextShowAll)
             }}
             className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${
-              selectedMonth
-                ? 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                : 'bg-red-600 text-white border-red-600'
+              showAllMonths && !selectedMonth
+                ? 'bg-red-600 text-white border-red-600'
+                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
             }`}
           >
             <CalendarIcon size={16} />
-            All Months
+            {showAllMonths ? 'Event Months' : 'All Months'}
           </button>
           {canManageEvents && (
             <button
@@ -1326,11 +1334,12 @@ function Calendar({ listOnly = false }) {
 
       {!selectedMonth && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-5 auto-rows-fr">
-          {allMonthsWithEvents.map((month, index) => (
+          {visibleMonths.map((month, index) => (
             <button
               key={month.monthKey}
               onClick={() => {
                 setSelectedMonthKey(month.monthKey)
+                setShowAllMonths(false)
                 setExpandedItemId(null)
                 setSelectedDateFilter('')
               }}
@@ -1370,6 +1379,12 @@ function Calendar({ listOnly = false }) {
         </div>
       )}
 
+      {!selectedMonth && !showAllMonths && visibleMonths.length === 0 && (
+        <div className="bg-white rounded-xl border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500 mt-5">
+          No months with events for {currentYear}. Click <span className="font-semibold text-gray-700">All Months</span> to show every month.
+        </div>
+      )}
+
       {selectedMonth && (
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden max-w-6xl mx-auto layout-glow">
           <div className="bg-gradient-to-r from-gray-900 to-black p-5 flex items-center justify-between">
@@ -1380,6 +1395,7 @@ function Calendar({ listOnly = false }) {
             <button
               onClick={() => {
                 setSelectedMonthKey(null)
+                setShowAllMonths(false)
                 setExpandedItemId(null)
                 setSelectedDateFilter('')
               }}
