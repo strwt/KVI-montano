@@ -33,9 +33,11 @@ function Profile() {
   return (
     <div className="animate-fade-in">
       {/* Header */}
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">Profile</h2>
-        <p className="text-sm text-gray-500">Manage your account settings</p>
+      <div className="flex justify-between items-start mb-6">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-800">Profile</h2>
+          <p className="text-sm text-gray-500">Manage your account settings</p>
+        </div>
       </div>
 
       {/* Profile Card */}
@@ -43,8 +45,12 @@ function Profile() {
         {/* Cover */}
         <div className="h-32 bg-gradient-to-r from-gray-900 to-black relative">
           <div className="absolute -bottom-12 left-6">
-            <div className="w-24 h-24 bg-white rounded-2xl shadow-lg flex items-center justify-center">
-              <User size={48} className="text-red-600" />
+            <div className="w-24 h-24 bg-white rounded-2xl shadow-lg flex items-center justify-center overflow-hidden">
+              <img
+                src={user?.profileImage || '/image-removebg-preview.png'}
+                alt={user?.name || 'User'}
+                className="w-full h-full object-cover"
+              />
             </div>
           </div>
         </div>
