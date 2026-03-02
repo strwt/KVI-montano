@@ -3,6 +3,8 @@ import Layout from './layout/Layout'
 import Dashboard from './pages/Dashboard'
 import Calendar from './pages/Calendar'
 import Profile from './pages/Profile'
+import ChangePassword from './pages/ChangePassword'
+import EditAccount from './pages/EditAccount'
 import Members from './pages/Members'
 import MemberDetail from './pages/MemberDetail'
 import Report from './pages/Report'
@@ -88,6 +90,8 @@ function AppRoutes() {
         <Route path="events" element={<Calendar listOnly />} />
         <Route path="report" element={<AdminRoute><Report /></AdminRoute>} />
         <Route path="profile" element={<Profile />} />
+        <Route path="account/edit" element={<EditAccount />} />
+        <Route path="change-password" element={<ChangePassword />} />
         <Route path="members" element={<Members />} />
         <Route path="members/:id" element={<MemberDetail />} />
       </Route>
