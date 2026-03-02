@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { useNavigate, useParams } from 'react-router-dom'
 
 const DEFAULT_COMMITTEE = 'Environmental'
+const BLOOD_TYPE_OPTIONS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
 
 function MemberDetail() {
   const { id } = useParams()
@@ -15,10 +16,12 @@ function MemberDetail() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showUpdateModal, setShowUpdateModal] = useState(false)
   const [editForm, setEditForm] = useState({
-    id: '',
+    idNumber: '',
     name: '',
     email: '',
     address: '',
+    contactNumber: '',
+    bloodType: '',
     status: 'active',
     memberSince: '',
   })
@@ -29,10 +32,12 @@ function MemberDetail() {
     if (foundMember) {
       setMember(foundMember)
       setEditForm({
-        id: foundMember.id || '',
+        idNumber: foundMember.idNumber || '',
         name: foundMember.name || '',
         email: foundMember.email || '',
         address: foundMember.address || '',
+        contactNumber: foundMember.contactNumber || '',
+        bloodType: foundMember.bloodType || '',
         status: foundMember.status || 'active',
         memberSince: (foundMember.memberSince || new Date().toISOString()).split('T')[0],
       })
@@ -56,10 +61,12 @@ function MemberDetail() {
   const handleUpdateMember = (e) => {
     e.preventDefault()
     updateMember(member.id, {
-      id: editForm.id,
+      idNumber: editForm.idNumber,
       name: editForm.name,
       email: editForm.email,
       address: editForm.address,
+      contactNumber: editForm.contactNumber,
+      bloodType: editForm.bloodType,
       status: editForm.status,
       memberSince: editForm.memberSince,
     })
@@ -137,7 +144,7 @@ function MemberDetail() {
               <div className="space-y-3 mt-4">
                 <div className="flex items-center gap-3 text-gray-600">
                   <Mail size={18} className="text-gray-400" />
-                  <span>{member.email || member.idNumber}</span>
+                  <span>{member.email || 'N/A'}</span>
                 </div>
                 <div className="flex items-center gap-3 text-gray-600">
                   <Calendar size={18} className="text-gray-400" />
@@ -158,8 +165,8 @@ function MemberDetail() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-white rounded-xl shadow-md p-5">
-            <p className="text-sm text-gray-500 mb-1">Member ID</p>
-            <p className="text-lg font-semibold text-gray-800">{member.id}</p>
+            <p className="text-sm text-gray-500 mb-1">ID Number</p>
+            <p className="text-lg font-semibold text-gray-800">{member.idNumber || 'N/A'}</p>
           </div>
           <div className="bg-white rounded-xl shadow-md p-5">
             <p className="text-sm text-gray-500 mb-1">Role</p>
@@ -187,6 +194,14 @@ function MemberDetail() {
           <div className="bg-white rounded-xl shadow-md p-5">
             <p className="text-sm text-gray-500 mb-1">Address</p>
             <p className="text-lg font-semibold text-gray-800">{member.address || 'N/A'}</p>
+          </div>
+          <div className="bg-white rounded-xl shadow-md p-5">
+            <p className="text-sm text-gray-500 mb-1">Contact Number</p>
+            <p className="text-lg font-semibold text-gray-800">{member.contactNumber || 'N/A'}</p>
+          </div>
+          <div className="bg-white rounded-xl shadow-md p-5">
+            <p className="text-sm text-gray-500 mb-1">Blood Type</p>
+            <p className="text-lg font-semibold text-gray-800">{member.bloodType || 'N/A'}</p>
           </div>
         </div>
       </div>
@@ -230,12 +245,12 @@ function MemberDetail() {
             <h3 className="text-lg font-semibold text-gray-800 mb-4">Update Member</h3>
             <form onSubmit={handleUpdateMember} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">ID</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">ID Number</label>
                 <input
                   type="text"
                   required
-                  value={editForm.id}
-                  onChange={(e) => setEditForm({ ...editForm, id: e.target.value })}
+                  value={editForm.idNumber}
+                  onChange={(e) => setEditForm({ ...editForm, idNumber: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                 />
               </div>
@@ -267,6 +282,30 @@ function MemberDetail() {
                   onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Contact Number</label>
+                <input
+                  type="text"
+                  value={editForm.contactNumber}
+                  onChange={(e) => setEditForm({ ...editForm, contactNumber: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Blood Type</label>
+                <select
+                  value={editForm.bloodType}
+                  onChange={(e) => setEditForm({ ...editForm, bloodType: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                >
+                  <option value="">Select Blood Type</option>
+                  {BLOOD_TYPE_OPTIONS.map(type => (
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>

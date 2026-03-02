@@ -23,6 +23,7 @@ const ROLE_OPTIONS = [
   { value: 'admin', label: 'Admin' },
 ]
 const COMMITTEE_OPTIONS = ['Environmental', 'Relief Operations', 'Fire Response', 'Medical']
+const BLOOD_TYPE_OPTIONS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
 
 function Members() {
   const {
@@ -55,6 +56,10 @@ function Members() {
     email: '',
     idNumber: '',
     password: '',
+    address: '',
+    contactNumber: '',
+    bloodType: '',
+    memberSince: dayjs().format('YYYY-MM-DD'),
     role: ROLE_OPTIONS[0].value,
     committee: committees[0] || COMMITTEE_OPTIONS[0],
     category: committees[0] || COMMITTEE_OPTIONS[0],
@@ -173,6 +178,10 @@ function Members() {
       email: '',
       idNumber: '',
       password: '',
+      address: '',
+      contactNumber: '',
+      bloodType: '',
+      memberSince: dayjs().format('YYYY-MM-DD'),
       role: ROLE_OPTIONS[0].value,
       committee: memberCommittees[0] || COMMITTEE_OPTIONS[0],
       category: memberCommittees[0] || COMMITTEE_OPTIONS[0],
@@ -195,6 +204,10 @@ function Members() {
       email: recruitment.email,
       idNumber: recruitment.idNumber,
       password: '',
+      address: '',
+      contactNumber: '',
+      bloodType: '',
+      memberSince: dayjs().format('YYYY-MM-DD'),
       role: ROLE_OPTIONS[0].value,
       committee: memberCommittees[0] || COMMITTEE_OPTIONS[0],
       category: memberCommittees[0] || COMMITTEE_OPTIONS[0],
@@ -229,13 +242,13 @@ function Members() {
       {isAdmin && (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
           <div className="bg-white rounded-xl shadow-md p-5">
-            <h3 className="font-semibold text-gray-800 mb-3">Committee Management</h3>
+            <h3 className="font-semibold text-gray-800 mb-3">Manage Category</h3>
             <form onSubmit={handleCommitteeAdd} className="flex gap-2 mb-3">
               <input
                 type="text"
                 value={committeeName}
                 onChange={e => setCommitteeName(e.target.value)}
-                placeholder="New committee name"
+                placeholder="New Category"
                 className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                 required
               />
@@ -252,7 +265,7 @@ function Members() {
               onClick={() => setShowCommitteeActions(prev => !prev)}
               className="mb-3 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm"
             >
-              {showCommitteeActions ? 'Hide Edit/Delete Committee' : 'Edit or Delete Committee'}
+              {showCommitteeActions ? 'Hide Edit/Delete Category' : 'Edit or Delete Category'}
             </button>
             {showCommitteeActions && (
               <form onSubmit={handleCommitteeRename} className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
@@ -340,30 +353,71 @@ function Members() {
                 className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                 required
               />
-              <select
-                value={newMember.role}
-                onChange={e => setNewMember({ ...newMember, role: e.target.value })}
+              <input
+                type="text"
+                placeholder="Address"
+                value={newMember.address}
+                onChange={e => setNewMember({ ...newMember, address: e.target.value })}
                 className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                required
+              />
+              <input
+                type="text"
+                placeholder="Contact Number"
+                value={newMember.contactNumber}
+                onChange={e => setNewMember({ ...newMember, contactNumber: e.target.value })}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+              />
+              <select
+                value={newMember.bloodType}
+                onChange={e => setNewMember({ ...newMember, bloodType: e.target.value })}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
               >
-                {ROLE_OPTIONS.map(roleOption => (
-                  <option key={roleOption.value} value={roleOption.value}>
-                    {roleOption.label}
+                <option value="">Select Blood Type</option>
+                {BLOOD_TYPE_OPTIONS.map(type => (
+                  <option key={type} value={type}>
+                    {type}
                   </option>
                 ))}
               </select>
-              <select
-                value={newMember.committee}
-                onChange={e => setNewMember({ ...newMember, committee: e.target.value, category: e.target.value })}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                required
-              >
-                {memberCommittees.map(committee => (
-                  <option key={committee} value={committee}>
-                    {committee}
-                  </option>
-                ))}
-              </select>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Member Since</label>
+                <input
+                  type="date"
+                  value={newMember.memberSince}
+                  onChange={e => setNewMember({ ...newMember, memberSince: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Type</label>
+                <select
+                  value={newMember.role}
+                  onChange={e => setNewMember({ ...newMember, role: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                  required
+                >
+                  {ROLE_OPTIONS.map(roleOption => (
+                    <option key={roleOption.value} value={roleOption.value}>
+                      {roleOption.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Kind of Operation</label>
+                <select
+                  value={newMember.committee}
+                  onChange={e => setNewMember({ ...newMember, committee: e.target.value, category: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                  required
+                >
+                  {memberCommittees.map(committee => (
+                    <option key={committee} value={committee}>
+                      {committee}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <button
                 type="submit"
                 className="md:col-span-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
@@ -576,11 +630,17 @@ function Members() {
                 <div className="space-y-3">
                   <div className="flex items-center gap-3 text-sm text-gray-600">
                     <Mail size={16} className="text-gray-400" />
-                    <span className="truncate">{member.email || member.idNumber}</span>
+                    <span className="truncate">{member.email || 'N/A'}</span>
                   </div>
                   <div className="flex items-center gap-3 text-sm text-gray-600">
                     <Calendar size={16} className="text-gray-400" />
-                    <span>Joined {new Date().toLocaleDateString()}</span>
+                    <span>Joined {new Date(member.memberSince || Date.now()).toLocaleDateString()}</span>
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    <span>Contact: {member.contactNumber || 'N/A'}</span>
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    <span>Blood Type: {member.bloodType || 'N/A'}</span>
                   </div>
                 </div>
 
