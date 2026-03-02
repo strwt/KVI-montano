@@ -16,11 +16,28 @@ const enrichUserWithProfileImage = (user) => {
   }
 }
 
+const parseStoredJson = (value, fallback) => {
+  if (!value) return fallback
+  try {
+    return JSON.parse(value)
+  } catch {
+    return fallback
+  }
+}
+
+const omitPassword = (account) => {
+  const { password: _PASSWORD, ...userWithoutPassword } = account
+  return userWithoutPassword
+}
+
 // Dummy accounts stored in localStorage
 const getStoredUsers = () => {
   const stored = localStorage.getItem('kusgan_users')
   if (stored) {
-    return JSON.parse(stored).map(enrichUserWithProfileImage)
+    const parsed = parseStoredJson(stored, [])
+    if (Array.isArray(parsed)) {
+      return parsed.map(enrichUserWithProfileImage)
+    }
   }
   // Default dummy accounts
   return [
@@ -65,7 +82,8 @@ const getStoredUsers = () => {
 
 const getStoredCurrentUser = () => {
   const stored = localStorage.getItem('kusgan_current_user')
-  return stored ? enrichUserWithProfileImage(JSON.parse(stored)) : null
+  const parsed = parseStoredJson(stored, null)
+  return parsed ? enrichUserWithProfileImage(parsed) : null
 }
 
 const getTodayDateKey = () => {
@@ -109,14 +127,13 @@ const recordDailyPresence = (loggedInUser) => {
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(getStoredCurrentUser)
   const [users, setUsers] = useState(getStoredUsers)
-  const [loading, setLoading] = useState(true)
+  const [loading] = useState(false)
 
   useEffect(() => {
     // Initialize users in localStorage if not present
     if (!localStorage.getItem('kusgan_users')) {
       localStorage.setItem('kusgan_users', JSON.stringify(getStoredUsers()))
     }
-    setLoading(false)
   }, [])
 
   useEffect(() => {
@@ -136,7 +153,7 @@ export function AuthProvider({ children }) {
   const login = (email, password) => {
     const foundUser = users.find(u => u.email === email && u.password === password)
     if (foundUser) {
-      const { password: _, ...userWithoutPassword } = foundUser
+      const userWithoutPassword = omitPassword(foundUser)
       setUser(userWithoutPassword)
       recordDailyPresence(userWithoutPassword)
       return { success: true, user: userWithoutPassword }
@@ -160,7 +177,7 @@ export function AuthProvider({ children }) {
       profileImage: createProfileImageUrl(name),
     }
     setUsers([...users, newUser])
-    const { password: _, ...userWithoutPassword } = newUser
+    const userWithoutPassword = omitPassword(newUser)
     setUser(userWithoutPassword)
     recordDailyPresence(userWithoutPassword)
     return { success: true, user: userWithoutPassword }
@@ -185,7 +202,7 @@ export function AuthProvider({ children }) {
   }
 
   const getAllMembers = () => {
-    return users.map(({ password, ...u }) => u)
+    return users.map(omitPassword)
   }
 
   const addUser = (userData) => {
@@ -245,7 +262,7 @@ export function AuthProvider({ children }) {
       addUser,
       deleteMembers,
       updateMember,
-      users: users.map(({ password, ...u }) => u)
+      users: users.map(omitPassword)
     }}>
       {children}
     </AuthContext.Provider>
