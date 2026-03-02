@@ -1,18 +1,38 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import Sidebar from './Sidebar'
-import ReminderSound from '../components/ReminderSound'
 import { Menu, X } from 'lucide-react'
+
+const getStoredSoundEnabled = () => {
+  const stored = localStorage.getItem('kusgan_sound_enabled')
+  return stored ? JSON.parse(stored) : true
+}
+
+const getStoredDarkMode = () => {
+  const stored = localStorage.getItem('kusgan_dark_mode')
+  return stored ? JSON.parse(stored) : false
+}
 
 function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [soundEnabled, setSoundEnabled] = useState(getStoredSoundEnabled)
+  const [darkMode, setDarkMode] = useState(getStoredDarkMode)
+
+  useEffect(() => {
+    localStorage.setItem('kusgan_sound_enabled', JSON.stringify(soundEnabled))
+  }, [soundEnabled])
+
+  useEffect(() => {
+    localStorage.setItem('kusgan_dark_mode', JSON.stringify(darkMode))
+    document.documentElement.classList.toggle('dark', darkMode)
+  }, [darkMode])
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen)
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
+    <div className="flex min-h-screen bg-gray-100 w-full overflow-x-hidden">
       {/* Mobile Toggle Button */}
       <button
         onClick={toggleSidebar}
@@ -21,17 +41,22 @@ function Layout() {
         {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
       </button>
 
-      <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
+      <Sidebar
+        isOpen={sidebarOpen}
+        toggleSidebar={toggleSidebar}
+        soundEnabled={soundEnabled}
+        onToggleSound={() => setSoundEnabled((prev) => !prev)}
+        darkMode={darkMode}
+        onToggleDarkMode={() => setDarkMode((prev) => !prev)}
+      />
       
       <main 
-        className={`flex-1 p-6 transition-all duration-300 ${
+        className={`flex-1 px-3 py-4 sm:px-4 sm:py-5 md:px-6 md:py-6 pt-20 md:pt-6 transition-all duration-300 overflow-x-hidden ${
           sidebarOpen ? 'md:ml-64' : 'md:ml-20'
         }`}
       >
         <Outlet />
       </main>
-      
-      <ReminderSound />
     </div>
   )
 }
