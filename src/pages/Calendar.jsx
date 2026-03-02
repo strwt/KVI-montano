@@ -67,11 +67,11 @@ const CATEGORY_CONFIG = {
 const CATEGORY_KEYS = Object.keys(CATEGORY_CONFIG)
 
 const CATEGORY_META = {
-  environmental: { icon: Leaf, iconClass: 'icon-theme-environmental', bg: 'from-green-50 to-emerald-100', text: 'text-green-700' },
-  'relief operation': { icon: Activity, iconClass: 'icon-theme-relief', bg: 'from-blue-50 to-cyan-100', text: 'text-blue-700' },
-  'fire response': { icon: Flame, iconClass: 'icon-theme-fire', bg: 'from-orange-50 to-amber-100', text: 'text-orange-700' },
-  notes: { icon: FileText, iconClass: 'icon-theme-notes', bg: 'from-indigo-50 to-violet-100', text: 'text-indigo-700' },
-  medical: { icon: HeartPulse, iconClass: 'icon-theme-medical', bg: 'from-pink-50 to-rose-100', text: 'text-pink-700' },
+  environmental: { icon: Leaf, iconClass: '', bg: 'from-red-50 to-red-100', text: 'text-red-700' },
+  'relief operation': { icon: Activity, iconClass: '', bg: 'from-red-50 to-red-100', text: 'text-red-700' },
+  'fire response': { icon: Flame, iconClass: '', bg: 'from-red-50 to-red-100', text: 'text-red-700' },
+  notes: { icon: FileText, iconClass: '', bg: 'from-red-50 to-red-100', text: 'text-red-700' },
+  medical: { icon: HeartPulse, iconClass: '', bg: 'from-red-50 to-red-100', text: 'text-red-700' },
 }
 
 const CATEGORY_BRANCHES = {
@@ -1112,23 +1112,7 @@ function Calendar({ listOnly = false }) {
     )
   }
 
-  const getMonthColor = monthIndex => {
-    const colors = [
-      'from-blue-500 to-blue-600',
-      'from-purple-500 to-purple-600',
-      'from-pink-500 to-pink-600',
-      'from-red-500 to-red-600',
-      'from-orange-500 to-orange-600',
-      'from-yellow-500 to-yellow-600',
-      'from-green-500 to-green-600',
-      'from-teal-500 to-teal-600',
-      'from-cyan-500 to-cyan-600',
-      'from-indigo-500 to-indigo-600',
-      'from-violet-500 to-violet-600',
-      'from-rose-500 to-rose-600',
-    ]
-    return colors[monthIndex]
-  }
+  const getMonthColor = () => 'from-red-500 to-red-600'
 
   const getCategoryLabel = category => CATEGORY_CONFIG[category]?.label || 'Uncategorized'
   const selectedCategoryKey = getCategoryKeyFromLabel(selectedCategory)
