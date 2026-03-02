@@ -48,6 +48,8 @@ const normalizeUsers = (storedUsers = []) => {
       idNumber: buildFallbackIdNumber(user),
       committee,
       category: user.category || (user.role === 'admin' ? 'Administrator' : DEFAULT_MEMBER_CATEGORY),
+      contactNumber: user.contactNumber || '',
+      bloodType: user.bloodType || '',
       accountStatus: user.accountStatus || 'Active',
       status: user.status || 'active',
       memberSince: user.memberSince || new Date().toISOString(),
@@ -406,9 +408,16 @@ export function AuthProvider({ children }) {
     const email = memberData.email?.trim().toLowerCase()
     const idNumber = memberData.idNumber?.trim()
     const password = memberData.password
+    const address = memberData.address?.trim() || ''
+    const contactNumber = memberData.contactNumber?.trim() || ''
+    const bloodType = memberData.bloodType?.trim() || ''
+    const memberSinceInput = memberData.memberSince
     const role = memberData.role?.trim().toLowerCase() || 'member'
     const committee = memberData.committee?.trim()
     const category = memberData.category?.trim()
+    const memberSince = memberSinceInput && dayjs(memberSinceInput).isValid()
+      ? dayjs(memberSinceInput).startOf('day').toISOString()
+      : new Date().toISOString()
 
     if (!name || !email || !idNumber || !password || !committee || !category) {
       return { success: false, message: 'All fields are required.' }
@@ -460,7 +469,10 @@ export function AuthProvider({ children }) {
       committee,
       category,
       status: 'active',
-      memberSince: new Date().toISOString(),
+      address,
+      contactNumber,
+      bloodType,
+      memberSince,
       profileImage: DEFAULT_PROFILE_IMAGE,
     }
 
