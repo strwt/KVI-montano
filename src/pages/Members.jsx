@@ -105,6 +105,14 @@ function Members() {
       : 'bg-blue-100 text-blue-700 border-blue-200'
   }
 
+  const handleSelectAll = () => {
+    if (selectedMembers.length === currentMembers.length) {
+      setSelectedMembers([])
+    } else {
+      setSelectedMembers(currentMembers.map(member => member.id))
+    }
+  }
+
   const isMemberSelected = (memberId) => {
     return selectedMembers.some(id => String(id) === String(memberId))
   }
@@ -214,17 +222,6 @@ function Members() {
           <h2 className="text-2xl font-bold text-gray-800">Members</h2>
           <p className="text-sm text-gray-500">Manage members by committee and category</p>
         </div>
-        {isAdmin && (
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => setShowAddUser(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-            >
-              <Plus size={18} />
-              Add User
-            </button>
-          </div>
-        )}
       </div>
 
       {isAdmin && (
@@ -680,103 +677,6 @@ function Members() {
         </div>
       )}
 
-      {/* Add User Modal */}
-      {showAddUser && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-xl p-6 max-w-md w-full mx-4 animate-fade-in">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-                <Plus size={24} className="text-red-600" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-800">Add New User</h3>
-                <p className="text-sm text-gray-500">Create a new user account</p>
-              </div>
-            </div>
-            <form onSubmit={handleAddUser} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">ID</label>
-                <input
-                  type="text"
-                  required
-                  value={newUserForm.id}
-                  onChange={(e) => setNewUserForm({ ...newUserForm, id: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                  placeholder="Enter ID"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                <input
-                  type="text"
-                  required
-                  value={newUserForm.name}
-                  onChange={(e) => setNewUserForm({ ...newUserForm, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                  placeholder="Enter full name"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input
-                  type="email"
-                  required
-                  value={newUserForm.email}
-                  onChange={(e) => setNewUserForm({ ...newUserForm, email: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                  placeholder="Enter email"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-                <input
-                  type="text"
-                  value={newUserForm.address}
-                  onChange={(e) => setNewUserForm({ ...newUserForm, address: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                  placeholder="Enter address"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                <select
-                  value={newUserForm.status}
-                  onChange={(e) => setNewUserForm({ ...newUserForm, status: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                >
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Member Since</label>
-                <input
-                  type="date"
-                  required
-                  value={newUserForm.memberSince}
-                  onChange={(e) => setNewUserForm({ ...newUserForm, memberSince: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                />
-              </div>
-              <div className="flex gap-3 justify-end pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowAddUser(false)}
-                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                >
-                  Add User
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
