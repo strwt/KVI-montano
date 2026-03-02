@@ -48,7 +48,7 @@ function Sidebar({ isOpen, toggleSidebar, soundEnabled, onToggleSound, darkMode,
           {isOpen ? (
             <div className="animate-fade-in">
               <div className="flex items-center gap-3 mb-1">
-                <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center overflow-hidden">
+                <div className="w-10 h-10 bg-white logo-no-dark rounded-full flex items-center justify-center overflow-hidden">
                   <img
                     src="/image-removebg-preview.png"
                     alt="KUSGAN logo"
@@ -63,7 +63,7 @@ function Sidebar({ isOpen, toggleSidebar, soundEnabled, onToggleSound, darkMode,
               <p className="text-xs text-gray-500 mt-1">Cares Department</p>
             </div>
           ) : (
-            <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center mx-auto overflow-hidden">
+            <div className="w-10 h-10 bg-white logo-no-dark rounded-full flex items-center justify-center mx-auto overflow-hidden">
               <img
                 src="/image-removebg-preview.png"
                 alt="KUSGAN logo"
