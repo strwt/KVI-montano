@@ -134,6 +134,28 @@ const getCategoryLabelFromQuery = value => {
   return fromLabel ? CATEGORY_CONFIG[fromLabel].label : 'All'
 }
 
+const normalizeOperationName = (value = '') =>
+  String(value).toLowerCase().replace(/[^a-z]/g, '')
+
+const resolveUtilitiesCommitteeName = (categoryKey, utilitiesByCommittee = {}) => {
+  if (!categoryKey) return ''
+  const categoryLabel = CATEGORY_CONFIG[categoryKey]?.label || ''
+  const entries = Object.keys(utilitiesByCommittee || {})
+  if (entries.length === 0) return ''
+
+  const normalizedLabel = normalizeOperationName(categoryLabel)
+  const exact = entries.find(name => normalizeOperationName(name) === normalizedLabel)
+  if (exact) return exact
+
+  const relaxed = entries.find(name => {
+    const normalizedName = normalizeOperationName(name)
+    return normalizedName === `${normalizedLabel}s` || `${normalizedName}s` === normalizedLabel
+  })
+  if (relaxed) return relaxed
+
+  return entries.find(name => normalizeOperationName(name).includes(normalizedLabel)) || ''
+}
+
 let leafletLoaderPromise = null
 
 const loadLeaflet = () => {
@@ -677,7 +699,7 @@ function AssignMembersPicker({ allMembers, selectedIds, onChange }) {
 }
 
 function Calendar({ listOnly = false }) {
-  const { user, getAllMembers } = useAuth()
+  const { user, getAllMembers, utilitiesByCommittee } = useAuth()
   const canManageEvents = user?.role === 'admin'
   const routerLocation = useLocation()
   const navigate = useNavigate()
@@ -688,6 +710,7 @@ function Calendar({ listOnly = false }) {
   const [showAllMonths, setShowAllMonths] = useState(false)
   const [editingEventId, setEditingEventId] = useState(null)
   const [pendingConfirmation, setPendingConfirmation] = useState(null)
+  const [selectedUtilityToAdd, setSelectedUtilityToAdd] = useState('')
   const [expandedItemId, setExpandedItemId] = useState(null)
   const [highlightedEventId, setHighlightedEventId] = useState(null)
   const [showEventForm, setShowEventForm] = useState(false)
@@ -702,6 +725,7 @@ function Calendar({ listOnly = false }) {
     category: '',
     branch: '',
     assignedMemberIds: [],
+    utilityItems: [],
     dynamicFields: getDefaultDynamicFields(),
   })
   const [searchQuery, setSearchQuery] = useState(storedFilters.searchQuery)
@@ -911,6 +935,14 @@ function Calendar({ listOnly = false }) {
   const activeCategoryConfig = formData.category ? CATEGORY_CONFIG[formData.category] : null
   const selectedCategoryMeta = CATEGORY_META[formData.category]
   const SelectedCategoryIcon = selectedCategoryMeta?.icon || FileText
+  const selectedUtilitiesCommittee = useMemo(
+    () => resolveUtilitiesCommitteeName(formData.category, utilitiesByCommittee),
+    [formData.category, utilitiesByCommittee]
+  )
+  const availableUtilityItems = useMemo(
+    () => utilitiesByCommittee?.[selectedUtilitiesCommittee] || [],
+    [utilitiesByCommittee, selectedUtilitiesCommittee]
+  )
 
   const handleDynamicFieldChange = (categoryKey, fieldKey, value) => {
     setFormData(prev => ({
@@ -927,6 +959,7 @@ function Calendar({ listOnly = false }) {
 
   const resetForm = () => {
     setEditingEventId(null)
+    setSelectedUtilityToAdd('')
     setFormData({
       title: '',
       content: '',
@@ -936,6 +969,7 @@ function Calendar({ listOnly = false }) {
       category: '',
       branch: '',
       assignedMemberIds: [],
+      utilityItems: [],
       dynamicFields: getDefaultDynamicFields(),
     })
     setFormError('')
@@ -992,6 +1026,7 @@ function Calendar({ listOnly = false }) {
       address: formData.address.trim(),
       branch: formData.branch,
       assignedMemberIds: formData.assignedMemberIds,
+      utilityItems: formData.utilityItems,
       viewedBy: [],
       location: formData.location,
       category: formData.category,
@@ -1040,8 +1075,10 @@ function Calendar({ listOnly = false }) {
       category,
       branch: item.branch || '',
       assignedMemberIds: Array.isArray(item.assignedMemberIds) ? item.assignedMemberIds : [],
+      utilityItems: Array.isArray(item.utilityItems) ? item.utilityItems : [],
       dynamicFields: defaults,
     })
+    setSelectedUtilityToAdd('')
     setShowEventForm(true)
   }
 
@@ -1320,6 +1357,18 @@ function Calendar({ listOnly = false }) {
                                     <p className="font-medium text-gray-800">{String(item.categoryData[field.key] ?? '')}</p>
                                   </div>
                                 ))}
+                              </div>
+                            )}
+                            {Array.isArray(item.utilityItems) && item.utilityItems.length > 0 && (
+                              <div className="pt-2">
+                                <p className="text-xs text-gray-500 mb-1">Utilities</p>
+                                <div className="flex flex-wrap gap-2">
+                                  {item.utilityItems.map(utility => (
+                                    <span key={`${item.id}-${utility}`} className="px-2 py-1 bg-red-50 border border-red-200 rounded-full text-xs text-red-700">
+                                      {utility}
+                                    </span>
+                                  ))}
+                                </div>
                               </div>
                             )}
                           </div>
@@ -1649,6 +1698,18 @@ function Calendar({ listOnly = false }) {
                                 ))}
                               </div>
                             )}
+                            {Array.isArray(item.utilityItems) && item.utilityItems.length > 0 && (
+                              <div className="pt-2">
+                                <p className="text-xs text-gray-500 mb-1">Utilities</p>
+                                <div className="flex flex-wrap gap-2">
+                                  {item.utilityItems.map(utility => (
+                                    <span key={`${item.id}-${utility}`} className="px-2 py-1 bg-red-50 border border-red-200 rounded-full text-xs text-red-700">
+                                      {utility}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                             {canManageEvents && (
                               <div className="pt-2 flex items-center gap-2">
                                 <button
@@ -1746,6 +1807,7 @@ function Calendar({ listOnly = false }) {
                               ...formData,
                               category: e.target.value,
                               branch: '',
+                              utilityItems: [],
                             })
                           }
                           className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
@@ -1864,6 +1926,70 @@ function Calendar({ listOnly = false }) {
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {formData.category && (
+                <div className="layout-glow rounded-2xl p-4 sm:p-5 bg-white">
+                  <h4 className="text-sm font-semibold text-gray-800 uppercase tracking-wide mb-3">Utilities Management</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                    <select
+                      value={selectedUtilityToAdd}
+                      onChange={e => setSelectedUtilityToAdd(e.target.value)}
+                      className="md:col-span-2 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                    >
+                      <option value="">Select utility item</option>
+                      {availableUtilityItems
+                        .filter(item => !formData.utilityItems.includes(item))
+                        .map(item => (
+                          <option key={item} value={item}>
+                            {item}
+                          </option>
+                        ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!selectedUtilityToAdd) return
+                        setFormData(prev => ({
+                          ...prev,
+                          utilityItems: prev.utilityItems.includes(selectedUtilityToAdd)
+                            ? prev.utilityItems
+                            : [...prev.utilityItems, selectedUtilityToAdd],
+                        }))
+                        setSelectedUtilityToAdd('')
+                      }}
+                      className="px-3 py-2 bg-gray-900 text-white rounded-lg hover:bg-black transition-colors"
+                      disabled={!selectedUtilityToAdd}
+                    >
+                      + Add Item
+                    </button>
+                  </div>
+                  {formData.utilityItems.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      {formData.utilityItems.map(item => (
+                        <button
+                          key={item}
+                          type="button"
+                          onClick={() =>
+                            setFormData(prev => ({
+                              ...prev,
+                              utilityItems: prev.utilityItems.filter(entry => entry !== item),
+                            }))
+                          }
+                          className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-50 border border-red-200 text-red-700 text-xs hover:bg-red-100"
+                        >
+                          {item}
+                          <X size={12} />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {availableUtilityItems.length === 0 && (
+                    <p className="text-xs text-gray-500 mt-3">
+                      No utilities are configured for this operation category yet.
+                    </p>
+                  )}
                 </div>
               )}
 

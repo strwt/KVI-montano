@@ -34,6 +34,10 @@ function Members() {
     addCommittee,
     editCommittee,
     deleteCommittee,
+    utilitiesByCommittee,
+    addUtilityItem,
+    editUtilityItem,
+    deleteUtilityItem,
     getRecruitments,
     rejectRecruitment,
   } = useAuth()
@@ -44,9 +48,17 @@ function Members() {
   const [currentPage, setCurrentPage] = useState(1)
   const [committeeName, setCommitteeName] = useState('')
   const [showCommitteeActions, setShowCommitteeActions] = useState(false)
+  const [showUtilityActions, setShowUtilityActions] = useState(false)
+  const [operationAction, setOperationAction] = useState('add')
+  const [utilityAction, setUtilityAction] = useState('add')
   const [selectedCommittee, setSelectedCommittee] = useState('')
   const [renamedCommittee, setRenamedCommittee] = useState('')
   const [committeeError, setCommitteeError] = useState('')
+  const [selectedUtilityCommittee, setSelectedUtilityCommittee] = useState('')
+  const [utilityName, setUtilityName] = useState('')
+  const [selectedUtilityItem, setSelectedUtilityItem] = useState('')
+  const [renamedUtilityItem, setRenamedUtilityItem] = useState('')
+  const [utilityError, setUtilityError] = useState('')
   const [formError, setFormError] = useState('')
   const [recruitmentActionError, setRecruitmentActionError] = useState('')
   const [expandedRecruitmentId, setExpandedRecruitmentId] = useState(null)
@@ -94,14 +106,29 @@ function Members() {
   }, [memberCommittees, newMember.committee])
 
   useEffect(() => {
-    if (!selectedCommittee && memberCommittees[0]) {
-      setSelectedCommittee(memberCommittees[0])
-      setRenamedCommittee(memberCommittees[0])
-    } else if (selectedCommittee && !memberCommittees.includes(selectedCommittee)) {
-      setSelectedCommittee(memberCommittees[0] || '')
-      setRenamedCommittee(memberCommittees[0] || '')
+    if (selectedCommittee && !memberCommittees.includes(selectedCommittee)) {
+      setSelectedCommittee('')
+      setRenamedCommittee('')
     }
   }, [memberCommittees, selectedCommittee])
+
+  const utilityItemsForSelectedCommittee = useMemo(
+    () => utilitiesByCommittee?.[selectedUtilityCommittee] || [],
+    [utilitiesByCommittee, selectedUtilityCommittee]
+  )
+
+  useEffect(() => {
+    if (selectedUtilityCommittee && !memberCommittees.includes(selectedUtilityCommittee)) {
+      setSelectedUtilityCommittee('')
+    }
+  }, [memberCommittees, selectedUtilityCommittee])
+
+  useEffect(() => {
+    if (selectedUtilityItem && !utilityItemsForSelectedCommittee.includes(selectedUtilityItem)) {
+      setSelectedUtilityItem('')
+      setRenamedUtilityItem('')
+    }
+  }, [selectedUtilityItem, utilityItemsForSelectedCommittee])
 
   const filteredMembers = allMembers.filter(member => {
     const matchesSearch =
@@ -158,6 +185,37 @@ function Members() {
     }
     if (categoryFilter === committee) {
       setCategoryFilter('all')
+    }
+  }
+
+  const handleUtilityAdd = e => {
+    e.preventDefault()
+    setUtilityError('')
+    const result = addUtilityItem(selectedUtilityCommittee, utilityName)
+    if (!result.success) {
+      setUtilityError(result.message)
+      return
+    }
+    setUtilityName('')
+  }
+
+  const handleUtilityRename = e => {
+    e.preventDefault()
+    setUtilityError('')
+    const result = editUtilityItem(selectedUtilityCommittee, selectedUtilityItem, renamedUtilityItem)
+    if (!result.success) {
+      setUtilityError(result.message)
+      return
+    }
+    setSelectedUtilityItem(renamedUtilityItem.trim())
+  }
+
+  const handleUtilityDelete = () => {
+    setUtilityError('')
+    const result = deleteUtilityItem(selectedUtilityCommittee, selectedUtilityItem)
+    if (!result.success) {
+      setUtilityError(result.message)
+      return
     }
   }
 
@@ -242,74 +300,241 @@ function Members() {
       {isAdmin && (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
           <div className="bg-white rounded-xl shadow-md p-5">
-            <h3 className="font-semibold text-gray-800 mb-3">Manage Category</h3>
-            <form onSubmit={handleCommitteeAdd} className="flex gap-2 mb-3">
-              <input
-                type="text"
-                value={committeeName}
-                onChange={e => setCommitteeName(e.target.value)}
-                placeholder="New Category"
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                required
-              />
-              <button
-                type="submit"
-                className="px-3 py-2 bg-gray-900 text-white rounded-lg hover:bg-black transition-colors flex items-center gap-1"
-              >
-                <Plus size={14} />
-                Add
-              </button>
-            </form>
+            <h3 className="font-semibold text-gray-800 mb-3">Operation Management</h3>
             <button
               type="button"
-              onClick={() => setShowCommitteeActions(prev => !prev)}
+              onClick={() => {
+                setShowCommitteeActions(prev => !prev)
+                setOperationAction('add')
+              }}
               className="mb-3 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm"
             >
-              {showCommitteeActions ? 'Hide Edit/Delete Category' : 'Edit or Delete Category'}
+              {showCommitteeActions ? 'Hide Category Management' : 'Category Management'}
             </button>
             {showCommitteeActions && (
-              <form onSubmit={handleCommitteeRename} className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
-                <select
-                  value={selectedCommittee}
-                  onChange={e => {
-                    setSelectedCommittee(e.target.value)
-                    setRenamedCommittee(e.target.value)
-                  }}
-                  className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                  required
-                >
-                  {memberCommittees.map(committee => (
-                    <option key={committee} value={committee}>
-                      {committee}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  type="text"
-                  value={renamedCommittee}
-                  onChange={e => setRenamedCommittee(e.target.value)}
-                  placeholder="Rename committee"
-                  className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                  required
-                />
-                <div className="flex gap-2">
-                  <button
-                    type="submit"
-                    className="flex-1 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleCommitteeDelete(selectedCommittee)}
-                    className="flex-1 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                  >
-                    Delete
-                  </button>
+              <div className="space-y-4 mb-3">
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={() => setOperationAction('add')} className={`px-3 py-1.5 rounded-lg text-sm ${operationAction === 'add' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Add</button>
+                  <button type="button" onClick={() => setOperationAction('update')} className={`px-3 py-1.5 rounded-lg text-sm ${operationAction === 'update' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Update</button>
+                  <button type="button" onClick={() => setOperationAction('delete')} className={`px-3 py-1.5 rounded-lg text-sm ${operationAction === 'delete' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Delete</button>
                 </div>
-              </form>
+
+                {operationAction === 'add' && (
+                  <form onSubmit={handleCommitteeAdd} className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                    <input
+                      type="text"
+                      value={committeeName}
+                      onChange={e => setCommitteeName(e.target.value)}
+                      placeholder="New Category"
+                      className="md:col-span-2 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                      required
+                    />
+                    <button
+                      type="submit"
+                      className="px-3 py-2 bg-gray-900 text-white rounded-lg hover:bg-black transition-colors flex items-center justify-center gap-1"
+                    >
+                      <Plus size={14} />
+                      Add
+                    </button>
+                  </form>
+                )}
+
+                {operationAction === 'update' && (
+                  <form onSubmit={handleCommitteeRename} className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                    <select
+                      value={selectedCommittee}
+                      onChange={e => {
+                        setSelectedCommittee(e.target.value)
+                        setRenamedCommittee(e.target.value)
+                      }}
+                      className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                      required
+                    >
+                      <option value="">Select category to edit</option>
+                      {memberCommittees.map(committee => (
+                        <option key={committee} value={committee}>
+                          {committee}
+                        </option>
+                      ))}
+                    </select>
+                    {selectedCommittee && (
+                      <>
+                        <input
+                          type="text"
+                          value={renamedCommittee}
+                          onChange={e => setRenamedCommittee(e.target.value)}
+                          placeholder="Rename category"
+                          className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                          required
+                        />
+                        <button
+                          type="submit"
+                          className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                        >
+                          Update
+                        </button>
+                      </>
+                    )}
+                  </form>
+                )}
+
+                {operationAction === 'delete' && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                    <select
+                      value={selectedCommittee}
+                      onChange={e => setSelectedCommittee(e.target.value)}
+                      className="md:col-span-2 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                    >
+                      <option value="">Select category to delete</option>
+                      {memberCommittees.map(committee => (
+                        <option key={committee} value={committee}>
+                          {committee}
+                        </option>
+                      ))}
+                    </select>
+                    {selectedCommittee && (
+                      <button
+                        type="button"
+                        onClick={() => handleCommitteeDelete(selectedCommittee)}
+                        className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
             )}
             {committeeError && <p className="text-sm text-red-600 mb-2">{committeeError}</p>}
+
+            <div className="mt-5 pt-4 border-t border-gray-200">
+              <h3 className="font-semibold text-gray-800 mb-3">Utilities Management</h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowUtilityActions(prev => !prev)
+                  setUtilityAction('add')
+                }}
+                className="mb-3 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm"
+              >
+                {showUtilityActions ? 'Hide Utilities Management' : 'Utilities Management'}
+              </button>
+
+              {showUtilityActions && (
+                <div className="space-y-4 mb-3">
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" onClick={() => setUtilityAction('add')} className={`px-3 py-1.5 rounded-lg text-sm ${utilityAction === 'add' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Add</button>
+                    <button type="button" onClick={() => setUtilityAction('update')} className={`px-3 py-1.5 rounded-lg text-sm ${utilityAction === 'update' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Update</button>
+                    <button type="button" onClick={() => setUtilityAction('delete')} className={`px-3 py-1.5 rounded-lg text-sm ${utilityAction === 'delete' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Delete</button>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Operation Category</label>
+                    <select
+                      value={selectedUtilityCommittee}
+                      onChange={e => setSelectedUtilityCommittee(e.target.value)}
+                      className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                      required
+                    >
+                      <option value="">Select category</option>
+                      {memberCommittees.map(committee => (
+                        <option key={committee} value={committee}>
+                          {committee}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {utilityAction === 'add' && (
+                  <form onSubmit={handleUtilityAdd} className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                    <input
+                      type="text"
+                      value={utilityName}
+                      onChange={e => setUtilityName(e.target.value)}
+                      placeholder="New utility item"
+                      className="md:col-span-2 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                      required
+                      disabled={!selectedUtilityCommittee}
+                    />
+                    <button
+                      type="submit"
+                      className="px-3 py-2 bg-gray-900 text-white rounded-lg hover:bg-black transition-colors flex items-center justify-center gap-1"
+                      disabled={!selectedUtilityCommittee}
+                    >
+                      <Plus size={14} />
+                      Add
+                    </button>
+                  </form>
+                  )}
+
+                  {utilityAction === 'update' && (
+                  <form onSubmit={handleUtilityRename} className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                    <select
+                      value={selectedUtilityItem}
+                      onChange={e => {
+                        setSelectedUtilityItem(e.target.value)
+                        setRenamedUtilityItem(e.target.value)
+                      }}
+                      className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                      required
+                      disabled={!selectedUtilityCommittee || utilityItemsForSelectedCommittee.length === 0}
+                    >
+                      <option value="">Select utility item</option>
+                      {utilityItemsForSelectedCommittee.map(item => (
+                        <option key={item} value={item}>
+                          {item}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="text"
+                      value={renamedUtilityItem}
+                      onChange={e => setRenamedUtilityItem(e.target.value)}
+                      placeholder="Rename utility item"
+                      className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                      required
+                      disabled={!selectedUtilityItem}
+                    />
+                    <button
+                      type="submit"
+                      className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      disabled={!selectedUtilityItem}
+                    >
+                      Update
+                    </button>
+                  </form>
+                  )}
+
+                  {utilityAction === 'delete' && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                    <select
+                      value={selectedUtilityItem}
+                      onChange={e => setSelectedUtilityItem(e.target.value)}
+                      className="md:col-span-2 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                      disabled={!selectedUtilityCommittee || utilityItemsForSelectedCommittee.length === 0}
+                    >
+                      <option value="">Select utility item</option>
+                      {utilityItemsForSelectedCommittee.map(item => (
+                        <option key={item} value={item}>
+                          {item}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={handleUtilityDelete}
+                      className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                      disabled={!selectedUtilityItem}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                  )}
+                </div>
+              )}
+
+              {utilityError && <p className="text-sm text-red-600 mb-2">{utilityError}</p>}
+            </div>
           </div>
 
           <div className="bg-white rounded-xl shadow-md p-5">

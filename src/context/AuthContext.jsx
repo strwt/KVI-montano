@@ -8,7 +8,14 @@ const DEFAULT_COMMITTEES = ['Environmental', 'Relief Operations', 'Fire Response
 const LEGACY_COMMITTEE_BLOCKLIST = ['leadership', 'unassigned']
 const DEFAULT_MEMBER_CATEGORY = 'General Member'
 const RECRUITMENT_STORAGE_KEY = 'kusgan_recruitments'
+const UTILITIES_STORAGE_KEY = 'kusgan_utilities_by_committee'
 const DEFAULT_PROFILE_IMAGE = '/image-removebg-preview.png'
+const DEFAULT_UTILITIES_BY_COMMITTEE = {
+  Environmental: ['Sampling counts', 'Type of Sampling'],
+  'Relief Operations': ['Food Packs', 'Water Containers'],
+  'Fire Response': ['Hose', 'Tank', 'First Aid Kit'],
+  Medical: ['Medical Kit', 'Stretcher'],
+}
 
 const parseStoredJson = (value, fallback) => {
   if (!value) return fallback
@@ -150,6 +157,32 @@ const getStoredCommittees = () => {
   return sanitized.length > 0 ? sanitized : DEFAULT_COMMITTEES
 }
 
+const sanitizeUtilitiesByCommittee = (rawMap, committeeList) => {
+  const map = {}
+  const source = rawMap && typeof rawMap === 'object' ? rawMap : {}
+
+  committeeList.forEach(committee => {
+    const fallback = Array.isArray(DEFAULT_UTILITIES_BY_COMMITTEE[committee])
+      ? DEFAULT_UTILITIES_BY_COMMITTEE[committee]
+      : []
+    const rawItems = Array.isArray(source[committee]) ? source[committee] : fallback
+    map[committee] = Array.from(
+      new Set(
+        rawItems
+          .map(item => (typeof item === 'string' ? item.trim() : ''))
+          .filter(Boolean)
+      )
+    )
+  })
+
+  return map
+}
+
+const getStoredUtilitiesByCommittee = (committeeList = DEFAULT_COMMITTEES) => {
+  const parsed = parseStoredJson(localStorage.getItem(UTILITIES_STORAGE_KEY), null)
+  return sanitizeUtilitiesByCommittee(parsed, committeeList)
+}
+
 const getStoredCurrentUser = () => {
   const parsed = parseStoredJson(localStorage.getItem('kusgan_current_user'), null)
   return parsed ? enrichUserWithProfileImage(parsed) : null
@@ -202,6 +235,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(getStoredCurrentUser)
   const [users, setUsers] = useState(getStoredUsers)
   const [committees, setCommittees] = useState(getStoredCommittees)
+  const [utilitiesByCommittee, setUtilitiesByCommittee] = useState(() => getStoredUtilitiesByCommittee(getStoredCommittees()))
   const [recruitments, setRecruitments] = useState(getStoredRecruitments)
   const [loading, setLoading] = useState(true)
 
@@ -211,6 +245,9 @@ export function AuthProvider({ children }) {
     }
     if (!localStorage.getItem('kusgan_committees')) {
       localStorage.setItem('kusgan_committees', JSON.stringify(getStoredCommittees()))
+    }
+    if (!localStorage.getItem(UTILITIES_STORAGE_KEY)) {
+      localStorage.setItem(UTILITIES_STORAGE_KEY, JSON.stringify(getStoredUtilitiesByCommittee(getStoredCommittees())))
     }
     if (!localStorage.getItem(RECRUITMENT_STORAGE_KEY)) {
       localStorage.setItem(RECRUITMENT_STORAGE_KEY, JSON.stringify(getStoredRecruitments()))
@@ -233,6 +270,14 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     localStorage.setItem('kusgan_committees', JSON.stringify(committees))
   }, [committees])
+
+  useEffect(() => {
+    setUtilitiesByCommittee(prev => sanitizeUtilitiesByCommittee(prev, committees))
+  }, [committees])
+
+  useEffect(() => {
+    localStorage.setItem(UTILITIES_STORAGE_KEY, JSON.stringify(utilitiesByCommittee))
+  }, [utilitiesByCommittee])
 
   useEffect(() => {
     localStorage.setItem(RECRUITMENT_STORAGE_KEY, JSON.stringify(recruitments))
@@ -667,6 +712,10 @@ export function AuthProvider({ children }) {
     }
 
     setCommittees(prev => [...prev, normalizedName])
+    setUtilitiesByCommittee(prev => ({
+      ...prev,
+      [normalizedName]: prev[normalizedName] || DEFAULT_UTILITIES_BY_COMMITTEE[normalizedName] || [],
+    }))
     return { success: true }
   }
 
@@ -698,6 +747,13 @@ export function AuthProvider({ children }) {
     }
 
     setCommittees(prev => prev.map(committee => (committee === source ? target : committee)))
+    setUtilitiesByCommittee(prev => {
+      const next = { ...prev }
+      const movedUtilities = Array.isArray(next[source]) ? next[source] : []
+      delete next[source]
+      next[target] = movedUtilities
+      return next
+    })
     setUsers(prev => prev.map(member => (
       member.committee === source ? { ...member, committee: target } : member
     )))
@@ -716,12 +772,84 @@ export function AuthProvider({ children }) {
     const fallbackCommittee = committees.find(committee => committee !== committeeName) || DEFAULT_COMMITTEES[0]
 
     setCommittees(prev => prev.filter(committee => committee !== committeeName))
+    setUtilitiesByCommittee(prev => {
+      const next = { ...prev }
+      delete next[committeeName]
+      return next
+    })
     setUsers(prev => prev.map(member => (
       member.committee === committeeName ? { ...member, committee: fallbackCommittee } : member
     )))
     setUser(prev => (
       prev && prev.committee === committeeName ? { ...prev, committee: fallbackCommittee } : prev
     ))
+    return { success: true }
+  }
+
+  const addUtilityItem = (committeeName, itemName) => {
+    const committee = committeeName?.trim()
+    const item = itemName?.trim()
+    if (!committee || !item) {
+      return { success: false, message: 'Category and utility item are required.' }
+    }
+    if (!committees.includes(committee)) {
+      return { success: false, message: 'Selected category does not exist.' }
+    }
+
+    const existing = utilitiesByCommittee[committee] || []
+    const duplicate = existing.some(entry => entry.toLowerCase() === item.toLowerCase())
+    if (duplicate) {
+      return { success: false, message: 'Utility item already exists.' }
+    }
+
+    setUtilitiesByCommittee(prev => ({
+      ...prev,
+      [committee]: [...(prev[committee] || []), item],
+    }))
+    return { success: true }
+  }
+
+  const editUtilityItem = (committeeName, oldItemName, newItemName) => {
+    const committee = committeeName?.trim()
+    const oldItem = oldItemName?.trim()
+    const newItem = newItemName?.trim()
+    if (!committee || !oldItem || !newItem) {
+      return { success: false, message: 'Category, current item, and new item are required.' }
+    }
+    if (!committees.includes(committee)) {
+      return { success: false, message: 'Selected category does not exist.' }
+    }
+
+    const existing = utilitiesByCommittee[committee] || []
+    if (!existing.includes(oldItem)) {
+      return { success: false, message: 'Utility item not found.' }
+    }
+    const duplicate = existing.some(entry => entry.toLowerCase() === newItem.toLowerCase() && entry !== oldItem)
+    if (duplicate) {
+      return { success: false, message: 'Utility item already exists.' }
+    }
+
+    setUtilitiesByCommittee(prev => ({
+      ...prev,
+      [committee]: (prev[committee] || []).map(item => (item === oldItem ? newItem : item)),
+    }))
+    return { success: true }
+  }
+
+  const deleteUtilityItem = (committeeName, itemName) => {
+    const committee = committeeName?.trim()
+    const item = itemName?.trim()
+    if (!committee || !item) {
+      return { success: false, message: 'Category and utility item are required.' }
+    }
+    if (!committees.includes(committee)) {
+      return { success: false, message: 'Selected category does not exist.' }
+    }
+
+    setUtilitiesByCommittee(prev => ({
+      ...prev,
+      [committee]: (prev[committee] || []).filter(entry => entry !== item),
+    }))
     return { success: true }
   }
 
@@ -742,6 +870,10 @@ export function AuthProvider({ children }) {
       editCommittee,
       deleteCommittee,
       committees,
+      utilitiesByCommittee,
+      addUtilityItem,
+      editUtilityItem,
+      deleteUtilityItem,
       submitRecruitmentApplication,
       rejectRecruitment,
       getRecruitments,
