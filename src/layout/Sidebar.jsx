@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, Calendar, User, LogOut, ChevronLeft, ChevronRight, Users, FileText, Bell, Moon, Sun } from 'lucide-react'
+import { LayoutDashboard, Calendar, User, LogOut, ChevronLeft, ChevronRight, Users, FileText } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
 function Sidebar({ isOpen, toggleSidebar, soundEnabled, onToggleSound, darkMode, onToggleDarkMode }) {
@@ -16,7 +16,7 @@ function Sidebar({ isOpen, toggleSidebar, soundEnabled, onToggleSound, darkMode,
   const navItems = [
     { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/calendar', icon: Calendar, label: 'Calendar' },
-    { to: '/report', icon: FileText, label: 'Report' },
+    ...(isAdmin ? [{ to: '/report', icon: FileText, label: 'Report' }] : []),
     { to: '/profile', icon: User, label: 'Profile' },
   ]
 
@@ -139,7 +139,7 @@ function Sidebar({ isOpen, toggleSidebar, soundEnabled, onToggleSound, darkMode,
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-white truncate">{user?.name || 'Guest'}</p>
-                  <p className="text-xs text-gray-500 truncate">{user?.email || 'guest@kusgan.com'}</p>
+                  <p className="text-xs text-gray-500 truncate">{user?.idNumber || user?.email || 'Guest User'}</p>
                   {user?.role === 'admin' && (
                     <span className="inline-block mt-1 px-2 py-0.5 bg-red-600/20 text-red-400 text-xs rounded">Admin</span>
                   )}

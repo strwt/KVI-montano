@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Mail, Lock, User, Eye, EyeOff, UserPlus } from 'lucide-react'
+import { Mail, Hash, Lock, User, Eye, EyeOff, UserPlus } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
 function Register() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
+  const [idNumber, setIdNumber] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -18,13 +19,23 @@ function Register() {
     e.preventDefault()
     setError('')
 
-    if (password !== confirmPassword) {
-      setError('Passwords do not match')
+    if (!name.trim() || !email.trim() || !idNumber.trim() || !password.trim() || !confirmPassword.trim()) {
+      setError('All fields are required.')
       return
     }
 
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters')
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError('Please enter a valid email address.')
+      return
+    }
+
+    if (!/^[a-zA-Z0-9]+$/.test(idNumber.trim())) {
+      setError('ID Number must be alphanumeric.')
+      return
+    }
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match.')
       return
     }
 
@@ -33,7 +44,7 @@ function Register() {
     // Simulate network delay for animation
     await new Promise(resolve => setTimeout(resolve, 500))
 
-    const result = register(name, email, password)
+    const result = register(name, email, idNumber, password)
     if (result.success) {
       navigate('/')
     } else {
@@ -74,7 +85,7 @@ function Register() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Name Input */}
+            {/* Full Name Input */}
             <div className="relative">
               <label className="block text-gray-300 text-sm font-medium mb-2">Full Name</label>
               <div className="relative">
@@ -101,6 +112,22 @@ function Register() {
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 bg-gray-900/50 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
                   placeholder="Enter your email"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* ID Number Input */}
+            <div className="relative">
+              <label className="block text-gray-300 text-sm font-medium mb-2">Enter your ID Number</label>
+              <div className="relative">
+                <Hash className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                <input
+                  type="text"
+                  value={idNumber}
+                  onChange={(e) => setIdNumber(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 bg-gray-900/50 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
+                  placeholder="Enter your ID Number"
                   required
                 />
               </div>

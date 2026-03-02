@@ -1,5 +1,18 @@
 @import "tailwindcss";
 
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  overflow-x: hidden;
+}
+
 /* Base styles */
 body {
   margin: 0;
@@ -126,6 +139,62 @@ body {
   }
 }
 
+@keyframes float-3d {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes tilt-3d {
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(-3deg);
+  }
+}
+
+@keyframes leaf-sway {
+  0%, 100% { transform: rotate(-4deg) translateY(0); }
+  50% { transform: rotate(4deg) translateY(-2px); }
+}
+
+@keyframes wave-flow {
+  0%, 100% { transform: translateX(0) translateY(0) scaleX(1); }
+  50% { transform: translateX(2px) translateY(-2px) scaleX(1.05); }
+}
+
+@keyframes fire-flicker {
+  0%, 100% { transform: translateY(0) scale(1) rotate(-1deg); opacity: 1; }
+  30% { transform: translateY(-2px) scale(1.04) rotate(1deg); opacity: 0.92; }
+  60% { transform: translateY(-1px) scale(0.98) rotate(-0.5deg); opacity: 1; }
+}
+
+@keyframes write-motion {
+  0%, 100% { transform: translate(0, 0) rotate(-2deg); }
+  50% { transform: translate(2px, -1px) rotate(2deg); }
+}
+
+@keyframes heartbeat {
+  0%, 100% { transform: scale(1); }
+  20% { transform: scale(1.08); }
+  40% { transform: scale(1); }
+  60% { transform: scale(1.11); }
+  80% { transform: scale(1); }
+}
+
+@keyframes hero-float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
 /* Animation Classes */
 .animate-fade-in {
   animation: fade-in 0.3s ease-out forwards;
@@ -157,6 +226,109 @@ body {
 
 .animate-spin-slow {
   animation: spin-slow 3s linear infinite;
+}
+
+.statcard-3d {
+  background:
+    linear-gradient(145deg, #0f172a 5%, #111827 45%, #7f1d1d 100%) padding-box,
+    linear-gradient(135deg, rgba(248, 113, 113, 0.6), rgba(185, 28, 28, 0.25), rgba(15, 23, 42, 0.7)) border-box;
+  border: 1px solid transparent;
+  box-shadow:
+    0 10px 20px rgba(15, 23, 42, 0.28),
+    0 4px 8px rgba(127, 29, 29, 0.25);
+  transform-style: preserve-3d;
+  perspective: 900px;
+}
+
+.statcard-3d-hover:hover {
+  transform: translateY(-6px) scale(1.015);
+  box-shadow:
+    0 16px 24px rgba(15, 23, 42, 0.32),
+    0 8px 16px rgba(127, 29, 29, 0.32);
+}
+
+.statcard-icon-3d {
+  box-shadow:
+    inset 0 2px 4px rgba(255, 255, 255, 0.3),
+    0 6px 14px rgba(0, 0, 0, 0.28);
+  animation: float-3d 3.2s ease-in-out infinite, tilt-3d 6s ease-in-out infinite;
+}
+
+.statcard-3d-hover:hover .statcard-icon-3d {
+  animation-play-state: paused;
+}
+
+.panel-gradient-shell {
+  background:
+    linear-gradient(145deg, #0f172a 5%, #111827 45%, #7f1d1d 100%) padding-box,
+    linear-gradient(135deg, rgba(248, 113, 113, 0.5), rgba(185, 28, 28, 0.2), rgba(15, 23, 42, 0.6)) border-box;
+  border: 1px solid transparent;
+  box-shadow:
+    0 14px 26px rgba(15, 23, 42, 0.22),
+    0 3px 10px rgba(127, 29, 29, 0.18),
+    inset 0 1px 2px rgba(255, 255, 255, 0.08);
+  border-radius: 1rem;
+}
+
+.layout-glow {
+  border: 1px solid rgba(220, 38, 38, 0.18);
+  box-shadow:
+    0 8px 20px rgba(15, 23, 42, 0.08),
+    0 2px 10px rgba(127, 29, 29, 0.08);
+  border-radius: 1rem;
+}
+
+.icon-theme-environmental {
+  animation: leaf-sway 2.8s ease-in-out infinite;
+}
+
+.icon-theme-relief {
+  animation: wave-flow 2.2s ease-in-out infinite;
+}
+
+.icon-theme-fire {
+  animation: fire-flicker 1.7s ease-in-out infinite;
+}
+
+.icon-theme-notes {
+  animation: write-motion 2.4s ease-in-out infinite;
+}
+
+.icon-theme-medical {
+  animation: heartbeat 1.6s ease-in-out infinite;
+}
+
+.hero-float {
+  animation: hero-float 4s ease-in-out infinite;
+}
+
+.reveal-on-scroll {
+  opacity: 0;
+  transform: translateY(26px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.reveal-on-scroll.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .statcard-icon-3d,
+  .icon-theme-environmental,
+  .icon-theme-relief,
+  .icon-theme-fire,
+  .icon-theme-notes,
+  .icon-theme-medical,
+  .hero-float {
+    animation: none !important;
+  }
+
+  .reveal-on-scroll {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
 }
 
 /* Custom scrollbar */
