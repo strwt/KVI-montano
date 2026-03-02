@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, Calendar, User, LogOut, ChevronLeft, ChevronRight, Users, FileText } from 'lucide-react'
+import { LayoutDashboard, Calendar, User, LogOut, ChevronLeft, ChevronRight, Users, FileText, Bell, Sun, Moon } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
 function Sidebar({ isOpen, toggleSidebar, soundEnabled, onToggleSound, darkMode, onToggleDarkMode }) {
