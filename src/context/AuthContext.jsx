@@ -4,7 +4,8 @@ import dayjs from 'dayjs'
 
 const AuthContext = createContext(null)
 
-const DEFAULT_COMMITTEES = ['Operations', 'Logistics', 'Outreach']
+const DEFAULT_COMMITTEES = ['Environmental', 'Relief Operations', 'Fire Response', 'Medical']
+const LEGACY_COMMITTEE_BLOCKLIST = ['leadership', 'unassigned']
 const DEFAULT_MEMBER_CATEGORY = 'General Member'
 const RECRUITMENT_STORAGE_KEY = 'kusgan_recruitments'
 const DEFAULT_PROFILE_IMAGE = '/image-removebg-preview.png'
@@ -39,11 +40,16 @@ const buildFallbackIdNumber = (user) => {
 const normalizeUsers = (storedUsers = []) => {
   return storedUsers.map(rawUser => {
     const user = enrichUserWithProfileImage(rawUser)
+    const normalizedCommittee = typeof user.committee === 'string' ? user.committee.trim() : ''
+    const hasValidCommittee = normalizedCommittee && !LEGACY_COMMITTEE_BLOCKLIST.includes(normalizedCommittee.toLowerCase())
+    const committee = hasValidCommittee ? normalizedCommittee : DEFAULT_COMMITTEES[0]
     return {
       ...user,
       idNumber: buildFallbackIdNumber(user),
-      committee: user.committee || 'Unassigned',
+      committee,
       category: user.category || (user.role === 'admin' ? 'Administrator' : DEFAULT_MEMBER_CATEGORY),
+      contactNumber: user.contactNumber || '',
+      bloodType: user.bloodType || '',
       accountStatus: user.accountStatus || 'Active',
       status: user.status || 'active',
       memberSince: user.memberSince || new Date().toISOString(),
@@ -74,7 +80,7 @@ const DEMO_ADMIN = {
   password: 'admin123',
   accountStatus: 'Active',
   role: 'admin',
-  committee: 'Leadership',
+  committee: DEFAULT_COMMITTEES[0],
   category: 'Administrator',
   status: 'active',
   memberSince: new Date().toISOString(),
@@ -115,7 +121,7 @@ const getStoredUsers = () => {
       password: 'john123',
       accountStatus: 'Active',
       role: 'member',
-      committee: 'Operations',
+      committee: 'Environmental',
       category: 'Field Volunteer',
       status: 'active',
     },
@@ -127,7 +133,7 @@ const getStoredUsers = () => {
       password: 'jane123',
       accountStatus: 'Active',
       role: 'member',
-      committee: 'Outreach',
+      committee: 'Relief Operations',
       category: 'Coordinator',
       status: 'active',
     },
@@ -136,7 +142,12 @@ const getStoredUsers = () => {
 
 const getStoredCommittees = () => {
   const parsed = parseStoredJson(localStorage.getItem('kusgan_committees'), null)
-  return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_COMMITTEES
+  if (!Array.isArray(parsed)) return DEFAULT_COMMITTEES
+  const sanitized = parsed
+    .map(name => (typeof name === 'string' ? name.trim() : ''))
+    .filter(Boolean)
+    .filter(name => !LEGACY_COMMITTEE_BLOCKLIST.includes(name.toLowerCase()))
+  return sanitized.length > 0 ? sanitized : DEFAULT_COMMITTEES
 }
 
 const getStoredCurrentUser = () => {
@@ -275,7 +286,7 @@ export function AuthProvider({ children }) {
       password,
       accountStatus: 'Active',
       role: 'member',
-      committee: committees[0] || 'Unassigned',
+      committee: committees[0] || DEFAULT_COMMITTEES[0],
       category: DEFAULT_MEMBER_CATEGORY,
       status: 'active',
       memberSince: new Date().toISOString(),
@@ -451,15 +462,23 @@ export function AuthProvider({ children }) {
     const email = memberData.email?.trim().toLowerCase()
     const idNumber = memberData.idNumber?.trim()
     const password = memberData.password
+    const address = memberData.address?.trim() || ''
+    const contactNumber = memberData.contactNumber?.trim() || ''
+    const bloodType = memberData.bloodType?.trim() || ''
+    const memberSinceInput = memberData.memberSince
+    const role = memberData.role?.trim().toLowerCase() || 'member'
     const committee = memberData.committee?.trim()
     const category = memberData.category?.trim()
+    const memberSince = memberSinceInput && dayjs(memberSinceInput).isValid()
+      ? dayjs(memberSinceInput).startOf('day').toISOString()
+      : new Date().toISOString()
 
     if (!name || !email || !idNumber || !password || !committee || !category) {
       return { success: false, message: 'All fields are required.' }
     }
 
-    if (!committees.includes(committee)) {
-      return { success: false, message: 'Please select a valid committee.' }
+    if (!['member', 'admin'].includes(role)) {
+      return { success: false, message: 'Please select a valid role.' }
     }
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -500,11 +519,14 @@ export function AuthProvider({ children }) {
       idNumber,
       password,
       accountStatus: 'Active',
-      role: 'member',
+      role,
       committee,
       category,
       status: 'active',
-      memberSince: new Date().toISOString(),
+      address,
+      contactNumber,
+      bloodType,
+      memberSince,
       profileImage: DEFAULT_PROFILE_IMAGE,
     }
 
@@ -633,6 +655,9 @@ export function AuthProvider({ children }) {
     if (!normalizedName) {
       return { success: false, message: 'Committee name is required.' }
     }
+    if (LEGACY_COMMITTEE_BLOCKLIST.includes(normalizedName.toLowerCase())) {
+      return { success: false, message: 'This committee name is not allowed.' }
+    }
 
     const exists = committees.some(
       committee => committee.toLowerCase() === normalizedName.toLowerCase()
@@ -645,20 +670,58 @@ export function AuthProvider({ children }) {
     return { success: true }
   }
 
+  const editCommittee = (oldName, newName) => {
+    const source = oldName?.trim()
+    const target = newName?.trim()
+
+    if (!source || !target) {
+      return { success: false, message: 'Both current and new committee names are required.' }
+    }
+
+    if (!committees.includes(source)) {
+      return { success: false, message: 'Committee not found.' }
+    }
+
+    if (LEGACY_COMMITTEE_BLOCKLIST.includes(target.toLowerCase())) {
+      return { success: false, message: 'This committee name is not allowed.' }
+    }
+
+    const duplicate = committees.some(
+      committee => committee.toLowerCase() === target.toLowerCase() && committee !== source
+    )
+    if (duplicate) {
+      return { success: false, message: 'Committee already exists.' }
+    }
+
+    if (source === target) {
+      return { success: true }
+    }
+
+    setCommittees(prev => prev.map(committee => (committee === source ? target : committee)))
+    setUsers(prev => prev.map(member => (
+      member.committee === source ? { ...member, committee: target } : member
+    )))
+    setUser(prev => (
+      prev && prev.committee === source ? { ...prev, committee: target } : prev
+    ))
+
+    return { success: true }
+  }
+
   const deleteCommittee = (committeeName) => {
     if (committees.length <= 1) {
       return { success: false, message: 'At least one committee must remain.' }
     }
 
-    const inUse = users.some(
-      member => member.role === 'member' && member.committee === committeeName
-    )
-
-    if (inUse) {
-      return { success: false, message: 'Committee is assigned to existing members.' }
-    }
+    const fallbackCommittee = committees.find(committee => committee !== committeeName) || DEFAULT_COMMITTEES[0]
 
     setCommittees(prev => prev.filter(committee => committee !== committeeName))
+    setUsers(prev => prev.map(member => (
+      member.committee === committeeName ? { ...member, committee: fallbackCommittee } : member
+    )))
+    setUser(prev => (
+      prev && prev.committee === committeeName ? { ...prev, committee: fallbackCommittee } : prev
+    ))
     return { success: true }
   }
 
@@ -676,6 +739,7 @@ export function AuthProvider({ children }) {
       deleteMembers,
       updateMember,
       addCommittee,
+      editCommittee,
       deleteCommittee,
       committees,
       submitRecruitmentApplication,

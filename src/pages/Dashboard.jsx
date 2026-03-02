@@ -20,6 +20,7 @@ const EVENT_CATEGORIES = [
 const resolveEventDate = event => event.dateTime || event.date || null
 const getEventsCategoryRoute = categoryKey => `/events?category=${encodeURIComponent(categoryKey)}`
 const RECENT_ACTIVITY_LIMIT = 5
+const DEFAULT_COMMITTEE = 'Environmental'
 
 const getIconThemeClass = categoryKey => {
   if (categoryKey === 'environmental') return 'icon-theme-environmental'
@@ -127,7 +128,7 @@ function Dashboard() {
               >
                 <p className="text-sm font-semibold text-gray-800">{member.name}</p>
                 <p className="text-xs text-gray-600 mt-0.5">{member.role === 'admin' ? 'Administrator' : 'Member'}</p>
-                <p className="text-xs text-gray-500 mt-1">Committee: {member.committee || 'Unassigned'}</p>
+                <p className="text-xs text-gray-500 mt-1">Committee: {member.committee || DEFAULT_COMMITTEE}</p>
               </div>
             ))}
             {loggedInMembers.length === 0 && <p className="text-sm text-gray-500 text-center py-3">No logged in members</p>}

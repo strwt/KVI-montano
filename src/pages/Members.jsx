@@ -4,7 +4,6 @@ import {
   Search,
   Mail,
   Calendar,
-  Trash2,
   Filter,
   ArrowLeft,
   Plus,
@@ -19,7 +18,12 @@ import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import dayjs from 'dayjs'
 
-const MEMBER_CATEGORY_OPTIONS = ['Field Volunteer', 'Coordinator', 'Responder', 'General Member']
+const ROLE_OPTIONS = [
+  { value: 'member', label: 'Member' },
+  { value: 'admin', label: 'Admin' },
+]
+const COMMITTEE_OPTIONS = ['Environmental', 'Relief Operations', 'Fire Response', 'Medical']
+const BLOOD_TYPE_OPTIONS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
 
 function Members() {
   const {
@@ -28,6 +32,7 @@ function Members() {
     createMember,
     committees,
     addCommittee,
+    editCommittee,
     deleteCommittee,
     getRecruitments,
     rejectRecruitment,
@@ -38,6 +43,9 @@ function Members() {
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [committeeName, setCommitteeName] = useState('')
+  const [showCommitteeActions, setShowCommitteeActions] = useState(false)
+  const [selectedCommittee, setSelectedCommittee] = useState('')
+  const [renamedCommittee, setRenamedCommittee] = useState('')
   const [committeeError, setCommitteeError] = useState('')
   const [formError, setFormError] = useState('')
   const [recruitmentActionError, setRecruitmentActionError] = useState('')
@@ -48,8 +56,13 @@ function Members() {
     email: '',
     idNumber: '',
     password: '',
-    committee: committees[0] || '',
-    category: MEMBER_CATEGORY_OPTIONS[0],
+    address: '',
+    contactNumber: '',
+    bloodType: '',
+    memberSince: dayjs().format('YYYY-MM-DD'),
+    role: ROLE_OPTIONS[0].value,
+    committee: committees[0] || COMMITTEE_OPTIONS[0],
+    category: committees[0] || COMMITTEE_OPTIONS[0],
   })
   const membersPerPage = 9
 
@@ -66,28 +79,36 @@ function Members() {
     [recruitments]
   )
 
-  const memberCategories = useMemo(() => {
-    const fromMembers = allMembers
-      .map(member => member.category)
-      .filter(Boolean)
-    return Array.from(new Set([...MEMBER_CATEGORY_OPTIONS, ...fromMembers]))
-  }, [allMembers])
+  const memberCommittees = useMemo(() => {
+    if (Array.isArray(committees) && committees.length > 0) return committees
+    return COMMITTEE_OPTIONS
+  }, [committees])
 
   useEffect(() => {
-    if (!newMember.committee && committees[0]) {
-      setNewMember(prev => ({ ...prev, committee: committees[0] }))
+    if (!newMember.committee) {
+      setNewMember(prev => ({ ...prev, committee: memberCommittees[0], category: memberCommittees[0] }))
     }
-    if (newMember.committee && !committees.includes(newMember.committee)) {
-      setNewMember(prev => ({ ...prev, committee: committees[0] || '' }))
+    if (newMember.committee && !memberCommittees.includes(newMember.committee)) {
+      setNewMember(prev => ({ ...prev, committee: memberCommittees[0], category: memberCommittees[0] }))
     }
-  }, [committees, newMember.committee])
+  }, [memberCommittees, newMember.committee])
+
+  useEffect(() => {
+    if (!selectedCommittee && memberCommittees[0]) {
+      setSelectedCommittee(memberCommittees[0])
+      setRenamedCommittee(memberCommittees[0])
+    } else if (selectedCommittee && !memberCommittees.includes(selectedCommittee)) {
+      setSelectedCommittee(memberCommittees[0] || '')
+      setRenamedCommittee(memberCommittees[0] || '')
+    }
+  }, [memberCommittees, selectedCommittee])
 
   const filteredMembers = allMembers.filter(member => {
     const matchesSearch =
       member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (member.email || member.idNumber || '').toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesCommittee = committeeFilter === 'all' || member.committee === committeeFilter
-    const matchesCategory = categoryFilter === 'all' || member.category === categoryFilter
+    const matchesCommittee = committeeFilter === 'all' || member.role === committeeFilter
+    const matchesCategory = categoryFilter === 'all' || member.committee === categoryFilter
     return matchesSearch && matchesCommittee && matchesCategory
   })
 
@@ -117,14 +138,26 @@ function Members() {
     setCommitteeName('')
   }
 
+  const handleCommitteeRename = e => {
+    e.preventDefault()
+    setCommitteeError('')
+    const result = editCommittee(selectedCommittee, renamedCommittee)
+    if (!result.success) {
+      setCommitteeError(result.message)
+      return
+    }
+    setSelectedCommittee(renamedCommittee.trim())
+  }
+
   const handleCommitteeDelete = committee => {
+    setCommitteeError('')
     const result = deleteCommittee(committee)
     if (!result.success) {
       setCommitteeError(result.message)
       return
     }
-    if (committeeFilter === committee) {
-      setCommitteeFilter('all')
+    if (categoryFilter === committee) {
+      setCategoryFilter('all')
     }
   }
 
@@ -133,6 +166,7 @@ function Members() {
     setFormError('')
     const result = createMember({
       ...newMember,
+      category: newMember.committee,
       recruitmentId: pendingApprovalRecruitmentId || undefined,
     })
     if (!result.success) {
@@ -144,8 +178,13 @@ function Members() {
       email: '',
       idNumber: '',
       password: '',
-      committee: committees[0] || '',
-      category: MEMBER_CATEGORY_OPTIONS[0],
+      address: '',
+      contactNumber: '',
+      bloodType: '',
+      memberSince: dayjs().format('YYYY-MM-DD'),
+      role: ROLE_OPTIONS[0].value,
+      committee: memberCommittees[0] || COMMITTEE_OPTIONS[0],
+      category: memberCommittees[0] || COMMITTEE_OPTIONS[0],
     })
     setPendingApprovalRecruitmentId(null)
     setRecruitmentActionError('')
@@ -165,8 +204,13 @@ function Members() {
       email: recruitment.email,
       idNumber: recruitment.idNumber,
       password: '',
-      committee: committees[0] || '',
-      category: MEMBER_CATEGORY_OPTIONS[0],
+      address: '',
+      contactNumber: '',
+      bloodType: '',
+      memberSince: dayjs().format('YYYY-MM-DD'),
+      role: ROLE_OPTIONS[0].value,
+      committee: memberCommittees[0] || COMMITTEE_OPTIONS[0],
+      category: memberCommittees[0] || COMMITTEE_OPTIONS[0],
     })
     const createMemberSection = document.getElementById('create-member-form')
     if (createMemberSection) {
@@ -191,20 +235,20 @@ function Members() {
       <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
         <div>
           <h2 className="text-2xl font-bold text-gray-800">Members</h2>
-          <p className="text-sm text-gray-500">Manage members by committee and category</p>
+          <p className="text-sm text-gray-500">Manage members by role and committee</p>
         </div>
       </div>
 
       {isAdmin && (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
           <div className="bg-white rounded-xl shadow-md p-5">
-            <h3 className="font-semibold text-gray-800 mb-3">Committee Management</h3>
+            <h3 className="font-semibold text-gray-800 mb-3">Manage Category</h3>
             <form onSubmit={handleCommitteeAdd} className="flex gap-2 mb-3">
               <input
                 type="text"
                 value={committeeName}
                 onChange={e => setCommitteeName(e.target.value)}
-                placeholder="New committee name"
+                placeholder="New Category"
                 className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                 required
               />
@@ -216,25 +260,56 @@ function Members() {
                 Add
               </button>
             </form>
-            {committeeError && <p className="text-sm text-red-600 mb-2">{committeeError}</p>}
-            <div className="flex flex-wrap gap-2">
-              {committees.map(committee => (
-                <span
-                  key={committee}
-                  className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm bg-red-50 text-red-700 border border-red-200"
+            <button
+              type="button"
+              onClick={() => setShowCommitteeActions(prev => !prev)}
+              className="mb-3 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm"
+            >
+              {showCommitteeActions ? 'Hide Edit/Delete Category' : 'Edit or Delete Category'}
+            </button>
+            {showCommitteeActions && (
+              <form onSubmit={handleCommitteeRename} className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
+                <select
+                  value={selectedCommittee}
+                  onChange={e => {
+                    setSelectedCommittee(e.target.value)
+                    setRenamedCommittee(e.target.value)
+                  }}
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                  required
                 >
-                  {committee}
+                  {memberCommittees.map(committee => (
+                    <option key={committee} value={committee}>
+                      {committee}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="text"
+                  value={renamedCommittee}
+                  onChange={e => setRenamedCommittee(e.target.value)}
+                  placeholder="Rename committee"
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                  required
+                />
+                <div className="flex gap-2">
+                  <button
+                    type="submit"
+                    className="flex-1 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Edit
+                  </button>
                   <button
                     type="button"
-                    onClick={() => handleCommitteeDelete(committee)}
-                    className="text-red-600 hover:text-red-800"
-                    aria-label={`Delete ${committee}`}
+                    onClick={() => handleCommitteeDelete(selectedCommittee)}
+                    className="flex-1 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
                   >
-                    <Trash2 size={12} />
+                    Delete
                   </button>
-                </span>
-              ))}
-            </div>
+                </div>
+              </form>
+            )}
+            {committeeError && <p className="text-sm text-red-600 mb-2">{committeeError}</p>}
           </div>
 
           <div className="bg-white rounded-xl shadow-md p-5">
@@ -251,7 +326,7 @@ function Members() {
                 placeholder="Full name"
                 value={newMember.name}
                 onChange={e => setNewMember({ ...newMember, name: e.target.value })}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                 required
               />
               <input
@@ -259,7 +334,7 @@ function Members() {
                 placeholder="Email"
                 value={newMember.email}
                 onChange={e => setNewMember({ ...newMember, email: e.target.value })}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                 required
               />
               <input
@@ -267,7 +342,7 @@ function Members() {
                 placeholder="ID Number"
                 value={newMember.idNumber}
                 onChange={e => setNewMember({ ...newMember, idNumber: e.target.value })}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                 required
               />
               <input
@@ -275,36 +350,77 @@ function Members() {
                 placeholder="Temporary password"
                 value={newMember.password}
                 onChange={e => setNewMember({ ...newMember, password: e.target.value })}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                 required
               />
-              <select
-                value={newMember.committee}
-                onChange={e => setNewMember({ ...newMember, committee: e.target.value })}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                required
-              >
-                <option value="" disabled>
-                  Select committee
-                </option>
-                {committees.map(committee => (
-                  <option key={committee} value={committee}>
-                    {committee}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={newMember.category}
-                onChange={e => setNewMember({ ...newMember, category: e.target.value })}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                required
-              >
-                {memberCategories.map(category => (
-                  <option key={category} value={category}>
-                    {category}
-                  </option>
-                ))}
-              </select>
+              <input
+                type="text"
+                placeholder="Address"
+                value={newMember.address}
+                onChange={e => setNewMember({ ...newMember, address: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+              />
+              <input
+                type="text"
+                placeholder="Contact Number"
+                value={newMember.contactNumber}
+                onChange={e => setNewMember({ ...newMember, contactNumber: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+              />
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Blood Type</label>
+                <select
+                  value={newMember.bloodType}
+                  onChange={e => setNewMember({ ...newMember, bloodType: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                >
+                  <option value="">Select Blood Type</option>
+                  {BLOOD_TYPE_OPTIONS.map(type => (
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Member Since</label>
+                <input
+                  type="date"
+                  value={newMember.memberSince}
+                  onChange={e => setNewMember({ ...newMember, memberSince: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Type</label>
+                <select
+                  value={newMember.role}
+                  onChange={e => setNewMember({ ...newMember, role: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                  required
+                >
+                  {ROLE_OPTIONS.map(roleOption => (
+                    <option key={roleOption.value} value={roleOption.value}>
+                      {roleOption.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Kind of Operation</label>
+                <select
+                  value={newMember.committee}
+                  onChange={e => setNewMember({ ...newMember, committee: e.target.value, category: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                  required
+                >
+                  {memberCommittees.map(committee => (
+                    <option key={committee} value={committee}>
+                      {committee}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <button
                 type="submit"
                 className="md:col-span-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
@@ -460,10 +576,10 @@ function Members() {
               }}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
             >
-              <option value="all">All Committees</option>
-              {committees.map(committee => (
-                <option key={committee} value={committee}>
-                  {committee}
+              <option value="all">All Roles</option>
+              {ROLE_OPTIONS.map(roleOption => (
+                <option key={roleOption.value} value={roleOption.value}>
+                  {roleOption.label}
                 </option>
               ))}
             </select>
@@ -477,10 +593,10 @@ function Members() {
               }}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
             >
-              <option value="all">All Categories</option>
-              {memberCategories.map(category => (
-                <option key={category} value={category}>
-                  {category}
+              <option value="all">All Committees</option>
+              {memberCommittees.map(committee => (
+                <option key={committee} value={committee}>
+                  {committee}
                 </option>
               ))}
             </select>
@@ -517,20 +633,26 @@ function Members() {
                 <div className="space-y-3">
                   <div className="flex items-center gap-3 text-sm text-gray-600">
                     <Mail size={16} className="text-gray-400" />
-                    <span className="truncate">{member.email || member.idNumber}</span>
+                    <span className="truncate">{member.email || 'N/A'}</span>
                   </div>
                   <div className="flex items-center gap-3 text-sm text-gray-600">
                     <Calendar size={16} className="text-gray-400" />
-                    <span>Joined {new Date().toLocaleDateString()}</span>
+                    <span>Joined {new Date(member.memberSince || Date.now()).toLocaleDateString()}</span>
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    <span>Contact: {member.contactNumber || 'N/A'}</span>
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    <span>Blood Type: {member.bloodType || 'N/A'}</span>
                   </div>
                 </div>
 
                 <div className="mt-4 flex flex-wrap gap-2">
                   <span className="px-2 py-1 rounded bg-red-50 text-red-700 text-xs border border-red-200">
-                    Committee: {member.committee || 'Unassigned'}
+                    Committee: {member.committee || memberCommittees[0]}
                   </span>
                   <span className="px-2 py-1 rounded bg-blue-50 text-blue-700 text-xs border border-blue-200">
-                    Category: {member.category || 'General Member'}
+                    Role: {member.role === 'admin' ? 'Admin' : 'Member'}
                   </span>
                 </div>
 
