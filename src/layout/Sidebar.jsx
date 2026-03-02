@@ -1,9 +1,8 @@
-import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, Calendar, User, LogOut, ChevronLeft, ChevronRight, Users, FileText, Plus, X } from 'lucide-react'
+import { LayoutDashboard, Calendar, User, LogOut, ChevronLeft, ChevronRight, Users, FileText, Bell, Moon, Sun } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
-function Sidebar({ isOpen, toggleSidebar }) {
+function Sidebar({ isOpen, toggleSidebar, soundEnabled, onToggleSound, darkMode, onToggleDarkMode }) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
 
@@ -105,6 +104,26 @@ function Sidebar({ isOpen, toggleSidebar }) {
             </button>
           )}
         </nav>
+
+        <div className={`px-3 mt-4 ${isOpen ? 'space-y-2' : 'space-y-3'}`}>
+          <button
+            type="button"
+            onClick={onToggleSound}
+            className={`w-full flex items-center ${isOpen ? 'gap-3 px-3 justify-start' : 'justify-center'} py-2 text-gray-300 hover:bg-red-600/20 hover:text-white rounded-lg transition-all`}
+          >
+            <Bell size={18} />
+            {isOpen && <span>{soundEnabled ? 'Sounds On' : 'Sounds Off'}</span>}
+          </button>
+
+          <button
+            type="button"
+            onClick={onToggleDarkMode}
+            className={`w-full flex items-center ${isOpen ? 'gap-3 px-3 justify-start' : 'justify-center'} py-2 text-gray-300 hover:bg-red-600/20 hover:text-white rounded-lg transition-all`}
+          >
+            {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+            {isOpen && <span>{darkMode ? 'Light Mode' : 'Dark Mode'}</span>}
+          </button>
+        </div>
 
         {/* User Section */}
         <div className={`absolute bottom-0 w-full p-4 border-t border-gray-800 ${!isOpen && 'border-l'}`}>

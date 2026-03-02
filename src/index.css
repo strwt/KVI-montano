@@ -11,6 +11,35 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+.dark body {
+  background-color: #030712;
+  color: #e5e7eb;
+}
+
+.dark .bg-white {
+  background-color: #111827 !important;
+}
+
+.dark .bg-gray-50 {
+  background-color: #1f2937 !important;
+}
+
+.dark .text-gray-800 {
+  color: #f3f4f6 !important;
+}
+
+.dark .text-gray-700,
+.dark .text-gray-600,
+.dark .text-gray-500 {
+  color: #d1d5db !important;
+}
+
+.dark .border-gray-100,
+.dark .border-gray-200,
+.dark .border-gray-300 {
+  border-color: #374151 !important;
+}
+
 /* Custom Animations */
 @keyframes fade-in {
   from {
