@@ -165,15 +165,6 @@ const loadJsPdf = () => {
   return jsPdfLoaderPromise
 }
 
-const getIconThemeClass = categoryKey => {
-  if (categoryKey === 'environmental') return 'icon-theme-environmental'
-  if (categoryKey === 'relief operation') return 'icon-theme-relief'
-  if (categoryKey === 'fire response') return 'icon-theme-fire'
-  if (categoryKey === 'notes') return 'icon-theme-notes'
-  if (categoryKey === 'medical') return 'icon-theme-medical'
-  return ''
-}
-
 function Report() {
   const { user } = useAuth()
   const [events] = useState(getStoredEvents)
@@ -358,15 +349,6 @@ function Report() {
       return `${x},${y}`
     })
     .join(' ')
-
-  const summaryCards = CATEGORY_KEYS.map(key => ({
-    key,
-    label: CATEGORY_META[key].label,
-    value: eventCountByCategory[key],
-    icon: CATEGORY_META[key].icon,
-    light: CATEGORY_META[key].light,
-    text: CATEGORY_META[key].text,
-  }))
 
   const summaryLines = [
     `Total Environmental Events: ${stats.environmental.eventCount}`,
@@ -664,17 +646,6 @@ function Report() {
             </>
           )}
         </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
-        {summaryCards.map(card => (
-          <div key={card.key} className="bg-white rounded-xl shadow-md p-4 border border-gray-100 layout-glow">
-            <div className={`statcard-icon-3d ${getIconThemeClass(card.key)} w-10 h-10 rounded-lg ${card.light} flex items-center justify-center mb-3`}><card.icon size={18} className={card.text} /></div>
-            <p className="text-sm text-gray-600">{card.label}</p>
-            <p className="text-3xl font-bold text-gray-800">{card.value}</p>
-            <p className="text-xs text-gray-500 mt-1">events</p>
-          </div>
-        ))}
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
