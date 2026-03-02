@@ -686,6 +686,8 @@ function Calendar({ listOnly = false }) {
   const [events, setEvents] = useState(getStoredEvents)
   const [selectedMonthKey, setSelectedMonthKey] = useState(null)
   const [showAllMonths, setShowAllMonths] = useState(false)
+  const [editingEventId, setEditingEventId] = useState(null)
+  const [pendingConfirmation, setPendingConfirmation] = useState(null)
   const [expandedItemId, setExpandedItemId] = useState(null)
   const [highlightedEventId, setHighlightedEventId] = useState(null)
   const [showEventForm, setShowEventForm] = useState(false)
@@ -793,6 +795,7 @@ function Calendar({ listOnly = false }) {
     }
 
     if (state.openCreateEventForm && canManageEvents) {
+      resetForm()
       setShowEventForm(true)
       didConsumeState = true
     }
@@ -923,6 +926,7 @@ function Calendar({ listOnly = false }) {
   }
 
   const resetForm = () => {
+    setEditingEventId(null)
     setFormData({
       title: '',
       content: '',
@@ -981,9 +985,7 @@ function Calendar({ listOnly = false }) {
       acc[field.key] = field.type === 'number' ? Number(raw) : raw
       return acc
     }, {})
-
-    const newEvent = {
-      id: Date.now(),
+    const eventPayload = {
       title: formData.title.trim(),
       content: formData.content.trim(),
       dateTime: formData.dateTime,
@@ -994,18 +996,97 @@ function Calendar({ listOnly = false }) {
       location: formData.location,
       category: formData.category,
       categoryData,
-      createdBy: user?.name || 'Unknown',
-      createdAt: dayjs().format('YYYY-MM-DD HH:mm'),
     }
 
-    setEvents(prev => [newEvent, ...prev])
-    resetForm()
-    setShowEventForm(false)
+    if (editingEventId) {
+      setPendingConfirmation({
+        type: 'update',
+        eventId: editingEventId,
+        payload: eventPayload,
+      })
+    } else {
+      const newEvent = {
+        id: Date.now(),
+        ...eventPayload,
+        viewedBy: [],
+        createdBy: user?.name || 'Unknown',
+        createdAt: dayjs().format('YYYY-MM-DD HH:mm'),
+      }
+      setEvents(prev => [newEvent, ...prev])
+      resetForm()
+      setShowEventForm(false)
+    }
+  }
+
+  const openEventForEdit = item => {
+    if (!canManageEvents) return
+    const category = item.category || ''
+    const defaults = getDefaultDynamicFields()
+    if (category && defaults[category]) {
+      defaults[category] = {
+        ...defaults[category],
+        ...(item.categoryData || {}),
+      }
+    }
+
+    setEditingEventId(item.id)
+    setFormError('')
+    setFormData({
+      title: item.title || '',
+      content: item.content || '',
+      dateTime: item.dateTime ? dayjs(item.dateTime).format('YYYY-MM-DDTHH:mm') : '',
+      address: item.address || '',
+      location: item.location || null,
+      category,
+      branch: item.branch || '',
+      assignedMemberIds: Array.isArray(item.assignedMemberIds) ? item.assignedMemberIds : [],
+      dynamicFields: defaults,
+    })
+    setShowEventForm(true)
   }
 
   const deleteEvent = eventId => {
     if (!canManageEvents) return
     setEvents(prev => prev.filter(event => event.id !== eventId))
+  }
+
+  const confirmDeleteEvent = eventId => {
+    if (!canManageEvents) return
+    setPendingConfirmation({
+      type: 'delete',
+      eventId,
+    })
+  }
+
+  const handleConfirmAction = () => {
+    if (!pendingConfirmation || !canManageEvents) return
+
+    if (pendingConfirmation.type === 'delete') {
+      deleteEvent(pendingConfirmation.eventId)
+      if (editingEventId && pendingConfirmation.eventId === editingEventId) {
+        resetForm()
+        setShowEventForm(false)
+      }
+    }
+
+    if (pendingConfirmation.type === 'update') {
+      const { eventId, payload } = pendingConfirmation
+      setEvents(prev =>
+        prev.map(event =>
+          event.id === eventId
+            ? {
+                ...event,
+                ...payload,
+                updatedAt: dayjs().format('YYYY-MM-DD HH:mm'),
+              }
+            : event
+        )
+      )
+      resetForm()
+      setShowEventForm(false)
+    }
+
+    setPendingConfirmation(null)
   }
 
   const markEventSeen = eventId => {
@@ -1185,7 +1266,7 @@ function Calendar({ listOnly = false }) {
                             <button
                               onClick={e => {
                                 e.stopPropagation()
-                                deleteEvent(item.id)
+                                confirmDeleteEvent(item.id)
                               }}
                               className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                             >
@@ -1310,7 +1391,10 @@ function Calendar({ listOnly = false }) {
           {canManageEvents && (
             <button
               type="button"
-              onClick={() => setShowEventForm(true)}
+              onClick={() => {
+                resetForm()
+                setShowEventForm(true)
+              }}
               className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all shadow-lg"
             >
               <Plus size={18} />
@@ -1350,29 +1434,58 @@ function Calendar({ listOnly = false }) {
               }`}
             >
               {month.hasEvents && <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${getMonthColor(index)}`} />}
-              <div className="flex items-center justify-between h-full">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div
-                    className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                      month.hasEvents
-                        ? `bg-gradient-to-r ${getMonthColor(index)} text-white`
-                        : 'bg-gray-200 text-gray-500'
+              <div className="flex h-full flex-col">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div
+                      className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                        month.hasEvents
+                          ? `bg-gradient-to-r ${getMonthColor(index)} text-white`
+                          : 'bg-gray-200 text-gray-500'
+                      }`}
+                    >
+                      <CalendarIcon size={18} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-gray-800 truncate">{month.monthName}</p>
+                      <p className="text-xs text-gray-500">{currentYear}</p>
+                    </div>
+                  </div>
+                  <span
+                    className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      month.hasEvents ? 'bg-red-100 text-red-700' : 'bg-gray-200 text-gray-500'
                     }`}
                   >
-                    <CalendarIcon size={18} />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="font-semibold text-gray-800 truncate">{month.monthName}</p>
-                    <p className="text-xs text-gray-500">{currentYear}</p>
-                  </div>
+                    {month.items.length}
+                  </span>
                 </div>
-                <span
-                  className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    month.hasEvents ? 'bg-red-100 text-red-700' : 'bg-gray-200 text-gray-500'
-                  }`}
-                >
-                  {month.items.length}
-                </span>
+
+                {month.hasEvents && (
+                  <div className="mt-3 space-y-2">
+                    {month.items.map((item, itemIndex) => {
+                      const categoryKey = String(item.category || '').toLowerCase()
+                      const categoryLabel = CATEGORY_CONFIG[categoryKey]?.label || item.category || 'Uncategorized'
+                      return (
+                        <div
+                          key={`${month.monthKey}-${item.id || itemIndex}`}
+                          className="rounded-md border p-2 transition-colors cursor-pointer bg-gray-50 border-gray-200 hover:bg-red-50 hover:border-red-200"
+                          onClick={e => {
+                            e.stopPropagation()
+                            setSelectedMonthKey(month.monthKey)
+                            setShowAllMonths(false)
+                            setExpandedItemId(item.id)
+                            setSelectedDateFilter('')
+                          }}
+                        >
+                          <p className="text-[11px] text-gray-500 truncate">
+                            <span className="font-semibold text-red-700">{categoryLabel}</span> | {dayjs(item.dateTime).format('MMM D, YYYY')}
+                          </p>
+                          <p className="text-xs text-gray-700 truncate">{item.title || 'Untitled Event'}</p>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
             </button>
           ))}
@@ -1480,7 +1593,7 @@ function Calendar({ listOnly = false }) {
                             <button
                               onClick={e => {
                                 e.stopPropagation()
-                                deleteEvent(item.id)
+                                confirmDeleteEvent(item.id)
                               }}
                               className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                             >
@@ -1552,6 +1665,24 @@ function Calendar({ listOnly = false }) {
                                 ))}
                               </div>
                             )}
+                            {canManageEvents && (
+                              <div className="pt-2 flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => openEventForEdit(item)}
+                                  className="px-3 py-1.5 rounded-md bg-red-600 text-white text-xs font-medium hover:bg-red-700 transition-colors"
+                                >
+                                  Update
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => confirmDeleteEvent(item.id)}
+                                  className="px-3 py-1.5 rounded-md bg-gray-100 text-gray-700 text-xs font-medium hover:bg-gray-200 transition-colors"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            )}
                           </div>
                           {item.address && <ReadOnlyEventMap address={item.address} location={item.location || null} />}
                         </div>
@@ -1576,8 +1707,14 @@ function Calendar({ listOnly = false }) {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-3 sm:p-4">
           <div className="relative isolate w-full max-w-3xl animate-fade-in-up max-h-[92vh] overflow-y-auto rounded-2xl border border-transparent [background:linear-gradient(#ffffff,#ffffff)_padding-box,linear-gradient(135deg,rgba(248,113,113,.55),rgba(185,28,28,.28),rgba(15,23,42,.4))_border-box] shadow-2xl">
             <div className="flex items-center justify-between p-4 sm:p-5 border-b border-gray-200 sticky top-0 bg-white z-50 rounded-t-2xl">
-              <h3 className="text-lg font-semibold text-gray-800">Create New Event</h3>
-              <button onClick={() => setShowEventForm(false)} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+              <h3 className="text-lg font-semibold text-gray-800">{editingEventId ? 'Update Event' : 'Create New Event'}</h3>
+              <button
+                onClick={() => {
+                  resetForm()
+                  setShowEventForm(false)
+                }}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
                 <X size={20} className="text-gray-500" />
               </button>
             </div>
@@ -1748,7 +1885,7 @@ function Calendar({ listOnly = false }) {
 
               <div className="flex flex-col sm:flex-row gap-3 pt-2">
                 <button type="submit" className="flex-1 px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all">
-                  Save Event
+                  {editingEventId ? 'Update Event' : 'Save Event'}
                 </button>
                 <button
                   type="button"
@@ -1766,8 +1903,38 @@ function Calendar({ listOnly = false }) {
         </div>
       )}
 
+      {pendingConfirmation && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4">
+          <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-red-100 p-6 animate-fade-in-up">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Confirmation</h3>
+            <p className="text-sm text-gray-600 mb-6">
+              {pendingConfirmation.type === 'update'
+                ? 'Are you sure you want to update this event?'
+                : 'Are you sure you want to delete this event? This action cannot be undone.'}
+            </p>
+            <div className="flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setPendingConfirmation(null)}
+                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmAction}
+                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }
 
 export default Calendar
+
