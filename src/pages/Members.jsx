@@ -326,7 +326,7 @@ function Members() {
                 placeholder="Full name"
                 value={newMember.name}
                 onChange={e => setNewMember({ ...newMember, name: e.target.value })}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                 required
               />
               <input
@@ -334,7 +334,7 @@ function Members() {
                 placeholder="Email"
                 value={newMember.email}
                 onChange={e => setNewMember({ ...newMember, email: e.target.value })}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                 required
               />
               <input
@@ -342,7 +342,7 @@ function Members() {
                 placeholder="ID Number"
                 value={newMember.idNumber}
                 onChange={e => setNewMember({ ...newMember, idNumber: e.target.value })}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                 required
               />
               <input
@@ -350,7 +350,7 @@ function Members() {
                 placeholder="Temporary password"
                 value={newMember.password}
                 onChange={e => setNewMember({ ...newMember, password: e.target.value })}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                 required
               />
               <input
@@ -358,27 +358,30 @@ function Members() {
                 placeholder="Address"
                 value={newMember.address}
                 onChange={e => setNewMember({ ...newMember, address: e.target.value })}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
               />
               <input
                 type="text"
                 placeholder="Contact Number"
                 value={newMember.contactNumber}
                 onChange={e => setNewMember({ ...newMember, contactNumber: e.target.value })}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
               />
-              <select
-                value={newMember.bloodType}
-                onChange={e => setNewMember({ ...newMember, bloodType: e.target.value })}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-              >
-                <option value="">Select Blood Type</option>
-                {BLOOD_TYPE_OPTIONS.map(type => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
-              </select>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Blood Type</label>
+                <select
+                  value={newMember.bloodType}
+                  onChange={e => setNewMember({ ...newMember, bloodType: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                >
+                  <option value="">Select Blood Type</option>
+                  {BLOOD_TYPE_OPTIONS.map(type => (
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <div>
                 <label className="block text-xs text-gray-500 mb-1">Member Since</label>
                 <input
