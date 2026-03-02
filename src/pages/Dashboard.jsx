@@ -33,6 +33,7 @@ const getIconThemeClass = categoryKey => {
 function Dashboard() {
   const { user, users } = useAuth()
   const navigate = useNavigate()
+  const isAdmin = user?.role === 'admin'
   const [animatedStats, setAnimatedStats] = useState(false)
   const [events] = useState(getStoredEvents)
 
@@ -80,7 +81,7 @@ function Dashboard() {
           <p className="text-white">KUSGAN Volunteer Inc. - Community Service under Cares Department</p>
           <div className="mt-4">
             <span className="px-3 py-1 bg-red-600/30 text-red-400 rounded-full text-sm">
-              {user?.role === 'admin' ? 'Administrator' : 'Member'}
+              {isAdmin ? 'Administrator' : 'Member'}
             </span>
           </div>
         </div>
@@ -118,7 +119,7 @@ function Dashboard() {
           <div className="space-y-3 max-h-[360px] overflow-y-auto pr-1">
             {loggedInMembers.map((member, index) => (
               <div
-                key={member.id}
+                key={`${member.id}-${member.idNumber || member.email || index}`}
                 className={`p-3 rounded-lg border border-green-100 bg-green-50/60 ${
                   animatedStats ? 'animate-fade-in-up' : 'opacity-0'
                 }`}
@@ -141,7 +142,7 @@ function Dashboard() {
           <div className="space-y-4">
             {recentEvents.map((event, index) => (
               <div
-                key={event.id}
+                key={`${event.id || 'event'}-${resolveEventDate(event) || 'no-date'}-${index}`}
                 className={`flex items-start gap-4 p-4 bg-gray-50 rounded-lg transition-all hover:bg-gray-100 hover:shadow-md cursor-pointer ${
                   animatedStats ? 'animate-fade-in-up' : 'opacity-0'
                 }`}
