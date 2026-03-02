@@ -54,15 +54,25 @@ const ensureDemoAdmin = (users = []) => {
   return [DEMO_ADMIN, ...users]
 }
 
+const parseStoredJson = (value, fallback) => {
+  if (!value) return fallback
+  try {
+    return JSON.parse(value)
+  } catch {
+    return fallback
+  }
+}
+
+const omitPassword = (account) => {
+  const { password: _PASSWORD, ...userWithoutPassword } = account
+  return userWithoutPassword
+}
+
 // Dummy accounts stored in localStorage
 const getStoredUsers = () => {
   const stored = localStorage.getItem('kusgan_users')
   if (stored) {
-    try {
-      return ensureDemoAdmin(normalizeUsers(JSON.parse(stored)))
-    } catch {
-      localStorage.removeItem('kusgan_users')
-    }
+    return JSON.parse(stored).map(enrichUserWithProfileImage)
   }
   // Default dummy accounts
   return ensureDemoAdmin(normalizeUsers([
@@ -108,7 +118,45 @@ const getStoredCommittees = () => {
 
 const getStoredCurrentUser = () => {
   const stored = localStorage.getItem('kusgan_current_user')
-  return stored ? JSON.parse(stored) : null
+  return stored ? enrichUserWithProfileImage(JSON.parse(stored)) : null
+}
+
+const getTodayDateKey = () => {
+  const today = new Date()
+  const year = today.getFullYear()
+  const month = String(today.getMonth() + 1).padStart(2, '0')
+  const day = String(today.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+const recordDailyPresence = (loggedInUser) => {
+  const activityKey = 'kusgan_login_activity'
+  const stored = localStorage.getItem(activityKey)
+  const activity = stored ? JSON.parse(stored) : []
+  const todayKey = getTodayDateKey()
+  const timestamp = new Date().toISOString()
+
+  const existingIndex = activity.findIndex(
+    (entry) => entry.date === todayKey && entry.userId === loggedInUser.id
+  )
+
+  const payload = {
+    date: todayKey,
+    userId: loggedInUser.id,
+    name: loggedInUser.name,
+    email: loggedInUser.email,
+    role: loggedInUser.role,
+    profileImage: loggedInUser.profileImage,
+    lastLoginAt: timestamp,
+  }
+
+  if (existingIndex >= 0) {
+    activity[existingIndex] = payload
+  } else {
+    activity.push(payload)
+  }
+
+  localStorage.setItem(activityKey, JSON.stringify(activity))
 }
 
 const getStoredRecruitments = () => {
@@ -126,20 +174,12 @@ const getStoredRecruitments = () => {
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(getStoredCurrentUser)
   const [users, setUsers] = useState(getStoredUsers)
-  const [committees, setCommittees] = useState(getStoredCommittees)
-  const [recruitments, setRecruitments] = useState(getStoredRecruitments)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     // Initialize users in localStorage if not present
     if (!localStorage.getItem('kusgan_users')) {
       localStorage.setItem('kusgan_users', JSON.stringify(getStoredUsers()))
-    }
-    if (!localStorage.getItem('kusgan_committees')) {
-      localStorage.setItem('kusgan_committees', JSON.stringify(getStoredCommittees()))
-    }
-    if (!localStorage.getItem(RECRUITMENT_STORAGE_KEY)) {
-      localStorage.setItem(RECRUITMENT_STORAGE_KEY, JSON.stringify(getStoredRecruitments()))
     }
     setLoading(false)
   }, [])
@@ -173,7 +213,7 @@ export function AuthProvider({ children }) {
     )
 
     if (foundUser) {
-      const { password: _, ...userWithoutPassword } = foundUser
+      const userWithoutPassword = omitPassword(foundUser)
       setUser(userWithoutPassword)
       return { success: true, user: userWithoutPassword }
     }
@@ -214,7 +254,7 @@ export function AuthProvider({ children }) {
       category: DEFAULT_MEMBER_CATEGORY,
     }
     setUsers([...users, newUser])
-    const { password: _, ...userWithoutPassword } = newUser
+    const userWithoutPassword = omitPassword(newUser)
     setUser(userWithoutPassword)
     return { success: true, user: userWithoutPassword }
   }
@@ -272,7 +312,7 @@ export function AuthProvider({ children }) {
   }
 
   const getAllMembers = () => {
-    return users.map(({ password, ...u }) => u)
+    return users.map(omitPassword)
   }
 
   const createMember = (memberData) => {
@@ -498,12 +538,7 @@ export function AuthProvider({ children }) {
       getAllMembers,
       createMember,
       deleteMembers,
-      addCommittee,
-      deleteCommittee,
-      committees,
-      submitRecruitmentApplication,
-      rejectRecruitment,
-      getRecruitments,
+      updateMember,
       users: users.map(({ password, ...u }) => u)
     }}>
       {children}
