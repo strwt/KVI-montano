@@ -25,7 +25,6 @@ function Members() {
   const {
     user,
     getAllMembers,
-    deleteMembers,
     createMember,
     committees,
     addCommittee,
@@ -38,8 +37,6 @@ function Members() {
   const [committeeFilter, setCommitteeFilter] = useState('all')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [currentPage, setCurrentPage] = useState(1)
-  const [selectedMembers, setSelectedMembers] = useState([])
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [committeeName, setCommitteeName] = useState('')
   const [committeeError, setCommitteeError] = useState('')
   const [formError, setFormError] = useState('')
@@ -103,32 +100,6 @@ function Members() {
     return role === 'admin'
       ? 'bg-red-100 text-red-700 border-red-200'
       : 'bg-blue-100 text-blue-700 border-blue-200'
-  }
-
-  const handleSelectAll = () => {
-    if (selectedMembers.length === currentMembers.length) {
-      setSelectedMembers([])
-    } else {
-      setSelectedMembers(currentMembers.map(member => member.id))
-    }
-  }
-
-  const isMemberSelected = (memberId) => {
-    return selectedMembers.some(id => String(id) === String(memberId))
-  }
-
-  const handleSelectMember = memberId => {
-    if (selectedMembers.includes(memberId)) {
-      setSelectedMembers(selectedMembers.filter(id => id !== memberId))
-    } else {
-      setSelectedMembers(prev => [...prev, memberId])
-    }
-  }
-
-  const handleBulkDelete = () => {
-    deleteMembers(selectedMembers)
-    setSelectedMembers([])
-    setShowDeleteConfirm(false)
   }
 
   const handleViewMember = memberId => {
@@ -517,18 +488,6 @@ function Members() {
         </div>
       </div>
 
-      {isAdmin && currentMembers.length > 0 && (
-        <div className="flex items-center gap-2 mb-4">
-          <input
-            type="checkbox"
-            checked={selectedMembers.length === currentMembers.length && currentMembers.length > 0}
-            onChange={handleSelectAll}
-            className="w-5 h-5 text-red-600 rounded focus:ring-red-500"
-          />
-          <span className="text-sm text-gray-600">Select All</span>
-        </div>
-      )}
-
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {currentMembers.length === 0 ? (
           <div className="col-span-full bg-white rounded-xl shadow-md p-12 text-center">
@@ -539,26 +498,9 @@ function Members() {
           currentMembers.map((member, index) => (
             <div
               key={member.id}
-              className={`bg-white rounded-xl shadow-md p-6 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 animate-fade-in relative ${
-                isAdmin && isMemberSelected(member.id) ? 'ring-2 ring-red-500' : ''
-              }`}
+              className="bg-white rounded-xl shadow-md p-6 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 animate-fade-in relative"
               style={{ animationDelay: `${index * 0.1}s` }}
             >
-              {isAdmin && (
-                <div className="absolute top-4 right-4">
-                  <input
-                    type="checkbox"
-                    checked={isMemberSelected(member.id)}
-                    onClick={(e) => e.stopPropagation()}
-                    onChange={(e) => {
-                      e.stopPropagation()
-                      handleSelectMember(member.id)
-                    }}
-                    className="w-5 h-5 text-red-600 rounded focus:ring-red-500 cursor-pointer"
-                  />
-                </div>
-              )}
-
               <div className={isAdmin ? 'cursor-pointer' : ''} onClick={() => isAdmin && handleViewMember(member.id)}>
                 <div className="flex items-center gap-4 mb-4">
                   <div className="w-16 h-16 rounded-full bg-gradient-to-r from-red-600 to-red-700 flex items-center justify-center">
@@ -600,21 +542,6 @@ function Members() {
                     </span>
                   </div>
                 )}
-
-                {isAdmin && isMemberSelected(member.id) && (
-                  <div className="mt-3 pt-3 border-t border-red-100">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setShowDeleteConfirm(true)
-                      }}
-                      className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                    >
-                      <Trash2 size={16} />
-                      Delete Selected ({selectedMembers.length})
-                    </button>
-                  </div>
-                )}
               </div>
             </div>
           ))
@@ -640,40 +567,6 @@ function Members() {
           >
             Next
           </button>
-        </div>
-      )}
-
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-xl p-6 max-w-md w-full mx-4 animate-fade-in">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-                <Trash2 size={24} className="text-red-600" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-800">Confirm Delete</h3>
-                <p className="text-sm text-gray-500">This action cannot be undone</p>
-              </div>
-            </div>
-            <p className="text-gray-600 mb-6">
-              Are you sure you want to delete {selectedMembers.length} member{selectedMembers.length > 1 ? 's' : ''}?
-              This will permanently remove them from the system.
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => setShowDeleteConfirm(false)}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleBulkDelete}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
         </div>
       )}
 
