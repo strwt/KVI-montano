@@ -39,7 +39,7 @@ const REPORT_COLUMNS = [
   { key: 'title', label: 'Event Title' },
   { key: 'content', label: 'Content' },
   { key: 'category', label: 'Category' },
-  { key: 'branch', label: 'Branch' },
+  { key: 'branch', label: 'Field' },
   { key: 'dateTime', label: 'Date and Time' },
   { key: 'address', label: 'Address' },
   { key: 'seedlingsUsed', label: 'Seedlings Used' },
@@ -103,17 +103,11 @@ const getMostActiveMonthLabel = countByMonth => {
   return dayjs(`${monthKey}-01`).format('MMMM YYYY')
 }
 
-const getDateWindow = (preset, customStart, customEnd) => {
+const getDateWindow = preset => {
   const now = dayjs()
-  if (preset === 'this_month') return { start: now.startOf('month'), end: now.endOf('month') }
-  if (preset === 'last_3_months') return { start: now.subtract(2, 'month').startOf('month'), end: now.endOf('month') }
-  if (preset === 'last_6_months') return { start: now.subtract(5, 'month').startOf('month'), end: now.endOf('month') }
-  if (preset === 'this_year') return { start: now.startOf('year'), end: now.endOf('year') }
-  if (preset === 'custom') {
-    const start = customStart && dayjs(customStart).isValid() ? dayjs(customStart).startOf('day') : null
-    const end = customEnd && dayjs(customEnd).isValid() ? dayjs(customEnd).endOf('day') : null
-    return { start, end }
-  }
+  if (preset === 'monthly') return { start: now.startOf('month'), end: now.endOf('month') }
+  if (preset === 'quarterly') return { start: now.subtract(2, 'month').startOf('month'), end: now.endOf('month') }
+  if (preset === 'annually') return { start: now.startOf('year'), end: now.endOf('year') }
   return { start: null, end: null }
 }
 
@@ -168,9 +162,7 @@ const loadJsPdf = () => {
 function Report() {
   const { user } = useAuth()
   const [events] = useState(getStoredEvents)
-  const [datePreset, setDatePreset] = useState('this_month')
-  const [customStartDate, setCustomStartDate] = useState(dayjs().startOf('month').format('YYYY-MM-DD'))
-  const [customEndDate, setCustomEndDate] = useState(dayjs().format('YYYY-MM-DD'))
+  const [datePreset, setDatePreset] = useState('monthly')
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [selectedBranch, setSelectedBranch] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
@@ -178,7 +170,7 @@ function Report() {
   const [exportingType, setExportingType] = useState('')
 
   const isAdmin = user?.role === 'admin'
-  const { start, end } = getDateWindow(datePreset, customStartDate, customEndDate)
+  const { start, end } = getDateWindow(datePreset)
 
   const branchOptions = useMemo(() => {
     return Array.from(
@@ -377,7 +369,7 @@ function Report() {
     lines.push(`Generated At,${dayjs().format('YYYY-MM-DD HH:mm:ss')}`)
     lines.push(`Date Filter,${datePreset}`)
     lines.push(`Category Filter,${selectedCategory}`)
-    lines.push(`Branch Filter,${selectedBranch}`)
+    lines.push(`Field Filter,${selectedBranch}`)
     lines.push(`Search Query,${searchQuery || 'N/A'}`)
     lines.push('')
     lines.push('Summary Statistics')
@@ -409,7 +401,7 @@ function Report() {
       <body style="font-family:Arial,sans-serif;">
         <h1>KUSGAN Report</h1>
         <p>Date Generated: ${dayjs().format('YYYY-MM-DD HH:mm:ss')}</p>
-        <p>Filters - Date: ${datePreset}, Category: ${selectedCategory}, Branch: ${selectedBranch}, Search: ${searchQuery || 'N/A'}</p>
+        <p>Filters - Date: ${datePreset}, Category: ${selectedCategory}, Field: ${selectedBranch}, Search: ${searchQuery || 'N/A'}</p>
         <h2>Summary Statistics</h2>
         <ul>${summaryHtml}</ul>
         <h2>Event Details</h2>
@@ -439,7 +431,7 @@ function Report() {
     doc.setFontSize(10)
     doc.text(`Generated: ${dayjs().format('YYYY-MM-DD HH:mm:ss')}`, margin, y)
     y += 14
-    doc.text(`Filters - Date: ${datePreset} | Category: ${selectedCategory} | Branch: ${selectedBranch} | Search: ${searchQuery || 'N/A'}`, margin, y)
+    doc.text(`Filters - Date: ${datePreset} | Category: ${selectedCategory} | Field: ${selectedBranch} | Search: ${searchQuery || 'N/A'}`, margin, y)
     y += 18
 
     doc.setFontSize(12)
@@ -464,7 +456,7 @@ function Report() {
     y += 12
     doc.setFontSize(8)
 
-    const headers = ['Title', 'Category', 'Branch', 'Date/Time', 'Address', 'Category Fields']
+    const headers = ['Title', 'Category', 'Field', 'Date/Time', 'Address', 'Category Fields']
     doc.setFillColor(245, 245, 245)
     doc.rect(margin, y, pageWidth - margin * 2, 18, 'F')
     headers.forEach((h, idx) => {
@@ -571,12 +563,9 @@ function Report() {
               onChange={e => setDatePreset(e.target.value)}
               className="w-full px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-500"
             >
-              <option value="this_month">This Month</option>
-              <option value="last_3_months">Last 3 Months</option>
-              <option value="last_6_months">Last 6 Months</option>
-              <option value="this_year">This Year</option>
-              <option value="all_time">All Time</option>
-              <option value="custom">Custom Range</option>
+              <option value="monthly">Monthly</option>
+              <option value="quarterly">Quarterly</option>
+              <option value="annually">Annually</option>
             </select>
           </div>
           <div>
@@ -590,19 +579,19 @@ function Report() {
               className="w-full px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-500"
             >
               <option value="all">All Categories</option>
-              {CATEGORY_KEYS.map(key => (
+              {CATEGORY_KEYS.filter(key => key !== 'notes').map(key => (
                 <option key={key} value={key}>{CATEGORY_META[key].label}</option>
               ))}
             </select>
           </div>
           <div>
-            <label className="block text-xs text-gray-500 mb-1">Branch</label>
+            <label className="block text-xs text-gray-500 mb-1">Field</label>
             <select
               value={selectedBranch}
               onChange={e => setSelectedBranch(e.target.value)}
               className="w-full px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-500"
             >
-              <option value="all">All Branches</option>
+              <option value="all">All Fields</option>
               {branchOptions.map(branch => (
                 <option key={branch} value={branch}>
                   {branch}
@@ -623,28 +612,6 @@ function Report() {
               />
             </div>
           </div>
-          {datePreset === 'custom' && (
-            <>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Start Date</label>
-                <input
-                  type="date"
-                  value={customStartDate}
-                  onChange={e => setCustomStartDate(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-500"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">End Date</label>
-                <input
-                  type="date"
-                  value={customEndDate}
-                  onChange={e => setCustomEndDate(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-500"
-                />
-              </div>
-            </>
-          )}
         </div>
       </div>
 
