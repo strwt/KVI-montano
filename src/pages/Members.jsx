@@ -25,6 +25,16 @@ const ROLE_OPTIONS = [
 const COMMITTEE_OPTIONS = ['Environmental', 'Relief Operations', 'Fire Response', 'Medical']
 const BLOOD_TYPE_OPTIONS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
 
+const splitCategoryAndType = (value = '') => {
+  const raw = String(value || '').trim()
+  if (!raw) return { category: '', type: '' }
+  const parts = raw.split(' - ')
+  if (parts.length === 1) return { category: parts[0], type: 'General' }
+  const category = parts.shift()?.trim() || ''
+  const type = parts.join(' - ').trim() || 'General'
+  return { category, type }
+}
+
 function Members() {
   const {
     user,
@@ -34,10 +44,6 @@ function Members() {
     addCommittee,
     editCommittee,
     deleteCommittee,
-    utilitiesByCommittee,
-    addUtilityItem,
-    editUtilityItem,
-    deleteUtilityItem,
     getRecruitments,
     rejectRecruitment,
   } = useAuth()
@@ -47,18 +53,16 @@ function Members() {
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [committeeName, setCommitteeName] = useState('')
+  const [committeeType, setCommitteeType] = useState('')
   const [showCommitteeActions, setShowCommitteeActions] = useState(false)
-  const [showUtilityActions, setShowUtilityActions] = useState(false)
-  const [operationAction, setOperationAction] = useState('add')
-  const [utilityAction, setUtilityAction] = useState('add')
-  const [selectedCommittee, setSelectedCommittee] = useState('')
-  const [renamedCommittee, setRenamedCommittee] = useState('')
+  const [showAddCategoryForm, setShowAddCategoryForm] = useState(false)
+  const [showCategoryEditForm, setShowCategoryEditForm] = useState(false)
+  const [showCategoryDeletePrompt, setShowCategoryDeletePrompt] = useState(false)
+  const [selectedOperationCategory, setSelectedOperationCategory] = useState('')
+  const [selectedOperationType, setSelectedOperationType] = useState('')
+  const [editedOperationCategory, setEditedOperationCategory] = useState('')
+  const [editedOperationType, setEditedOperationType] = useState('')
   const [committeeError, setCommitteeError] = useState('')
-  const [selectedUtilityCommittee, setSelectedUtilityCommittee] = useState('')
-  const [utilityName, setUtilityName] = useState('')
-  const [selectedUtilityItem, setSelectedUtilityItem] = useState('')
-  const [renamedUtilityItem, setRenamedUtilityItem] = useState('')
-  const [utilityError, setUtilityError] = useState('')
   const [formError, setFormError] = useState('')
   const [recruitmentActionError, setRecruitmentActionError] = useState('')
   const [expandedRecruitmentId, setExpandedRecruitmentId] = useState(null)
@@ -105,30 +109,43 @@ function Members() {
     }
   }, [memberCommittees, newMember.committee])
 
-  useEffect(() => {
-    if (selectedCommittee && !memberCommittees.includes(selectedCommittee)) {
-      setSelectedCommittee('')
-      setRenamedCommittee('')
-    }
-  }, [memberCommittees, selectedCommittee])
+  const operationTypesByCategory = useMemo(() => {
+    return memberCommittees.reduce((acc, entry) => {
+      const { category, type } = splitCategoryAndType(entry)
+      if (!category) return acc
+      if (!acc[category]) acc[category] = []
+      if (type && !acc[category].includes(type)) acc[category].push(type)
+      return acc
+    }, {})
+  }, [memberCommittees])
 
-  const utilityItemsForSelectedCommittee = useMemo(
-    () => utilitiesByCommittee?.[selectedUtilityCommittee] || [],
-    [utilitiesByCommittee, selectedUtilityCommittee]
+  const operationCategories = useMemo(
+    () => Object.keys(operationTypesByCategory),
+    [operationTypesByCategory]
+  )
+
+  const selectedCategoryTypes = useMemo(
+    () => operationTypesByCategory[selectedOperationCategory] || [],
+    [operationTypesByCategory, selectedOperationCategory]
   )
 
   useEffect(() => {
-    if (selectedUtilityCommittee && !memberCommittees.includes(selectedUtilityCommittee)) {
-      setSelectedUtilityCommittee('')
+    if (selectedOperationCategory && !operationCategories.includes(selectedOperationCategory)) {
+      setSelectedOperationCategory('')
+      setSelectedOperationType('')
+      setEditedOperationCategory('')
+      setEditedOperationType('')
+      setShowCategoryEditForm(false)
+      setShowCategoryDeletePrompt(false)
     }
-  }, [memberCommittees, selectedUtilityCommittee])
+  }, [operationCategories, selectedOperationCategory])
 
   useEffect(() => {
-    if (selectedUtilityItem && !utilityItemsForSelectedCommittee.includes(selectedUtilityItem)) {
-      setSelectedUtilityItem('')
-      setRenamedUtilityItem('')
+    if (selectedOperationType && !selectedCategoryTypes.includes(selectedOperationType)) {
+      setSelectedOperationType('')
+      setEditedOperationType('')
     }
-  }, [selectedUtilityItem, utilityItemsForSelectedCommittee])
+  }, [selectedCategoryTypes, selectedOperationType])
 
   const filteredMembers = allMembers.filter(member => {
     const matchesSearch =
@@ -157,66 +174,149 @@ function Members() {
   const handleCommitteeAdd = e => {
     e.preventDefault()
     setCommitteeError('')
-    const result = addCommittee(committeeName)
+    const normalizedCategory = committeeName.trim()
+    const normalizedType = committeeType.trim()
+    if (!normalizedCategory || !normalizedType) {
+      setCommitteeError('Category and Type are required.')
+      return
+    }
+    const existingTypes = operationTypesByCategory[normalizedCategory] || []
+    const hasDuplicateType = existingTypes.some(type => type.toLowerCase() === normalizedType.toLowerCase())
+    if (hasDuplicateType) {
+      setCommitteeError('Type already exists under this category.')
+      return
+    }
+    const result = addCommittee(`${normalizedCategory} - ${normalizedType}`)
     if (!result.success) {
       setCommitteeError(result.message)
       return
     }
     setCommitteeName('')
+    setCommitteeType('')
   }
 
   const handleCommitteeRename = e => {
     e.preventDefault()
     setCommitteeError('')
-    const result = editCommittee(selectedCommittee, renamedCommittee)
-    if (!result.success) {
-      setCommitteeError(result.message)
+    if (!selectedOperationCategory) {
+      setCommitteeError('Select category to update.')
       return
     }
-    setSelectedCommittee(renamedCommittee.trim())
+    const nextCategory = editedOperationCategory.trim()
+    const nextType = editedOperationType.trim()
+
+    if (selectedOperationType) {
+      if (!nextCategory || !nextType) {
+        setCommitteeError('Category and Type are required.')
+        return
+      }
+      const source = `${selectedOperationCategory} - ${selectedOperationType}`
+      const target = `${nextCategory} - ${nextType}`
+      const duplicateInTargetCategory = (operationTypesByCategory[nextCategory] || []).some(
+        type => type.toLowerCase() === nextType.toLowerCase() && source.toLowerCase() !== target.toLowerCase()
+      )
+      if (duplicateInTargetCategory) {
+        setCommitteeError('Type already exists under this category.')
+        return
+      }
+      const result = editCommittee(source, target)
+      if (!result.success) {
+        setCommitteeError(result.message)
+        return
+      }
+      setSelectedOperationCategory(nextCategory)
+      setSelectedOperationType(nextType)
+      setEditedOperationCategory(nextCategory)
+      setEditedOperationType(nextType)
+      setShowCategoryEditForm(false)
+      return
+    }
+
+    if (!nextCategory) {
+      setCommitteeError('Category name is required.')
+      return
+    }
+    const oldTypes = operationTypesByCategory[selectedOperationCategory] || []
+    if (oldTypes.length === 0) {
+      setCommitteeError('No types found for selected category.')
+      return
+    }
+    const targetTypes = operationTypesByCategory[nextCategory] || []
+    const hasConflict = oldTypes.some(type =>
+      targetTypes.some(existing => existing.toLowerCase() === type.toLowerCase())
+    )
+    if (selectedOperationCategory !== nextCategory && hasConflict) {
+      setCommitteeError('Cannot rename category. One or more types already exist in the target category.')
+      return
+    }
+    for (const type of oldTypes) {
+      const source = `${selectedOperationCategory} - ${type}`
+      const target = `${nextCategory} - ${type}`
+      if (source.toLowerCase() === target.toLowerCase()) continue
+      const result = editCommittee(source, target)
+      if (!result.success) {
+        setCommitteeError(result.message)
+        return
+      }
+    }
+    setSelectedOperationCategory(nextCategory)
+    setSelectedOperationType('')
+    setEditedOperationCategory(nextCategory)
+    setEditedOperationType('')
+    setShowCategoryEditForm(false)
   }
 
-  const handleCommitteeDelete = committee => {
+  const handleCommitteeDelete = () => {
     setCommitteeError('')
-    const result = deleteCommittee(committee)
-    if (!result.success) {
-      setCommitteeError(result.message)
+    if (!selectedOperationCategory) {
+      setCommitteeError('Select category to delete.')
       return
     }
-    if (categoryFilter === committee) {
-      setCategoryFilter('all')
-    }
-  }
 
-  const handleUtilityAdd = e => {
-    e.preventDefault()
-    setUtilityError('')
-    const result = addUtilityItem(selectedUtilityCommittee, utilityName)
-    if (!result.success) {
-      setUtilityError(result.message)
+    if (selectedOperationType) {
+      const selectedValue = `${selectedOperationCategory} - ${selectedOperationType}`
+      const result = deleteCommittee(selectedValue)
+      if (!result.success) {
+        setCommitteeError(result.message)
+        return
+      }
+      if (categoryFilter === selectedValue) {
+        setCategoryFilter('all')
+      }
+      setSelectedOperationType('')
+      setEditedOperationType('')
+      setShowCategoryDeletePrompt(false)
       return
     }
-    setUtilityName('')
-  }
 
-  const handleUtilityRename = e => {
-    e.preventDefault()
-    setUtilityError('')
-    const result = editUtilityItem(selectedUtilityCommittee, selectedUtilityItem, renamedUtilityItem)
-    if (!result.success) {
-      setUtilityError(result.message)
+    const categoryItems = memberCommittees.filter(entry => {
+      const { category } = splitCategoryAndType(entry)
+      return category === selectedOperationCategory
+    })
+    if (categoryItems.length === 0) {
+      setCommitteeError('No saved entries found for selected category.')
       return
     }
-    setSelectedUtilityItem(renamedUtilityItem.trim())
-  }
+    if (memberCommittees.length - categoryItems.length < 1) {
+      setCommitteeError('At least one category entry must remain.')
+      return
+    }
 
-  const handleUtilityDelete = () => {
-    setUtilityError('')
-    const result = deleteUtilityItem(selectedUtilityCommittee, selectedUtilityItem)
-    if (!result.success) {
-      setUtilityError(result.message)
-      return
+    for (const item of categoryItems) {
+      const result = deleteCommittee(item)
+      if (!result.success) {
+        setCommitteeError(result.message)
+        return
+      }
+      if (categoryFilter === item) {
+        setCategoryFilter('all')
+      }
     }
+    setSelectedOperationCategory('')
+    setSelectedOperationType('')
+    setEditedOperationCategory('')
+    setEditedOperationType('')
+    setShowCategoryDeletePrompt(false)
   }
 
   const handleCreateMember = e => {
@@ -292,8 +392,8 @@ function Members() {
     <div className="animate-fade-in">
       <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800">Members</h2>
-          <p className="text-sm text-gray-500">Manage members by role and committee</p>
+          <h2 className="text-2xl font-bold text-gray-800">Management</h2>
+          <p className="text-sm text-gray-500">Manage users by role and committee</p>
         </div>
       </div>
 
@@ -305,7 +405,9 @@ function Members() {
               type="button"
               onClick={() => {
                 setShowCommitteeActions(prev => !prev)
-                setOperationAction('add')
+                setShowAddCategoryForm(false)
+                setShowCategoryEditForm(false)
+                setShowCategoryDeletePrompt(false)
               }}
               className="mb-3 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm"
             >
@@ -313,25 +415,117 @@ function Members() {
             </button>
             {showCommitteeActions && (
               <div className="space-y-4 mb-3">
-                <div className="flex flex-wrap gap-2">
-                  <button type="button" onClick={() => setOperationAction('add')} className={`px-3 py-1.5 rounded-lg text-sm ${operationAction === 'add' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Add</button>
-                  <button type="button" onClick={() => setOperationAction('update')} className={`px-3 py-1.5 rounded-lg text-sm ${operationAction === 'update' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Update</button>
-                  <button type="button" onClick={() => setOperationAction('delete')} className={`px-3 py-1.5 rounded-lg text-sm ${operationAction === 'delete' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Delete</button>
+                <div className="rounded-lg border border-gray-200 p-3 bg-gray-50">
+                  <p className="text-xs text-gray-500 mb-2">Saved Category</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <select
+                      value={selectedOperationCategory}
+                      onChange={e => {
+                        const value = e.target.value
+                        setSelectedOperationCategory(value)
+                        setSelectedOperationType('')
+                        setEditedOperationCategory(value)
+                        setEditedOperationType('')
+                        setShowCategoryEditForm(false)
+                        setShowCategoryDeletePrompt(false)
+                        setCommitteeError('')
+                      }}
+                      className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                    >
+                      <option value="">Select saved category</option>
+                      {operationCategories.map(category => (
+                        <option key={category} value={category}>
+                          {category}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      value={selectedOperationType}
+                      onChange={e => {
+                        const value = e.target.value
+                        setSelectedOperationType(value)
+                        setEditedOperationType(value)
+                        setShowCategoryEditForm(false)
+                        setShowCategoryDeletePrompt(false)
+                        setCommitteeError('')
+                      }}
+                      disabled={!selectedOperationCategory}
+                      className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 disabled:bg-gray-100"
+                    >
+                      <option value="">All types under category</option>
+                      {selectedCategoryTypes.map(type => (
+                        <option key={type} value={type}>
+                          {type}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
-                {operationAction === 'add' && (
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAddCategoryForm(prev => !prev)
+                      setShowCategoryEditForm(false)
+                      setShowCategoryDeletePrompt(false)
+                      setCommitteeError('')
+                    }}
+                    className="px-3 py-2 bg-gray-900 text-white rounded-lg hover:bg-black transition-colors text-sm"
+                  >
+                    + Add Category
+                  </button>
+                  {selectedOperationCategory && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowCategoryEditForm(prev => !prev)
+                          setShowCategoryDeletePrompt(false)
+                          setCommitteeError('')
+                          setEditedOperationCategory(selectedOperationCategory)
+                          setEditedOperationType(selectedOperationType || '')
+                        }}
+                        className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                      >
+                        Update
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowCategoryDeletePrompt(prev => !prev)
+                          setShowCategoryEditForm(false)
+                          setCommitteeError('')
+                        }}
+                        className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
+                      >
+                        Delete
+                      </button>
+                    </>
+                  )}
+                </div>
+
+                {showAddCategoryForm && (
                   <form onSubmit={handleCommitteeAdd} className="grid grid-cols-1 md:grid-cols-3 gap-2">
                     <input
                       type="text"
                       value={committeeName}
                       onChange={e => setCommitteeName(e.target.value)}
                       placeholder="New Category"
-                      className="md:col-span-2 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                      className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                      required
+                    />
+                    <input
+                      type="text"
+                      value={committeeType}
+                      onChange={e => setCommitteeType(e.target.value)}
+                      placeholder="Type"
+                      className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                       required
                     />
                     <button
                       type="submit"
-                      className="px-3 py-2 bg-gray-900 text-white rounded-lg hover:bg-black transition-colors flex items-center justify-center gap-1"
+                      className="md:col-span-3 px-3 py-2 bg-gray-900 text-white rounded-lg hover:bg-black transition-colors flex items-center justify-center gap-1"
                     >
                       <Plus size={14} />
                       Add
@@ -339,202 +533,53 @@ function Members() {
                   </form>
                 )}
 
-                {operationAction === 'update' && (
+                {showCategoryEditForm && selectedOperationCategory && (
                   <form onSubmit={handleCommitteeRename} className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                    <select
-                      value={selectedCommittee}
-                      onChange={e => {
-                        setSelectedCommittee(e.target.value)
-                        setRenamedCommittee(e.target.value)
-                      }}
+                    <input
+                      type="text"
+                      value={editedOperationCategory}
+                      onChange={e => setEditedOperationCategory(e.target.value)}
+                      placeholder="Category name"
                       className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                       required
+                    />
+                    <input
+                      type="text"
+                      value={editedOperationType}
+                      onChange={e => setEditedOperationType(e.target.value)}
+                      placeholder={selectedOperationType ? 'Type name' : 'Type name (optional for category rename)'}
+                      className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                      required={Boolean(selectedOperationType)}
+                    />
+                    <button
+                      type="submit"
+                      className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                     >
-                      <option value="">Select category to edit</option>
-                      {memberCommittees.map(committee => (
-                        <option key={committee} value={committee}>
-                          {committee}
-                        </option>
-                      ))}
-                    </select>
-                    {selectedCommittee && (
-                      <>
-                        <input
-                          type="text"
-                          value={renamedCommittee}
-                          onChange={e => setRenamedCommittee(e.target.value)}
-                          placeholder="Rename category"
-                          className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                          required
-                        />
-                        <button
-                          type="submit"
-                          className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                        >
-                          Update
-                        </button>
-                      </>
-                    )}
+                      Save Update
+                    </button>
                   </form>
                 )}
 
-                {operationAction === 'delete' && (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                    <select
-                      value={selectedCommittee}
-                      onChange={e => setSelectedCommittee(e.target.value)}
-                      className="md:col-span-2 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                {showCategoryDeletePrompt && selectedOperationCategory && (
+                  <div className="rounded-lg border border-red-200 bg-red-50 p-3">
+                    <p className="text-sm text-red-700 mb-3">
+                      {selectedOperationType
+                        ? `Delete type "${selectedOperationType}" from "${selectedOperationCategory}"?`
+                        : `Delete category "${selectedOperationCategory}" and all its saved types?`}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleCommitteeDelete}
+                      className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
                     >
-                      <option value="">Select category to delete</option>
-                      {memberCommittees.map(committee => (
-                        <option key={committee} value={committee}>
-                          {committee}
-                        </option>
-                      ))}
-                    </select>
-                    {selectedCommittee && (
-                      <button
-                        type="button"
-                        onClick={() => handleCommitteeDelete(selectedCommittee)}
-                        className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                      >
-                        Delete
-                      </button>
-                    )}
+                      Confirm Delete
+                    </button>
                   </div>
                 )}
               </div>
             )}
             {committeeError && <p className="text-sm text-red-600 mb-2">{committeeError}</p>}
 
-            <div className="mt-5 pt-4 border-t border-gray-200">
-              <h3 className="font-semibold text-gray-800 mb-3">Utilities Management</h3>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowUtilityActions(prev => !prev)
-                  setUtilityAction('add')
-                }}
-                className="mb-3 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm"
-              >
-                {showUtilityActions ? 'Hide Utilities Management' : 'Utilities Management'}
-              </button>
-
-              {showUtilityActions && (
-                <div className="space-y-4 mb-3">
-                  <div className="flex flex-wrap gap-2">
-                    <button type="button" onClick={() => setUtilityAction('add')} className={`px-3 py-1.5 rounded-lg text-sm ${utilityAction === 'add' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Add</button>
-                    <button type="button" onClick={() => setUtilityAction('update')} className={`px-3 py-1.5 rounded-lg text-sm ${utilityAction === 'update' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Update</button>
-                    <button type="button" onClick={() => setUtilityAction('delete')} className={`px-3 py-1.5 rounded-lg text-sm ${utilityAction === 'delete' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Delete</button>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">Operation Category</label>
-                    <select
-                      value={selectedUtilityCommittee}
-                      onChange={e => setSelectedUtilityCommittee(e.target.value)}
-                      className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                      required
-                    >
-                      <option value="">Select category</option>
-                      {memberCommittees.map(committee => (
-                        <option key={committee} value={committee}>
-                          {committee}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {utilityAction === 'add' && (
-                  <form onSubmit={handleUtilityAdd} className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                    <input
-                      type="text"
-                      value={utilityName}
-                      onChange={e => setUtilityName(e.target.value)}
-                      placeholder="New utility item"
-                      className="md:col-span-2 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                      required
-                      disabled={!selectedUtilityCommittee}
-                    />
-                    <button
-                      type="submit"
-                      className="px-3 py-2 bg-gray-900 text-white rounded-lg hover:bg-black transition-colors flex items-center justify-center gap-1"
-                      disabled={!selectedUtilityCommittee}
-                    >
-                      <Plus size={14} />
-                      Add
-                    </button>
-                  </form>
-                  )}
-
-                  {utilityAction === 'update' && (
-                  <form onSubmit={handleUtilityRename} className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                    <select
-                      value={selectedUtilityItem}
-                      onChange={e => {
-                        setSelectedUtilityItem(e.target.value)
-                        setRenamedUtilityItem(e.target.value)
-                      }}
-                      className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                      required
-                      disabled={!selectedUtilityCommittee || utilityItemsForSelectedCommittee.length === 0}
-                    >
-                      <option value="">Select utility item</option>
-                      {utilityItemsForSelectedCommittee.map(item => (
-                        <option key={item} value={item}>
-                          {item}
-                        </option>
-                      ))}
-                    </select>
-                    <input
-                      type="text"
-                      value={renamedUtilityItem}
-                      onChange={e => setRenamedUtilityItem(e.target.value)}
-                      placeholder="Rename utility item"
-                      className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                      required
-                      disabled={!selectedUtilityItem}
-                    />
-                    <button
-                      type="submit"
-                      className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                      disabled={!selectedUtilityItem}
-                    >
-                      Update
-                    </button>
-                  </form>
-                  )}
-
-                  {utilityAction === 'delete' && (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                    <select
-                      value={selectedUtilityItem}
-                      onChange={e => setSelectedUtilityItem(e.target.value)}
-                      className="md:col-span-2 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                      disabled={!selectedUtilityCommittee || utilityItemsForSelectedCommittee.length === 0}
-                    >
-                      <option value="">Select utility item</option>
-                      {utilityItemsForSelectedCommittee.map(item => (
-                        <option key={item} value={item}>
-                          {item}
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      type="button"
-                      onClick={handleUtilityDelete}
-                      className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                      disabled={!selectedUtilityItem}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                  )}
-                </div>
-              )}
-
-              {utilityError && <p className="text-sm text-red-600 mb-2">{utilityError}</p>}
-            </div>
           </div>
 
           <div className="bg-white rounded-xl shadow-md p-5">

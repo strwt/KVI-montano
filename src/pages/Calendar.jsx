@@ -29,7 +29,8 @@ const CATEGORY_CONFIG = {
   environmental: {
     label: 'Environmental',
     fields: [
-      { key: 'seedlingsUsed', label: 'Seedlings Used', type: 'number', min: 0, step: 1 },
+      { key: 'seedlingName', label: 'Seedling name', type: 'text' },
+      { key: 'seedlingsUsed', label: 'Seedling counts', type: 'number', min: 0, step: 1 },
       { key: 'expenses', label: 'Expenses', type: 'number', min: 0, step: 0.01 },
     ],
   },
@@ -132,28 +133,6 @@ const getCategoryLabelFromQuery = value => {
   if (CATEGORY_CONFIG[normalized]) return CATEGORY_CONFIG[normalized].label
   const fromLabel = getCategoryKeyFromLabel(value)
   return fromLabel ? CATEGORY_CONFIG[fromLabel].label : 'All'
-}
-
-const normalizeOperationName = (value = '') =>
-  String(value).toLowerCase().replace(/[^a-z]/g, '')
-
-const resolveUtilitiesCommitteeName = (categoryKey, utilitiesByCommittee = {}) => {
-  if (!categoryKey) return ''
-  const categoryLabel = CATEGORY_CONFIG[categoryKey]?.label || ''
-  const entries = Object.keys(utilitiesByCommittee || {})
-  if (entries.length === 0) return ''
-
-  const normalizedLabel = normalizeOperationName(categoryLabel)
-  const exact = entries.find(name => normalizeOperationName(name) === normalizedLabel)
-  if (exact) return exact
-
-  const relaxed = entries.find(name => {
-    const normalizedName = normalizeOperationName(name)
-    return normalizedName === `${normalizedLabel}s` || `${normalizedName}s` === normalizedLabel
-  })
-  if (relaxed) return relaxed
-
-  return entries.find(name => normalizeOperationName(name).includes(normalizedLabel)) || ''
 }
 
 let leafletLoaderPromise = null
@@ -699,7 +678,7 @@ function AssignMembersPicker({ allMembers, selectedIds, onChange }) {
 }
 
 function Calendar({ listOnly = false }) {
-  const { user, getAllMembers, utilitiesByCommittee } = useAuth()
+  const { user, getAllMembers } = useAuth()
   const canManageEvents = user?.role === 'admin'
   const routerLocation = useLocation()
   const navigate = useNavigate()
@@ -710,7 +689,6 @@ function Calendar({ listOnly = false }) {
   const [showAllMonths, setShowAllMonths] = useState(false)
   const [editingEventId, setEditingEventId] = useState(null)
   const [pendingConfirmation, setPendingConfirmation] = useState(null)
-  const [selectedUtilityToAdd, setSelectedUtilityToAdd] = useState('')
   const [expandedItemId, setExpandedItemId] = useState(null)
   const [highlightedEventId, setHighlightedEventId] = useState(null)
   const [showEventForm, setShowEventForm] = useState(false)
@@ -725,7 +703,6 @@ function Calendar({ listOnly = false }) {
     category: '',
     branch: '',
     assignedMemberIds: [],
-    utilityItems: [],
     dynamicFields: getDefaultDynamicFields(),
   })
   const [searchQuery, setSearchQuery] = useState(storedFilters.searchQuery)
@@ -935,14 +912,6 @@ function Calendar({ listOnly = false }) {
   const activeCategoryConfig = formData.category ? CATEGORY_CONFIG[formData.category] : null
   const selectedCategoryMeta = CATEGORY_META[formData.category]
   const SelectedCategoryIcon = selectedCategoryMeta?.icon || FileText
-  const selectedUtilitiesCommittee = useMemo(
-    () => resolveUtilitiesCommitteeName(formData.category, utilitiesByCommittee),
-    [formData.category, utilitiesByCommittee]
-  )
-  const availableUtilityItems = useMemo(
-    () => utilitiesByCommittee?.[selectedUtilitiesCommittee] || [],
-    [utilitiesByCommittee, selectedUtilitiesCommittee]
-  )
 
   const handleDynamicFieldChange = (categoryKey, fieldKey, value) => {
     setFormData(prev => ({
@@ -959,7 +928,6 @@ function Calendar({ listOnly = false }) {
 
   const resetForm = () => {
     setEditingEventId(null)
-    setSelectedUtilityToAdd('')
     setFormData({
       title: '',
       content: '',
@@ -969,7 +937,6 @@ function Calendar({ listOnly = false }) {
       category: '',
       branch: '',
       assignedMemberIds: [],
-      utilityItems: [],
       dynamicFields: getDefaultDynamicFields(),
     })
     setFormError('')
@@ -995,12 +962,8 @@ function Calendar({ listOnly = false }) {
       return
     }
 
-    if (!formData.title.trim() || !formData.content.trim() || !formData.dateTime || !formData.category || !formData.branch || !formData.address.trim()) {
-      setFormError('Title, Content, Date and Time, Category, Branch, and Address are required.')
-      return
-    }
-    if (!formData.assignedMemberIds.length) {
-      setFormError('Please assign at least one member.')
+    if (!formData.content.trim() || !formData.dateTime || !formData.category || !formData.branch || !formData.address.trim()) {
+      setFormError('Content, Date and Time, Category, Type, and Address are required.')
       return
     }
     if (!formData.location) {
@@ -1020,13 +983,12 @@ function Calendar({ listOnly = false }) {
       return acc
     }, {})
     const eventPayload = {
-      title: formData.title.trim(),
+      title: CATEGORY_CONFIG[formData.category]?.label || 'Untitled Event',
       content: formData.content.trim(),
       dateTime: formData.dateTime,
       address: formData.address.trim(),
       branch: formData.branch,
       assignedMemberIds: formData.assignedMemberIds,
-      utilityItems: formData.utilityItems,
       viewedBy: [],
       location: formData.location,
       category: formData.category,
@@ -1075,10 +1037,8 @@ function Calendar({ listOnly = false }) {
       category,
       branch: item.branch || '',
       assignedMemberIds: Array.isArray(item.assignedMemberIds) ? item.assignedMemberIds : [],
-      utilityItems: Array.isArray(item.utilityItems) ? item.utilityItems : [],
       dynamicFields: defaults,
     })
-    setSelectedUtilityToAdd('')
     setShowEventForm(true)
   }
 
@@ -1357,18 +1317,6 @@ function Calendar({ listOnly = false }) {
                                     <p className="font-medium text-gray-800">{String(item.categoryData[field.key] ?? '')}</p>
                                   </div>
                                 ))}
-                              </div>
-                            )}
-                            {Array.isArray(item.utilityItems) && item.utilityItems.length > 0 && (
-                              <div className="pt-2">
-                                <p className="text-xs text-gray-500 mb-1">Utilities</p>
-                                <div className="flex flex-wrap gap-2">
-                                  {item.utilityItems.map(utility => (
-                                    <span key={`${item.id}-${utility}`} className="px-2 py-1 bg-red-50 border border-red-200 rounded-full text-xs text-red-700">
-                                      {utility}
-                                    </span>
-                                  ))}
-                                </div>
                               </div>
                             )}
                           </div>
@@ -1698,18 +1646,6 @@ function Calendar({ listOnly = false }) {
                                 ))}
                               </div>
                             )}
-                            {Array.isArray(item.utilityItems) && item.utilityItems.length > 0 && (
-                              <div className="pt-2">
-                                <p className="text-xs text-gray-500 mb-1">Utilities</p>
-                                <div className="flex flex-wrap gap-2">
-                                  {item.utilityItems.map(utility => (
-                                    <span key={`${item.id}-${utility}`} className="px-2 py-1 bg-red-50 border border-red-200 rounded-full text-xs text-red-700">
-                                      {utility}
-                                    </span>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
                             {canManageEvents && (
                               <div className="pt-2 flex items-center gap-2">
                                 <button
@@ -1768,30 +1704,8 @@ function Calendar({ listOnly = false }) {
               {formError && <p className="text-sm text-red-600">{formError}</p>}
 
               <div className="layout-glow rounded-2xl p-4 sm:p-5 bg-white">
-                <h4 className="text-sm font-semibold text-gray-800 uppercase tracking-wide mb-3">Basic Information</h4>
+                <h4 className="text-sm font-semibold text-gray-800 uppercase tracking-wide mb-3">Category</h4>
                 <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Title</label>
-                    <input
-                      type="text"
-                      value={formData.title}
-                      onChange={e => setFormData({ ...formData, title: e.target.value })}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Content</label>
-                    <textarea
-                      value={formData.content}
-                      onChange={e => setFormData({ ...formData, content: e.target.value })}
-                      rows={3}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                      required
-                    />
-                  </div>
-
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
@@ -1807,7 +1721,6 @@ function Calendar({ listOnly = false }) {
                               ...formData,
                               category: e.target.value,
                               branch: '',
-                              utilityItems: [],
                             })
                           }
                           className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
@@ -1825,6 +1738,42 @@ function Calendar({ listOnly = false }) {
                       </div>
                     </div>
                     <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
+                      <div className="relative">
+                        <GitBranch size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <select
+                          value={formData.branch}
+                          onChange={e => setFormData({ ...formData, branch: e.target.value })}
+                          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 disabled:bg-gray-100"
+                          disabled={!formData.category}
+                          required
+                        >
+                          <option value="" disabled>
+                            Select type
+                          </option>
+                          {(CATEGORY_BRANCHES[formData.category] || []).map(branch => (
+                            <option key={branch} value={branch}>
+                              {branch}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Content</label>
+                    <textarea
+                      value={formData.content}
+                      onChange={e => setFormData({ ...formData, content: e.target.value })}
+                      rows={3}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                      required
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Date and Time</label>
                       <input
                         type="datetime-local"
@@ -1836,29 +1785,6 @@ function Calendar({ listOnly = false }) {
                     </div>
                   </div>
 
-                  {formData.category && (
-                    <div className="animate-fade-in-up">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Branch</label>
-                      <div className="relative">
-                        <GitBranch size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                        <select
-                          value={formData.branch}
-                          onChange={e => setFormData({ ...formData, branch: e.target.value })}
-                          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                          required
-                        >
-                          <option value="" disabled>
-                            Select branch
-                          </option>
-                          {(CATEGORY_BRANCHES[formData.category] || []).map(branch => (
-                            <option key={branch} value={branch}>
-                              {branch}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
 
@@ -1884,14 +1810,6 @@ function Calendar({ listOnly = false }) {
                 />
               </div>
 
-              <div className="layout-glow rounded-2xl p-4 sm:p-5 bg-white">
-                <AssignMembersPicker
-                  allMembers={assignableMembers}
-                  selectedIds={formData.assignedMemberIds}
-                  onChange={ids => setFormData(prev => ({ ...prev, assignedMemberIds: ids }))}
-                />
-              </div>
-
               {formData.category && activeCategoryConfig && (
                 <div key={formData.category} className={`rounded-2xl border border-gray-200 p-4 sm:p-5 bg-gradient-to-br ${selectedCategoryMeta?.bg || 'from-gray-50 to-gray-100'} animate-fade-in-up`}>
                   <div className="flex items-center gap-2 mb-3">
@@ -1900,15 +1818,15 @@ function Calendar({ listOnly = false }) {
                     </div>
                     <p className="text-sm font-semibold text-gray-800">{activeCategoryConfig.label} Specific Fields</p>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="space-y-3">
                     {activeCategoryConfig.fields.map(field => (
-                      <div key={field.key} className={field.type === 'text' ? 'md:col-span-2' : ''}>
+                      <div key={field.key}>
                         <label className="block text-sm font-medium text-gray-700 mb-2">{field.label}</label>
                         {field.type === 'text' ? (
-                          <textarea
+                          <input
+                            type="text"
                             value={formData.dynamicFields[formData.category][field.key]}
                             onChange={e => handleDynamicFieldChange(formData.category, field.key, e.target.value)}
-                            rows={2}
                             className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-red-500"
                             required
                           />
@@ -1926,70 +1844,6 @@ function Calendar({ listOnly = false }) {
                       </div>
                     ))}
                   </div>
-                </div>
-              )}
-
-              {formData.category && (
-                <div className="layout-glow rounded-2xl p-4 sm:p-5 bg-white">
-                  <h4 className="text-sm font-semibold text-gray-800 uppercase tracking-wide mb-3">Utilities Management</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                    <select
-                      value={selectedUtilityToAdd}
-                      onChange={e => setSelectedUtilityToAdd(e.target.value)}
-                      className="md:col-span-2 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                    >
-                      <option value="">Select utility item</option>
-                      {availableUtilityItems
-                        .filter(item => !formData.utilityItems.includes(item))
-                        .map(item => (
-                          <option key={item} value={item}>
-                            {item}
-                          </option>
-                        ))}
-                    </select>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!selectedUtilityToAdd) return
-                        setFormData(prev => ({
-                          ...prev,
-                          utilityItems: prev.utilityItems.includes(selectedUtilityToAdd)
-                            ? prev.utilityItems
-                            : [...prev.utilityItems, selectedUtilityToAdd],
-                        }))
-                        setSelectedUtilityToAdd('')
-                      }}
-                      className="px-3 py-2 bg-gray-900 text-white rounded-lg hover:bg-black transition-colors"
-                      disabled={!selectedUtilityToAdd}
-                    >
-                      + Add Item
-                    </button>
-                  </div>
-                  {formData.utilityItems.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-3">
-                      {formData.utilityItems.map(item => (
-                        <button
-                          key={item}
-                          type="button"
-                          onClick={() =>
-                            setFormData(prev => ({
-                              ...prev,
-                              utilityItems: prev.utilityItems.filter(entry => entry !== item),
-                            }))
-                          }
-                          className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-50 border border-red-200 text-red-700 text-xs hover:bg-red-100"
-                        >
-                          {item}
-                          <X size={12} />
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  {availableUtilityItems.length === 0 && (
-                    <p className="text-xs text-gray-500 mt-3">
-                      No utilities are configured for this operation category yet.
-                    </p>
-                  )}
                 </div>
               )}
 
