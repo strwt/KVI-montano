@@ -3,6 +3,8 @@ import { ArrowLeft, Mail, Calendar, User, Trash2 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate, useParams } from 'react-router-dom'
 
+const DEFAULT_COMMITTEE = 'Environmental'
+
 function MemberDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -143,10 +145,10 @@ function MemberDetail() {
                 </div>
                 <div className="flex flex-wrap gap-2 pt-1">
                   <span className="px-2 py-1 rounded bg-red-50 text-red-700 text-xs border border-red-200">
-                    Committee: {member.committee || 'Unassigned'}
+                    Committee: {member.committee || DEFAULT_COMMITTEE}
                   </span>
                   <span className="px-2 py-1 rounded bg-blue-50 text-blue-700 text-xs border border-blue-200">
-                    Category: {member.category || 'General Member'}
+                    Role: {member.role === 'admin' ? 'Admin' : 'Member'}
                   </span>
                 </div>
               </div>
