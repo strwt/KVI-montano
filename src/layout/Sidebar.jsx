@@ -102,7 +102,7 @@ function Sidebar({ isOpen, toggleSidebar, soundEnabled, onToggleSound, darkMode,
               }`}
             >
               <Users size={20} className={isOpen ? '' : 'mx-auto'} />
-              {isOpen && <span>Managemange</span>}
+              {isOpen && <span>Management</span>}
             </button>
           )}
         </nav>
