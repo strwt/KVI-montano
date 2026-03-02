@@ -304,43 +304,58 @@ export function AuthProvider({ children }) {
     setUser(null)
   }
 
-  const updateCurrentUser = (updates) => {
+  const updateCurrentUser = (updates = {}) => {
     if (!user) {
       return { success: false, message: 'User not found' }
     }
 
     const name = updates.name?.trim()
     const email = updates.email?.trim().toLowerCase()
-    const idNumber = updates.idNumber?.trim()
 
-    if (!name || !email || !idNumber) {
-      return { success: false, message: 'All fields are required.' }
+    if (!name || !email) {
+      return { success: false, message: 'Full Name and Gmail are required.' }
     }
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return { success: false, message: 'Please enter a valid email address.' }
     }
 
-    if (!/^[a-zA-Z0-9]+$/.test(idNumber)) {
-      return { success: false, message: 'ID Number must be alphanumeric.' }
+    const emailTaken = users.some(
+      u => u.id !== user.id && (u.email || '').toLowerCase() === email
+    )
+    if (emailTaken) {
+      return { success: false, message: 'Email already exists' }
     }
 
-    const idTaken = users.some(
-      u => u.id !== user.id && (u.idNumber || '').toLowerCase() === idNumber.toLowerCase()
-    )
+    // Optional profile fields
+    const address = updates.address?.toString().trim() ?? (user.address || '')
+    const contactNumber = updates.contactNumber?.toString().trim() ?? (user.contactNumber || '')
+    const bloodType = (updates.bloodType ?? user.bloodType ?? '').toString().toUpperCase()
+    const hasProfileImageUpdate = Object.prototype.hasOwnProperty.call(updates, 'profileImage')
+    const nextProfileImageRaw = hasProfileImageUpdate ? (updates.profileImage ?? '').toString().trim() : null
+    const profileImage = hasProfileImageUpdate
+      ? (nextProfileImageRaw || DEFAULT_PROFILE_IMAGE)
+      : (user.profileImage || DEFAULT_PROFILE_IMAGE)
+    const validBloodTypes = ['', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
 
-    if (idTaken) {
-      return { success: false, message: 'ID Number already exists' }
+    if (contactNumber && !/^\+?[0-9\-\s]{7,15}$/.test(contactNumber)) {
+      return { success: false, message: 'Please enter a valid contact number.' }
+    }
+
+    if (!validBloodTypes.includes(bloodType)) {
+      return { success: false, message: 'Please select a valid blood type.' }
     }
 
     const updatedUsers = users.map(u => {
       if (u.id === user.id) {
         return {
           ...u,
-          ...updates,
           name,
           email,
-          idNumber,
+          address,
+          contactNumber,
+          bloodType,
+          profileImage,
         }
       }
       return u
@@ -351,6 +366,45 @@ export function AuthProvider({ children }) {
     const userWithoutPassword = omitPassword(updatedCurrent)
     setUser(userWithoutPassword)
     return { success: true, user: userWithoutPassword }
+  }
+
+  const changeCurrentUserPassword = (currentPassword, newPassword) => {
+    if (!user) {
+      return { success: false, message: 'User not found' }
+    }
+
+    const trimmedCurrent = currentPassword?.trim() || ''
+    const trimmedNew = newPassword?.trim() || ''
+
+    if (!trimmedCurrent || !trimmedNew) {
+      return { success: false, message: 'Current and new password are required.' }
+    }
+
+    if (trimmedNew.length < 6) {
+      return { success: false, message: 'New password must be at least 6 characters.' }
+    }
+
+    const matchedUser = users.find(u => u.id === user.id)
+    if (!matchedUser) {
+      return { success: false, message: 'User not found' }
+    }
+
+    if (matchedUser.password !== trimmedCurrent) {
+      return { success: false, message: 'Current password is incorrect.' }
+    }
+
+    if (trimmedCurrent === trimmedNew) {
+      return { success: false, message: 'New password must be different from current password.' }
+    }
+
+    const updatedUsers = users.map(u => (
+      u.id === user.id
+        ? { ...u, password: trimmedNew }
+        : u
+    ))
+
+    setUsers(updatedUsers)
+    return { success: true }
   }
 
   const updateMember = (memberId, updates = {}) => {
@@ -678,6 +732,7 @@ export function AuthProvider({ children }) {
       logout,
       register,
       updateCurrentUser,
+      changeCurrentUserPassword,
       loading,
       getAllMembers,
       createMember,
