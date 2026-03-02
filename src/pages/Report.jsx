@@ -10,7 +10,6 @@ import {
   Filter,
   BarChart3,
   PieChart,
-  TrendingUp,
   Download,
   Search,
   Loader2,
@@ -281,17 +280,6 @@ function Report() {
     }, {})
   }, [filteredEvents])
 
-  const monthlyTrend = useMemo(() => {
-    const months = {}
-    filteredEvents.forEach(event => {
-      const monthKey = event._date.format('YYYY-MM')
-      months[monthKey] = (months[monthKey] || 0) + 1
-    })
-    return Object.entries(months)
-      .sort((a, b) => dayjs(`${a[0]}-01`).valueOf() - dayjs(`${b[0]}-01`).valueOf())
-      .map(([month, count]) => ({ month, label: dayjs(`${month}-01`).format('MMM YY'), count }))
-  }, [filteredEvents])
-
   const reportRows = useMemo(() => {
     return filteredEvents.map(event => ({
       title: event.title || '',
@@ -313,9 +301,11 @@ function Report() {
     }))
   }, [filteredEvents])
 
-  const totalEvents = filteredEvents.length
-  const maxBarValue = Math.max(1, ...Object.values(eventCountByCategory))
-  const pieSegments = CATEGORY_KEYS.map(key => {
+  const distributionCategoryKeys = CATEGORY_KEYS.filter(key => key !== 'notes')
+  const totalEvents = distributionCategoryKeys.reduce((sum, key) => sum + eventCountByCategory[key], 0)
+  const categoryBarKeys = CATEGORY_KEYS.filter(key => key !== 'notes')
+  const maxBarValue = Math.max(1, ...categoryBarKeys.map(key => eventCountByCategory[key]))
+  const pieSegments = distributionCategoryKeys.map(key => {
     const value = eventCountByCategory[key]
     const percent = totalEvents > 0 ? (value / totalEvents) * 100 : 0
     return { key, value, percent }
@@ -332,15 +322,6 @@ function Report() {
     })
     return `conic-gradient(${pieces.join(', ')})`
   }, [pieSegments, totalEvents])
-
-  const trendMax = Math.max(1, ...monthlyTrend.map(item => item.count))
-  const trendPoints = monthlyTrend
-    .map((item, index) => {
-      const x = monthlyTrend.length > 1 ? (index / (monthlyTrend.length - 1)) * 100 : 50
-      const y = 100 - (item.count / trendMax) * 100
-      return `${x},${y}`
-    })
-    .join(' ')
 
   const summaryLines = [
     `Total Environmental Events: ${stats.environmental.eventCount}`,
@@ -615,11 +596,11 @@ function Report() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <div className="bg-white rounded-xl shadow-md p-5 border border-gray-100 layout-glow">
           <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2"><BarChart3 size={18} className="text-red-600" />Events Per Category</h3>
           <div className="space-y-3">
-            {CATEGORY_KEYS.map(key => (
+            {categoryBarKeys.map(key => (
               <div key={key}>
                 <div className="flex items-center justify-between text-sm mb-1"><span className="text-gray-600">{CATEGORY_META[key].label}</span><span className="font-semibold text-gray-800">{eventCountByCategory[key]}</span></div>
                 <div className="w-full bg-gray-100 rounded-full h-2"><div className="h-2 rounded-full transition-all duration-300" style={{ width: `${(eventCountByCategory[key] / maxBarValue) * 100}%`, backgroundColor: CATEGORY_COLORS[key] }} /></div>
@@ -643,17 +624,6 @@ function Report() {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-md p-5 border border-gray-100 layout-glow">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2"><TrendingUp size={18} className="text-red-600" />Monthly Trend</h3>
-          {monthlyTrend.length === 0 ? (
-            <p className="text-sm text-gray-500">No event data for the selected filters.</p>
-          ) : (
-            <>
-              <div className="w-full h-40 bg-gray-50 rounded-lg p-2"><svg viewBox="0 0 100 100" className="w-full h-full"><polyline fill="none" stroke="#ef4444" strokeWidth="2" points={trendPoints} />{monthlyTrend.map((item, index) => { const x = monthlyTrend.length > 1 ? (index / (monthlyTrend.length - 1)) * 100 : 50; const y = 100 - (item.count / trendMax) * 100; return <circle key={item.month} cx={x} cy={y} r="2.2" fill="#ef4444" /> })}</svg></div>
-              <div className="mt-3 space-y-1">{monthlyTrend.map(item => (<div key={item.month} className="flex items-center justify-between text-xs text-gray-600"><span>{item.label}</span><span className="font-medium text-gray-800">{item.count}</span></div>))}</div>
-            </>
-          )}
-        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
