@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowLeft, Save, Image as ImageIcon, Phone, MapPin, Droplets } from 'lucide-react'
+import { Save, Image as ImageIcon, Phone, MapPin, Droplets } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 
@@ -104,18 +104,8 @@ function EditAccount() {
   }
 
   return (
-    <div className="animate-fade-in">
-      <div className="flex items-center justify-between mb-6">
-        <button
-          onClick={() => navigate('/profile')}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
-        >
-          <ArrowLeft size={20} />
-          Back to Profile
-        </button>
-      </div>
-
-      <div className="bg-white rounded-2xl shadow-xl p-6 w-full">
+    <div className="animate-fade-in py-4">
+      <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-6xl mx-auto">
         <h3 className="text-lg font-semibold text-gray-800 mb-4">Edit Account Information</h3>
 
         {error && (
@@ -222,7 +212,7 @@ function EditAccount() {
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 mt-6">
+        <div className="flex justify-end gap-2 mt-4">
           <button
             onClick={() => navigate('/profile')}
             className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"

@@ -311,6 +311,7 @@ export function AuthProvider({ children }) {
 
     const name = updates.name?.trim()
     const email = updates.email?.trim().toLowerCase()
+    const currentUserEmail = (user.email || '').trim().toLowerCase()
 
     if (!name || !email) {
       return { success: false, message: 'Full Name and Gmail are required.' }
@@ -320,11 +321,12 @@ export function AuthProvider({ children }) {
       return { success: false, message: 'Please enter a valid email address.' }
     }
 
+    const isEmailChanged = email !== currentUserEmail
     const emailTaken = users.some(
-      u => u.id !== user.id && (u.email || '').toLowerCase() === email
+      u => String(u.id) !== String(user.id) && (u.email || '').trim().toLowerCase() === email
     )
-    if (emailTaken) {
-      return { success: false, message: 'Email already exists' }
+    if (isEmailChanged && emailTaken) {
+      return { success: false, message: 'Email is already in use' }
     }
 
     // Optional profile fields
@@ -555,8 +557,12 @@ export function AuthProvider({ children }) {
     const fullName = applicationData.fullName?.trim()
     const email = applicationData.email?.trim().toLowerCase()
     const idNumber = applicationData.idNumber?.trim()
+    const contactNumber = applicationData.contactNumber?.trim()
+    const address = applicationData.address?.trim()
+    const bloodType = applicationData.bloodType?.trim().toUpperCase()
+    const validBloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
 
-    if (!fullName || !email || !idNumber) {
+    if (!fullName || !email || !idNumber || !contactNumber || !address || !bloodType) {
       return { success: false, message: 'All fields are required.' }
     }
 
@@ -566,6 +572,14 @@ export function AuthProvider({ children }) {
 
     if (!/^[a-zA-Z0-9]+$/.test(idNumber)) {
       return { success: false, message: 'ID Number must be alphanumeric.' }
+    }
+
+    if (!/^\+?[0-9\-\s]{7,15}$/.test(contactNumber)) {
+      return { success: false, message: 'Please enter a valid contact number.' }
+    }
+
+    if (!validBloodTypes.includes(bloodType)) {
+      return { success: false, message: 'Please select a valid blood type.' }
     }
 
     const existingUserId = users.some(
@@ -597,6 +611,9 @@ export function AuthProvider({ children }) {
       fullName,
       email,
       idNumber,
+      contactNumber,
+      address,
+      bloodType,
       status: 'pending',
       submittedAt: dayjs().toISOString(),
       reviewedAt: null,
