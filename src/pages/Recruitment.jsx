@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { User, Mail, Hash, ArrowLeft, Send } from 'lucide-react'
+import { User, Mail, Hash, ArrowLeft, Send, Phone, MapPin, Droplets } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
 function Recruitment() {
@@ -10,6 +10,9 @@ function Recruitment() {
     fullName: '',
     email: '',
     idNumber: '',
+    contactNumber: '',
+    address: '',
+    bloodType: '',
   })
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -30,7 +33,14 @@ function Recruitment() {
 
     await new Promise(resolve => setTimeout(resolve, 450))
     setSuccess('Application submitted successfully. Please wait for admin review.')
-    setFormData({ fullName: '', email: '', idNumber: '' })
+    setFormData({
+      fullName: '',
+      email: '',
+      idNumber: '',
+      contactNumber: '',
+      address: '',
+      bloodType: '',
+    })
     setIsSubmitting(false)
   }
 
@@ -110,6 +120,58 @@ function Recruitment() {
                 placeholder="Enter your ID Number"
                 required
               />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm text-gray-200 mb-2">Contact Number</label>
+            <div className="relative">
+              <Phone size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="tel"
+                value={formData.contactNumber}
+                onChange={e => setFormData(prev => ({ ...prev, contactNumber: e.target.value }))}
+                className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-600 bg-gray-900/60 text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                placeholder="e.g. +63 912 345 6789"
+                required
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm text-gray-200 mb-2">Address</label>
+            <div className="relative">
+              <MapPin size={16} className="absolute left-3 top-3 text-gray-400" />
+              <textarea
+                value={formData.address}
+                onChange={e => setFormData(prev => ({ ...prev, address: e.target.value }))}
+                className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-600 bg-gray-900/60 text-white focus:outline-none focus:ring-2 focus:ring-red-500 min-h-[88px] resize-y"
+                placeholder="Street, Barangay, City"
+                required
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm text-gray-200 mb-2">Blood Type</label>
+            <div className="relative">
+              <Droplets size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <select
+                value={formData.bloodType}
+                onChange={e => setFormData(prev => ({ ...prev, bloodType: e.target.value }))}
+                className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-600 bg-gray-900/60 text-white focus:outline-none focus:ring-2 focus:ring-red-500 appearance-none"
+                required
+              >
+                <option value="" className="text-gray-900">Select blood type</option>
+                <option value="A+" className="text-gray-900">A+</option>
+                <option value="A-" className="text-gray-900">A-</option>
+                <option value="B+" className="text-gray-900">B+</option>
+                <option value="B-" className="text-gray-900">B-</option>
+                <option value="AB+" className="text-gray-900">AB+</option>
+                <option value="AB-" className="text-gray-900">AB-</option>
+                <option value="O+" className="text-gray-900">O+</option>
+                <option value="O-" className="text-gray-900">O-</option>
+              </select>
             </div>
           </div>
 

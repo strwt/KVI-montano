@@ -13,6 +13,9 @@ import {
   XCircle,
   BadgeCheck,
   Hash,
+  Phone,
+  MapPin,
+  Droplets,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
@@ -362,9 +365,9 @@ function Members() {
       email: recruitment.email,
       idNumber: recruitment.idNumber,
       password: '',
-      address: '',
-      contactNumber: '',
-      bloodType: '',
+      address: recruitment.address || '',
+      contactNumber: recruitment.contactNumber || '',
+      bloodType: recruitment.bloodType || '',
       memberSince: dayjs().format('YYYY-MM-DD'),
       role: ROLE_OPTIONS[0].value,
       committee: memberCommittees[0] || COMMITTEE_OPTIONS[0],
@@ -772,6 +775,18 @@ function Members() {
                           <p className="text-xs text-gray-500 mb-1 flex items-center gap-1"><Hash size={12} /> ID Number</p>
                           <p className="text-sm font-medium text-gray-800">{entry.idNumber}</p>
                         </div>
+                        <div className="rounded-lg bg-white border border-gray-200 p-3">
+                          <p className="text-xs text-gray-500 mb-1 flex items-center gap-1"><Phone size={12} /> Contact Number</p>
+                          <p className="text-sm font-medium text-gray-800">{entry.contactNumber || 'N/A'}</p>
+                        </div>
+                        <div className="rounded-lg bg-white border border-gray-200 p-3">
+                          <p className="text-xs text-gray-500 mb-1 flex items-center gap-1"><MapPin size={12} /> Address</p>
+                          <p className="text-sm font-medium text-gray-800 break-words">{entry.address || 'N/A'}</p>
+                        </div>
+                        <div className="rounded-lg bg-white border border-gray-200 p-3">
+                          <p className="text-xs text-gray-500 mb-1 flex items-center gap-1"><Droplets size={12} /> Blood Type</p>
+                          <p className="text-sm font-medium text-gray-800">{entry.bloodType || 'N/A'}</p>
+                        </div>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
                         <button
@@ -811,7 +826,7 @@ function Members() {
                       </span>
                     </div>
                     <p className="text-xs text-gray-500 mt-1">
-                      {entry.email} | {entry.idNumber} | Submitted {dayjs(entry.submittedAt).format('MMM D, YYYY')}
+                      {entry.email} | {entry.idNumber} | {entry.contactNumber || 'N/A'} | {entry.bloodType || 'N/A'} | Submitted {dayjs(entry.submittedAt).format('MMM D, YYYY')}
                     </p>
                   </div>
                 ))}
