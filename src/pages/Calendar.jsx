@@ -83,6 +83,18 @@ const CATEGORY_BRANCHES = {
   medical: ['Medical Mission', 'Vaccination Drive', 'First Aid Training', 'Blood Letting', 'Health Check-Up'],
 }
 
+const splitCategoryAndType = (value = '') => {
+  const raw = String(value || '').trim()
+  if (!raw) return { category: '', type: '' }
+  const parts = raw.split(' - ')
+  if (parts.length === 1) return { category: parts[0], type: 'General' }
+  const category = parts.shift()?.trim() || ''
+  const type = parts.join(' - ').trim() || 'General'
+  return { category, type }
+}
+
+const normalizeCategoryText = (value = '') => String(value || '').trim().toLowerCase().replace(/s$/, '')
+
 const getDefaultDynamicFields = () =>
   CATEGORY_KEYS.reduce((acc, categoryKey) => {
     const fields = CATEGORY_CONFIG[categoryKey].fields
@@ -679,7 +691,7 @@ function AssignMembersPicker({ allMembers, selectedIds, onChange, label = 'Assig
 }
 
 function Calendar({ listOnly = false }) {
-  const { user, getAllMembers } = useAuth()
+  const { user, getAllMembers, committees } = useAuth()
   const canManageEvents = user?.role === 'admin'
   const routerLocation = useLocation()
   const navigate = useNavigate()
@@ -730,6 +742,21 @@ function Calendar({ listOnly = false }) {
     })
     return map
   }, [assignableMembers])
+
+  const operationTypesByCategoryKey = useMemo(() => {
+    return CATEGORY_KEYS.reduce((acc, categoryKey) => {
+      const categoryLabel = CATEGORY_CONFIG[categoryKey].label
+      const normalizedCategoryLabel = normalizeCategoryText(categoryLabel)
+      const fromCommittees = (Array.isArray(committees) ? committees : [])
+        .map(entry => splitCategoryAndType(entry))
+        .filter(item => normalizeCategoryText(item.category) === normalizedCategoryLabel && item.type)
+        .map(item => item.type)
+      const fallbackTypes = CATEGORY_BRANCHES[categoryKey] || []
+      const merged = Array.from(new Set([...fromCommittees, ...fallbackTypes]))
+      acc[categoryKey] = merged
+      return acc
+    }, {})
+  }, [committees])
 
   useEffect(() => {
     localStorage.setItem(
@@ -1782,30 +1809,28 @@ function Calendar({ listOnly = false }) {
                         </select>
                       </div>
                     </div>
-                    {showTypeField && (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
-                        <div className="relative">
-                          <GitBranch size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                          <select
-                            value={formData.branch}
-                            onChange={e => setFormData({ ...formData, branch: e.target.value })}
-                            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 disabled:bg-gray-100"
-                            disabled={!formData.category}
-                            required
-                          >
-                            <option value="" disabled>
-                              Select type
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
+                      <div className="relative">
+                        <GitBranch size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <select
+                          value={formData.branch}
+                          onChange={e => setFormData({ ...formData, branch: e.target.value })}
+                          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 disabled:bg-gray-100"
+                          disabled={!formData.category}
+                          required
+                        >
+                          <option value="" disabled>
+                            Select type
+                          </option>
+                          {(CATEGORY_BRANCHES[formData.category] || []).map(branch => (
+                            <option key={branch} value={branch}>
+                              {branch}
                             </option>
-                            {(CATEGORY_BRANCHES[formData.category] || []).map(branch => (
-                              <option key={branch} value={branch}>
-                                {branch}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
+                          ))}
+                        </select>
                       </div>
-                    )}
+                    </div>
                   </div>
 
                   <div>
