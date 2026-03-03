@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowLeft, KeyRound } from 'lucide-react'
+import { KeyRound } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 
@@ -43,16 +43,6 @@ function ChangePassword() {
 
   return (
     <div className="animate-fade-in">
-      <div className="flex items-center justify-between mb-6">
-        <button
-          onClick={() => navigate('/profile')}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
-        >
-          <ArrowLeft size={20} />
-          Back to Profile
-        </button>
-      </div>
-
       <div className="bg-white rounded-2xl shadow-xl p-6">
         <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
           <KeyRound size={20} className="text-red-600" />
@@ -94,12 +84,21 @@ function ChangePassword() {
             className="border border-gray-300 rounded-lg px-3 py-2"
           />
           <div className="md:col-span-3">
-            <button
-              type="submit"
-              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-            >
-              Update Password
-            </button>
+            <div className="flex items-center justify-end gap-2">
+              <button
+                type="submit"
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Update Password
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/profile')}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </form>
       </div>
