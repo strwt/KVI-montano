@@ -715,6 +715,7 @@ function Calendar({ listOnly = false }) {
 
   useEffect(() => {
     localStorage.setItem('kusgan_events', JSON.stringify(events))
+    window.dispatchEvent(new Event('kusgan-events-updated'))
   }, [events])
 
   const assignableMembers = useMemo(

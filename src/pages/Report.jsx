@@ -1,5 +1,5 @@
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import dayjs from 'dayjs'
 import {
   Activity,
@@ -39,6 +39,7 @@ const REPORT_COLUMNS = [
   { key: 'content', label: 'Content' },
   { key: 'category', label: 'Category' },
   { key: 'branch', label: 'Field' },
+  { key: 'membersInvolve', label: 'Members Involve' },
   { key: 'dateTime', label: 'Date and Time' },
   { key: 'address', label: 'Address' },
   { key: 'seedlingsUsed', label: 'Seedlings Used' },
@@ -105,7 +106,12 @@ const getMostActiveMonthLabel = countByMonth => {
 const getDateWindow = preset => {
   const now = dayjs()
   if (preset === 'monthly') return { start: now.startOf('month'), end: now.endOf('month') }
-  if (preset === 'quarterly') return { start: now.subtract(2, 'month').startOf('month'), end: now.endOf('month') }
+  if (preset === 'quarterly') {
+    const quarterStartMonth = Math.floor(now.month() / 3) * 3
+    const start = now.month(quarterStartMonth).startOf('month')
+    const end = start.add(2, 'month').endOf('month')
+    return { start, end }
+  }
   if (preset === 'annually') return { start: now.startOf('year'), end: now.endOf('year') }
   return { start: null, end: null }
 }
@@ -160,7 +166,7 @@ const loadJsPdf = () => {
 
 function Report() {
   const { user } = useAuth()
-  const [events] = useState(getStoredEvents)
+  const [events, setEvents] = useState(getStoredEvents)
   const [datePreset, setDatePreset] = useState('monthly')
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [selectedBranch, setSelectedBranch] = useState('all')
@@ -188,6 +194,32 @@ function Report() {
     ).sort((a, b) => a.localeCompare(b))
   }, [events, selectedCategory, start, end])
 
+  useEffect(() => {
+    if (selectedBranch !== 'all' && !branchOptions.includes(selectedBranch)) {
+      setSelectedBranch('all')
+    }
+  }, [branchOptions, selectedBranch])
+
+  useEffect(() => {
+    const reloadEvents = () => setEvents(getStoredEvents())
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') reloadEvents()
+    }
+
+    reloadEvents()
+    window.addEventListener('storage', reloadEvents)
+    window.addEventListener('focus', reloadEvents)
+    window.addEventListener('kusgan-events-updated', reloadEvents)
+    document.addEventListener('visibilitychange', onVisibilityChange)
+
+    return () => {
+      window.removeEventListener('storage', reloadEvents)
+      window.removeEventListener('focus', reloadEvents)
+      window.removeEventListener('kusgan-events-updated', reloadEvents)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+    }
+  }, [])
+
   const filteredEvents = useMemo(() => {
     return events
       .map(event => ({ ...event, _date: resolveEventDate(event), _category: normalizeCategory(event.category) }))
@@ -205,6 +237,7 @@ function Report() {
           event.title,
           event.content,
           event.address,
+          event.membersInvolve,
           CATEGORY_META[event._category]?.label || event._category,
           ...Object.values(event.categoryData || {}),
         ]
@@ -286,6 +319,7 @@ function Report() {
       content: event.content || '',
       category: CATEGORY_META[event._category]?.label || event._category,
       branch: event.branch || '',
+      membersInvolve: event.membersInvolve || '',
       dateTime: event._date.format('YYYY-MM-DD HH:mm'),
       address: event.address || '',
       seedlingsUsed: getFieldValue(event, 'seedlingsUsed', ['seedlings']),
@@ -456,6 +490,7 @@ function Report() {
         row.cubicWater ? `Cubic:${row.cubicWater}` : '',
         row.respondedFireAccident ? `Fire:${row.respondedFireAccident}` : '',
         row.trainings ? `Trainings:${row.trainings}` : '',
+        row.membersInvolve ? `Members:${row.membersInvolve}` : '',
         row.medicalEquipmentUsed ? `Medical:${row.medicalEquipmentUsed}` : '',
         row.expenses ? `Expenses:${row.expenses}` : '',
       ]
