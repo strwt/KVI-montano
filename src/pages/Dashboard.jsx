@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Activity, Bell, Leaf, Flame, FileText, HeartPulse, Calendar as CalendarIcon, Users } from 'lucide-react'
+import { Activity, Bell, Leaf, Flame, FileText, HeartPulse, Calendar as CalendarIcon } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import dayjs from 'dayjs'
@@ -20,7 +20,6 @@ const EVENT_CATEGORIES = [
 const resolveEventDate = event => event.dateTime || event.date || null
 const getEventsCategoryRoute = categoryKey => `/events?category=${encodeURIComponent(categoryKey)}`
 const RECENT_ACTIVITY_LIMIT = 5
-const DEFAULT_COMMITTEE = 'Environmental'
 
 const getIconThemeClass = categoryKey => {
   if (categoryKey === 'environmental') return 'icon-theme-environmental'
@@ -32,7 +31,7 @@ const getIconThemeClass = categoryKey => {
 }
 
 function Dashboard() {
-  const { user, users } = useAuth()
+  const { user } = useAuth()
   const navigate = useNavigate()
   const isAdmin = user?.role === 'admin'
   const [animatedStats, setAnimatedStats] = useState(false)
@@ -49,10 +48,6 @@ function Dashboard() {
       .sort((a, b) => dayjs(resolveEventDate(b)).valueOf() - dayjs(resolveEventDate(a)).valueOf())
       .slice(0, RECENT_ACTIVITY_LIMIT)
   }, [events])
-
-  const loggedInMembers = useMemo(() => {
-    return users.filter(member => member.accountStatus === 'Active')
-  }, [users])
 
   const categoryCounts = useMemo(() => {
     return EVENT_CATEGORIES.reduce((acc, category) => {
@@ -111,31 +106,8 @@ function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 mb-6">
-        <div className="xl:col-span-4 bg-white rounded-xl shadow-md p-5 layout-glow">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-            <Users size={20} className="text-green-600" />
-            Logged In Members
-          </h3>
-          <div className="space-y-3 max-h-[360px] overflow-y-auto pr-1">
-            {loggedInMembers.map((member, index) => (
-              <div
-                key={`${member.id}-${member.idNumber || member.email || index}`}
-                className={`p-3 rounded-lg border border-green-100 bg-green-50/60 ${
-                  animatedStats ? 'animate-fade-in-up' : 'opacity-0'
-                }`}
-                style={{ animationDelay: `${index * 0.08}s` }}
-              >
-                <p className="text-sm font-semibold text-gray-800">{member.name}</p>
-                <p className="text-xs text-gray-600 mt-0.5">{member.role === 'admin' ? 'Administrator' : 'Member'}</p>
-                <p className="text-xs text-gray-500 mt-1">Committee: {member.committee || DEFAULT_COMMITTEE}</p>
-              </div>
-            ))}
-            {loggedInMembers.length === 0 && <p className="text-sm text-gray-500 text-center py-3">No logged in members</p>}
-          </div>
-        </div>
-
-        <div className="xl:col-span-8 bg-white rounded-xl shadow-md p-6 layout-glow">
+      <div className="mb-6">
+        <div className="bg-white rounded-xl shadow-md p-6 layout-glow">
           <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
             <Bell size={20} className="text-red-500" />
             Recent Activity

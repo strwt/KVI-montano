@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, Calendar, User, LogOut, ChevronLeft, ChevronRight, Users, FileText, Bell, Sun, Moon, Settings, ChevronDown, ChevronUp } from 'lucide-react'
+import { LayoutDashboard, Calendar, User, LogOut, ChevronLeft, ChevronRight, Users, FileText, Sun, Moon, Settings, ChevronDown, ChevronUp } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
-function Sidebar({ isOpen, toggleSidebar, soundEnabled, onToggleSound, darkMode, onToggleDarkMode }) {
+function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
@@ -124,15 +124,6 @@ function Sidebar({ isOpen, toggleSidebar, soundEnabled, onToggleSound, darkMode,
 
           {isSettingsOpen && (
             <div className={`rounded-lg bg-gray-900/60 border border-gray-800 ${isOpen ? 'p-2 space-y-1' : 'p-1 space-y-2'}`}>
-              <button
-                type="button"
-                onClick={onToggleSound}
-                className={`w-full flex items-center ${isOpen ? 'gap-3 px-2 justify-start' : 'justify-center'} py-2 text-gray-300 hover:bg-red-600/20 hover:text-white rounded-lg transition-all`}
-              >
-                <Bell size={18} />
-                {isOpen && <span>{soundEnabled ? 'Sounds On' : 'Sounds Off'}</span>}
-              </button>
-
               <button
                 type="button"
                 onClick={onToggleDarkMode}
