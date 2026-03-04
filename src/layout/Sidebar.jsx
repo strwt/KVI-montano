@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, Calendar, User, LogOut, ChevronLeft, ChevronRight, Users, FileText, Plus, X } from 'lucide-react'
+import { LayoutDashboard, Calendar, User, LogOut, ChevronLeft, ChevronRight, Users, FileText, Bell, Sun, Moon, Settings, ChevronDown, ChevronUp } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
-function Sidebar({ isOpen, toggleSidebar }) {
+function Sidebar({ isOpen, toggleSidebar, soundEnabled, onToggleSound, darkMode, onToggleDarkMode }) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
   const handleLogout = () => {
     logout()
@@ -17,7 +18,7 @@ function Sidebar({ isOpen, toggleSidebar }) {
   const navItems = [
     { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/calendar', icon: Calendar, label: 'Calendar' },
-    { to: '/report', icon: FileText, label: 'Report' },
+    ...(isAdmin ? [{ to: '/report', icon: FileText, label: 'Report' }] : []),
     { to: '/profile', icon: User, label: 'Profile' },
   ]
 
@@ -49,7 +50,7 @@ function Sidebar({ isOpen, toggleSidebar }) {
           {isOpen ? (
             <div className="animate-fade-in">
               <div className="flex items-center gap-3 mb-1">
-                <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center overflow-hidden">
+                <div className="w-10 h-10 bg-white logo-no-dark rounded-full flex items-center justify-center overflow-hidden">
                   <img
                     src="/image-removebg-preview.png"
                     alt="KUSGAN logo"
@@ -64,7 +65,7 @@ function Sidebar({ isOpen, toggleSidebar }) {
               <p className="text-xs text-gray-500 mt-1">Cares Department</p>
             </div>
           ) : (
-            <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center mx-auto overflow-hidden">
+            <div className="w-10 h-10 bg-white logo-no-dark rounded-full flex items-center justify-center mx-auto overflow-hidden">
               <img
                 src="/image-removebg-preview.png"
                 alt="KUSGAN logo"
@@ -101,22 +102,64 @@ function Sidebar({ isOpen, toggleSidebar }) {
               }`}
             >
               <Users size={20} className={isOpen ? '' : 'mx-auto'} />
-              {isOpen && <span>Members</span>}
+              {isOpen && <span>Management</span>}
             </button>
           )}
         </nav>
+
+        <div className={`px-3 mt-4 ${isOpen ? 'space-y-2' : 'space-y-3'}`}>
+          <button
+            type="button"
+            onClick={() => setIsSettingsOpen(prev => !prev)}
+            className={`w-full flex items-center ${isOpen ? 'gap-3 px-3 justify-start' : 'justify-center'} py-2 text-gray-300 hover:bg-red-600/20 hover:text-white rounded-lg transition-all`}
+          >
+            <Settings size={18} />
+            {isOpen && (
+              <>
+                <span className="flex-1 text-left">Settings</span>
+                {isSettingsOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              </>
+            )}
+          </button>
+
+          {isSettingsOpen && (
+            <div className={`rounded-lg bg-gray-900/60 border border-gray-800 ${isOpen ? 'p-2 space-y-1' : 'p-1 space-y-2'}`}>
+              <button
+                type="button"
+                onClick={onToggleSound}
+                className={`w-full flex items-center ${isOpen ? 'gap-3 px-2 justify-start' : 'justify-center'} py-2 text-gray-300 hover:bg-red-600/20 hover:text-white rounded-lg transition-all`}
+              >
+                <Bell size={18} />
+                {isOpen && <span>{soundEnabled ? 'Sounds On' : 'Sounds Off'}</span>}
+              </button>
+
+              <button
+                type="button"
+                onClick={onToggleDarkMode}
+                className={`w-full flex items-center ${isOpen ? 'gap-3 px-2 justify-start' : 'justify-center'} py-2 text-gray-300 hover:bg-red-600/20 hover:text-white rounded-lg transition-all`}
+              >
+                {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+                {isOpen && <span>{darkMode ? 'Light Mode' : 'Dark Mode'}</span>}
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* User Section */}
         <div className={`absolute bottom-0 w-full p-4 border-t border-gray-800 ${!isOpen && 'border-l'}`}>
           {isOpen ? (
             <>
               <div className="flex items-center gap-3 mb-4 px-2">
-                <div className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center">
-                  <User size={20} className="text-white" />
+                <div className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center overflow-hidden">
+                  <img
+                    src={user?.profileImage || '/image-removebg-preview.png'}
+                    alt={user?.name || 'User'}
+                    className="w-full h-full object-cover"
+                  />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-white truncate">{user?.name || 'Guest'}</p>
-                  <p className="text-xs text-gray-500 truncate">{user?.email || 'guest@kusgan.com'}</p>
+                  <p className="text-xs text-gray-500 truncate">{user?.idNumber || user?.email || 'Guest User'}</p>
                   {user?.role === 'admin' && (
                     <span className="inline-block mt-1 px-2 py-0.5 bg-red-600/20 text-red-400 text-xs rounded">Admin</span>
                   )}

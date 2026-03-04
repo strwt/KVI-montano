@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { User, Lock, Eye, EyeOff, ArrowLeft, UserPlus } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
 function Login() {
-  const [email, setEmail] = useState('')
+  const [idNumber, setIdNumber] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
@@ -15,12 +15,18 @@ function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+
+    if (!idNumber.trim() || !password.trim()) {
+      setError('All fields are required.')
+      return
+    }
+
     setIsLoading(true)
 
     // Simulate network delay for animation
     await new Promise(resolve => setTimeout(resolve, 500))
 
-    const result = login(email, password)
+    const result = login(idNumber, password)
     if (result.success) {
       navigate('/')
     } else {
@@ -53,6 +59,24 @@ function Login() {
 
         {/* Login Form */}
         <div className="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-8 border border-white/20">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-5">
+            <button
+              type="button"
+              onClick={() => navigate('/landing')}
+              className="inline-flex items-center gap-2 text-xs text-gray-300 hover:text-white"
+            >
+              <ArrowLeft size={14} />
+              Back to Landing
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/recruitment')}
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-600/30 text-red-100 hover:bg-red-600/45 text-xs"
+            >
+              <UserPlus size={14} />
+              Recruitment
+            </button>
+          </div>
           <h2 className="text-2xl font-semibold text-white mb-6">
             Welcome Back
           </h2>
@@ -64,17 +88,17 @@ function Login() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Email Input */}
+            {/* ID Number Input */}
             <div className="relative">
-              <label className="block text-gray-300 text-sm font-medium mb-2">Email</label>
+              <label className="block text-gray-300 text-sm font-medium mb-2">Enter your ID Number</label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                 <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  type="text"
+                  value={idNumber}
+                  onChange={(e) => setIdNumber(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 bg-gray-900/50 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
-                  placeholder="Enter your email"
+                  placeholder="Enter your ID Number"
                   required
                 />
               </div>
@@ -122,16 +146,6 @@ function Login() {
               )}
             </button>
           </form>
-
-          {/* Register Link */}
-          <div className="mt-6 text-center">
-            <p className="text-gray-400">
-              Don't have an account?{' '}
-              <Link to="/register" className="text-red-500 hover:text-red-400 font-medium transition-colors">
-                Register here
-              </Link>
-            </p>
-          </div>
 
         </div>
       </div>
