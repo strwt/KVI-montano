@@ -919,8 +919,6 @@ function Calendar({ listOnly = false }) {
 
   const selectedCategoryMeta = CATEGORY_META[formData.category]
   const SelectedCategoryIcon = selectedCategoryMeta?.icon || FileText
-  const showTypeField = formData.category && formData.category !== 'notes'
-  const showCategorySpecificFields = Boolean(formData.category && activeCategoryConfig && activeCategoryConfig.fields.length > 0)
   const markDoneEvent = useMemo(
     () => events.find(event => event.id === markDoneEventId) || null,
     [events, markDoneEventId]
@@ -963,8 +961,8 @@ function Calendar({ listOnly = false }) {
       return
     }
 
-    if (!formData.content.trim() || !formData.dateTime || !formData.category || !formData.branch || !formData.address.trim()) {
-      setFormError('Content, Date and Time, Category, Type, and Address are required.')
+    if (!formData.dateTime || !formData.category || !formData.branch || !formData.address.trim()) {
+      setFormError('Date and Time, Category, Type, and Address are required.')
       return
     }
     if (!formData.location) {
@@ -972,17 +970,9 @@ function Calendar({ listOnly = false }) {
       return
     }
 
-    const categoryError = validateCategoryFields()
-    if (categoryError) {
-      setFormError(categoryError)
-      return
-    }
-
-    const categoryData = CATEGORY_CONFIG[formData.category].fields.reduce((acc, field) => {
-      const raw = formData.dynamicFields[formData.category][field.key]
-      acc[field.key] = field.type === 'number' ? Number(raw) : raw
-      return acc
-    }, {})
+    const involvedMemberNames = Array.isArray(formData.assignedMemberIds)
+      ? formData.assignedMemberIds.map(memberId => memberNameById[memberId]).filter(Boolean)
+      : []
     const eventPayload = {
       title: CATEGORY_CONFIG[formData.category]?.label || 'Untitled Event',
       content: formData.content.trim(),
@@ -1915,16 +1905,7 @@ function Calendar({ listOnly = false }) {
                           placeholder="Enter type"
                           className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                           required
-                        >
-                          <option value="" disabled>
-                            Select type
-                          </option>
-                          {(operationTypesByCategoryKey[formData.category] || []).map(branch => (
-                            <option key={branch} value={branch}>
-                              {branch}
-                            </option>
-                          ))}
-                        </select>
+                        />
                       </div>
                     </div>
                   </div>
@@ -1986,41 +1967,90 @@ function Calendar({ listOnly = false }) {
                 />
               </div>
 
-              {formData.category && activeCategoryConfig && (
-                <div key={formData.category} className={`rounded-2xl border border-gray-200 p-4 sm:p-5 bg-gradient-to-br ${selectedCategoryMeta?.bg || 'from-gray-50 to-gray-100'} animate-fade-in-up`}>
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className={`statcard-icon-3d ${selectedCategoryMeta?.iconClass || ''} w-9 h-9 rounded-lg bg-white flex items-center justify-center`}>
-                      <SelectedCategoryIcon size={16} className={selectedCategoryMeta?.text || 'text-gray-600'} />
-                    </div>
-                    <p className="text-sm font-semibold text-gray-800">{activeCategoryConfig.label} Specific Fields</p>
-                  </div>
-                  <div className="space-y-3">
-                    {activeCategoryConfig.fields.map(field => (
-                      <div key={field.key}>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">{field.label}</label>
-                        {field.type === 'text' ? (
-                          <input
-                            type="text"
-                            value={formData.dynamicFields[formData.category][field.key]}
-                            onChange={e => handleDynamicFieldChange(formData.category, field.key, e.target.value)}
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-red-500"
-                            required
-                          />
-                        ) : (
-                          <input
-                            type="number"
-                            min={field.min}
-                            step={field.step}
-                            value={formData.dynamicFields[formData.category][field.key]}
-                            onChange={e => handleDynamicFieldChange(formData.category, field.key, e.target.value)}
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-red-500"
-                            required
-                          />
-                        )}
-                      </div>
-                    ))}
-                  </div>
+              <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                <button
+                  type="submit"
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all"
+                >
+                  {editingEventId ? 'Save Changes' : 'Save Event'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    resetForm()
+                    setShowEventForm(false)
+                  }}
+                  className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {canManageEvents && showDoneForm && markDoneEvent && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-3 sm:p-4">
+          <div className="w-full max-w-2xl max-h-[92vh] overflow-y-auto rounded-2xl bg-white border border-red-100 shadow-2xl animate-fade-in-up">
+            <div className="flex items-center justify-between p-4 sm:p-5 border-b border-gray-200 sticky top-0 bg-white z-10 rounded-t-2xl">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
+                  <MarkDoneIcon size={16} className="text-green-700" />
                 </div>
+                <h3 className="text-lg font-semibold text-gray-800">Mark Event as Done</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDoneForm(false)
+                  setMarkDoneEventId(null)
+                  setDoneFormError('')
+                }}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X size={20} className="text-gray-500" />
+              </button>
+            </div>
+
+            <form onSubmit={handleMarkDone} className="p-4 sm:p-6 space-y-5">
+              {doneFormError && <p className="text-sm text-red-600">{doneFormError}</p>}
+
+              <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                <p className="text-xs uppercase tracking-wide text-gray-500">{getCategoryLabel(markDoneEvent.category)}</p>
+                <p className="text-sm font-medium text-gray-800 mt-1">{markDoneEvent.title || 'Untitled Event'}</p>
+                <p className="text-xs text-gray-500 mt-1">{dayjs(markDoneEvent.dateTime).format('MMMM D, YYYY h:mm A')}</p>
+              </div>
+
+              {markDoneCategoryConfig && markDoneCategoryConfig.fields.length > 0 ? (
+                <div className="space-y-3">
+                  {markDoneCategoryConfig.fields.map(field => (
+                    <div key={field.key}>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">{field.label}</label>
+                      {field.type === 'text' ? (
+                        <input
+                          type="text"
+                          value={doneFields[markDoneEvent.category]?.[field.key] ?? ''}
+                          onChange={e => handleDoneFieldChange(markDoneEvent.category, field.key, e.target.value)}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                          required
+                        />
+                      ) : (
+                        <input
+                          type="number"
+                          min={field.min}
+                          step={field.step}
+                          value={doneFields[markDoneEvent.category]?.[field.key] ?? ''}
+                          onChange={e => handleDoneFieldChange(markDoneEvent.category, field.key, e.target.value)}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                          required
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-600">No additional fields required for this category.</p>
               )}
 
               <div className="flex items-center justify-end gap-2 pt-2">
