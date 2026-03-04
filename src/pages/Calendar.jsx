@@ -54,7 +54,7 @@ const CATEGORY_CONFIG = {
   },
   notes: {
     label: 'Notes',
-    fields: [{ key: 'trainings', label: 'Trainings', type: 'number', min: 0, step: 1 }],
+    fields: [],
   },
   medical: {
     label: 'Medical',
@@ -223,6 +223,7 @@ const getStoredEvents = () => {
         dateTime: event.dateTime || fallbackDateTime,
         address: event.address || '',
         branch: event.branch || '',
+        membersInvolve: event.membersInvolve || '',
         assignedMemberIds: Array.isArray(event.assignedMemberIds) ? event.assignedMemberIds : [],
         viewedBy: Array.isArray(event.viewedBy) ? event.viewedBy : [],
         location: resolveStoredLocation(event),
@@ -565,7 +566,7 @@ function ReadOnlyEventMap({ address, location }) {
   )
 }
 
-function AssignMembersPicker({ allMembers, selectedIds, onChange }) {
+function AssignMembersPicker({ allMembers, selectedIds, onChange, label = 'Assign Members', placeholder = 'Search members by name, committee, or ID...' }) {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
   const panelRef = useRef(null)
@@ -607,7 +608,7 @@ function AssignMembersPicker({ allMembers, selectedIds, onChange }) {
 
   return (
     <div className="space-y-2" ref={panelRef}>
-      <label className="block text-sm font-medium text-gray-700 mb-2">Assign Members</label>
+      <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
       <div className="relative">
         <Users size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
         <input
@@ -619,7 +620,7 @@ function AssignMembersPicker({ allMembers, selectedIds, onChange }) {
             setQuery(e.target.value)
             setOpen(true)
           }}
-          placeholder="Search members by name, committee, or ID..."
+          placeholder={placeholder}
           className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
         />
         {open && (
@@ -712,6 +713,7 @@ function Calendar({ listOnly = false }) {
 
   useEffect(() => {
     localStorage.setItem('kusgan_events', JSON.stringify(events))
+    window.dispatchEvent(new Event('kusgan-events-updated'))
   }, [events])
 
   const assignableMembers = useMemo(
@@ -861,6 +863,7 @@ function Calendar({ listOnly = false }) {
         item.title?.toLowerCase().includes(searchLower) ||
         item.content?.toLowerCase().includes(searchLower) ||
         item.address?.toLowerCase().includes(searchLower) ||
+        item.membersInvolve?.toLowerCase().includes(searchLower) ||
         item.branch?.toLowerCase().includes(searchLower) ||
         item.category?.toLowerCase().includes(searchLower)
       const selectedLower = selectedCategory.toLowerCase()
@@ -883,6 +886,7 @@ function Calendar({ listOnly = false }) {
           item.title?.toLowerCase().includes(searchLower) ||
           item.content?.toLowerCase().includes(searchLower) ||
           item.address?.toLowerCase().includes(searchLower) ||
+          item.membersInvolve?.toLowerCase().includes(searchLower) ||
           item.branch?.toLowerCase().includes(searchLower) ||
           item.category?.toLowerCase().includes(searchLower)
         const selectedLower = selectedCategory.toLowerCase()
@@ -915,6 +919,8 @@ function Calendar({ listOnly = false }) {
 
   const selectedCategoryMeta = CATEGORY_META[formData.category]
   const SelectedCategoryIcon = selectedCategoryMeta?.icon || FileText
+  const showTypeField = formData.category && formData.category !== 'notes'
+  const showCategorySpecificFields = Boolean(formData.category && activeCategoryConfig && activeCategoryConfig.fields.length > 0)
   const markDoneEvent = useMemo(
     () => events.find(event => event.id === markDoneEventId) || null,
     [events, markDoneEventId]
@@ -957,8 +963,8 @@ function Calendar({ listOnly = false }) {
       return
     }
 
-    if (!formData.dateTime || !formData.category || !formData.branch || !formData.address.trim()) {
-      setFormError('Date and Time, Category, Type, and Address are required.')
+    if (!formData.content.trim() || !formData.dateTime || !formData.category || !formData.branch || !formData.address.trim()) {
+      setFormError('Content, Date and Time, Category, Type, and Address are required.')
       return
     }
     if (!formData.location) {
@@ -966,12 +972,24 @@ function Calendar({ listOnly = false }) {
       return
     }
 
+    const categoryError = validateCategoryFields()
+    if (categoryError) {
+      setFormError(categoryError)
+      return
+    }
+
+    const categoryData = CATEGORY_CONFIG[formData.category].fields.reduce((acc, field) => {
+      const raw = formData.dynamicFields[formData.category][field.key]
+      acc[field.key] = field.type === 'number' ? Number(raw) : raw
+      return acc
+    }, {})
     const eventPayload = {
       title: CATEGORY_CONFIG[formData.category]?.label || 'Untitled Event',
       content: formData.content.trim(),
       dateTime: formData.dateTime,
       address: formData.address.trim(),
-      branch: formData.branch,
+      branch: formData.category === 'notes' ? '' : formData.branch,
+      membersInvolve: formData.category === 'notes' ? involvedMemberNames.join(', ') : '',
       assignedMemberIds: formData.assignedMemberIds,
       viewedBy: [],
       location: formData.location,
@@ -1160,7 +1178,17 @@ function Calendar({ listOnly = false }) {
         <div className="relative overflow-hidden rounded-2xl border border-red-100 bg-white p-6 sm:p-7 shadow-lg mb-6">
           <div className="absolute -right-20 -top-20 h-48 w-48 rounded-full bg-red-500/10 blur-3xl" />
           <div className="relative">
-            <h2 className="text-2xl font-bold text-gray-900">{listHeading}</h2>
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-2xl font-bold text-gray-900">{listHeading}</h2>
+              <button
+                type="button"
+                onClick={() => navigate(-1)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                <ChevronLeft size={16} />
+                Back
+              </button>
+            </div>
             <p className="text-sm text-gray-600 mt-1">All months, newest to oldest</p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               {selectedCategory !== 'All' && (
@@ -1251,6 +1279,10 @@ function Calendar({ listOnly = false }) {
             <div className="space-y-3 max-h-[68vh] overflow-y-auto pr-1">
               {allFilteredItems.map(item => {
                 const isExpanded = expandedItemId === item.id
+                const involvedMemberNames = Array.isArray(item.assignedMemberIds)
+                  ? item.assignedMemberIds.map(memberId => memberNameById[memberId] || `Member ${memberId}`)
+                  : []
+                const membersInvolveText = involvedMemberNames.length > 0 ? involvedMemberNames.join(', ') : (item.membersInvolve || '')
                 return (
                   <div
                     key={item.id}
@@ -1317,6 +1349,12 @@ function Calendar({ listOnly = false }) {
                               <div className="flex items-start gap-2 text-gray-600">
                                 <MapPin size={14} className="mt-0.5" />
                                 <span>{item.address}</span>
+                              </div>
+                            )}
+                            {membersInvolveText && (
+                              <div className="flex items-start gap-2 text-gray-600">
+                                <Users size={14} className="mt-0.5" />
+                                <span>Members Involve: {membersInvolveText}</span>
                               </div>
                             )}
                             {Array.isArray(item.assignedMemberIds) && item.assignedMemberIds.length > 0 && (
@@ -1629,9 +1667,13 @@ function Calendar({ listOnly = false }) {
             )}
 
             <div className="space-y-3 max-h-[62vh] overflow-y-auto pr-1">
-              {filteredItems.map(item => {
-                const isExpanded = expandedItemId === item.id
-                return (
+            {filteredItems.map(item => {
+              const isExpanded = expandedItemId === item.id
+              const involvedMemberNames = Array.isArray(item.assignedMemberIds)
+                ? item.assignedMemberIds.map(memberId => memberNameById[memberId] || `Member ${memberId}`)
+                : []
+              const membersInvolveText = involvedMemberNames.length > 0 ? involvedMemberNames.join(', ') : (item.membersInvolve || '')
+              return (
                   <div
                     key={item.id}
                     ref={el => {
@@ -1697,6 +1739,12 @@ function Calendar({ listOnly = false }) {
                               <div className="flex items-start gap-2 text-gray-600">
                                 <MapPin size={14} className="mt-0.5" />
                                 <span>{item.address}</span>
+                              </div>
+                            )}
+                            {membersInvolveText && (
+                              <div className="flex items-start gap-2 text-gray-600">
+                                <Users size={14} className="mt-0.5" />
+                                <span>Members Involve: {membersInvolveText}</span>
                               </div>
                             )}
                             {Array.isArray(item.assignedMemberIds) && item.assignedMemberIds.length > 0 && (
@@ -1867,7 +1915,16 @@ function Calendar({ listOnly = false }) {
                           placeholder="Enter type"
                           className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                           required
-                        />
+                        >
+                          <option value="" disabled>
+                            Select type
+                          </option>
+                          {(operationTypesByCategoryKey[formData.category] || []).map(branch => (
+                            <option key={branch} value={branch}>
+                              {branch}
+                            </option>
+                          ))}
+                        </select>
                       </div>
                     </div>
                   </div>
@@ -1894,6 +1951,15 @@ function Calendar({ listOnly = false }) {
                       />
                     </div>
                   </div>
+                  {formData.category === 'notes' && (
+                    <AssignMembersPicker
+                      allMembers={assignableMembers}
+                      selectedIds={formData.assignedMemberIds}
+                      onChange={nextIds => setFormData({ ...formData, assignedMemberIds: nextIds })}
+                      label="Members Involve"
+                      placeholder="Search and select members to involve..."
+                    />
+                  )}
 
                 </div>
               </div>
@@ -1920,76 +1986,42 @@ function Calendar({ listOnly = false }) {
                 />
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                <button type="submit" className="flex-1 px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all">
-                  {editingEventId ? 'Update Event' : 'Save Event'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    resetForm()
-                    setShowEventForm(false)
-                  }}
-                  className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {canManageEvents && showDoneForm && markDoneEvent && markDoneCategoryConfig && (
-        <div className="fixed inset-0 bg-black/55 flex items-center justify-center z-[55] p-4">
-          <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-red-100 p-5 animate-fade-in-up max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between gap-3 mb-4">
-              <div className="flex items-center gap-2">
-                <div className="w-9 h-9 rounded-lg bg-red-50 flex items-center justify-center">
-                  <MarkDoneIcon size={16} className={markDoneCategoryMeta?.text || 'text-red-700'} />
+              {formData.category && activeCategoryConfig && (
+                <div key={formData.category} className={`rounded-2xl border border-gray-200 p-4 sm:p-5 bg-gradient-to-br ${selectedCategoryMeta?.bg || 'from-gray-50 to-gray-100'} animate-fade-in-up`}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className={`statcard-icon-3d ${selectedCategoryMeta?.iconClass || ''} w-9 h-9 rounded-lg bg-white flex items-center justify-center`}>
+                      <SelectedCategoryIcon size={16} className={selectedCategoryMeta?.text || 'text-gray-600'} />
+                    </div>
+                    <p className="text-sm font-semibold text-gray-800">{activeCategoryConfig.label} Specific Fields</p>
+                  </div>
+                  <div className="space-y-3">
+                    {activeCategoryConfig.fields.map(field => (
+                      <div key={field.key}>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">{field.label}</label>
+                        {field.type === 'text' ? (
+                          <input
+                            type="text"
+                            value={formData.dynamicFields[formData.category][field.key]}
+                            onChange={e => handleDynamicFieldChange(formData.category, field.key, e.target.value)}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                            required
+                          />
+                        ) : (
+                          <input
+                            type="number"
+                            min={field.min}
+                            step={field.step}
+                            value={formData.dynamicFields[formData.category][field.key]}
+                            onChange={e => handleDynamicFieldChange(formData.category, field.key, e.target.value)}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                            required
+                          />
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <h3 className="text-lg font-semibold text-gray-800">Mark Event as Done</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowDoneForm(false)
-                  setMarkDoneEventId(null)
-                  setDoneFormError('')
-                }}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <X size={18} className="text-gray-500" />
-              </button>
-            </div>
-
-            {doneFormError && <p className="text-sm text-red-600 mb-3">{doneFormError}</p>}
-
-            <form onSubmit={handleMarkDone} className="space-y-3">
-              {markDoneCategoryConfig.fields.map(field => (
-                <div key={field.key}>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">{field.label}</label>
-                  {field.type === 'number' ? (
-                    <input
-                      type="number"
-                      min={field.min}
-                      step={field.step}
-                      value={doneFields[markDoneEvent.category]?.[field.key] ?? ''}
-                      onChange={e => handleDoneFieldChange(markDoneEvent.category, field.key, e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-red-500"
-                      required
-                    />
-                  ) : (
-                    <input
-                      type="text"
-                      value={doneFields[markDoneEvent.category]?.[field.key] ?? ''}
-                      onChange={e => handleDoneFieldChange(markDoneEvent.category, field.key, e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-red-500"
-                      required
-                    />
-                  )}
-                </div>
-              ))}
+              )}
 
               <div className="flex items-center justify-end gap-2 pt-2">
                 <button
