@@ -192,6 +192,7 @@ function Report() {
     return events
       .map(event => ({ ...event, _date: resolveEventDate(event), _category: normalizeCategory(event.category) }))
       .filter(event => Boolean(event._date) && CATEGORY_KEYS.includes(event._category))
+      .filter(event => event.status === 'done')
       .filter(event => {
         if (selectedCategory !== 'all' && event._category !== selectedCategory) return false
         if (selectedBranch !== 'all' && event.branch !== selectedBranch) return false
