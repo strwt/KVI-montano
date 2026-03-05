@@ -3,11 +3,6 @@ import { Outlet } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import { Menu, X } from 'lucide-react'
 
-const getStoredSoundEnabled = () => {
-  const stored = localStorage.getItem('kusgan_sound_enabled')
-  return stored ? JSON.parse(stored) : true
-}
-
 const getStoredDarkMode = () => {
   const stored = localStorage.getItem('kusgan_dark_mode')
   return stored ? JSON.parse(stored) : false
@@ -15,12 +10,7 @@ const getStoredDarkMode = () => {
 
 function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
-  const [soundEnabled, setSoundEnabled] = useState(getStoredSoundEnabled)
   const [darkMode, setDarkMode] = useState(getStoredDarkMode)
-
-  useEffect(() => {
-    localStorage.setItem('kusgan_sound_enabled', JSON.stringify(soundEnabled))
-  }, [soundEnabled])
 
   useEffect(() => {
     localStorage.setItem('kusgan_dark_mode', JSON.stringify(darkMode))
@@ -44,8 +34,6 @@ function Layout() {
       <Sidebar
         isOpen={sidebarOpen}
         toggleSidebar={toggleSidebar}
-        soundEnabled={soundEnabled}
-        onToggleSound={() => setSoundEnabled((prev) => !prev)}
         darkMode={darkMode}
         onToggleDarkMode={() => setDarkMode((prev) => !prev)}
       />

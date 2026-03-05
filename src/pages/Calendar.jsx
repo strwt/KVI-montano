@@ -54,7 +54,7 @@ const CATEGORY_CONFIG = {
   },
   notes: {
     label: 'Notes',
-    fields: [{ key: 'trainings', label: 'Trainings', type: 'number', min: 0, step: 1 }],
+    fields: [],
   },
   medical: {
     label: 'Medical',
@@ -74,26 +74,6 @@ const CATEGORY_META = {
   notes: { icon: FileText, iconClass: '', bg: 'from-red-50 to-red-100', text: 'text-red-700' },
   medical: { icon: HeartPulse, iconClass: '', bg: 'from-red-50 to-red-100', text: 'text-red-700' },
 }
-
-const CATEGORY_BRANCHES = {
-  environmental: ['Mangrove Planting', 'Tree Planting', 'Coastal Clean-Up', 'River Clean-Up', 'Reforestation'],
-  'relief operation': ['Typhoon Relief', 'Flood Relief', 'Earthquake Relief', 'Evacuation Support', 'Food Distribution'],
-  'fire response': ['Residential Fire', 'Forest Fire', 'Electrical Fire', 'Industrial Fire', 'Emergency Water Supply'],
-  notes: ['Meeting', 'Training', 'Seminar', 'Workshop', 'Planning Session'],
-  medical: ['Medical Mission', 'Vaccination Drive', 'First Aid Training', 'Blood Letting', 'Health Check-Up'],
-}
-
-const splitCategoryAndType = (value = '') => {
-  const raw = String(value || '').trim()
-  if (!raw) return { category: '', type: '' }
-  const parts = raw.split(' - ')
-  if (parts.length === 1) return { category: parts[0], type: 'General' }
-  const category = parts.shift()?.trim() || ''
-  const type = parts.join(' - ').trim() || 'General'
-  return { category, type }
-}
-
-const normalizeCategoryText = (value = '') => String(value || '').trim().toLowerCase().replace(/s$/, '')
 
 const getDefaultDynamicFields = () =>
   CATEGORY_KEYS.reduce((acc, categoryKey) => {
@@ -243,11 +223,14 @@ const getStoredEvents = () => {
         dateTime: event.dateTime || fallbackDateTime,
         address: event.address || '',
         branch: event.branch || '',
+        membersInvolve: event.membersInvolve || '',
         assignedMemberIds: Array.isArray(event.assignedMemberIds) ? event.assignedMemberIds : [],
         viewedBy: Array.isArray(event.viewedBy) ? event.viewedBy : [],
         location: resolveStoredLocation(event),
         category: (event.category || 'notes').toLowerCase(),
         categoryData: event.categoryData || {},
+        status: event.status === 'done' ? 'done' : 'ongoing',
+        completedAt: event.completedAt || null,
       }
     })
   } catch {
@@ -583,7 +566,7 @@ function ReadOnlyEventMap({ address, location }) {
   )
 }
 
-function AssignMembersPicker({ allMembers, selectedIds, onChange }) {
+function AssignMembersPicker({ allMembers, selectedIds, onChange, label = 'Assign Members', placeholder = 'Search members by name, committee, or ID...' }) {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
   const panelRef = useRef(null)
@@ -625,7 +608,7 @@ function AssignMembersPicker({ allMembers, selectedIds, onChange }) {
 
   return (
     <div className="space-y-2" ref={panelRef}>
-      <label className="block text-sm font-medium text-gray-700 mb-2">Assign Members</label>
+      <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
       <div className="relative">
         <Users size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
         <input
@@ -637,7 +620,7 @@ function AssignMembersPicker({ allMembers, selectedIds, onChange }) {
             setQuery(e.target.value)
             setOpen(true)
           }}
-          placeholder="Search members by name, committee, or ID..."
+          placeholder={placeholder}
           className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
         />
         {open && (
@@ -690,7 +673,7 @@ function AssignMembersPicker({ allMembers, selectedIds, onChange }) {
 }
 
 function Calendar({ listOnly = false }) {
-  const { user, getAllMembers, committees } = useAuth()
+  const { user, getAllMembers } = useAuth()
   const canManageEvents = user?.role === 'admin'
   const routerLocation = useLocation()
   const navigate = useNavigate()
@@ -704,6 +687,9 @@ function Calendar({ listOnly = false }) {
   const [expandedItemId, setExpandedItemId] = useState(null)
   const [highlightedEventId, setHighlightedEventId] = useState(null)
   const [showEventForm, setShowEventForm] = useState(false)
+  const [showDoneForm, setShowDoneForm] = useState(false)
+  const [markDoneEventId, setMarkDoneEventId] = useState(null)
+  const [doneFormError, setDoneFormError] = useState('')
   const [currentYear, setCurrentYear] = useState(dayjs().year())
   const [formError, setFormError] = useState('')
   const [formData, setFormData] = useState({
@@ -720,12 +706,14 @@ function Calendar({ listOnly = false }) {
   const [searchQuery, setSearchQuery] = useState(storedFilters.searchQuery)
   const [selectedCategory, setSelectedCategory] = useState(storedFilters.selectedCategory)
   const [selectedDateFilter, setSelectedDateFilter] = useState('')
+  const [doneFields, setDoneFields] = useState(getDefaultDynamicFields())
   const eventRefs = useRef({})
   const handledRedirectRef = useRef(false)
   const routeCategory = searchParams.get('category') || ''
 
   useEffect(() => {
     localStorage.setItem('kusgan_events', JSON.stringify(events))
+    window.dispatchEvent(new Event('kusgan-events-updated'))
   }, [events])
 
   const assignableMembers = useMemo(
@@ -740,21 +728,6 @@ function Calendar({ listOnly = false }) {
     })
     return map
   }, [assignableMembers])
-
-  const operationTypesByCategoryKey = useMemo(() => {
-    return CATEGORY_KEYS.reduce((acc, categoryKey) => {
-      const categoryLabel = CATEGORY_CONFIG[categoryKey].label
-      const normalizedCategoryLabel = normalizeCategoryText(categoryLabel)
-      const fromCommittees = (Array.isArray(committees) ? committees : [])
-        .map(entry => splitCategoryAndType(entry))
-        .filter(item => normalizeCategoryText(item.category) === normalizedCategoryLabel && item.type)
-        .map(item => item.type)
-      const fallbackTypes = CATEGORY_BRANCHES[categoryKey] || []
-      const merged = Array.from(new Set([...fromCommittees, ...fallbackTypes]))
-      acc[categoryKey] = merged
-      return acc
-    }, {})
-  }, [committees])
 
   useEffect(() => {
     localStorage.setItem(
@@ -890,12 +863,16 @@ function Calendar({ listOnly = false }) {
         item.title?.toLowerCase().includes(searchLower) ||
         item.content?.toLowerCase().includes(searchLower) ||
         item.address?.toLowerCase().includes(searchLower) ||
+        item.membersInvolve?.toLowerCase().includes(searchLower) ||
         item.branch?.toLowerCase().includes(searchLower) ||
         item.category?.toLowerCase().includes(searchLower)
       const selectedLower = selectedCategory.toLowerCase()
       const matchesCategory = selectedCategory === 'All' || item.category === selectedLower
       const matchesDate = !selectedDateFilter || dayjs(item.dateTime).format('YYYY-MM-DD') === selectedDateFilter
       return matchesSearch && matchesCategory && matchesDate
+    }).sort((a, b) => {
+      if ((a.status === 'done') !== (b.status === 'done')) return a.status === 'done' ? 1 : -1
+      return dayjs(b.dateTime).valueOf() - dayjs(a.dateTime).valueOf()
     })
   }, [selectedMonth, searchQuery, selectedCategory, selectedDateFilter])
 
@@ -909,13 +886,17 @@ function Calendar({ listOnly = false }) {
           item.title?.toLowerCase().includes(searchLower) ||
           item.content?.toLowerCase().includes(searchLower) ||
           item.address?.toLowerCase().includes(searchLower) ||
+          item.membersInvolve?.toLowerCase().includes(searchLower) ||
           item.branch?.toLowerCase().includes(searchLower) ||
           item.category?.toLowerCase().includes(searchLower)
         const selectedLower = selectedCategory.toLowerCase()
         const matchesCategory = selectedCategory === 'All' || item.category === selectedLower
         return matchesSearch && matchesCategory
       })
-      .sort((a, b) => dayjs(b.dateTime).valueOf() - dayjs(a.dateTime).valueOf())
+      .sort((a, b) => {
+        if ((a.status === 'done') !== (b.status === 'done')) return a.status === 'done' ? 1 : -1
+        return dayjs(b.dateTime).valueOf() - dayjs(a.dateTime).valueOf()
+      })
   }, [events, searchQuery, selectedCategory])
 
   const allMonthsWithEvents = useMemo(() => {
@@ -936,19 +917,22 @@ function Calendar({ listOnly = false }) {
     return allMonthsWithEvents.filter(month => month.hasEvents)
   }, [allMonthsWithEvents, showAllMonths])
 
-  const activeCategoryConfig = formData.category ? CATEGORY_CONFIG[formData.category] : null
   const selectedCategoryMeta = CATEGORY_META[formData.category]
   const SelectedCategoryIcon = selectedCategoryMeta?.icon || FileText
+  const markDoneEvent = useMemo(
+    () => events.find(event => event.id === markDoneEventId) || null,
+    [events, markDoneEventId]
+  )
+  const markDoneCategoryConfig = markDoneEvent ? CATEGORY_CONFIG[markDoneEvent.category] : null
+  const markDoneCategoryMeta = markDoneEvent ? CATEGORY_META[markDoneEvent.category] : null
+  const MarkDoneIcon = markDoneCategoryMeta?.icon || FileText
 
-  const handleDynamicFieldChange = (categoryKey, fieldKey, value) => {
-    setFormData(prev => ({
+  const handleDoneFieldChange = (categoryKey, fieldKey, value) => {
+    setDoneFields(prev => ({
       ...prev,
-      dynamicFields: {
-        ...prev.dynamicFields,
-        [categoryKey]: {
-          ...prev.dynamicFields[categoryKey],
-          [fieldKey]: value,
-        },
+      [categoryKey]: {
+        ...prev[categoryKey],
+        [fieldKey]: value,
       },
     }))
   }
@@ -969,18 +953,6 @@ function Calendar({ listOnly = false }) {
     setFormError('')
   }
 
-  const validateCategoryFields = () => {
-    if (!formData.category) return 'Category is required.'
-    const fields = CATEGORY_CONFIG[formData.category].fields
-    const categoryValues = formData.dynamicFields[formData.category]
-    for (const field of fields) {
-      const value = categoryValues[field.key]
-      if (String(value).trim() === '') return `${field.label} is required.`
-      if (field.type === 'number' && Number.isNaN(Number(value))) return `${field.label} must be a valid number.`
-    }
-    return ''
-  }
-
   const handleAddEvent = e => {
     e.preventDefault()
     setFormError('')
@@ -989,8 +961,8 @@ function Calendar({ listOnly = false }) {
       return
     }
 
-    if (!formData.content.trim() || !formData.dateTime || !formData.category || !formData.branch || !formData.address.trim()) {
-      setFormError('Content, Date and Time, Category, Type, and Address are required.')
+    if (!formData.dateTime || !formData.category || !formData.branch || !formData.address.trim()) {
+      setFormError('Date and Time, Category, Type, and Address are required.')
       return
     }
     if (!formData.location) {
@@ -998,28 +970,21 @@ function Calendar({ listOnly = false }) {
       return
     }
 
-    const categoryError = validateCategoryFields()
-    if (categoryError) {
-      setFormError(categoryError)
-      return
-    }
-
-    const categoryData = CATEGORY_CONFIG[formData.category].fields.reduce((acc, field) => {
-      const raw = formData.dynamicFields[formData.category][field.key]
-      acc[field.key] = field.type === 'number' ? Number(raw) : raw
-      return acc
-    }, {})
+    const involvedMemberNames = Array.isArray(formData.assignedMemberIds)
+      ? formData.assignedMemberIds.map(memberId => memberNameById[memberId]).filter(Boolean)
+      : []
     const eventPayload = {
       title: CATEGORY_CONFIG[formData.category]?.label || 'Untitled Event',
       content: formData.content.trim(),
       dateTime: formData.dateTime,
       address: formData.address.trim(),
-      branch: formData.branch,
+      branch: formData.category === 'notes' ? '' : formData.branch,
+      membersInvolve: formData.category === 'notes' ? involvedMemberNames.join(', ') : '',
       assignedMemberIds: formData.assignedMemberIds,
       viewedBy: [],
       location: formData.location,
       category: formData.category,
-      categoryData,
+      categoryData: {},
     }
 
     if (editingEventId) {
@@ -1035,6 +1000,8 @@ function Calendar({ listOnly = false }) {
         viewedBy: [],
         createdBy: user?.name || 'Unknown',
         createdAt: dayjs().format('YYYY-MM-DD HH:mm'),
+        status: 'ongoing',
+        completedAt: null,
       }
       setEvents(prev => [newEvent, ...prev])
       resetForm()
@@ -1080,6 +1047,58 @@ function Calendar({ listOnly = false }) {
       type: 'delete',
       eventId,
     })
+  }
+
+  const openMarkDoneForm = event => {
+    if (!canManageEvents || event.status === 'done') return
+    const defaults = getDefaultDynamicFields()
+    if (event.category && defaults[event.category]) {
+      defaults[event.category] = {
+        ...defaults[event.category],
+        ...(event.categoryData || {}),
+      }
+    }
+    setDoneFields(defaults)
+    setDoneFormError('')
+    setMarkDoneEventId(event.id)
+    setShowDoneForm(true)
+  }
+
+  const handleMarkDone = e => {
+    e.preventDefault()
+    if (!markDoneEvent || !markDoneCategoryConfig) return
+    const values = doneFields[markDoneEvent.category] || {}
+    for (const field of markDoneCategoryConfig.fields) {
+      const value = values[field.key]
+      if (String(value).trim() === '') {
+        setDoneFormError(`${field.label} is required.`)
+        return
+      }
+      if (field.type === 'number' && Number.isNaN(Number(value))) {
+        setDoneFormError(`${field.label} must be a valid number.`)
+        return
+      }
+    }
+    const nextCategoryData = markDoneCategoryConfig.fields.reduce((acc, field) => {
+      const raw = values[field.key]
+      acc[field.key] = field.type === 'number' ? Number(raw) : raw
+      return acc
+    }, {})
+    setEvents(prev =>
+      prev.map(item =>
+        item.id === markDoneEvent.id
+          ? {
+              ...item,
+              status: 'done',
+              categoryData: nextCategoryData,
+              completedAt: dayjs().toISOString(),
+            }
+          : item
+      )
+    )
+    setShowDoneForm(false)
+    setMarkDoneEventId(null)
+    setDoneFormError('')
   }
 
   const handleConfirmAction = () => {
@@ -1149,7 +1168,17 @@ function Calendar({ listOnly = false }) {
         <div className="relative overflow-hidden rounded-2xl border border-red-100 bg-white p-6 sm:p-7 shadow-lg mb-6">
           <div className="absolute -right-20 -top-20 h-48 w-48 rounded-full bg-red-500/10 blur-3xl" />
           <div className="relative">
-            <h2 className="text-2xl font-bold text-gray-900">{listHeading}</h2>
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-2xl font-bold text-gray-900">{listHeading}</h2>
+              <button
+                type="button"
+                onClick={() => navigate(-1)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                <ChevronLeft size={16} />
+                Back
+              </button>
+            </div>
             <p className="text-sm text-gray-600 mt-1">All months, newest to oldest</p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               {selectedCategory !== 'All' && (
@@ -1240,6 +1269,10 @@ function Calendar({ listOnly = false }) {
             <div className="space-y-3 max-h-[68vh] overflow-y-auto pr-1">
               {allFilteredItems.map(item => {
                 const isExpanded = expandedItemId === item.id
+                const involvedMemberNames = Array.isArray(item.assignedMemberIds)
+                  ? item.assignedMemberIds.map(memberId => memberNameById[memberId] || `Member ${memberId}`)
+                  : []
+                const membersInvolveText = involvedMemberNames.length > 0 ? involvedMemberNames.join(', ') : (item.membersInvolve || '')
                 return (
                   <div
                     key={item.id}
@@ -1266,6 +1299,9 @@ function Calendar({ listOnly = false }) {
                         <div className="flex-1 min-w-0">
                           <span className="text-xs uppercase tracking-wide text-gray-500">{getCategoryLabel(item.category)}</span>
                           {item.branch && <span className="ml-2 text-xs text-red-600 font-medium">{item.branch}</span>}
+                          <span className={`ml-2 inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold border ${item.status === 'done' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-red-100 text-red-700 border-red-200'}`}>
+                            {item.status === 'done' ? 'Done' : 'On-going'}
+                          </span>
                           <h4 className="font-semibold text-gray-800 mt-1 truncate">{item.title}</h4>
                           <p className="text-sm text-gray-500 mt-1">{dayjs(item.dateTime).format('MMMM D, YYYY h:mm A')}</p>
                         </div>
@@ -1305,6 +1341,12 @@ function Calendar({ listOnly = false }) {
                                 <span>{item.address}</span>
                               </div>
                             )}
+                            {membersInvolveText && (
+                              <div className="flex items-start gap-2 text-gray-600">
+                                <Users size={14} className="mt-0.5" />
+                                <span>Members Involve: {membersInvolveText}</span>
+                              </div>
+                            )}
                             {Array.isArray(item.assignedMemberIds) && item.assignedMemberIds.length > 0 && (
                               <div className="flex flex-wrap gap-2">
                                 {item.assignedMemberIds.map(memberId => (
@@ -1336,14 +1378,31 @@ function Calendar({ listOnly = false }) {
                                 <p className="text-xs text-gray-500">No viewers yet.</p>
                               )}
                             </div>
-                            {item.categoryData && Object.keys(item.categoryData).length > 0 && (
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pt-1">
-                                {CATEGORY_CONFIG[item.category]?.fields.map(field => (
-                                  <div key={field.key} className="px-3 py-2 rounded bg-white border border-gray-200">
-                                    <p className="text-xs text-gray-500">{field.label}</p>
-                                    <p className="font-medium text-gray-800">{String(item.categoryData[field.key] ?? '')}</p>
-                                  </div>
-                                ))}
+                            {canManageEvents && (
+                              <div className="pt-2 flex items-center gap-2">
+                                {item.status !== 'done' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => openMarkDoneForm(item)}
+                                    className="px-3 py-1.5 rounded-md bg-green-600 text-white text-xs font-medium hover:bg-green-700 transition-colors"
+                                  >
+                                    Mark as Done
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => openEventForEdit(item)}
+                                  className="px-3 py-1.5 rounded-md bg-red-600 text-white text-xs font-medium hover:bg-red-700 transition-colors"
+                                >
+                                  Update
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => confirmDeleteEvent(item.id)}
+                                  className="px-3 py-1.5 rounded-md bg-gray-100 text-gray-700 text-xs font-medium hover:bg-gray-200 transition-colors"
+                                >
+                                  Delete
+                                </button>
                               </div>
                             )}
                           </div>
@@ -1488,7 +1547,16 @@ function Calendar({ listOnly = false }) {
                           <p className="text-[11px] text-gray-500 truncate">
                             <span className="font-semibold text-red-700">{categoryLabel}</span> | {dayjs(item.dateTime).format('MMM D, YYYY')}
                           </p>
-                          <p className="text-xs text-gray-700 truncate">{item.title || 'Untitled Event'}</p>
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-xs text-gray-700 truncate">{item.title || 'Untitled Event'}</p>
+                            <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold border ${
+                              item.status === 'done'
+                                ? 'bg-green-100 text-green-700 border-green-200'
+                                : 'bg-red-100 text-red-700 border-red-200'
+                            }`}>
+                              {item.status === 'done' ? 'Done' : 'On-going'}
+                            </span>
+                          </div>
                         </div>
                       )
                     })}
@@ -1565,9 +1633,13 @@ function Calendar({ listOnly = false }) {
             )}
 
             <div className="space-y-3 max-h-[62vh] overflow-y-auto pr-1">
-              {filteredItems.map(item => {
-                const isExpanded = expandedItemId === item.id
-                return (
+            {filteredItems.map(item => {
+              const isExpanded = expandedItemId === item.id
+              const involvedMemberNames = Array.isArray(item.assignedMemberIds)
+                ? item.assignedMemberIds.map(memberId => memberNameById[memberId] || `Member ${memberId}`)
+                : []
+              const membersInvolveText = involvedMemberNames.length > 0 ? involvedMemberNames.join(', ') : (item.membersInvolve || '')
+              return (
                   <div
                     key={item.id}
                     ref={el => {
@@ -1593,6 +1665,9 @@ function Calendar({ listOnly = false }) {
                         <div className="flex-1 min-w-0">
                           <span className="text-xs uppercase tracking-wide text-gray-500">{getCategoryLabel(item.category)}</span>
                           {item.branch && <span className="ml-2 text-xs text-red-600 font-medium">{item.branch}</span>}
+                          <span className={`ml-2 inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold border ${item.status === 'done' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-red-100 text-red-700 border-red-200'}`}>
+                            {item.status === 'done' ? 'Done' : 'On-going'}
+                          </span>
                           <h4 className="font-semibold text-gray-800 mt-1 truncate">{item.title}</h4>
                           <p className="text-sm text-gray-500 mt-1">{dayjs(item.dateTime).format('MMMM D, YYYY h:mm A')}</p>
                         </div>
@@ -1632,6 +1707,12 @@ function Calendar({ listOnly = false }) {
                                 <span>{item.address}</span>
                               </div>
                             )}
+                            {membersInvolveText && (
+                              <div className="flex items-start gap-2 text-gray-600">
+                                <Users size={14} className="mt-0.5" />
+                                <span>Members Involve: {membersInvolveText}</span>
+                              </div>
+                            )}
                             {Array.isArray(item.assignedMemberIds) && item.assignedMemberIds.length > 0 && (
                               <div className="flex flex-wrap gap-2">
                                 {item.assignedMemberIds.map(memberId => (
@@ -1663,18 +1744,17 @@ function Calendar({ listOnly = false }) {
                                 <p className="text-xs text-gray-500">No viewers yet.</p>
                               )}
                             </div>
-                            {item.categoryData && Object.keys(item.categoryData).length > 0 && (
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pt-1">
-                                {CATEGORY_CONFIG[item.category]?.fields.map(field => (
-                                  <div key={field.key} className="px-3 py-2 rounded bg-white border border-gray-200">
-                                    <p className="text-xs text-gray-500">{field.label}</p>
-                                    <p className="font-medium text-gray-800">{String(item.categoryData[field.key] ?? '')}</p>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
                             {canManageEvents && (
                               <div className="pt-2 flex items-center gap-2">
+                                {item.status !== 'done' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => openMarkDoneForm(item)}
+                                    className="px-3 py-1.5 rounded-md bg-green-600 text-white text-xs font-medium hover:bg-green-700 transition-colors"
+                                  >
+                                    Mark as Done
+                                  </button>
+                                )}
                                 <button
                                   type="button"
                                   onClick={() => openEventForEdit(item)}
@@ -1744,11 +1824,13 @@ function Calendar({ listOnly = false }) {
                         <select
                           value={formData.category}
                           onChange={e =>
-                            setFormData({
-                              ...formData,
-                              category: e.target.value,
-                              branch: '',
-                            })
+                            {
+                              setFormData({
+                                ...formData,
+                                category: e.target.value,
+                                branch: '',
+                              })
+                            }
                           }
                           className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                           required
@@ -1768,22 +1850,14 @@ function Calendar({ listOnly = false }) {
                       <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
                       <div className="relative">
                         <GitBranch size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                        <select
+                        <input
+                          type="text"
                           value={formData.branch}
                           onChange={e => setFormData({ ...formData, branch: e.target.value })}
-                          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 disabled:bg-gray-100"
-                          disabled={!formData.category}
+                          placeholder="Enter type"
+                          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                           required
-                        >
-                          <option value="" disabled>
-                            Select type
-                          </option>
-                          {(operationTypesByCategoryKey[formData.category] || []).map(branch => (
-                            <option key={branch} value={branch}>
-                              {branch}
-                            </option>
-                          ))}
-                        </select>
+                        />
                       </div>
                     </div>
                   </div>
@@ -1795,7 +1869,6 @@ function Calendar({ listOnly = false }) {
                       onChange={e => setFormData({ ...formData, content: e.target.value })}
                       rows={3}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                      required
                     />
                   </div>
 
@@ -1811,6 +1884,15 @@ function Calendar({ listOnly = false }) {
                       />
                     </div>
                   </div>
+                  {formData.category === 'notes' && (
+                    <AssignMembersPicker
+                      allMembers={assignableMembers}
+                      selectedIds={formData.assignedMemberIds}
+                      onChange={nextIds => setFormData({ ...formData, assignedMemberIds: nextIds })}
+                      label="Members Involve"
+                      placeholder="Search and select members to involve..."
+                    />
+                  )}
 
                 </div>
               </div>
@@ -1837,46 +1919,12 @@ function Calendar({ listOnly = false }) {
                 />
               </div>
 
-              {formData.category && activeCategoryConfig && (
-                <div key={formData.category} className={`rounded-2xl border border-gray-200 p-4 sm:p-5 bg-gradient-to-br ${selectedCategoryMeta?.bg || 'from-gray-50 to-gray-100'} animate-fade-in-up`}>
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className={`statcard-icon-3d ${selectedCategoryMeta?.iconClass || ''} w-9 h-9 rounded-lg bg-white flex items-center justify-center`}>
-                      <SelectedCategoryIcon size={16} className={selectedCategoryMeta?.text || 'text-gray-600'} />
-                    </div>
-                    <p className="text-sm font-semibold text-gray-800">{activeCategoryConfig.label} Specific Fields</p>
-                  </div>
-                  <div className="space-y-3">
-                    {activeCategoryConfig.fields.map(field => (
-                      <div key={field.key}>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">{field.label}</label>
-                        {field.type === 'text' ? (
-                          <input
-                            type="text"
-                            value={formData.dynamicFields[formData.category][field.key]}
-                            onChange={e => handleDynamicFieldChange(formData.category, field.key, e.target.value)}
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-red-500"
-                            required
-                          />
-                        ) : (
-                          <input
-                            type="number"
-                            min={field.min}
-                            step={field.step}
-                            value={formData.dynamicFields[formData.category][field.key]}
-                            onChange={e => handleDynamicFieldChange(formData.category, field.key, e.target.value)}
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-red-500"
-                            required
-                          />
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                <button type="submit" className="flex-1 px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all">
-                  {editingEventId ? 'Update Event' : 'Save Event'}
+                <button
+                  type="submit"
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all"
+                >
+                  {editingEventId ? 'Save Changes' : 'Save Event'}
                 </button>
                 <button
                   type="button"
@@ -1887,6 +1935,93 @@ function Calendar({ listOnly = false }) {
                   className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
                 >
                   Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {canManageEvents && showDoneForm && markDoneEvent && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-3 sm:p-4">
+          <div className="w-full max-w-2xl max-h-[92vh] overflow-y-auto rounded-2xl bg-white border border-red-100 shadow-2xl animate-fade-in-up">
+            <div className="flex items-center justify-between p-4 sm:p-5 border-b border-gray-200 sticky top-0 bg-white z-10 rounded-t-2xl">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
+                  <MarkDoneIcon size={16} className="text-green-700" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-800">Mark Event as Done</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDoneForm(false)
+                  setMarkDoneEventId(null)
+                  setDoneFormError('')
+                }}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X size={20} className="text-gray-500" />
+              </button>
+            </div>
+
+            <form onSubmit={handleMarkDone} className="p-4 sm:p-6 space-y-5">
+              {doneFormError && <p className="text-sm text-red-600">{doneFormError}</p>}
+
+              <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                <p className="text-xs uppercase tracking-wide text-gray-500">{getCategoryLabel(markDoneEvent.category)}</p>
+                <p className="text-sm font-medium text-gray-800 mt-1">{markDoneEvent.title || 'Untitled Event'}</p>
+                <p className="text-xs text-gray-500 mt-1">{dayjs(markDoneEvent.dateTime).format('MMMM D, YYYY h:mm A')}</p>
+              </div>
+
+              {markDoneCategoryConfig && markDoneCategoryConfig.fields.length > 0 ? (
+                <div className="space-y-3">
+                  {markDoneCategoryConfig.fields.map(field => (
+                    <div key={field.key}>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">{field.label}</label>
+                      {field.type === 'text' ? (
+                        <input
+                          type="text"
+                          value={doneFields[markDoneEvent.category]?.[field.key] ?? ''}
+                          onChange={e => handleDoneFieldChange(markDoneEvent.category, field.key, e.target.value)}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                          required
+                        />
+                      ) : (
+                        <input
+                          type="number"
+                          min={field.min}
+                          step={field.step}
+                          value={doneFields[markDoneEvent.category]?.[field.key] ?? ''}
+                          onChange={e => handleDoneFieldChange(markDoneEvent.category, field.key, e.target.value)}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                          required
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-600">No additional fields required for this category.</p>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDoneForm(false)
+                    setMarkDoneEventId(null)
+                    setDoneFormError('')
+                  }}
+                  className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors"
+                >
+                  Mark Done
                 </button>
               </div>
             </form>

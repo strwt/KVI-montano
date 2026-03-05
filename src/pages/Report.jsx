@@ -1,5 +1,5 @@
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import dayjs from 'dayjs'
 import {
   Activity,
@@ -11,7 +11,6 @@ import {
   BarChart3,
   PieChart,
   Download,
-  Search,
   Loader2,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
@@ -39,6 +38,7 @@ const REPORT_COLUMNS = [
   { key: 'content', label: 'Content' },
   { key: 'category', label: 'Category' },
   { key: 'branch', label: 'Field' },
+  { key: 'membersInvolve', label: 'Members Involve' },
   { key: 'dateTime', label: 'Date and Time' },
   { key: 'address', label: 'Address' },
   { key: 'seedlingsUsed', label: 'Seedlings Used' },
@@ -105,7 +105,12 @@ const getMostActiveMonthLabel = countByMonth => {
 const getDateWindow = preset => {
   const now = dayjs()
   if (preset === 'monthly') return { start: now.startOf('month'), end: now.endOf('month') }
-  if (preset === 'quarterly') return { start: now.subtract(2, 'month').startOf('month'), end: now.endOf('month') }
+  if (preset === 'quarterly') {
+    const quarterStartMonth = Math.floor(now.month() / 3) * 3
+    const start = now.month(quarterStartMonth).startOf('month')
+    const end = start.add(2, 'month').endOf('month')
+    return { start, end }
+  }
   if (preset === 'annually') return { start: now.startOf('year'), end: now.endOf('year') }
   return { start: null, end: null }
 }
@@ -160,60 +165,47 @@ const loadJsPdf = () => {
 
 function Report() {
   const { user } = useAuth()
-  const [events] = useState(getStoredEvents)
+  const [events, setEvents] = useState(getStoredEvents)
   const [datePreset, setDatePreset] = useState('monthly')
   const [selectedCategory, setSelectedCategory] = useState('all')
-  const [selectedBranch, setSelectedBranch] = useState('all')
-  const [searchQuery, setSearchQuery] = useState('')
   const [showExportMenu, setShowExportMenu] = useState(false)
   const [exportingType, setExportingType] = useState('')
 
   const isAdmin = user?.role === 'admin'
   const { start, end } = getDateWindow(datePreset)
 
-  const branchOptions = useMemo(() => {
-    return Array.from(
-      new Set(
-        events
-          .map(event => ({ ...event, _date: resolveEventDate(event), _category: normalizeCategory(event.category) }))
-          .filter(event => Boolean(event._date) && CATEGORY_KEYS.includes(event._category))
-          .filter(event => {
-            if (selectedCategory !== 'all' && event._category !== selectedCategory) return false
-            if (start && event._date.isBefore(start)) return false
-            if (end && event._date.isAfter(end)) return false
-            return Boolean(event.branch)
-          })
-          .map(event => event.branch)
-      )
-    ).sort((a, b) => a.localeCompare(b))
-  }, [events, selectedCategory, start, end])
+  useEffect(() => {
+    const reloadEvents = () => setEvents(getStoredEvents())
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') reloadEvents()
+    }
+
+    reloadEvents()
+    window.addEventListener('storage', reloadEvents)
+    window.addEventListener('focus', reloadEvents)
+    window.addEventListener('kusgan-events-updated', reloadEvents)
+    document.addEventListener('visibilitychange', onVisibilityChange)
+
+    return () => {
+      window.removeEventListener('storage', reloadEvents)
+      window.removeEventListener('focus', reloadEvents)
+      window.removeEventListener('kusgan-events-updated', reloadEvents)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+    }
+  }, [])
 
   const filteredEvents = useMemo(() => {
     return events
       .map(event => ({ ...event, _date: resolveEventDate(event), _category: normalizeCategory(event.category) }))
       .filter(event => Boolean(event._date) && CATEGORY_KEYS.includes(event._category))
+      .filter(event => event.status === 'done')
       .filter(event => {
         if (selectedCategory !== 'all' && event._category !== selectedCategory) return false
-        if (selectedBranch !== 'all' && event.branch !== selectedBranch) return false
         if (start && event._date.isBefore(start)) return false
         if (end && event._date.isAfter(end)) return false
-
-        const searchLower = searchQuery.toLowerCase().trim()
-        if (!searchLower) return true
-
-        const bucket = [
-          event.title,
-          event.content,
-          event.address,
-          CATEGORY_META[event._category]?.label || event._category,
-          ...Object.values(event.categoryData || {}),
-        ]
-          .join(' ')
-          .toLowerCase()
-
-        return bucket.includes(searchLower)
+        return true
       })
-  }, [events, selectedCategory, selectedBranch, start, end, searchQuery])
+  }, [events, selectedCategory, start, end])
 
   const stats = useMemo(() => {
     const template = {
@@ -286,6 +278,7 @@ function Report() {
       content: event.content || '',
       category: CATEGORY_META[event._category]?.label || event._category,
       branch: event.branch || '',
+      membersInvolve: event.membersInvolve || '',
       dateTime: event._date.format('YYYY-MM-DD HH:mm'),
       address: event.address || '',
       seedlingsUsed: getFieldValue(event, 'seedlingsUsed', ['seedlings']),
@@ -456,6 +449,7 @@ function Report() {
         row.cubicWater ? `Cubic:${row.cubicWater}` : '',
         row.respondedFireAccident ? `Fire:${row.respondedFireAccident}` : '',
         row.trainings ? `Trainings:${row.trainings}` : '',
+        row.membersInvolve ? `Members:${row.membersInvolve}` : '',
         row.medicalEquipmentUsed ? `Medical:${row.medicalEquipmentUsed}` : '',
         row.expenses ? `Expenses:${row.expenses}` : '',
       ]
@@ -536,7 +530,7 @@ function Report() {
           )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div>
             <label className="block text-xs text-gray-500 mb-1">Date Range</label>
             <select
@@ -553,10 +547,7 @@ function Report() {
             <label className="block text-xs text-gray-500 mb-1">Category</label>
             <select
               value={selectedCategory}
-              onChange={e => {
-                setSelectedCategory(e.target.value)
-                setSelectedBranch('all')
-              }}
+              onChange={e => setSelectedCategory(e.target.value)}
               className="w-full px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-500"
             >
               <option value="all">All Categories</option>
@@ -564,34 +555,6 @@ function Report() {
                 <option key={key} value={key}>{CATEGORY_META[key].label}</option>
               ))}
             </select>
-          </div>
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">Field</label>
-            <select
-              value={selectedBranch}
-              onChange={e => setSelectedBranch(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-500"
-            >
-              <option value="all">All Fields</option>
-              {branchOptions.map(branch => (
-                <option key={branch} value={branch}>
-                  {branch}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="md:col-span-2">
-            <label className="block text-xs text-gray-500 mb-1">Search</label>
-            <div className="relative">
-              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Search by title, content, address, category..."
-                className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-500"
-              />
-            </div>
           </div>
         </div>
       </div>
@@ -626,7 +589,7 @@ function Report() {
 
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-white rounded-xl shadow-md p-5 border border-gray-100 layout-glow">
           <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2"><Leaf size={18} className="text-green-600" />Environmental Statistics</h3>
           <div className="space-y-2 text-sm">
@@ -643,7 +606,26 @@ function Report() {
             <div className="flex flex-wrap justify-between gap-2"><span>Total Food Packs Distributed</span><strong>{stats['relief operation'].foodPacks}</strong></div>
             <div className="flex flex-wrap justify-between gap-2"><span>Total Families Accommodated</span><strong>{stats['relief operation'].familiesAccommodated}</strong></div>
             <div className="flex flex-wrap justify-between gap-2"><span>Total Expenses</span><strong>{CURRENCY.format(stats['relief operation'].expenses)}</strong></div>
-            <div className="flex flex-wrap justify-between gap-2"><span>Most Active Month</span><strong>{getMostActiveMonthLabel(stats['relief operation'].monthlyCount)}</strong></div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-md p-5 border border-gray-100 layout-glow">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2"><Flame size={18} className="text-orange-600" />Fire Response Statistics</h3>
+          <div className="space-y-2 text-sm">
+            <div className="flex flex-wrap justify-between gap-2"><span>Total Fire Responses</span><strong>{stats['fire response'].eventCount}</strong></div>
+            <div className="flex flex-wrap justify-between gap-2"><span>Total Gallons</span><strong>{stats['fire response'].gallons}</strong></div>
+            <div className="flex flex-wrap justify-between gap-2"><span>Total Tank</span><strong>{stats['fire response'].tank}</strong></div>
+            <div className="flex flex-wrap justify-between gap-2"><span>Total Cubic Water</span><strong>{stats['fire response'].cubicWater}</strong></div>
+            <div className="flex flex-wrap justify-between gap-2"><span>Total Expenses</span><strong>{CURRENCY.format(stats['fire response'].expenses)}</strong></div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-md p-5 border border-gray-100 layout-glow">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2"><HeartPulse size={18} className="text-pink-600" />Medical Statistics</h3>
+          <div className="space-y-2 text-sm">
+            <div className="flex flex-wrap justify-between gap-2"><span>Total Medical Events</span><strong>{stats.medical.eventCount}</strong></div>
+            <div className="flex flex-wrap justify-between gap-2"><span>Total Medical Equipment Used</span><strong>{stats.medical.medicalEquipmentUsed}</strong></div>
+            <div className="flex flex-wrap justify-between gap-2"><span>Total Expenses</span><strong>{CURRENCY.format(stats.medical.expenses)}</strong></div>
           </div>
         </div>
       </div>
