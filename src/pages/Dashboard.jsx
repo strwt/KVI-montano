@@ -106,10 +106,6 @@ function Dashboard() {
     }).length
   }, [events])
 
-  const categoriesUsed = useMemo(() => {
-    return Object.values(categoryCounts).filter(value => value > 0).length
-  }, [categoryCounts])
-
   const handleOpenEventInCalendar = (event) => {
     navigate('/calendar', {
       state: {
@@ -132,8 +128,6 @@ function Dashboard() {
             </h1>
             <p className="text-[14px] text-neutral-300">KUSGAN Volunteer Inc. - Cares Department</p>
             <div className="flex flex-wrap gap-2 pt-1">
-              <span className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-1 text-[14px]">{eventsThisMonth} this month</span>
-              <span className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-1 text-[14px]">{categoriesUsed} active categories</span>
               <span className="rounded-lg border border-[#B01030]/60 bg-[#DC143C]/15 px-3 py-1 text-[14px]">{isAdmin ? 'Administrator' : 'Member'}</span>
             </div>
           </div>
@@ -187,89 +181,95 @@ function Dashboard() {
 
       </section>
 
-      <section className="grid grid-cols-12 gap-4">
-        <article className="col-span-12 rounded-2xl border border-neutral-200 bg-white p-5 md:p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)]">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-[24px] font-semibold text-black">Recent Activity</h2>
-            <button
-              type="button"
-              onClick={() => navigate('/calendar')}
-              className="cursor-pointer rounded-lg border border-[#DC143C] bg-white px-4 py-2 text-[14px] font-medium text-[#DC143C] transition-all duration-200 hover:scale-[1.02] hover:bg-[rgba(220,20,60,0.08)]"
-            >
-              View All
-            </button>
-          </div>
-          <div className="max-h-[360px] space-y-3 overflow-y-auto pr-1">
-            {recentEvents.map((event, index) => (
+      {isAdmin && (
+        <section className="grid grid-cols-12 gap-4">
+          <article className="col-span-12 rounded-2xl border border-neutral-200 bg-white p-5 md:p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)]">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-[24px] font-semibold text-black">Recent Activity</h2>
               <button
                 type="button"
-                key={`${event.id || 'event'}-${resolveEventDate(event) || 'no-date'}-${index}`}
-                onClick={() => handleOpenEventInCalendar(event)}
-                className={`group flex w-full cursor-pointer items-start gap-4 rounded-xl border border-neutral-200 bg-white p-3 md:p-4 text-left transition-all duration-200 hover:scale-[1.02] hover:shadow-[0_10px_16px_rgba(0,0,0,0.08)] ${
-                  animatedStats ? 'animate-fade-in-up' : 'opacity-0'
-                }`}
-                style={{ animationDelay: `${index * 0.08}s` }}
+                onClick={() => navigate('/calendar')}
+                className="cursor-pointer rounded-lg border border-[#DC143C] bg-white px-4 py-2 text-[14px] font-medium text-[#DC143C] transition-all duration-200 hover:scale-[1.02] hover:bg-[rgba(220,20,60,0.08)]"
               >
-                <div className="relative flex flex-col items-center">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#DC143C] text-white">
-                    <CalendarIcon size={14} />
-                  </span>
-                  {index !== recentEvents.length - 1 && <span className="mt-2 h-12 w-px bg-neutral-300" />}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[18px] font-medium text-black">{event.title || 'Untitled Event'}</p>
-                  <p className="mt-1 text-[14px] text-neutral-500">
-                    {dayjs(resolveEventDate(event)).format('MMM D, YYYY h:mm A')}
-                  </p>
-                </div>
-                <span className="rounded-md border border-neutral-300 bg-neutral-100 px-2 py-1 text-[14px] capitalize text-neutral-700">
-                  {event.category || 'Uncategorized'}
-                </span>
+                View All
               </button>
-            ))}
-            {recentEvents.length === 0 && <p className="py-4 text-center text-[14px] text-neutral-500">No activity yet</p>}
-          </div>
-        </article>
+            </div>
+            <div className="max-h-[360px] space-y-3 overflow-y-auto pr-1">
+              {recentEvents.map((event, index) => (
+                <button
+                  type="button"
+                  key={`${event.id || 'event'}-${resolveEventDate(event) || 'no-date'}-${index}`}
+                  onClick={() => handleOpenEventInCalendar(event)}
+                  className={`group flex w-full cursor-pointer items-start gap-4 rounded-xl border border-neutral-200 bg-white p-3 md:p-4 text-left transition-all duration-200 hover:scale-[1.02] hover:shadow-[0_10px_16px_rgba(0,0,0,0.08)] ${
+                    animatedStats ? 'animate-fade-in-up' : 'opacity-0'
+                  }`}
+                  style={{ animationDelay: `${index * 0.08}s` }}
+                >
+                  <div className="relative flex flex-col items-center">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#DC143C] text-white">
+                      <CalendarIcon size={14} />
+                    </span>
+                    {index !== recentEvents.length - 1 && <span className="mt-2 h-12 w-px bg-neutral-300" />}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[18px] font-medium text-black">{event.title || 'Untitled Event'}</p>
+                    <p className="mt-1 text-[14px] text-neutral-500">
+                      {dayjs(resolveEventDate(event)).format('MMM D, YYYY h:mm A')}
+                    </p>
+                  </div>
+                  <span className="rounded-md border border-neutral-300 bg-neutral-100 px-2 py-1 text-[14px] capitalize text-neutral-700">
+                    {event.category || 'Uncategorized'}
+                  </span>
+                </button>
+              ))}
+              {recentEvents.length === 0 && <p className="py-4 text-center text-[14px] text-neutral-500">No activity yet</p>}
+            </div>
+          </article>
 
-      </section>
+        </section>
+      )}
 
       <section className="grid grid-cols-12 items-stretch gap-4">
-        <article className="col-span-12 rounded-2xl border border-neutral-200 bg-white p-5 md:p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] md:col-span-6 min-h-[400px] flex flex-col">
-          <h2 className="mb-3 text-[24px] font-semibold text-black">Category Share</h2>
-          <div className="flex flex-1 flex-col items-center gap-4">
-            <svg viewBox="0 0 220 220" className="h-48 w-48">
-              <circle cx="110" cy="110" r="76" fill="none" stroke="#e5e5e5" strokeWidth="20" />
-              {categorySlices.map(slice => (
-                <circle
-                  key={slice.key}
-                  cx="110"
-                  cy="110"
-                  r="76"
-                  fill="none"
-                  stroke={slice.stroke}
-                  strokeWidth="20"
-                  strokeDasharray={`${slice.dash} ${100 - slice.dash}`}
-                  strokeDashoffset={-slice.offset}
-                  pathLength="100"
-                  transform="rotate(-90 110 110)"
-                />
-              ))}
-            </svg>
-            <div className="w-full space-y-2">
-              {categorySlices.map(slice => (
-                <div key={slice.key} className="flex items-center justify-between text-[14px]">
-                  <span className="flex items-center gap-2 text-neutral-600">
-                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: slice.stroke }} />
-                    {slice.label}
-                  </span>
-                  <span className="font-medium text-black">{`${Math.round(slice.dash)}%`}</span>
-                </div>
-              ))}
+        {isAdmin && (
+          <article className="col-span-12 rounded-2xl border border-neutral-200 bg-white p-5 md:p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] md:col-span-6 min-h-[400px] flex flex-col">
+            <h2 className="mb-3 text-[24px] font-semibold text-black">Category Share</h2>
+            <div className="flex flex-1 flex-col items-center gap-4">
+              <svg viewBox="0 0 220 220" className="h-48 w-48">
+                <circle cx="110" cy="110" r="76" fill="none" stroke="#e5e5e5" strokeWidth="20" />
+                {categorySlices.map(slice => (
+                  <circle
+                    key={slice.key}
+                    cx="110"
+                    cy="110"
+                    r="76"
+                    fill="none"
+                    stroke={slice.stroke}
+                    strokeWidth="20"
+                    strokeDasharray={`${slice.dash} ${100 - slice.dash}`}
+                    strokeDashoffset={-slice.offset}
+                    pathLength="100"
+                    transform="rotate(-90 110 110)"
+                  />
+                ))}
+              </svg>
+              <div className="w-full space-y-2">
+                {categorySlices.map(slice => (
+                  <div key={slice.key} className="flex items-center justify-between text-[14px]">
+                    <span className="flex items-center gap-2 text-neutral-600">
+                      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: slice.stroke }} />
+                      {slice.label}
+                    </span>
+                    <span className="font-medium text-black">{`${Math.round(slice.dash)}%`}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-        </article>
+          </article>
+        )}
 
-        <article className="col-span-12 rounded-2xl border border-neutral-200 bg-white p-5 md:p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] md:col-span-6 min-h-[400px] flex flex-col">
+        <article className={`col-span-12 rounded-2xl border border-neutral-200 bg-white shadow-[0_10px_20px_rgba(0,0,0,0.08)] flex flex-col ${
+          isAdmin ? 'p-5 md:p-6 min-h-[400px] md:col-span-6' : 'p-4 md:p-5 md:col-span-6'
+        }`}>
           <h2 className="mb-3 text-[24px] font-semibold text-black">Volunteer Participation</h2>
           <div className="space-y-4">
             {volunteerBars.map((item, index) => {
