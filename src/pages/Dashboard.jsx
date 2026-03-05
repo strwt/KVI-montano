@@ -107,43 +107,6 @@ function Dashboard() {
   }, [events])
 
   const maxVolunteerCount = useMemo(() => Math.max(...volunteerBars.map(item => item.count), 1), [volunteerBars])
-<<<<<<< HEAD
-=======
-  const categorySlices = useMemo(() => getCategorySlices(categoryCounts), [categoryCounts])
-  const categoriesUsed = useMemo(
-    () => EVENT_CATEGORIES.filter(category => (categoryCounts[category.key] || 0) > 0).length,
-    [categoryCounts]
-  )
-  const eventsThisMonth = useMemo(() => {
-    return events.filter(event => {
-      const dateValue = resolveEventDate(event)
-      return dateValue && dayjs(dateValue).isValid() && dayjs(dateValue).isSame(dayjs(), 'month')
-    }).length
-  }, [events])
-  const monthlyEvents = useMemo(() => {
-    return Array.from({ length: 12 }, (_, monthIndex) => {
-      const monthDate = dayjs().month(monthIndex)
-      const count = events.filter(event => {
-        const dateValue = resolveEventDate(event)
-        return dateValue && dayjs(dateValue).isValid() && dayjs(dateValue).year() === monthDate.year() && dayjs(dateValue).month() === monthDate.month()
-      }).length
-      return { label: monthDate.format('MMM'), count }
-    })
-  }, [events])
-  const maxMonthlyCount = useMemo(
-    () => Math.max(...monthlyEvents.map(item => item.count), 1),
-    [monthlyEvents]
-  )
-  const linePath = useMemo(() => {
-    return monthlyEvents
-      .map((item, index) => {
-        const x = 20 + ((600 / (monthlyEvents.length - 1 || 1)) * index)
-        const y = 200 - ((item.count / maxMonthlyCount) * 160)
-        return `${index === 0 ? 'M' : 'L'} ${x} ${y}`
-      })
-      .join(' ')
-  }, [monthlyEvents, maxMonthlyCount])
->>>>>>> 47e30ba2d1271f973889d9e61bdb3d9d90db8154
 
   const handleOpenEventInCalendar = (event) => {
     navigate('/calendar', {
@@ -205,7 +168,7 @@ function Dashboard() {
               </button>
             ))}
           </div>
-	        </article>
+          </div>
 	      </section>
 
       <section className="grid grid-cols-12 items-stretch gap-4">
@@ -264,16 +227,9 @@ function Dashboard() {
               ))}
               {recentEvents.length === 0 && <p className="py-4 text-center text-[14px] text-neutral-500">No activity yet</p>}
             </div>
-<<<<<<< HEAD
           </article>
         </section>
       )}
-=======
-	            </div>
-	          </article>
-
-	        </section>
->>>>>>> 47e30ba2d1271f973889d9e61bdb3d9d90db8154
 
 	      <section className="grid grid-cols-12 items-stretch gap-4">
         {isAdmin && (
