@@ -32,6 +32,11 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+:root {
+  --dashboard-accent-stroke: #dc2626;
+  --dashboard-muted-stroke: #525252;
+}
+
 @layer base {
   html {
     scroll-padding-top: 80px;
@@ -42,6 +47,11 @@ body {
 .dark body {
   background-color: #030712;
   color: #e5e7eb;
+}
+
+.dark {
+  --dashboard-accent-stroke: #dc2626;
+  --dashboard-muted-stroke: #a1a1aa;
 }
 
 .dark .bg-white {
@@ -147,6 +157,38 @@ body {
 
 .dark .to-zinc-50 {
   --tw-gradient-to: #0f172a var(--tw-gradient-to-position) !important;
+}
+
+/* Ensure native form controls fully match dark mode across pages */
+.dark input,
+.dark select,
+.dark textarea {
+  background-color: #111827;
+  color: #f3f4f6;
+  border-color: #374151;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #9ca3af;
+}
+
+.dark input:focus,
+.dark select:focus,
+.dark textarea:focus {
+  border-color: rgba(220, 38, 38, 0.65);
+}
+
+.dark .dashboard-chart-axis {
+  stroke: #374151 !important;
+}
+
+.dark .dashboard-chart-label {
+  fill: #9ca3af !important;
+}
+
+.dark .dashboard-chart-track {
+  stroke: #374151 !important;
 }
 
 /* Custom Animations */

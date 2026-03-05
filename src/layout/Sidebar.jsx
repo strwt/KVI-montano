@@ -41,7 +41,7 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
         {/* Toggle Button */}
         <button
           onClick={toggleSidebar}
-          className="absolute -right-3 top-20 bg-[#DC143C] text-white rounded-full p-1 shadow-lg hover:bg-[#B01030] transition-all z-50"
+          className="absolute -right-3 top-20 bg-red-600 text-white rounded-full p-1 shadow-lg hover:bg-red-700 transition-all z-50"
         >
           {isOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
         </button>
@@ -60,7 +60,7 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
                 </div>
                 <div>
                   <h1 className="text-lg font-bold text-white">KUSGAN</h1>
-                  <p className="text-xs text-[#DC143C]">Volunteer Inc.</p>
+                  <p className="text-xs text-red-600">Volunteer Inc.</p>
                 </div>
               </div>
               <p className="text-xs text-gray-500 mt-1">Cares Department</p>
@@ -84,7 +84,7 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
               to={item.to}
               className={({ isActive }) =>
                 `group relative flex items-center gap-3 rounded-lg px-4 py-3 text-gray-300 transition-all duration-200 hover:scale-[1.02] hover:bg-gray-800 hover:text-white ${
-                  isActive ? 'text-white bg-gray-800/80 border-l-2 border-[#DC143C]' : 'border-l-2 border-transparent'
+                  isActive ? 'text-white bg-gray-800/80 border-l-2 border-red-600' : 'border-l-2 border-transparent'
                 } ${!isOpen && 'justify-center px-3'}`
               }
               style={{ animationDelay: `${index * 0.1}s` }}
@@ -112,7 +112,7 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
           <button
             type="button"
             onClick={() => setIsSettingsOpen(prev => !prev)}
-            className={`w-full flex items-center ${isOpen ? 'gap-3 px-3 justify-start' : 'justify-center'} py-2 text-gray-300 hover:bg-[#DC143C]/20 hover:text-white rounded-lg transition-all`}
+            className={`w-full flex items-center ${isOpen ? 'gap-3 px-3 justify-start' : 'justify-center'} py-2 text-gray-300 hover:bg-red-600/20 hover:text-white rounded-lg transition-all`}
           >
             <SlidersHorizontal size={18} />
             {isOpen && (
@@ -128,7 +128,7 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
               <button
                 type="button"
                 onClick={onToggleDarkMode}
-                className={`w-full flex items-center ${isOpen ? 'gap-3 px-2 justify-start' : 'justify-center'} py-2 text-gray-300 hover:bg-[#DC143C]/20 hover:text-white rounded-lg transition-all`}
+                className={`w-full flex items-center ${isOpen ? 'gap-3 px-2 justify-start' : 'justify-center'} py-2 text-gray-300 hover:bg-red-600/20 hover:text-white rounded-lg transition-all`}
               >
                 {darkMode ? <Sun size={18} /> : <Moon size={18} />}
                 {isOpen && <span>{darkMode ? 'Light Mode' : 'Dark Mode'}</span>}
@@ -142,7 +142,7 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
           {isOpen ? (
             <>
               <div className="flex items-center gap-3 mb-4 px-2">
-                <div className="w-10 h-10 rounded-full bg-[#DC143C] flex items-center justify-center overflow-hidden">
+                <div className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center overflow-hidden">
                   <img
                     src={user?.profileImage || '/image-removebg-preview.png'}
                     alt={user?.name || 'User'}
@@ -153,13 +153,13 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
                   <p className="font-medium text-white truncate">{user?.name || 'Guest'}</p>
                   <p className="text-xs text-gray-500 truncate">{user?.idNumber || user?.email || 'Guest User'}</p>
                   {user?.role === 'admin' && (
-                    <span className="inline-block mt-1 px-2 py-0.5 bg-[#DC143C]/20 text-[#DC143C] text-xs rounded">Admin</span>
+                    <span className="inline-block mt-1 px-2 py-0.5 bg-red-600/20 text-red-600 text-xs rounded">Admin</span>
                   )}
                 </div>
               </div>
               <button
                 onClick={handleLogout}
-                className="flex items-center gap-2 w-full px-4 py-2 text-gray-300 hover:bg-[#DC143C]/20 hover:text-white rounded-lg transition-all"
+                className="flex items-center gap-2 w-full px-4 py-2 text-gray-300 hover:bg-red-600/20 hover:text-white rounded-lg transition-all"
               >
                 <LogOut size={18} />
                 <span>Logout</span>
@@ -168,7 +168,7 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
           ) : (
             <button
               onClick={handleLogout}
-              className="flex items-center justify-center w-full p-2 text-gray-300 hover:bg-[#DC143C]/20 hover:text-white rounded-lg transition-all"
+              className="flex items-center justify-center w-full p-2 text-gray-300 hover:bg-red-600/20 hover:text-white rounded-lg transition-all"
             >
               <LogOut size={20} />
             </button>
