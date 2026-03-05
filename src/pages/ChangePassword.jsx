@@ -45,12 +45,12 @@ function ChangePassword() {
     <div className="animate-fade-in">
       <div className="bg-white rounded-2xl shadow-xl p-6">
         <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-          <KeyRound size={20} className="text-red-600" />
+          <KeyRound size={20} className="text-[#DC143C]" />
           Change Password
         </h3>
 
         {passwordError && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+          <div className="mb-4 p-3 bg-[rgba(220,20,60,0.08)] border border-[rgba(220,20,60,0.3)] rounded-lg text-[#DC143C] text-sm">
             {passwordError}
           </div>
         )}
@@ -87,7 +87,7 @@ function ChangePassword() {
             <div className="flex items-center justify-end gap-2">
               <button
                 type="submit"
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                className="px-4 py-2 bg-[#DC143C] text-white rounded-lg hover:bg-[#B01030] transition-colors"
               >
                 Update Password
               </button>
