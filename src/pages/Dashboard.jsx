@@ -139,13 +139,16 @@ function Dashboard() {
 
   const maxVolunteerCount = useMemo(() => Math.max(...volunteerBars.map(item => item.count), 1), [volunteerBars])
   const categorySlices = useMemo(() => getCategorySlices(categoryCounts), [categoryCounts])
+  const categoriesUsed = useMemo(
+    () => EVENT_CATEGORIES.filter(category => (categoryCounts[category.key] || 0) > 0).length,
+    [categoryCounts]
+  )
   const eventsThisMonth = useMemo(() => {
     return events.filter(event => {
       const dateValue = resolveEventDate(event)
       return dateValue && dayjs(dateValue).isValid() && dayjs(dateValue).isSame(dayjs(), 'month')
     }).length
   }, [events])
-  const categoriesUsed = useMemo(() => Object.values(categoryCounts).filter(value => value > 0).length, [categoryCounts])
 
   const handleOpenEventInCalendar = event => {
     navigate('/calendar', {
@@ -188,8 +191,8 @@ function Dashboard() {
             Create Event
             <ArrowRight size={16} />
           </button>
-        </div>
-      </section>
+	        </div>
+	      </section>
 
       <section className="grid grid-cols-12 gap-4">
         <article className="col-span-12 rounded-2xl border border-red-600 bg-white p-6 text-neutral-900 shadow-[0_10px_20px_rgba(0,0,0,0.08)] transition-all duration-200 hover:scale-[1.02] md:col-span-6 dark:bg-zinc-900 dark:text-zinc-100 dark:shadow-[0_12px_24px_rgba(0,0,0,0.25)]">
@@ -275,7 +278,7 @@ function Dashboard() {
               </button>
             ))}
           </div>
-        </article>
+        </div>
       </section>
 
       <section className="grid grid-cols-12 gap-4">
@@ -336,12 +339,53 @@ function Dashboard() {
                     <span className="h-2 w-2 rounded-full" style={{ backgroundColor: slice.stroke }} />
                     {slice.label}
                   </span>
-                  <span className="font-medium text-neutral-900 dark:text-zinc-100">{slice.value}</span>
+                  <span className="font-medium text-black dark:text-zinc-100">{slice.value}</span>
                 </div>
               ))}
+              {recentEvents.length === 0 && <p className="py-4 text-center text-[14px] text-neutral-500">No activity yet</p>}
             </div>
-          </div>
-        </article>
+          </article>
+
+        </section>
+      )}
+
+      <section className="grid grid-cols-12 items-stretch gap-4">
+        {isAdmin && (
+          <article className="col-span-12 rounded-2xl border border-neutral-200 bg-white p-5 md:p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] md:col-span-6 min-h-[400px] flex flex-col">
+            <h2 className="mb-3 text-[24px] font-semibold text-black">Category Share</h2>
+            <div className="flex flex-1 flex-col items-center gap-4">
+              <svg viewBox="0 0 220 220" className="h-48 w-48">
+                <circle cx="110" cy="110" r="76" fill="none" stroke="#e5e5e5" strokeWidth="20" />
+                {categorySlices.map(slice => (
+                  <circle
+                    key={slice.key}
+                    cx="110"
+                    cy="110"
+                    r="76"
+                    fill="none"
+                    stroke={slice.stroke}
+                    strokeWidth="20"
+                    strokeDasharray={`${slice.dash} ${100 - slice.dash}`}
+                    strokeDashoffset={-slice.offset}
+                    pathLength="100"
+                    transform="rotate(-90 110 110)"
+                  />
+                ))}
+              </svg>
+              <div className="w-full space-y-2">
+                {categorySlices.map(slice => (
+                  <div key={slice.key} className="flex items-center justify-between text-[14px]">
+                    <span className="flex items-center gap-2 text-neutral-600">
+                      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: slice.stroke }} />
+                      {slice.label}
+                    </span>
+                    <span className="font-medium text-black">{`${Math.round(slice.dash)}%`}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </article>
+        )}
 
         <article className="col-span-12 rounded-2xl border border-red-600 bg-white p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] md:col-span-3 dark:bg-zinc-900">
           <h2 className="mb-4 text-[24px] font-semibold text-neutral-900 dark:text-zinc-100">Volunteer Participation</h2>
