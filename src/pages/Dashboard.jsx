@@ -168,7 +168,7 @@ function Dashboard() {
               </button>
             ))}
           </div>
-          </div>
+          </div> 
 	      </section>
 
       <section className="grid grid-cols-12 items-stretch gap-4">
