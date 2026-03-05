@@ -1378,30 +1378,6 @@ function Calendar({ listOnly = false }) {
                                 <p className="text-xs text-gray-500">No viewers yet.</p>
                               )}
                             </div>
-                            {item.categoryData && Object.keys(item.categoryData).length > 0 && (
-                              <div className="pt-1 space-y-2">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                  {CATEGORY_CONFIG[item.category]?.fields.map(field => (
-                                    <div key={field.key} className="px-3 py-2 rounded bg-white border border-gray-200">
-                                      <p className="text-xs text-gray-500">{field.label}</p>
-                                      <p className="font-medium text-gray-800">{String(item.categoryData[field.key] ?? '')}</p>
-                                    </div>
-                                  ))}
-                                </div>
-                                {Array.isArray(item.categoryData.__utilities) && item.categoryData.__utilities.length > 0 && (
-                                  <div className="rounded bg-white border border-gray-200 p-3">
-                                    <p className="text-xs text-gray-500 mb-2">Utilities</p>
-                                    <div className="space-y-1">
-                                      {item.categoryData.__utilities.map((utility, index) => (
-                                        <p key={`${utility.utility}-${index}`} className="text-sm text-gray-700">
-                                          {utility.utility} - {utility.amount}
-                                        </p>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            )}
                             {canManageEvents && (
                               <div className="pt-2 flex items-center gap-2">
                                 {item.status !== 'done' && (
@@ -1768,30 +1744,6 @@ function Calendar({ listOnly = false }) {
                                 <p className="text-xs text-gray-500">No viewers yet.</p>
                               )}
                             </div>
-                            {item.categoryData && Object.keys(item.categoryData).length > 0 && (
-                              <div className="pt-1 space-y-2">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                  {CATEGORY_CONFIG[item.category]?.fields.map(field => (
-                                    <div key={field.key} className="px-3 py-2 rounded bg-white border border-gray-200">
-                                      <p className="text-xs text-gray-500">{field.label}</p>
-                                      <p className="font-medium text-gray-800">{String(item.categoryData[field.key] ?? '')}</p>
-                                    </div>
-                                  ))}
-                                </div>
-                                {Array.isArray(item.categoryData.__utilities) && item.categoryData.__utilities.length > 0 && (
-                                  <div className="rounded bg-white border border-gray-200 p-3">
-                                    <p className="text-xs text-gray-500 mb-2">Utilities</p>
-                                    <div className="space-y-1">
-                                      {item.categoryData.__utilities.map((utility, index) => (
-                                        <p key={`${utility.utility}-${index}`} className="text-sm text-gray-700">
-                                          {utility.utility} - {utility.amount}
-                                        </p>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            )}
                             {canManageEvents && (
                               <div className="pt-2 flex items-center gap-2">
                                 {item.status !== 'done' && (
