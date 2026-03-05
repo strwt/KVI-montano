@@ -1,5 +1,6 @@
 @import url("https://fonts.googleapis.com/css2?family=Cabin:ital,wght@0,400;0,500;0,600;0,700;1,400&family=PT+Sans:wght@400;700&display=swap");
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 /* ── Custom Font Utilities ────────────────────────── */
 @utility font-heading {
@@ -66,8 +67,16 @@ body {
   background-color: #030712 !important;
 }
 
+.dark .bg-black {
+  background-color: #0b1120 !important;
+}
+
 .dark .text-gray-800 {
   color: #f3f4f6 !important;
+}
+
+.dark .text-gray-900 {
+  color: #f9fafb !important;
 }
 
 .dark .text-gray-700,
@@ -76,9 +85,27 @@ body {
   color: #d1d5db !important;
 }
 
+.dark .text-gray-400 {
+  color: #9ca3af !important;
+}
+
+.dark .text-gray-300 {
+  color: #d1d5db !important;
+}
+
 .dark .border-gray-100,
 .dark .border-gray-200,
 .dark .border-gray-300 {
+  border-color: #374151 !important;
+}
+
+.dark .border-gray-400 {
+  border-color: #4b5563 !important;
+}
+
+.dark .border-gray-600,
+.dark .border-gray-700,
+.dark .border-gray-800 {
   border-color: #374151 !important;
 }
 
@@ -102,6 +129,22 @@ body {
   background-color: #4b5563 !important;
 }
 
+.dark .bg-neutral-50 {
+  background-color: #111827 !important;
+}
+
+.dark .bg-neutral-100 {
+  background-color: #1f2937 !important;
+}
+
+.dark .bg-neutral-200 {
+  background-color: #374151 !important;
+}
+
+.dark .bg-neutral-900 {
+  background-color: #0b1120 !important;
+}
+
 .dark .text-zinc-900 {
   color: #f3f4f6 !important;
 }
@@ -120,9 +163,31 @@ body {
   color: #9ca3af !important;
 }
 
+.dark .text-black {
+  color: #f3f4f6 !important;
+}
+
+.dark .text-neutral-700,
+.dark .text-neutral-600,
+.dark .text-neutral-500,
+.dark .text-neutral-400 {
+  color: #9ca3af !important;
+}
+
+.dark .text-neutral-300 {
+  color: #d1d5db !important;
+}
+
 .dark .border-zinc-100,
 .dark .border-zinc-200,
 .dark .border-zinc-300 {
+  border-color: #374151 !important;
+}
+
+.dark .border-neutral-200,
+.dark .border-neutral-300,
+.dark .border-neutral-700,
+.dark .border-neutral-800 {
   border-color: #374151 !important;
 }
 

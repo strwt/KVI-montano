@@ -476,18 +476,18 @@ function Members() {
   }
 
   return (
-    <div className="animate-fade-in">
+    <div className="animate-fade-in text-gray-900 dark:text-zinc-100">
       <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800">Management</h2>
-          <p className="text-sm text-gray-500">Manage users by role and committee</p>
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-zinc-100">Management</h2>
+          <p className="text-sm text-gray-500 dark:text-zinc-400">Manage users by role and committee</p>
         </div>
       </div>
 
       {isAdmin && (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
-          <div className="bg-white rounded-xl shadow-md p-5">
-            <h3 className="font-semibold text-gray-800 mb-3">Operation Management</h3>
+          <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl shadow-md p-5">
+            <h3 className="font-semibold text-gray-800 dark:text-zinc-100 mb-3">Operation Management</h3>
             <div className="space-y-4 mb-3">
               <div className="max-w-3xl mx-auto space-y-4">
                 <button
@@ -865,7 +865,7 @@ function Members() {
                   setShowAddOperationTypeInline(prev => !prev)
                   setShowAddUtilityInline(false)
                 }}
-                className="px-3 py-2 bg-gray-900 text-white rounded-lg hover:bg-black transition-colors text-sm"
+                className="px-3 py-2 bg-gray-100 text-gray-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-lg hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors text-sm"
               >
                 Add type of Operation
               </button>
@@ -913,7 +913,7 @@ function Members() {
                 </div>
                 <button
                   type="submit"
-                  className="px-3 py-2 bg-gray-900 text-white rounded-lg hover:bg-black transition-colors text-sm"
+                  className="px-3 py-2 bg-gray-100 text-gray-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-lg hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors text-sm"
                 >
                   Save Type
                 </button>

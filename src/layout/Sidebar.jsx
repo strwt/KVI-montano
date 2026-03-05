@@ -14,6 +14,25 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
   }
 
   const isAdmin = user?.role === 'admin'
+  const shellTone = darkMode
+    ? 'bg-gradient-to-b from-gray-900 to-black text-white'
+    : 'bg-gradient-to-b from-white to-gray-100 text-gray-900 border-r border-gray-200'
+  const navTone = darkMode
+    ? 'text-gray-300 hover:bg-gray-800 hover:text-white'
+    : 'text-gray-700 hover:bg-red-50 hover:text-gray-900'
+  const navActiveTone = darkMode
+    ? 'text-white bg-gray-800/80 border-l-2 border-red-600'
+    : 'text-red-700 bg-red-50 border-l-2 border-red-600'
+  const sectionMutedText = darkMode ? 'text-gray-500' : 'text-gray-600'
+  const panelTone = darkMode
+    ? 'rounded-lg bg-gray-900/60 border border-gray-800'
+    : 'rounded-lg bg-white border border-gray-200'
+  const utilityBtnTone = darkMode
+    ? 'text-gray-300 hover:bg-red-600/20 hover:text-white'
+    : 'text-gray-700 hover:bg-red-50 hover:text-gray-900'
+  const userDividerTone = darkMode ? 'border-t border-gray-800' : 'border-t border-gray-200'
+  const userNameTone = darkMode ? 'text-white' : 'text-gray-900'
+  const userMetaTone = darkMode ? 'text-gray-500' : 'text-gray-600'
 
   const navItems = [
     { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -34,7 +53,7 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
       )}
 
       <aside
-        className={`fixed left-0 top-0 h-full bg-gradient-to-b from-gray-900 to-black shadow-2xl z-40 transition-all duration-300 ${
+        className={`fixed left-0 top-0 h-full shadow-2xl z-40 transition-all duration-300 ${shellTone} ${
           isOpen ? 'w-64' : 'w-20'
         }`}
       >
@@ -59,11 +78,11 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
                   />
                 </div>
                 <div>
-                  <h1 className="text-lg font-bold text-white">KUSGAN</h1>
+                  <h1 className={`text-lg font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>KUSGAN</h1>
                   <p className="text-xs text-red-600">Volunteer Inc.</p>
                 </div>
               </div>
-              <p className="text-xs text-gray-500 mt-1">Cares Department</p>
+              <p className={`text-xs mt-1 ${sectionMutedText}`}>Cares Department</p>
             </div>
           ) : (
             <div className="w-10 h-10 bg-white logo-no-dark rounded-full flex items-center justify-center mx-auto overflow-hidden">
@@ -83,8 +102,8 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
               key={item.to}
               to={item.to}
               className={({ isActive }) =>
-                `group relative flex items-center gap-3 rounded-lg px-4 py-3 text-gray-300 transition-all duration-200 hover:scale-[1.02] hover:bg-gray-800 hover:text-white ${
-                  isActive ? 'text-white bg-gray-800/80 border-l-2 border-red-600' : 'border-l-2 border-transparent'
+                `group relative flex items-center gap-3 rounded-lg px-4 py-3 transition-all duration-200 hover:scale-[1.02] ${navTone} ${
+                  isActive ? navActiveTone : 'border-l-2 border-transparent'
                 } ${!isOpen && 'justify-center px-3'}`
               }
               style={{ animationDelay: `${index * 0.1}s` }}
@@ -98,7 +117,7 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
           {isAdmin && (
             <button
               onClick={() => navigate('/members')}
-              className={`group relative flex w-full items-center gap-3 rounded-lg border-l-2 border-transparent px-4 py-3 text-gray-300 transition-all duration-200 hover:scale-[1.02] hover:bg-gray-800 hover:text-white ${
+              className={`group relative flex w-full items-center gap-3 rounded-lg border-l-2 border-transparent px-4 py-3 transition-all duration-200 hover:scale-[1.02] ${navTone} ${
                 !isOpen && 'justify-center px-3'
               }`}
             >
@@ -112,7 +131,7 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
           <button
             type="button"
             onClick={() => setIsSettingsOpen(prev => !prev)}
-            className={`w-full flex items-center ${isOpen ? 'gap-3 px-3 justify-start' : 'justify-center'} py-2 text-gray-300 hover:bg-red-600/20 hover:text-white rounded-lg transition-all`}
+            className={`w-full flex items-center ${isOpen ? 'gap-3 px-3 justify-start' : 'justify-center'} py-2 rounded-lg transition-all ${utilityBtnTone}`}
           >
             <SlidersHorizontal size={18} />
             {isOpen && (
@@ -124,11 +143,11 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
           </button>
 
           {isSettingsOpen && (
-            <div className={`rounded-lg bg-gray-900/60 border border-gray-800 ${isOpen ? 'p-2 space-y-1' : 'p-1 space-y-2'}`}>
+            <div className={`${panelTone} ${isOpen ? 'p-2 space-y-1' : 'p-1 space-y-2'}`}>
               <button
                 type="button"
                 onClick={onToggleDarkMode}
-                className={`w-full flex items-center ${isOpen ? 'gap-3 px-2 justify-start' : 'justify-center'} py-2 text-gray-300 hover:bg-red-600/20 hover:text-white rounded-lg transition-all`}
+                className={`w-full flex items-center ${isOpen ? 'gap-3 px-2 justify-start' : 'justify-center'} py-2 rounded-lg transition-all ${utilityBtnTone}`}
               >
                 {darkMode ? <Sun size={18} /> : <Moon size={18} />}
                 {isOpen && <span>{darkMode ? 'Light Mode' : 'Dark Mode'}</span>}
@@ -138,7 +157,7 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
         </div>
 
         {/* User Section */}
-        <div className={`absolute bottom-0 w-full p-4 border-t border-gray-800 ${!isOpen && 'border-l'}`}>
+        <div className={`absolute bottom-0 w-full p-4 ${userDividerTone} ${!isOpen && (darkMode ? 'border-l border-gray-800' : 'border-l border-gray-200')}`}>
           {isOpen ? (
             <>
               <div className="flex items-center gap-3 mb-4 px-2">
@@ -150,8 +169,8 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
                   />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-white truncate">{user?.name || 'Guest'}</p>
-                  <p className="text-xs text-gray-500 truncate">{user?.idNumber || user?.email || 'Guest User'}</p>
+                  <p className={`font-medium truncate ${userNameTone}`}>{user?.name || 'Guest'}</p>
+                  <p className={`text-xs truncate ${userMetaTone}`}>{user?.idNumber || user?.email || 'Guest User'}</p>
                   {user?.role === 'admin' && (
                     <span className="inline-block mt-1 px-2 py-0.5 bg-red-600/20 text-red-600 text-xs rounded">Admin</span>
                   )}
@@ -159,7 +178,7 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
               </div>
               <button
                 onClick={handleLogout}
-                className="flex items-center gap-2 w-full px-4 py-2 text-gray-300 hover:bg-red-600/20 hover:text-white rounded-lg transition-all"
+                className={`flex items-center gap-2 w-full px-4 py-2 rounded-lg transition-all ${utilityBtnTone}`}
               >
                 <LogOut size={18} />
                 <span>Logout</span>
@@ -168,7 +187,7 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
           ) : (
             <button
               onClick={handleLogout}
-              className="flex items-center justify-center w-full p-2 text-gray-300 hover:bg-red-600/20 hover:text-white rounded-lg transition-all"
+              className={`flex items-center justify-center w-full p-2 rounded-lg transition-all ${utilityBtnTone}`}
             >
               <LogOut size={20} />
             </button>

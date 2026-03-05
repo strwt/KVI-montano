@@ -4,8 +4,12 @@ import Sidebar from './Sidebar'
 import { Menu, X } from 'lucide-react'
 
 const getStoredDarkMode = () => {
-  const stored = localStorage.getItem('kusgan_dark_mode')
-  return stored ? JSON.parse(stored) : false
+  try {
+    const stored = localStorage.getItem('kusgan_dark_mode')
+    return stored ? Boolean(JSON.parse(stored)) : false
+  } catch {
+    return false
+  }
 }
 
 function Layout() {
@@ -14,7 +18,11 @@ function Layout() {
 
   useEffect(() => {
     localStorage.setItem('kusgan_dark_mode', JSON.stringify(darkMode))
+    // Enforce theme class on both html and body so all selectors update reliably.
     document.documentElement.classList.toggle('dark', darkMode)
+    document.body.classList.toggle('dark', darkMode)
+    document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light')
+    document.body.setAttribute('data-theme', darkMode ? 'dark' : 'light')
   }, [darkMode])
 
   const toggleSidebar = () => {
@@ -22,7 +30,7 @@ function Layout() {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-100 w-full overflow-x-hidden">
+    <div className="flex min-h-screen bg-gray-100 dark:bg-gray-950 w-full overflow-x-hidden transition-colors">
       {/* Mobile Toggle Button */}
       <button
         onClick={toggleSidebar}

@@ -87,13 +87,13 @@ function MemberDetail() {
 
   if (!member) {
     return (
-      <div className="animate-fade-in">
-        <div className="bg-white rounded-xl shadow-md p-12 text-center">
+      <div className="animate-fade-in text-gray-900 dark:text-zinc-100">
+        <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl shadow-md p-12 text-center">
           <User size={48} className="mx-auto text-gray-300 mb-4" />
-          <p className="text-gray-500 text-lg">Member not found</p>
+          <p className="text-gray-500 dark:text-zinc-400 text-lg">Member not found</p>
           <button
             onClick={() => navigate('/members')}
-            className="mt-4 px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
+            className="mt-4 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700 transition-colors"
           >
             Back to Members
           </button>
@@ -103,12 +103,12 @@ function MemberDetail() {
   }
 
   return (
-    <div className="animate-fade-in">
+    <div className="animate-fade-in text-gray-900 dark:text-zinc-100">
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <button
           onClick={() => navigate('/members')}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors mb-4"
+          className="flex items-center gap-2 text-gray-600 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-zinc-100 transition-colors mb-4"
         >
           <ArrowLeft size={20} />
           Back to Members
@@ -124,7 +124,7 @@ function MemberDetail() {
       </div>
 
       <div className="space-y-6">
-        <div className="bg-white rounded-xl shadow-md p-6">
+        <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl shadow-md p-6">
           <div className="flex items-start gap-6">
             <div className="w-24 h-24 rounded-full bg-gradient-to-r from-red-600 to-red-700 flex items-center justify-center flex-shrink-0 overflow-hidden">
               <img
@@ -135,18 +135,18 @@ function MemberDetail() {
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2 flex-wrap">
-                <h2 className="text-2xl font-bold text-gray-800">{member.name}</h2>
+                <h2 className="text-2xl font-bold text-gray-800 dark:text-zinc-100">{member.name}</h2>
                 <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getRoleBadge(member.role)}`}>
                   {member.role === 'admin' ? 'Administrator' : 'Member'}
                 </span>
               </div>
               
               <div className="space-y-3 mt-4">
-                <div className="flex items-center gap-3 text-gray-600">
+                <div className="flex items-center gap-3 text-gray-600 dark:text-zinc-400">
                   <Mail size={18} className="text-gray-400" />
                   <span>{member.email || 'N/A'}</span>
                 </div>
-                <div className="flex items-center gap-3 text-gray-600">
+                <div className="flex items-center gap-3 text-gray-600 dark:text-zinc-400">
                   <Calendar size={18} className="text-gray-400" />
                   <span>Joined {new Date(member.memberSince || Date.now()).toLocaleDateString()}</span>
                 </div>
@@ -164,17 +164,17 @@ function MemberDetail() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white rounded-xl shadow-md p-5">
+          <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl shadow-md p-5">
             <p className="text-sm text-gray-500 mb-1">ID Number</p>
             <p className="text-lg font-semibold text-gray-800">{member.idNumber || 'N/A'}</p>
           </div>
-          <div className="bg-white rounded-xl shadow-md p-5">
+          <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl shadow-md p-5">
             <p className="text-sm text-gray-500 mb-1">Role</p>
             <p className="text-lg font-semibold text-gray-800">
               {member.role === 'admin' ? 'Administrator' : 'Member'}
             </p>
           </div>
-          <div className="bg-white rounded-xl shadow-md p-5">
+          <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl shadow-md p-5">
             <p className="text-sm text-gray-500 mb-1">Status</p>
             <p className={`text-lg font-semibold flex items-center gap-2 ${
               member.status === 'inactive' ? 'text-gray-600' : 'text-green-600'
@@ -185,17 +185,17 @@ function MemberDetail() {
               {member.status === 'inactive' ? 'Inactive' : 'Active'}
             </p>
           </div>
-          <div className="bg-white rounded-xl shadow-md p-5">
+          <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl shadow-md p-5">
             <p className="text-sm text-gray-500 mb-1">Member Since</p>
             <p className="text-lg font-semibold text-gray-800">
               {new Date(member.memberSince || Date.now()).toLocaleDateString()}
             </p>
           </div>
-          <div className="bg-white rounded-xl shadow-md p-5">
+          <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl shadow-md p-5">
             <p className="text-sm text-gray-500 mb-1">Address</p>
             <p className="text-lg font-semibold text-gray-800">{member.address || 'N/A'}</p>
           </div>
-          <div className="bg-white rounded-xl shadow-md p-5">
+          <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl shadow-md p-5">
             <p className="text-sm text-gray-500 mb-1">Contact Number</p>
             <p className="text-lg font-semibold text-gray-800">{member.contactNumber || 'N/A'}</p>
           </div>
@@ -208,14 +208,14 @@ function MemberDetail() {
 
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-xl p-6 max-w-md w-full mx-4 animate-fade-in">
+          <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl shadow-xl p-6 max-w-md w-full mx-4 animate-fade-in">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
                 <Trash2 size={24} className="text-red-600" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-gray-800">Confirm Delete</h3>
-                <p className="text-sm text-gray-500">This action cannot be undone</p>
+                <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100">Confirm Delete</h3>
+                <p className="text-sm text-gray-500 dark:text-zinc-400">This action cannot be undone</p>
               </div>
             </div>
             <p className="text-gray-600 mb-6">
@@ -241,8 +241,8 @@ function MemberDetail() {
 
       {showUpdateModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-xl p-6 max-w-md w-full mx-4 animate-fade-in">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Update Member</h3>
+          <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl shadow-xl p-6 max-w-md w-full mx-4 animate-fade-in">
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4">Update Member</h3>
             <form onSubmit={handleUpdateMember} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">ID Number</label>

@@ -501,12 +501,12 @@ function Report() {
   }
 
   return (
-    <div className="animate-fade-in space-y-6 max-w-7xl 2xl:max-w-[1500px] mx-auto">
-      <div className="bg-white rounded-2xl shadow-md p-5 border border-gray-100 layout-glow">
+    <div className="animate-fade-in space-y-6 max-w-7xl 2xl:max-w-[1500px] mx-auto text-gray-700 dark:text-zinc-300">
+      <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-md p-5 border border-gray-100 dark:border-zinc-700 layout-glow">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
           <div className="flex items-center gap-2">
             <Filter size={18} className="text-red-600" />
-            <h2 className="text-2xl font-bold text-gray-800">Report - Statistics Overview</h2>
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-zinc-100">Report - Statistics Overview</h2>
           </div>
           {isAdmin && (
             <div className="relative">
@@ -514,16 +514,16 @@ function Report() {
                 type="button"
                 onClick={() => setShowExportMenu(prev => !prev)}
                 disabled={Boolean(exportingType)}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-black transition-colors disabled:opacity-60"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700 transition-colors disabled:opacity-60"
               >
                 {exportingType ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
                 {exportingType ? `Generating ${exportingType.toUpperCase()}...` : 'Download / Export'}
               </button>
               {showExportMenu && !exportingType && (
-                <div className="absolute right-0 mt-2 w-52 bg-white border border-gray-200 rounded-lg shadow-lg z-20">
-                  <button type="button" onClick={() => handleExport('csv')} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50">Download as CSV</button>
-                  <button type="button" onClick={() => handleExport('pdf')} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50">Download as PDF</button>
-                  <button type="button" onClick={() => handleExport('doc')} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50">Download as DOC</button>
+                <div className="absolute right-0 mt-2 w-52 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-lg shadow-lg z-20">
+                  <button type="button" onClick={() => handleExport('csv')} className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-zinc-200 hover:bg-gray-50 dark:hover:bg-zinc-800">Download as CSV</button>
+                  <button type="button" onClick={() => handleExport('pdf')} className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-zinc-200 hover:bg-gray-50 dark:hover:bg-zinc-800">Download as PDF</button>
+                  <button type="button" onClick={() => handleExport('doc')} className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-zinc-200 hover:bg-gray-50 dark:hover:bg-zinc-800">Download as DOC</button>
                 </div>
               )}
             </div>
@@ -532,11 +532,11 @@ function Report() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div>
-            <label className="block text-xs text-gray-500 mb-1">Date Range</label>
+            <label className="block text-xs text-gray-500 dark:text-zinc-400 mb-1">Date Range</label>
             <select
               value={datePreset}
               onChange={e => setDatePreset(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-sm text-gray-700 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-red-500"
             >
               <option value="monthly">Monthly</option>
               <option value="quarterly">Quarterly</option>
@@ -544,11 +544,11 @@ function Report() {
             </select>
           </div>
           <div>
-            <label className="block text-xs text-gray-500 mb-1">Category</label>
+            <label className="block text-xs text-gray-500 dark:text-zinc-400 mb-1">Category</label>
             <select
               value={selectedCategory}
               onChange={e => setSelectedCategory(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-sm text-gray-700 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-red-500"
             >
               <option value="all">All Categories</option>
               {CATEGORY_KEYS.filter(key => key !== 'notes').map(key => (
@@ -560,27 +560,27 @@ function Report() {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <div className="bg-white rounded-xl shadow-md p-5 border border-gray-100 layout-glow">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2"><BarChart3 size={18} className="text-red-600" />Events Per Category</h3>
+        <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-md p-5 border border-gray-100 dark:border-zinc-700 layout-glow">
+          <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><BarChart3 size={18} className="text-red-600" />Events Per Category</h3>
           <div className="space-y-3">
             {categoryBarKeys.map(key => (
               <div key={key}>
-                <div className="flex items-center justify-between text-sm mb-1"><span className="text-gray-600">{CATEGORY_META[key].label}</span><span className="font-semibold text-gray-800">{eventCountByCategory[key]}</span></div>
-                <div className="w-full bg-gray-100 rounded-full h-2"><div className="h-2 rounded-full transition-all duration-300" style={{ width: `${(eventCountByCategory[key] / maxBarValue) * 100}%`, backgroundColor: CATEGORY_COLORS[key] }} /></div>
+                <div className="flex items-center justify-between text-sm mb-1"><span className="text-gray-600 dark:text-zinc-400">{CATEGORY_META[key].label}</span><span className="font-semibold text-gray-800 dark:text-zinc-100">{eventCountByCategory[key]}</span></div>
+                <div className="w-full bg-gray-100 dark:bg-zinc-700 rounded-full h-2"><div className="h-2 rounded-full transition-all duration-300" style={{ width: `${(eventCountByCategory[key] / maxBarValue) * 100}%`, backgroundColor: CATEGORY_COLORS[key] }} /></div>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-md p-5 border border-gray-100 layout-glow">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2"><PieChart size={18} className="text-red-600" />Category Distribution</h3>
+        <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-md p-5 border border-gray-100 dark:border-zinc-700 layout-glow">
+          <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><PieChart size={18} className="text-red-600" />Category Distribution</h3>
           <div className="flex flex-col items-center">
             <div className="w-44 h-44 sm:w-48 sm:h-48 rounded-full mb-4" style={{ background: pieGradient }} />
             <div className="w-full space-y-2">
               {pieSegments.map(segment => (
                 <div key={segment.key} className="flex items-center justify-between text-sm">
-                  <span className="flex items-center gap-2 text-gray-600"><span className="w-3 h-3 rounded-sm" style={{ backgroundColor: CATEGORY_COLORS[segment.key] }} />{CATEGORY_META[segment.key].label}</span>
-                  <span className="font-semibold text-gray-800">{segment.value} ({segment.percent.toFixed(1)}%)</span>
+                  <span className="flex items-center gap-2 text-gray-600 dark:text-zinc-400"><span className="w-3 h-3 rounded-sm" style={{ backgroundColor: CATEGORY_COLORS[segment.key] }} />{CATEGORY_META[segment.key].label}</span>
+                  <span className="font-semibold text-gray-800 dark:text-zinc-100">{segment.value} ({segment.percent.toFixed(1)}%)</span>
                 </div>
               ))}
             </div>
@@ -590,8 +590,8 @@ function Report() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-white rounded-xl shadow-md p-5 border border-gray-100 layout-glow">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2"><Leaf size={18} className="text-green-600" />Environmental Statistics</h3>
+        <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-md p-5 border border-gray-100 dark:border-zinc-700 layout-glow">
+          <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><Leaf size={18} className="text-green-600" />Environmental Statistics</h3>
           <div className="space-y-2 text-sm">
             <div className="flex flex-wrap justify-between gap-2"><span>Total Environmental Events</span><strong>{stats.environmental.eventCount}</strong></div>
             <div className="flex flex-wrap justify-between gap-2"><span>Total Seedlings Used</span><strong>{stats.environmental.seedlingsUsed}</strong></div>
@@ -599,8 +599,8 @@ function Report() {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-md p-5 border border-gray-100 layout-glow">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2"><Activity size={18} className="text-blue-600" />Relief Operation Statistics</h3>
+        <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-md p-5 border border-gray-100 dark:border-zinc-700 layout-glow">
+          <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><Activity size={18} className="text-blue-600" />Relief Operation Statistics</h3>
           <div className="space-y-2 text-sm">
             <div className="flex flex-wrap justify-between gap-2"><span>Total Relief Operations</span><strong>{stats['relief operation'].eventCount}</strong></div>
             <div className="flex flex-wrap justify-between gap-2"><span>Total Food Packs Distributed</span><strong>{stats['relief operation'].foodPacks}</strong></div>
@@ -609,8 +609,8 @@ function Report() {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-md p-5 border border-gray-100 layout-glow">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2"><Flame size={18} className="text-orange-600" />Fire Response Statistics</h3>
+        <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-md p-5 border border-gray-100 dark:border-zinc-700 layout-glow">
+          <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><Flame size={18} className="text-orange-600" />Fire Response Statistics</h3>
           <div className="space-y-2 text-sm">
             <div className="flex flex-wrap justify-between gap-2"><span>Total Fire Responses</span><strong>{stats['fire response'].eventCount}</strong></div>
             <div className="flex flex-wrap justify-between gap-2"><span>Total Gallons</span><strong>{stats['fire response'].gallons}</strong></div>
@@ -620,8 +620,8 @@ function Report() {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-md p-5 border border-gray-100 layout-glow">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2"><HeartPulse size={18} className="text-pink-600" />Medical Statistics</h3>
+        <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-md p-5 border border-gray-100 dark:border-zinc-700 layout-glow">
+          <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><HeartPulse size={18} className="text-pink-600" />Medical Statistics</h3>
           <div className="space-y-2 text-sm">
             <div className="flex flex-wrap justify-between gap-2"><span>Total Medical Events</span><strong>{stats.medical.eventCount}</strong></div>
             <div className="flex flex-wrap justify-between gap-2"><span>Total Medical Equipment Used</span><strong>{stats.medical.medicalEquipmentUsed}</strong></div>

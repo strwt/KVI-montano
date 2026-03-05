@@ -51,9 +51,9 @@ function Profile() {
 
   return (
     <div className="animate-fade-in">
-      <div className="relative overflow-hidden rounded-3xl border border-red-900/40 bg-gradient-to-br from-black via-zinc-950 to-red-950 p-1 mb-6">
-        <div className="absolute -top-20 -right-20 h-56 w-56 rounded-full bg-red-600/20 blur-3xl" />
-        <div className="absolute -bottom-24 -left-20 h-64 w-64 rounded-full bg-red-500/20 blur-3xl" />
+      <div className="relative overflow-hidden rounded-3xl border border-red-200 bg-gradient-to-br from-white via-zinc-50 to-red-50 p-1 mb-6 dark:border-red-900/40 dark:from-black dark:via-zinc-950 dark:to-red-950">
+        <div className="absolute -top-20 -right-20 h-56 w-56 rounded-full bg-red-600/10 blur-3xl dark:bg-red-600/20" />
+        <div className="absolute -bottom-24 -left-20 h-64 w-64 rounded-full bg-red-500/10 blur-3xl dark:bg-red-500/20" />
 
         <div className="relative rounded-[22px] bg-white/95 backdrop-blur-md p-6 md:p-8">
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
@@ -91,7 +91,7 @@ function Profile() {
               <button
                 onClick={() => setShowEditOptions((prev) => !prev)}
                 aria-label="Profile actions"
-                className="inline-flex items-center gap-2 px-4 py-2.5 bg-black text-white rounded-xl hover:bg-zinc-900 transition-colors border border-red-600/70 shadow-md shadow-red-900/25"
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors border border-red-600/70 shadow-md shadow-red-900/25"
               >
                 <Edit2 size={16} />
                 <span className="text-sm font-semibold">Manage</span>

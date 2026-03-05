@@ -105,7 +105,7 @@ function Settings() {
       </header>
 
       {saveState === 'success' && (
-        <div className="flex items-center gap-2 rounded-xl border border-red-600 bg-red-50 p-4 text-red-700 dark:bg-black dark:text-white">
+        <div className="flex items-center gap-2 rounded-xl border border-red-600 bg-red-50 p-4 text-red-700 dark:bg-zinc-900 dark:text-zinc-100">
           <CheckCircle2 size={18} className="text-red-600" />
           <p className="text-[14px]">Your settings were updated successfully.</p>
         </div>
