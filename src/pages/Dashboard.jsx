@@ -99,12 +99,39 @@ function Dashboard() {
 
   const maxVolunteerCount = useMemo(() => Math.max(...volunteerBars.map(item => item.count), 1), [volunteerBars])
   const categorySlices = useMemo(() => getCategorySlices(categoryCounts), [categoryCounts])
+  const categoriesUsed = useMemo(
+    () => EVENT_CATEGORIES.filter(category => (categoryCounts[category.key] || 0) > 0).length,
+    [categoryCounts]
+  )
   const eventsThisMonth = useMemo(() => {
     return events.filter(event => {
       const dateValue = resolveEventDate(event)
       return dateValue && dayjs(dateValue).isValid() && dayjs(dateValue).isSame(dayjs(), 'month')
     }).length
   }, [events])
+  const monthlyEvents = useMemo(() => {
+    return Array.from({ length: 12 }, (_, monthIndex) => {
+      const monthDate = dayjs().month(monthIndex)
+      const count = events.filter(event => {
+        const dateValue = resolveEventDate(event)
+        return dateValue && dayjs(dateValue).isValid() && dayjs(dateValue).year() === monthDate.year() && dayjs(dateValue).month() === monthDate.month()
+      }).length
+      return { label: monthDate.format('MMM'), count }
+    })
+  }, [events])
+  const maxMonthlyCount = useMemo(
+    () => Math.max(...monthlyEvents.map(item => item.count), 1),
+    [monthlyEvents]
+  )
+  const linePath = useMemo(() => {
+    return monthlyEvents
+      .map((item, index) => {
+        const x = 20 + ((600 / (monthlyEvents.length - 1 || 1)) * index)
+        const y = 200 - ((item.count / maxMonthlyCount) * 160)
+        return `${index === 0 ? 'M' : 'L'} ${x} ${y}`
+      })
+      .join(' ')
+  }, [monthlyEvents, maxMonthlyCount])
 
   const handleOpenEventInCalendar = (event) => {
     navigate('/calendar', {
@@ -141,8 +168,8 @@ function Dashboard() {
             Create Event
             <ArrowRight size={16} />
           </button>
-        </div>
-      </section>
+	        </div>
+	      </section>
 
       <section className="grid grid-cols-12 gap-4">
         <article className="col-span-12 rounded-2xl border border-red-600 bg-white p-6 text-neutral-900 shadow-[0_10px_20px_rgba(0,0,0,0.08)] transition-all duration-200 hover:scale-[1.02] md:col-span-6 dark:border-red-600 dark:bg-black dark:text-white dark:shadow-[0_12px_24px_rgba(0,0,0,0.25)]">
@@ -228,8 +255,8 @@ function Dashboard() {
               </button>
             ))}
           </div>
-        </div>
-      </section>
+	        </article>
+	      </section>
 
       <section className="grid grid-cols-12 gap-4">
         <article className="col-span-12 rounded-2xl border border-red-600 bg-white p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] md:col-span-6 dark:border-red-600 dark:bg-zinc-900">
@@ -292,12 +319,12 @@ function Dashboard() {
               ))}
               {recentEvents.length === 0 && <p className="py-4 text-center text-[14px] text-neutral-500">No activity yet</p>}
             </div>
-          </article>
+	            </div>
+	          </article>
 
-        </section>
-      )}
+	        </section>
 
-      <section className="grid grid-cols-12 items-stretch gap-4">
+	      <section className="grid grid-cols-12 items-stretch gap-4">
         {isAdmin && (
           <article className="col-span-12 rounded-2xl border border-neutral-200 bg-white p-5 md:p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] md:col-span-6 min-h-[400px] flex flex-col">
             <h2 className="mb-3 text-[24px] font-semibold text-black">Category Share</h2>
