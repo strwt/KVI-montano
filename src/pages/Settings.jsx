@@ -53,10 +53,10 @@ const getStoredSettings = (name = '') => {
 
 function ToggleSwitch({ checked, onChange, label, description }) {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-xl border border-neutral-200 bg-white p-4 transition-all duration-200 hover:shadow-[0_8px_16px_rgba(0,0,0,0.08)]">
+    <div className="flex items-center justify-between gap-4 rounded-xl border border-neutral-200 bg-white p-4 transition-all duration-200 hover:shadow-[0_8px_16px_rgba(0,0,0,0.08)] dark:border-zinc-700 dark:bg-zinc-900">
       <div>
-        <p className="text-[18px] font-medium text-black">{label}</p>
-        <p className="text-[14px] text-neutral-600">{description}</p>
+        <p className="text-[18px] font-medium text-black dark:text-zinc-100">{label}</p>
+        <p className="text-[14px] text-neutral-600 dark:text-zinc-400">{description}</p>
       </div>
       <button
         type="button"
@@ -64,7 +64,7 @@ function ToggleSwitch({ checked, onChange, label, description }) {
         aria-checked={checked}
         onClick={onChange}
         className={`relative h-7 w-14 cursor-pointer rounded-full border transition-all duration-200 ${
-          checked ? 'border-[#DC143C] bg-[#DC143C]' : 'border-neutral-300 bg-neutral-200'
+          checked ? 'border-red-600 bg-red-600' : 'border-neutral-300 bg-neutral-200 dark:border-zinc-600 dark:bg-zinc-700'
         }`}
       >
         <span
@@ -99,25 +99,25 @@ function Settings() {
 
   return (
     <div className="animate-fade-in space-y-6">
-      <header className="rounded-2xl border border-neutral-800 bg-gradient-to-br from-black to-neutral-900 p-6 text-white">
-        <h1 className="text-[32px] font-semibold leading-tight">Settings</h1>
-        <p className="mt-2 text-[14px] text-neutral-300">Manage your account and dashboard preferences in one place.</p>
+      <header className="rounded-2xl border border-neutral-200 bg-gradient-to-br from-white to-neutral-100 p-6 text-neutral-900 dark:border-neutral-800 dark:bg-gradient-to-br dark:from-black dark:to-neutral-900 dark:text-white">
+        <h1 className="text-[32px] font-semibold leading-tight text-black dark:text-white">Settings</h1>
+        <p className="mt-2 text-[14px] text-neutral-600 dark:text-neutral-300">Manage your account and dashboard preferences in one place.</p>
       </header>
 
       {saveState === 'success' && (
-        <div className="flex items-center gap-2 rounded-xl border border-[#B01030] bg-black p-4 text-white">
-          <CheckCircle2 size={18} className="text-[#DC143C]" />
+        <div className="flex items-center gap-2 rounded-xl border border-red-600 bg-red-50 p-4 text-red-700 dark:bg-zinc-900 dark:text-zinc-100">
+          <CheckCircle2 size={18} className="text-red-600" />
           <p className="text-[14px]">Your settings were updated successfully.</p>
         </div>
       )}
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <section className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
+        <section className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-[0_8px_20px_rgba(0,0,0,0.08)] dark:border-zinc-700 dark:bg-zinc-900">
           <div className="mb-4 flex items-center gap-2">
-            <Shield size={18} className="text-[#DC143C]" />
-            <h2 className="text-[24px] font-semibold text-black">Security</h2>
+            <Shield size={18} className="text-red-600" />
+            <h2 className="text-[24px] font-semibold text-black dark:text-zinc-100">Security</h2>
           </div>
-          <p className="mb-4 text-[14px] text-neutral-600">Protect your account with simple safety controls.</p>
+          <p className="mb-4 text-[14px] text-neutral-600 dark:text-zinc-400">Protect your account with simple safety controls.</p>
           <div className="space-y-2">
             <ToggleSwitch
               checked={settings.security.twoFactorAuth}
@@ -134,12 +134,12 @@ function Settings() {
           </div>
         </section>
 
-        <section className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
+        <section className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-[0_8px_20px_rgba(0,0,0,0.08)] dark:border-zinc-700 dark:bg-zinc-900">
           <div className="mb-4 flex items-center gap-2">
-            <Bell size={18} className="text-[#DC143C]" />
-            <h2 className="text-[24px] font-semibold text-black">Notifications</h2>
+            <Bell size={18} className="text-red-600" />
+            <h2 className="text-[24px] font-semibold text-black dark:text-zinc-100">Notifications</h2>
           </div>
-          <p className="mb-4 text-[14px] text-neutral-600">Choose how you want to receive updates.</p>
+          <p className="mb-4 text-[14px] text-neutral-600 dark:text-zinc-400">Choose how you want to receive updates.</p>
           <div className="space-y-2">
             <ToggleSwitch
               checked={settings.notifications.email}
@@ -162,12 +162,12 @@ function Settings() {
           </div>
         </section>
 
-        <section className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
+        <section className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-[0_8px_20px_rgba(0,0,0,0.08)] dark:border-zinc-700 dark:bg-zinc-900">
           <div className="mb-4 flex items-center gap-2">
-            <SlidersHorizontal size={18} className="text-[#DC143C]" />
-            <h2 className="text-[24px] font-semibold text-black">Preferences</h2>
+            <SlidersHorizontal size={18} className="text-red-600" />
+            <h2 className="text-[24px] font-semibold text-black dark:text-zinc-100">Preferences</h2>
           </div>
-          <p className="mb-4 text-[14px] text-neutral-600">Adjust your dashboard view and language options.</p>
+          <p className="mb-4 text-[14px] text-neutral-600 dark:text-zinc-400">Adjust your dashboard view and language options.</p>
           <div className="space-y-2">
             <ToggleSwitch
               checked={settings.preferences.compactLayout}
@@ -175,13 +175,13 @@ function Settings() {
               label="Compact Layout"
               description="Reduce spacing to show more information."
             />
-            <div className="rounded-xl border border-neutral-200 bg-white p-4">
-              <label className="mb-2 block text-[18px] font-medium text-black">Language</label>
-              <p className="mb-3 text-[14px] text-neutral-600">Select the language for your interface.</p>
+            <div className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900">
+              <label className="mb-2 block text-[18px] font-medium text-black dark:text-zinc-100">Language</label>
+              <p className="mb-3 text-[14px] text-neutral-600 dark:text-zinc-400">Select the language for your interface.</p>
               <select
                 value={settings.preferences.language}
                 onChange={e => setSettings(prev => ({ ...prev, preferences: { ...prev.preferences, language: e.target.value } }))}
-                className="w-full cursor-pointer rounded-xl border border-neutral-300 bg-white px-4 py-2 text-[14px] text-black transition-all duration-200 focus:border-[#DC143C] focus:outline-none"
+                className="w-full cursor-pointer rounded-xl border border-neutral-300 bg-white px-4 py-2 text-[14px] text-black transition-all duration-200 focus:border-red-600 focus:outline-none dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
               >
                 <option>English</option>
                 <option>Filipino</option>
@@ -190,12 +190,12 @@ function Settings() {
           </div>
         </section>
 
-        <section className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-[0_8px_20px_rgba(0,0,0,0.08)] xl:col-span-2">
+        <section className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-[0_8px_20px_rgba(0,0,0,0.08)] xl:col-span-2 dark:border-zinc-700 dark:bg-zinc-900">
           <div className="mb-4 flex items-center gap-2">
-            <Lock size={18} className="text-[#DC143C]" />
-            <h2 className="text-[24px] font-semibold text-black">Privacy</h2>
+            <Lock size={18} className="text-red-600" />
+            <h2 className="text-[24px] font-semibold text-black dark:text-zinc-100">Privacy</h2>
           </div>
-          <p className="mb-4 text-[14px] text-neutral-600">Control visibility of your personal and activity information.</p>
+          <p className="mb-4 text-[14px] text-neutral-600 dark:text-zinc-400">Control visibility of your personal and activity information.</p>
           <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
             <ToggleSwitch
               checked={settings.privacy.showProfileToVolunteers}
@@ -223,7 +223,7 @@ function Settings() {
         <button
           type="button"
           onClick={handleSave}
-          className="inline-flex items-center gap-2 rounded-xl border border-[#DC143C] bg-[#DC143C] px-6 py-3 text-[14px] font-semibold text-white shadow-[0_10px_20px_rgba(0,0,0,0.25)] transition-all duration-200 hover:scale-[1.02] hover:bg-[#B01030]"
+          className="inline-flex items-center gap-2 rounded-xl border border-red-600 bg-red-600 px-6 py-3 text-[14px] font-semibold text-white shadow-[0_10px_20px_rgba(0,0,0,0.25)] transition-all duration-200 hover:scale-[1.02] hover:bg-red-700"
         >
           <CheckCircle2 size={16} />
           {saveButtonLabel}

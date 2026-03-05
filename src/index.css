@@ -1,5 +1,6 @@
 @import url("https://fonts.googleapis.com/css2?family=Cabin:ital,wght@0,400;0,500;0,600;0,700;1,400&family=PT+Sans:wght@400;700&display=swap");
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 /* ── Custom Font Utilities ────────────────────────── */
 @utility font-heading {
@@ -32,6 +33,11 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+:root {
+  --dashboard-accent-stroke: #dc2626;
+  --dashboard-muted-stroke: #525252;
+}
+
 @layer base {
   html {
     scroll-padding-top: 80px;
@@ -42,6 +48,11 @@ body {
 .dark body {
   background-color: #030712;
   color: #e5e7eb;
+}
+
+.dark {
+  --dashboard-accent-stroke: #dc2626;
+  --dashboard-muted-stroke: #a1a1aa;
 }
 
 .dark .bg-white {
@@ -56,8 +67,16 @@ body {
   background-color: #030712 !important;
 }
 
+.dark .bg-black {
+  background-color: #0b1120 !important;
+}
+
 .dark .text-gray-800 {
   color: #f3f4f6 !important;
+}
+
+.dark .text-gray-900 {
+  color: #f9fafb !important;
 }
 
 .dark .text-gray-700,
@@ -66,9 +85,27 @@ body {
   color: #d1d5db !important;
 }
 
+.dark .text-gray-400 {
+  color: #9ca3af !important;
+}
+
+.dark .text-gray-300 {
+  color: #d1d5db !important;
+}
+
 .dark .border-gray-100,
 .dark .border-gray-200,
 .dark .border-gray-300 {
+  border-color: #374151 !important;
+}
+
+.dark .border-gray-400 {
+  border-color: #4b5563 !important;
+}
+
+.dark .border-gray-600,
+.dark .border-gray-700,
+.dark .border-gray-800 {
   border-color: #374151 !important;
 }
 
@@ -92,6 +129,22 @@ body {
   background-color: #4b5563 !important;
 }
 
+.dark .bg-neutral-50 {
+  background-color: #111827 !important;
+}
+
+.dark .bg-neutral-100 {
+  background-color: #1f2937 !important;
+}
+
+.dark .bg-neutral-200 {
+  background-color: #374151 !important;
+}
+
+.dark .bg-neutral-900 {
+  background-color: #0b1120 !important;
+}
+
 .dark .text-zinc-900 {
   color: #f3f4f6 !important;
 }
@@ -110,9 +163,31 @@ body {
   color: #9ca3af !important;
 }
 
+.dark .text-black {
+  color: #f3f4f6 !important;
+}
+
+.dark .text-neutral-700,
+.dark .text-neutral-600,
+.dark .text-neutral-500,
+.dark .text-neutral-400 {
+  color: #9ca3af !important;
+}
+
+.dark .text-neutral-300 {
+  color: #d1d5db !important;
+}
+
 .dark .border-zinc-100,
 .dark .border-zinc-200,
 .dark .border-zinc-300 {
+  border-color: #374151 !important;
+}
+
+.dark .border-neutral-200,
+.dark .border-neutral-300,
+.dark .border-neutral-700,
+.dark .border-neutral-800 {
   border-color: #374151 !important;
 }
 
@@ -147,6 +222,38 @@ body {
 
 .dark .to-zinc-50 {
   --tw-gradient-to: #0f172a var(--tw-gradient-to-position) !important;
+}
+
+/* Ensure native form controls fully match dark mode across pages */
+.dark input,
+.dark select,
+.dark textarea {
+  background-color: #111827;
+  color: #f3f4f6;
+  border-color: #374151;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #9ca3af;
+}
+
+.dark input:focus,
+.dark select:focus,
+.dark textarea:focus {
+  border-color: rgba(220, 38, 38, 0.65);
+}
+
+.dark .dashboard-chart-axis {
+  stroke: #374151 !important;
+}
+
+.dark .dashboard-chart-label {
+  fill: #9ca3af !important;
+}
+
+.dark .dashboard-chart-track {
+  stroke: #374151 !important;
 }
 
 /* Custom Animations */

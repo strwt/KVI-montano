@@ -106,9 +106,9 @@ function EditAccount() {
   return (
     <div className="animate-fade-in py-4">
       <div className="w-full max-w-6xl mx-auto">
-        <div className="relative overflow-hidden rounded-3xl border border-red-900/35 bg-gradient-to-br from-black via-zinc-950 to-red-950 p-1">
-          <div className="absolute -right-20 -top-20 w-56 h-56 rounded-full bg-red-600/25 blur-3xl" />
-          <div className="absolute -left-16 -bottom-20 w-64 h-64 rounded-full bg-red-500/20 blur-3xl" />
+        <div className="relative overflow-hidden rounded-3xl border border-red-200 bg-gradient-to-br from-white via-zinc-50 to-red-50 p-1 dark:border-red-900/35 dark:from-black dark:via-zinc-950 dark:to-red-950">
+          <div className="absolute -right-20 -top-20 w-56 h-56 rounded-full bg-red-600/12 blur-3xl dark:bg-red-600/25" />
+          <div className="absolute -left-16 -bottom-20 w-64 h-64 rounded-full bg-red-500/10 blur-3xl dark:bg-red-500/20" />
           <div className="relative rounded-[22px] bg-white/95 backdrop-blur-md p-6 md:p-8">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
               <div>

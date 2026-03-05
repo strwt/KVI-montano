@@ -1428,11 +1428,11 @@ function Calendar({ listOnly = false }) {
   }
 
   return (
-    <div className="animate-fade-in max-w-7xl 2xl:max-w-[1500px] mx-auto">
+    <div className="animate-fade-in max-w-7xl 2xl:max-w-[1500px] mx-auto text-gray-900 dark:text-zinc-100">
       <div className="mb-7 flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800">Calendar</h2>
-          <p className="text-sm text-gray-500">
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-zinc-100">Calendar</h2>
+          <p className="text-sm text-gray-500 dark:text-zinc-400">
             {selectedMonth ? `Events in ${selectedMonth.monthLabel}` : 'Select a month to view events'}
           </p>
         </div>
@@ -1449,7 +1449,7 @@ function Calendar({ listOnly = false }) {
             className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${
               showAllMonths && !selectedMonth
                 ? 'bg-red-600 text-white border-red-600'
-                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                : 'bg-white dark:bg-zinc-900 text-gray-700 dark:text-zinc-300 border-gray-300 dark:border-zinc-700 hover:bg-gray-50 dark:hover:bg-zinc-800'
             }`}
           >
             <CalendarIcon size={16} />
@@ -1575,11 +1575,11 @@ function Calendar({ listOnly = false }) {
       )}
 
       {selectedMonth && (
-        <div className="bg-white rounded-2xl shadow-xl overflow-hidden max-w-6xl mx-auto layout-glow">
-          <div className="bg-gradient-to-r from-gray-900 to-black p-5 flex items-center justify-between">
+        <div className="bg-white rounded-2xl shadow-xl overflow-hidden max-w-6xl mx-auto layout-glow dark:bg-zinc-900 dark:border dark:border-zinc-700">
+          <div className="bg-gradient-to-r from-white to-gray-100 dark:from-gray-900 dark:to-black p-5 flex items-center justify-between border-b border-gray-200 dark:border-gray-800">
             <div>
-              <h3 className="text-lg font-semibold text-white">{selectedMonth.monthLabel}</h3>
-              <p className="text-sm text-gray-400">{selectedMonth.items.length} event(s)</p>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{selectedMonth.monthLabel}</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{selectedMonth.items.length} event(s)</p>
             </div>
             <button
               onClick={() => {
