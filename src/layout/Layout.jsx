@@ -18,9 +18,13 @@ function Layout() {
 
   useEffect(() => {
     localStorage.setItem('kusgan_dark_mode', JSON.stringify(darkMode))
-    // Enforce theme class on both html and body so all selectors update reliably.
-    document.documentElement.classList.toggle('dark', darkMode)
-    document.body.classList.toggle('dark', darkMode)
+    // Deterministic theme application avoids stale dark class state.
+    document.documentElement.classList.remove('dark')
+    document.body.classList.remove('dark')
+    if (darkMode) {
+      document.documentElement.classList.add('dark')
+      document.body.classList.add('dark')
+    }
     document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light')
     document.body.setAttribute('data-theme', darkMode ? 'dark' : 'light')
   }, [darkMode])
