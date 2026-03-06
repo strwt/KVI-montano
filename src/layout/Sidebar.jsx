@@ -2,9 +2,11 @@ import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { LayoutDashboard, Calendar, User, LogOut, ChevronLeft, ChevronRight, Users, FileText, Sun, Moon, Settings, ChevronDown, ChevronUp, SlidersHorizontal } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { useI18n } from '../i18n/useI18n'
 
 function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
   const { user, logout } = useAuth()
+  const { t } = useI18n()
   const navigate = useNavigate()
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
@@ -35,11 +37,11 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
   const userMetaTone = darkMode ? 'text-gray-500' : 'text-gray-600'
 
   const navItems = [
-    { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-    { to: '/calendar', icon: Calendar, label: 'Calendar' },
-    ...(isAdmin ? [{ to: '/report', icon: FileText, label: 'Report' }] : []),
-    { to: '/profile', icon: User, label: 'Profile' },
-    { to: '/settings', icon: Settings, label: 'Settings' },
+    { to: '/', icon: LayoutDashboard, label: t('Dashboard') },
+    { to: '/calendar', icon: Calendar, label: t('Calendar') },
+    ...(isAdmin ? [{ to: '/report', icon: FileText, label: t('Report') }] : []),
+    { to: '/profile', icon: User, label: t('Profile') },
+    { to: '/settings', icon: Settings, label: t('Settings') },
   ]
 
   return (
@@ -122,7 +124,7 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
               }`}
             >
               <Users size={20} className={isOpen ? '' : 'mx-auto'} />
-              {isOpen && <span>Management</span>}
+              {isOpen && <span>{t('Management')}</span>}
             </button>
           )}
         </nav>
@@ -136,7 +138,7 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
             <SlidersHorizontal size={18} />
             {isOpen && (
               <>
-                <span className="flex-1 text-left">Appearance</span>
+                <span className="flex-1 text-left">{t('Appearance')}</span>
                 {isSettingsOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
               </>
             )}
@@ -150,7 +152,7 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
                 className={`w-full flex items-center ${isOpen ? 'gap-3 px-2 justify-start' : 'justify-center'} py-2 rounded-lg transition-all ${utilityBtnTone}`}
               >
                 {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-                {isOpen && <span>{darkMode ? 'Light Mode' : 'Dark Mode'}</span>}
+                {isOpen && <span>{darkMode ? t('Light Mode') : t('Dark Mode')}</span>}
               </button>
             </div>
           )}
@@ -181,7 +183,7 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
                 className={`flex items-center gap-2 w-full px-4 py-2 rounded-lg transition-all ${utilityBtnTone}`}
               >
                 <LogOut size={18} />
-                <span>Logout</span>
+                <span>{t('Logout')}</span>
               </button>
             </>
           ) : (
