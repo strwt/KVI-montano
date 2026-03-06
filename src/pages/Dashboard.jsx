@@ -333,7 +333,7 @@ function Dashboard() {
                     {event.category || t('Uncategorized')}
                   </span>
                   <span className="font-medium text-neutral-900 dark:text-zinc-100">{slice.value}</span>
-                </div>
+            </div>
               ))}
               {recentEvents.length === 0 && <p className="py-4 text-center text-[14px] text-neutral-500">{t('No activity yet')}</p>}
             </div>
