@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   Activity,
-  Bell,
   Leaf,
   Flame,
   FileText,
@@ -50,7 +49,32 @@ const getStoredLoginActivity = () => {
   }
 }
 
-const getCategorySlices = (counts) => {
+const getMonthlyEvents = events => {
+  return Array.from({ length: MONTH_WINDOW }, (_, index) => {
+    const month = dayjs().subtract(MONTH_WINDOW - 1 - index, 'month')
+    const count = events.filter(event => {
+      const dateValue = resolveEventDate(event)
+      return dateValue && dayjs(dateValue).isValid() && dayjs(dateValue).isSame(month, 'month')
+    }).length
+    return { label: month.format('MMM'), count }
+  })
+}
+
+const buildLinePath = (data, width, height, padding) => {
+  const max = Math.max(...data.map(item => item.count), 1)
+  const chartWidth = width - (padding * 2)
+  const chartHeight = height - (padding * 2)
+  const step = data.length > 1 ? chartWidth / (data.length - 1) : 0
+
+  const points = data.map((item, index) => ({
+    x: padding + (step * index),
+    y: height - padding - ((item.count / max) * chartHeight),
+  }))
+
+  return points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ')
+}
+
+const getCategorySlices = counts => {
   const values = Object.values(counts)
   const total = values.reduce((acc, value) => acc + value, 0) || 1
   let offset = 0
@@ -61,13 +85,23 @@ const getCategorySlices = (counts) => {
     const slice = {
       key: category.key,
       label: category.label,
+      value,
       dash,
       offset,
-      stroke: index % 2 === 0 ? '#dc2626' : '#525252',
+      stroke: index % 2 === 0 ? 'var(--dashboard-accent-stroke)' : 'var(--dashboard-muted-stroke)',
     }
     offset += dash
     return slice
   })
+}
+
+const getIconThemeClass = categoryKey => {
+  if (categoryKey === 'environmental') return 'icon-theme-environmental'
+  if (categoryKey === 'relief operation') return 'icon-theme-relief'
+  if (categoryKey === 'fire response') return 'icon-theme-fire'
+  if (categoryKey === 'notes') return 'icon-theme-notes'
+  if (categoryKey === 'medical') return 'icon-theme-medical'
+  return ''
 }
 
 function Dashboard() {
@@ -85,7 +119,6 @@ function Dashboard() {
   }, [])
 
   const totalEvents = events.length
-
   const recentEvents = useMemo(() => {
     return [...events]
       .filter(event => resolveEventDate(event) && dayjs(resolveEventDate(event)).isValid())
@@ -100,14 +133,9 @@ function Dashboard() {
     }, {})
   }, [events])
 
-  const categorySlices = useMemo(() => getCategorySlices(categoryCounts), [categoryCounts])
-
-  const eventsThisMonth = useMemo(() => {
-    return events.filter(event => {
-      const dateValue = resolveEventDate(event)
-      return dateValue && dayjs(dateValue).isValid() && dayjs(dateValue).isSame(dayjs(), 'month')
-    }).length
-  }, [events])
+  const monthlyEvents = useMemo(() => getMonthlyEvents(events), [events])
+  const linePath = useMemo(() => buildLinePath(monthlyEvents, 640, 220, 20), [monthlyEvents])
+  const maxMonthlyCount = useMemo(() => Math.max(...monthlyEvents.map(item => item.count), 1), [monthlyEvents])
 
   const volunteerBars = useMemo(() => {
     const map = {}
@@ -128,8 +156,15 @@ function Dashboard() {
   }, [events, t])
 
   const maxVolunteerCount = useMemo(() => Math.max(...volunteerBars.map(item => item.count), 1), [volunteerBars])
+  const categorySlices = useMemo(() => getCategorySlices(categoryCounts), [categoryCounts])
+  const eventsThisMonth = useMemo(() => {
+    return events.filter(event => {
+      const dateValue = resolveEventDate(event)
+      return dateValue && dayjs(dateValue).isValid() && dayjs(dateValue).isSame(dayjs(), 'month')
+    }).length
+  }, [events])
 
-  const handleOpenEventInCalendar = (event) => {
+  const handleOpenEventInCalendar = event => {
     navigate('/calendar', {
       state: {
         focusEventId: event.id,
@@ -142,10 +177,10 @@ function Dashboard() {
   const onlineUserId = String(user?.id || '')
 
   return (
-    <div className="animate-fade-in mx-auto max-w-[1400px] space-y-4">
-      <section className="relative overflow-hidden rounded-2xl border border-red-600 bg-gradient-to-br from-black to-zinc-900 p-5 md:p-6 text-white shadow-[0_12px_30px_rgba(0,0,0,0.35)]">
-        <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-red-600/25 blur-3xl" />
-        <div className="relative z-10 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+    <div className="animate-fade-in space-y-6">
+      <section className="relative overflow-hidden rounded-2xl border border-red-600 bg-gradient-to-br from-white to-neutral-100 p-6 text-neutral-900 shadow-[0_12px_30px_rgba(0,0,0,0.08)] transition-colors dark:from-black dark:to-neutral-900 dark:text-zinc-100 dark:shadow-[0_12px_30px_rgba(0,0,0,0.35)]">
+        <div className="absolute -right-16 -top-16 h-44 w-44 rounded-full bg-red-600/15 blur-3xl dark:bg-red-600/25" />
+        <div className="relative z-10 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="space-y-2">
             <p className="text-[14px] uppercase tracking-[0.12em] text-neutral-300">{t('Volunteer Management')}</p>
             <h1 className="text-[32px] font-semibold leading-tight">
@@ -166,8 +201,8 @@ function Dashboard() {
             {t('Create Event')}
             <ArrowRight size={16} />
           </button>
-	        </div>
-	      </section>
+        </div>
+      </section>
 
       <section className="grid grid-cols-12 gap-4">
         <div className="col-span-12">
@@ -178,12 +213,12 @@ function Dashboard() {
                 key={category.key}
                 type="button"
                 onClick={() => navigate(getEventsCategoryRoute(category.key))}
-                className={`cursor-pointer rounded-xl border border-red-600 bg-white p-4 md:p-5 text-left transition-all duration-200 hover:scale-[1.02] hover:border-red-700 hover:shadow-[0_8px_14px_rgba(0,0,0,0.08)] ${
+                className={`h-full cursor-pointer rounded-xl border border-red-600 bg-white p-4 text-left transition-all duration-200 hover:scale-[1.02] hover:border-red-700 hover:shadow-[0_8px_14px_rgba(0,0,0,0.08)] dark:bg-zinc-900 ${
                   animatedStats ? 'animate-fade-in-up' : 'opacity-0'
-                } h-full flex flex-col`}
+                }`}
                 style={{ animationDelay: `${index * 0.06}s` }}
               >
-                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-neutral-100 text-red-600 md:h-11 md:w-11">
+                <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-neutral-100 text-red-600 dark:bg-zinc-800">
                   <category.icon size={18} className={getIconThemeClass(category.key)} />
                 </div>
                 <p className="text-[14px] text-neutral-500">{t(category.label)}</p>
@@ -199,13 +234,13 @@ function Dashboard() {
           <p className="mt-1 text-[36px] font-semibold leading-none text-red-500">{totalEvents}</p>
           <p className="mt-2 text-[18px] text-white">{t('Total Events')}</p>
         </article>
+      </section>
 
         <article className="col-span-12 rounded-2xl border border-red-600 bg-white p-4 md:p-5 shadow-[0_10px_20px_rgba(0,0,0,0.08)] transition-all duration-200 hover:scale-[1.02] sm:col-span-6 md:col-span-6 flex flex-col justify-center">
           <p className="text-[14px] uppercase tracking-[0.12em] text-neutral-500">{t('This Month')}</p>
           <p className="mt-1 text-[30px] font-semibold text-black">{eventsThisMonth}</p>
           <p className="mt-2 text-[14px] text-neutral-500">{t('events created')}</p>
         </article>
-      </section>
 
       {isAdmin && (
         <section className="grid grid-cols-12 gap-4">
@@ -297,7 +332,8 @@ function Dashboard() {
                   <span className="rounded-md border border-neutral-300 bg-neutral-100 px-2 py-1 text-[14px] capitalize text-neutral-700">
                     {event.category || t('Uncategorized')}
                   </span>
-                </button>
+                  <span className="font-medium text-neutral-900 dark:text-zinc-100">{slice.value}</span>
+                </div>
               ))}
               {recentEvents.length === 0 && <p className="py-4 text-center text-[14px] text-neutral-500">{t('No activity yet')}</p>}
             </div>
@@ -353,13 +389,13 @@ function Dashboard() {
               return (
                 <div key={`${item.name}-${index}`} className="space-y-1">
                   <div className="flex items-center justify-between text-[14px]">
-                    <span className="flex items-center gap-2 truncate text-neutral-600">
+                    <span className="flex items-center gap-2 truncate text-neutral-600 dark:text-zinc-400">
                       <Users size={14} className="text-red-600" />
                       <span className="truncate">{item.name}</span>
                     </span>
-                    <span className="font-medium text-black">{item.count}</span>
+                    <span className="font-medium text-neutral-900 dark:text-zinc-100">{item.count}</span>
                   </div>
-                  <div className="h-2 rounded-full bg-neutral-200">
+                  <div className="h-2 rounded-full bg-neutral-200 dark:bg-zinc-700">
                     <div className="h-2 rounded-full bg-red-600 transition-all duration-200" style={{ width: `${width || 4}%` }} />
                   </div>
                 </div>
@@ -370,15 +406,6 @@ function Dashboard() {
       </section>
     </div>
   )
-}
-
-const getIconThemeClass = categoryKey => {
-  if (categoryKey === 'environmental') return 'icon-theme-environmental'
-  if (categoryKey === 'relief operation') return 'icon-theme-relief'
-  if (categoryKey === 'fire response') return 'icon-theme-fire'
-  if (categoryKey === 'notes') return 'icon-theme-notes'
-  if (categoryKey === 'medical') return 'icon-theme-medical'
-  return ''
 }
 
 export default Dashboard
