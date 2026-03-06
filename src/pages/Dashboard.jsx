@@ -49,31 +49,6 @@ const getStoredLoginActivity = () => {
   }
 }
 
-const getMonthlyEvents = events => {
-  return Array.from({ length: MONTH_WINDOW }, (_, index) => {
-    const month = dayjs().subtract(MONTH_WINDOW - 1 - index, 'month')
-    const count = events.filter(event => {
-      const dateValue = resolveEventDate(event)
-      return dateValue && dayjs(dateValue).isValid() && dayjs(dateValue).isSame(month, 'month')
-    }).length
-    return { label: month.format('MMM'), count }
-  })
-}
-
-const buildLinePath = (data, width, height, padding) => {
-  const max = Math.max(...data.map(item => item.count), 1)
-  const chartWidth = width - (padding * 2)
-  const chartHeight = height - (padding * 2)
-  const step = data.length > 1 ? chartWidth / (data.length - 1) : 0
-
-  const points = data.map((item, index) => ({
-    x: padding + (step * index),
-    y: height - padding - ((item.count / max) * chartHeight),
-  }))
-
-  return points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ')
-}
-
 const getCategorySlices = counts => {
   const values = Object.values(counts)
   const total = values.reduce((acc, value) => acc + value, 0) || 1
@@ -132,10 +107,6 @@ function Dashboard() {
       return acc
     }, {})
   }, [events])
-
-  const monthlyEvents = useMemo(() => getMonthlyEvents(events), [events])
-  const linePath = useMemo(() => buildLinePath(monthlyEvents, 640, 220, 20), [monthlyEvents])
-  const maxMonthlyCount = useMemo(() => Math.max(...monthlyEvents.map(item => item.count), 1), [monthlyEvents])
 
   const volunteerBars = useMemo(() => {
     const map = {}
@@ -333,7 +304,7 @@ function Dashboard() {
                     {event.category || t('Uncategorized')}
                   </span>
                   <span className="font-medium text-neutral-900 dark:text-zinc-100">{slice.value}</span>
-            </div>
+                </div>
               ))}
               {recentEvents.length === 0 && <p className="py-4 text-center text-[14px] text-neutral-500">{t('No activity yet')}</p>}
             </div>
