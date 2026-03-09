@@ -9,6 +9,7 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
   const { t } = useI18n()
   const navigate = useNavigate()
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
 
   const handleLogout = () => {
     logout()
@@ -40,8 +41,6 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
     { to: '/', icon: LayoutDashboard, label: t('Dashboard') },
     { to: '/calendar', icon: Calendar, label: t('Calendar') },
     ...(isAdmin ? [{ to: '/report', icon: FileText, label: t('Report') }] : []),
-    { to: '/profile', icon: User, label: t('Profile') },
-    { to: '/settings', icon: Settings, label: t('Settings') },
   ]
 
   return (
@@ -162,7 +161,11 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
         <div className={`absolute bottom-0 w-full p-4 ${userDividerTone} ${!isOpen && (darkMode ? 'border-l border-gray-800' : 'border-l border-gray-200')}`}>
           {isOpen ? (
             <>
-              <div className="flex items-center gap-3 mb-4 px-2">
+              <button
+                type="button"
+                onClick={() => setIsUserMenuOpen(prev => !prev)}
+                className={`w-full flex items-center gap-3 mb-2 px-2 py-1 rounded-lg transition-colors ${utilityBtnTone}`}
+              >
                 <div className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center overflow-hidden">
                   <img
                     src={user?.profileImage || '/image-removebg-preview.png'}
@@ -177,7 +180,34 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
                     <span className="inline-block mt-1 px-2 py-0.5 bg-red-600/20 text-red-600 text-xs rounded">Admin</span>
                   )}
                 </div>
-              </div>
+                {isUserMenuOpen ? <ChevronUp size={16} className={userMetaTone} /> : <ChevronDown size={16} className={userMetaTone} />}
+              </button>
+              {isUserMenuOpen && (
+                <div className={`${panelTone} mb-3 p-2 space-y-1`}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsUserMenuOpen(false)
+                      navigate('/profile')
+                    }}
+                    className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg transition-all ${utilityBtnTone}`}
+                  >
+                    <User size={16} />
+                    <span>{t('Profile')}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsUserMenuOpen(false)
+                      navigate('/settings')
+                    }}
+                    className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg transition-all ${utilityBtnTone}`}
+                  >
+                    <Settings size={16} />
+                    <span>{t('Settings')}</span>
+                  </button>
+                </div>
+              )}
               <button
                 onClick={handleLogout}
                 className={`flex items-center gap-2 w-full px-4 py-2 rounded-lg transition-all ${utilityBtnTone}`}

@@ -63,6 +63,7 @@ function Members() {
   const [showAddOperationTypeInline, setShowAddOperationTypeInline] = useState(false)
   const [showEditOperationForm, setShowEditOperationForm] = useState(false)
   const [showDeleteOperationForm, setShowDeleteOperationForm] = useState(false)
+  const [showOperationManagementPanel, setShowOperationManagementPanel] = useState(false)
   const [selectedOperationCategory, setSelectedOperationCategory] = useState('')
   const [selectedOperationType, setSelectedOperationType] = useState('')
   const [deleteOperationCategory, setDeleteOperationCategory] = useState('')
@@ -281,34 +282,41 @@ function Members() {
   const handleCommitteeRename = e => {
     e.preventDefault()
     setCommitteeError('')
-    if (!selectedOperationCategory || !selectedOperationType) {
-      setCommitteeError('Select category and type to update.')
+    if (!selectedOperationCategory) {
+      setCommitteeError('Select operation name to update.')
       return
     }
     const nextCategory = editedOperationCategory.trim()
-    const nextType = editedOperationType.trim()
-    if (!nextCategory || !nextType) {
-      setCommitteeError('Operation name and type are required.')
+    if (!nextCategory) {
+      setCommitteeError('New operation name is required.')
       return
     }
-    const source = operationEntryByCategoryType[`${selectedOperationCategory}|||${selectedOperationType}`] || `${selectedOperationCategory} - ${selectedOperationType}`
-    const target = `${nextCategory} - ${nextType}`
-    const duplicateInCategory = (operationTypesByCategory[nextCategory] || []).some(
-      type => type.toLowerCase() === nextType.toLowerCase() && source.toLowerCase() !== target.toLowerCase()
-    )
-    if (duplicateInCategory) {
-      setCommitteeError('Type already exists under this category.')
+    if (
+      selectedOperationCategory.toLowerCase() !== nextCategory.toLowerCase() &&
+      operationCategories.some(category => category.toLowerCase() === nextCategory.toLowerCase())
+    ) {
+      setCommitteeError('Operation name already exists.')
       return
     }
-    const result = editCommittee(source, target)
-    if (!result.success) {
-      setCommitteeError(result.message)
+    const entriesToRename = memberCommittees.filter(entry => {
+      const { category } = splitCategoryAndType(entry)
+      return category === selectedOperationCategory
+    })
+    if (entriesToRename.length === 0) {
+      setCommitteeError('No operation entries found to update.')
       return
+    }
+    for (const source of entriesToRename) {
+      const { type } = splitCategoryAndType(source)
+      const target = `${nextCategory} - ${type || 'General'}`
+      const result = editCommittee(source, target)
+      if (!result.success) {
+        setCommitteeError(result.message)
+        return
+      }
     }
     setSelectedOperationCategory(nextCategory)
-    setSelectedOperationType(nextType)
     setEditedOperationCategory(nextCategory)
-    setEditedOperationType(nextType)
   }
 
   const handleDeleteOperation = () => {
@@ -317,54 +325,35 @@ function Members() {
       setCommitteeError('Select operation name first.')
       return
     }
-
-    if (!deleteOperationType) {
-      const entriesForOperation = memberCommittees.filter(entry => {
-        const { category } = splitCategoryAndType(entry)
-        return category === deleteOperationCategory
-      })
-      if (entriesForOperation.length === 0) {
-        setCommitteeError('No operation types found for selected operation.')
-        return
-      }
-      if (memberCommittees.length - entriesForOperation.length < 1) {
-        setCommitteeError('At least one operation entry must remain.')
-        return
-      }
-      for (const entry of entriesForOperation) {
-        const result = deleteCommittee(entry)
-        if (!result.success) {
-          setCommitteeError(result.message)
-          return
-        }
-        if (categoryFilter === entry) {
-          setCategoryFilter('all')
-        }
-      }
-      if (selectedOperationCategory === deleteOperationCategory) {
-        setSelectedOperationCategory('')
-        setSelectedOperationType('')
-        setEditedOperationCategory('')
-        setEditedOperationType('')
-      }
-      setDeleteOperationCategory('')
-      setDeleteOperationType('')
+    const entriesForOperation = memberCommittees.filter(entry => {
+      const { category } = splitCategoryAndType(entry)
+      return category === deleteOperationCategory
+    })
+    if (entriesForOperation.length === 0) {
+      setCommitteeError('No operation entries found for selected operation.')
       return
     }
-
-    const entryToDelete = operationEntryByCategoryType[`${deleteOperationCategory}|||${deleteOperationType}`] || `${deleteOperationCategory} - ${deleteOperationType}`
-    const result = deleteCommittee(entryToDelete)
-    if (!result.success) {
-      setCommitteeError(result.message)
+    if (memberCommittees.length - entriesForOperation.length < 1) {
+      setCommitteeError('At least one operation entry must remain.')
       return
     }
-    if (categoryFilter === entryToDelete) {
-      setCategoryFilter('all')
+    for (const entry of entriesForOperation) {
+      const result = deleteCommittee(entry)
+      if (!result.success) {
+        setCommitteeError(result.message)
+        return
+      }
+      if (categoryFilter === entry) {
+        setCategoryFilter('all')
+      }
     }
-    if (selectedOperationCategory === deleteOperationCategory && selectedOperationType === deleteOperationType) {
+    if (selectedOperationCategory === deleteOperationCategory) {
+      setSelectedOperationCategory('')
       setSelectedOperationType('')
+      setEditedOperationCategory('')
       setEditedOperationType('')
     }
+    setDeleteOperationCategory('')
     setDeleteOperationType('')
   }
 
@@ -485,167 +474,54 @@ function Members() {
       </div>
 
       {isAdmin && (
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
+        <div className="space-y-6 mb-6">
           <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl shadow-md p-5">
             <h3 className="font-semibold text-gray-800 dark:text-zinc-100 mb-3">Operation Management</h3>
-            <div className="space-y-4 mb-3">
-              <div className="max-w-3xl mx-auto space-y-4">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowAddOperationModal(true)
-                    setShowEditOperationForm(false)
-                    setShowDeleteOperationForm(false)
-                    setCommitteeError('')
-                  }}
-                  className="w-full py-3 rounded-full text-lg font-medium bg-green-500 text-white hover:bg-green-600 transition-colors"
-                >
-                  Add
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowEditOperationForm(prev => !prev)
-                    setShowDeleteOperationForm(false)
-                    setCommitteeError('')
-                  }}
-                  className="w-full py-3 rounded-full text-lg font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors"
-                >
-                  Edit
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowDeleteOperationForm(prev => !prev)
-                    setShowEditOperationForm(false)
-                    setCommitteeError('')
-                  }}
-                  className="w-full py-3 rounded-full text-lg font-medium bg-red-600 text-white hover:bg-red-700 transition-colors"
-                >
-                  Delete
-                </button>
-              </div>
-
-              {showEditOperationForm && (
-                <form onSubmit={handleCommitteeRename} className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                  <select
-                    value={selectedOperationCategory}
-                    onChange={e => {
-                      const value = e.target.value
-                      setSelectedOperationCategory(value)
-                      setSelectedOperationType('')
-                      setEditedOperationCategory(value)
-                      setEditedOperationType('')
-                    }}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                    required
-                  >
-                    <option value="">Select operation name</option>
-                    {operationCategories.map(category => (
-                      <option key={category} value={category}>
-                        {category}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    value={selectedOperationType}
-                    onChange={e => {
-                      const value = e.target.value
-                      setSelectedOperationType(value)
-                      setEditedOperationType(value)
-                    }}
-                    disabled={!selectedOperationCategory}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 disabled:bg-gray-100"
-                    required
-                  >
-                    <option value="">Select type of operation</option>
-                    {selectedCategoryTypes.map(type => (
-                      <option key={type} value={type}>
-                        {type}
-                      </option>
-                    ))}
-                  </select>
-                  <div />
-                  <input
-                    type="text"
-                    value={editedOperationCategory}
-                    onChange={e => setEditedOperationCategory(e.target.value)}
-                    placeholder="New operation name"
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                    required
-                  />
-                  <input
-                    type="text"
-                    value={editedOperationType}
-                    onChange={e => setEditedOperationType(e.target.value)}
-                    placeholder="Type of operation"
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                    required
-                  />
-                  <button
-                    type="submit"
-                    className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    Save Update
-                  </button>
-                </form>
-              )}
-
-              {showDeleteOperationForm && (
-                <div className="rounded-lg border border-red-200 bg-red-50 p-3 space-y-3">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    <select
-                      value={deleteOperationCategory}
-                      onChange={e => {
-                        const value = e.target.value
-                        setDeleteOperationCategory(value)
-                        setDeleteOperationType('')
-                      }}
-                      className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                    >
-                      <option value="">Select operation name</option>
-                      {operationCategories.map(category => (
-                        <option key={category} value={category}>
-                          {category}
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      value={deleteOperationType}
-                      onChange={e => setDeleteOperationType(e.target.value)}
-                      disabled={!deleteOperationCategory}
-                      className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 disabled:bg-gray-100"
-                    >
-                      <option value="">Select type of operation</option>
-                      {deleteCategoryTypes.map(type => (
-                        <option key={type} value={type}>
-                          {type}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {deleteOperationCategory && !deleteOperationType && (
-                    <p className="text-sm text-red-700">
-                      Warning: all Type of Operation under this Operation will be deleted.
-                    </p>
-                  )}
-                  {deleteOperationCategory && deleteOperationType && (
-                    <p className="text-sm text-red-700">
-                      Only selected type of operation will be deleted.
-                    </p>
-                  )}
-
+            <button
+              type="button"
+              onClick={() => setShowOperationManagementPanel(prev => !prev)}
+              className="w-full px-3 py-2 mb-3 bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-100 rounded-lg hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors text-sm"
+            >
+              {showOperationManagementPanel ? 'Hide Operation Actions' : 'Show Operation Actions'}
+            </button>
+            {showOperationManagementPanel && (
+              <div className="space-y-4 mb-3">
+                <div className="max-w-3xl mx-auto space-y-4">
                   <button
                     type="button"
-                    onClick={handleDeleteOperation}
-                    disabled={!deleteOperationCategory}
-                    className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={() => {
+                      setShowAddOperationModal(true)
+                      setShowEditOperationForm(false)
+                      setShowDeleteOperationForm(false)
+                      setCommitteeError('')
+                    }}
+                    className="w-full py-3 rounded-full text-lg font-medium bg-green-500 text-white hover:bg-green-600 transition-colors"
                   >
-                    Confirm Delete
+                    Add
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowEditOperationForm(true)
+                      setShowDeleteOperationForm(false)
+                      setCommitteeError('')
+                    }}
+                    className="w-full py-3 rounded-full text-lg font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowDeleteOperationForm(true)
+                      setShowEditOperationForm(false)
+                      setCommitteeError('')
+                    }}
+                    className="w-full py-3 rounded-full text-lg font-medium bg-red-600 text-white hover:bg-red-700 transition-colors"
+                  >
+                    Delete
                   </button>
                 </div>
-              )}
 
               {selectedOperationUtilities.length > 0 && (
                 <div className="rounded-lg border border-gray-200 p-3 bg-white">
@@ -657,8 +533,9 @@ function Members() {
                   </div>
                 </div>
               )}
-            </div>
-            {committeeError && <p className="text-sm text-red-600 mb-2">{committeeError}</p>}
+              </div>
+            )}
+            {showOperationManagementPanel && committeeError && <p className="text-sm text-red-600 mb-2">{committeeError}</p>}
 
           </div>
 
@@ -822,103 +699,39 @@ function Members() {
                 Add
               </button>
 
-              <div className="md:col-span-2 rounded-lg border border-gray-200 bg-gray-50 p-3 space-y-2">
-                <p className="text-sm text-gray-600">Saved Operation name and Type of Operation</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  <select
-                    value={addModalCategory}
-                    onChange={e => {
-                      const value = e.target.value
-                      setAddModalCategory(value)
-                      setAddModalType('')
-                    }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                  >
+	              <div className="md:col-span-2 rounded-lg border border-gray-200 bg-gray-50 p-3 space-y-2">
+	                <p className="text-sm text-gray-600">Saved Operation names</p>
+	                <div className="grid grid-cols-1 gap-2">
+	                  <select
+	                    value={addModalCategory}
+	                    onChange={e => {
+	                      const value = e.target.value
+	                      setAddModalCategory(value)
+	                    }}
+	                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+	                  >
                     <option value="">Select operation name</option>
                     {operationCategories.map(category => (
                       <option key={category} value={category}>
                         {category}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    value={addModalType}
-                    onChange={e => setAddModalType(e.target.value)}
-                    disabled={!addModalCategory}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 disabled:bg-gray-100"
-                  >
-                    <option value="">Select type of operation</option>
-                    {(operationTypesByCategory[addModalCategory] || []).map(type => (
-                      <option key={type} value={type}>
-                        {type}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </form>
+	                      </option>
+	                    ))}
+	                  </select>
+	                </div>
+	              </div>
+	            </form>
 
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowAddOperationTypeInline(prev => !prev)
-                  setShowAddUtilityInline(false)
-                }}
-                className="px-3 py-2 bg-gray-100 text-gray-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-lg hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors text-sm"
-              >
-                Add type of Operation
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowAddUtilityInline(prev => !prev)
-                  setShowAddOperationTypeInline(false)
-                }}
-                className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
-              >
-                Add utility
-              </button>
-            </div>
-
-            {showAddOperationTypeInline && (
-              <form onSubmit={handleAddOperationType} className="rounded-lg border border-gray-200 p-3 bg-gray-50 space-y-3">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-sm text-gray-600 mb-1">Select operation</label>
-                    <select
-                      value={addTypeOperationCategory}
-                      onChange={e => setAddTypeOperationCategory(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                      required
-                    >
-                      <option value="">Select operation</option>
-                      {operationCategories.map(category => (
-                        <option key={category} value={category}>
-                          {category}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm text-gray-600 mb-1">New Type of Operation</label>
-                    <input
-                      type="text"
-                      value={newOperationTypeName}
-                      onChange={e => setNewOperationTypeName(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                      required
-                    />
-                  </div>
-                </div>
-                <button
-                  type="submit"
-                  className="px-3 py-2 bg-gray-100 text-gray-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-lg hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors text-sm"
-                >
-                  Save Type
-                </button>
-              </form>
-            )}
+	            <div className="flex flex-wrap gap-2">
+	              <button
+	                type="button"
+	                onClick={() => {
+	                  setShowAddUtilityInline(prev => !prev)
+	                }}
+	                className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+	              >
+	                Add utility
+	              </button>
+	            </div>
 
             {showAddUtilityInline && (
               <form onSubmit={handleAddUtility} className="rounded-lg border border-gray-200 p-3 bg-gray-50 space-y-3">
@@ -995,6 +808,109 @@ function Members() {
                 </button>
               </form>
             )}
+          </div>
+        </div>
+      )}
+
+      {isAdmin && showEditOperationForm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="w-full max-w-xl bg-white rounded-xl shadow-2xl p-5 space-y-4 animate-fade-in-up">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-gray-800">Edit Operation</h3>
+              <button
+                type="button"
+                onClick={() => setShowEditOperationForm(false)}
+                className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm"
+              >
+                Close
+              </button>
+            </div>
+            {committeeError && <p className="text-sm text-red-600">{committeeError}</p>}
+            <form onSubmit={handleCommitteeRename} className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <select
+                value={selectedOperationCategory}
+                onChange={e => {
+                  const value = e.target.value
+                  setSelectedOperationCategory(value)
+                  setEditedOperationCategory(value)
+                }}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                required
+              >
+                <option value="">Select operation name</option>
+                {operationCategories.map(category => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="text"
+                value={editedOperationCategory}
+                onChange={e => setEditedOperationCategory(e.target.value)}
+                placeholder="New operation name"
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                required
+              />
+              <button
+                type="submit"
+                className="md:col-span-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Save Update
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {isAdmin && showDeleteOperationForm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="w-full max-w-xl bg-white rounded-xl shadow-2xl p-5 space-y-4 animate-fade-in-up">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-gray-800">Delete Operation</h3>
+              <button
+                type="button"
+                onClick={() => setShowDeleteOperationForm(false)}
+                className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm"
+              >
+                Close
+              </button>
+            </div>
+            {committeeError && <p className="text-sm text-red-600">{committeeError}</p>}
+            <div className="rounded-lg border border-red-200 bg-red-50 p-3 space-y-3">
+              <div className="grid grid-cols-1 gap-2">
+                <select
+                  value={deleteOperationCategory}
+                  onChange={e => {
+                    const value = e.target.value
+                    setDeleteOperationCategory(value)
+                  }}
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                >
+                  <option value="">Select operation name</option>
+                  {operationCategories.map(category => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {deleteOperationCategory && (
+                <p className="text-sm text-red-700">
+                  Warning: all entries under this Operation will be deleted.
+                </p>
+              )}
+
+              <button
+                type="button"
+                onClick={handleDeleteOperation}
+                disabled={!deleteOperationCategory}
+                className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Confirm Delete
+              </button>
+            </div>
           </div>
         </div>
       )}
