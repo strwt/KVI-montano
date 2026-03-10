@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react'
 import { KeyRound, Lock, ShieldCheck } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
+import { useI18n } from '../i18n/useI18n'
 
 function ChangePassword() {
   const navigate = useNavigate()
   const { user, changeCurrentUserPassword } = useAuth()
+  const { t } = useI18n()
 
   const [passwordError, setPasswordError] = useState('')
   const [passwordSuccess, setPasswordSuccess] = useState('')
@@ -27,7 +29,7 @@ function ChangePassword() {
     setPasswordSuccess('')
 
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      setPasswordError('New password and confirm password do not match.')
+      setPasswordError(t('New password and confirm password do not match.'))
       return
     }
 
@@ -38,7 +40,7 @@ function ChangePassword() {
     }
 
     setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' })
-    setPasswordSuccess('Password updated successfully.')
+    setPasswordSuccess(t('Password updated successfully.'))
   }
 
   return (
@@ -51,16 +53,16 @@ function ChangePassword() {
           <div className="relative rounded-[22px] bg-white/95 backdrop-blur-md p-6 md:p-8">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
               <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-red-700 font-semibold mb-1">Security Settings</p>
+                <p className="text-xs uppercase tracking-[0.2em] text-red-700 font-semibold mb-1">{t('Security Settings')}</p>
                 <h3 className="text-2xl md:text-3xl font-bold text-zinc-900 font-heading flex items-center gap-2">
                   <KeyRound size={24} className="text-red-600" />
-                  Change Password
+                  {t('Change Password')}
                 </h3>
-                <p className="text-sm text-zinc-600 mt-1">Keep your account secure with a strong and unique password.</p>
+                <p className="text-sm text-zinc-600 mt-1">{t('Keep your account secure with a strong and unique password.')}</p>
               </div>
               <div className="inline-flex items-center gap-2 rounded-full border border-zinc-200 px-3 py-1.5 text-xs font-semibold text-zinc-600 bg-white">
                 <ShieldCheck size={14} className="text-red-600" />
-                Protected Account
+                {t('Protected Account')}
               </div>
             </div>
 
@@ -80,11 +82,11 @@ function ChangePassword() {
               <div className="rounded-2xl border border-zinc-200 bg-white p-4">
                 <label className="block text-sm text-zinc-700 mb-1.5 font-medium flex items-center gap-2">
                   <Lock size={15} className="text-red-600" />
-                  Current Password
+                  {t('Current Password')}
                 </label>
                 <input
                   type="password"
-                  placeholder="Enter current password"
+                  placeholder={t('Enter current password')}
                   value={passwordForm.currentPassword}
                   onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
                   className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500"
@@ -94,11 +96,11 @@ function ChangePassword() {
               <div className="rounded-2xl border border-zinc-200 bg-white p-4">
                 <label className="block text-sm text-zinc-700 mb-1.5 font-medium flex items-center gap-2">
                   <Lock size={15} className="text-red-600" />
-                  New Password
+                  {t('New Password')}
                 </label>
                 <input
                   type="password"
-                  placeholder="Create new password"
+                  placeholder={t('Create new password')}
                   value={passwordForm.newPassword}
                   onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
                   className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500"
@@ -108,11 +110,11 @@ function ChangePassword() {
               <div className="rounded-2xl border border-zinc-200 bg-white p-4">
                 <label className="block text-sm text-zinc-700 mb-1.5 font-medium flex items-center gap-2">
                   <Lock size={15} className="text-red-600" />
-                  Confirm Password
+                  {t('Confirm Password')}
                 </label>
                 <input
                   type="password"
-                  placeholder="Re-enter new password"
+                  placeholder={t('Re-enter new password')}
                   value={passwordForm.confirmPassword}
                   onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
                   className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500"
@@ -120,7 +122,7 @@ function ChangePassword() {
               </div>
 
               <div className="md:col-span-3 rounded-2xl border border-red-100 bg-gradient-to-r from-red-50 to-white px-4 py-3 text-xs text-zinc-600">
-                Use at least 8 characters and avoid reusing your old password for better account security.
+                {t('Use at least 8 characters and avoid reusing your old password for better account security.')}
               </div>
 
               <div className="md:col-span-3">
@@ -130,13 +132,13 @@ function ChangePassword() {
                     onClick={() => navigate('/profile')}
                     className="px-4 py-2.5 bg-zinc-200 text-zinc-700 rounded-lg hover:bg-zinc-300 transition-colors font-medium"
                   >
-                    Cancel
+                    {t('Cancel')}
                   </button>
                   <button
                     type="submit"
                     className="px-4 py-2.5 bg-black text-white border border-red-600/80 rounded-lg hover:bg-zinc-900 transition-colors font-medium shadow-md shadow-red-900/25"
                   >
-                    Update Password
+                    {t('Update Password')}
                   </button>
                 </div>
               </div>

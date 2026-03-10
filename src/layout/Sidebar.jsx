@@ -2,11 +2,14 @@ import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { LayoutDashboard, Calendar, User, LogOut, ChevronLeft, ChevronRight, Users, FileText, Sun, Moon, Settings, ChevronDown, ChevronUp, SlidersHorizontal } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { useI18n } from '../i18n/useI18n'
 
 function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
   const { user, logout } = useAuth()
+  const { t } = useI18n()
   const navigate = useNavigate()
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
 
   const handleLogout = () => {
     logout()
@@ -35,11 +38,9 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
   const userMetaTone = darkMode ? 'text-gray-500' : 'text-gray-600'
 
   const navItems = [
-    { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-    { to: '/calendar', icon: Calendar, label: 'Calendar' },
-    ...(isAdmin ? [{ to: '/report', icon: FileText, label: 'Report' }] : []),
-    { to: '/profile', icon: User, label: 'Profile' },
-    { to: '/settings', icon: Settings, label: 'Settings' },
+    { to: '/', icon: LayoutDashboard, label: t('Dashboard') },
+    { to: '/calendar', icon: Calendar, label: t('Calendar') },
+    ...(isAdmin ? [{ to: '/report', icon: FileText, label: t('Report') }] : []),
   ]
 
   return (
@@ -122,7 +123,7 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
               }`}
             >
               <Users size={20} className={isOpen ? '' : 'mx-auto'} />
-              {isOpen && <span>Management</span>}
+              {isOpen && <span>{t('Management')}</span>}
             </button>
           )}
         </nav>
@@ -136,7 +137,7 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
             <SlidersHorizontal size={18} />
             {isOpen && (
               <>
-                <span className="flex-1 text-left">Appearance</span>
+                <span className="flex-1 text-left">{t('Appearance')}</span>
                 {isSettingsOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
               </>
             )}
@@ -150,7 +151,7 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
                 className={`w-full flex items-center ${isOpen ? 'gap-3 px-2 justify-start' : 'justify-center'} py-2 rounded-lg transition-all ${utilityBtnTone}`}
               >
                 {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-                {isOpen && <span>{darkMode ? 'Light Mode' : 'Dark Mode'}</span>}
+                {isOpen && <span>{darkMode ? t('Light Mode') : t('Dark Mode')}</span>}
               </button>
             </div>
           )}
@@ -160,7 +161,11 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
         <div className={`absolute bottom-0 w-full p-4 ${userDividerTone} ${!isOpen && (darkMode ? 'border-l border-gray-800' : 'border-l border-gray-200')}`}>
           {isOpen ? (
             <>
-              <div className="flex items-center gap-3 mb-4 px-2">
+              <button
+                type="button"
+                onClick={() => setIsUserMenuOpen(prev => !prev)}
+                className={`w-full flex items-center gap-3 mb-2 px-2 py-1 rounded-lg transition-colors ${utilityBtnTone}`}
+              >
                 <div className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center overflow-hidden">
                   <img
                     src={user?.profileImage || '/image-removebg-preview.png'}
@@ -175,13 +180,40 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
                     <span className="inline-block mt-1 px-2 py-0.5 bg-red-600/20 text-red-600 text-xs rounded">Admin</span>
                   )}
                 </div>
-              </div>
+                {isUserMenuOpen ? <ChevronUp size={16} className={userMetaTone} /> : <ChevronDown size={16} className={userMetaTone} />}
+              </button>
+              {isUserMenuOpen && (
+                <div className={`${panelTone} mb-3 p-2 space-y-1`}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsUserMenuOpen(false)
+                      navigate('/profile')
+                    }}
+                    className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg transition-all ${utilityBtnTone}`}
+                  >
+                    <User size={16} />
+                    <span>{t('Profile')}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsUserMenuOpen(false)
+                      navigate('/settings')
+                    }}
+                    className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg transition-all ${utilityBtnTone}`}
+                  >
+                    <Settings size={16} />
+                    <span>{t('Settings')}</span>
+                  </button>
+                </div>
+              )}
               <button
                 onClick={handleLogout}
                 className={`flex items-center gap-2 w-full px-4 py-2 rounded-lg transition-all ${utilityBtnTone}`}
               >
                 <LogOut size={18} />
-                <span>Logout</span>
+                <span>{t('Logout')}</span>
               </button>
             </>
           ) : (

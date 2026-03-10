@@ -16,6 +16,8 @@ const DEFAULT_UTILITIES_BY_COMMITTEE = {
   'Fire Response': ['Hose', 'Tank', 'First Aid Kit'],
   Medical: ['Medical Kit', 'Stretcher'],
 }
+const APP_LANGUAGE_STORAGE_KEY = 'kusgan_app_language'
+const SUPPORTED_APP_LANGUAGES = ['English', 'Filipino', 'Bisaya']
 
 const parseStoredJson = (value, fallback) => {
   if (!value) return fallback
@@ -193,6 +195,12 @@ const getStoredRecruitments = () => {
   return Array.isArray(parsed) ? parsed : []
 }
 
+const getStoredAppLanguage = () => {
+  const stored = localStorage.getItem(APP_LANGUAGE_STORAGE_KEY)
+  if (SUPPORTED_APP_LANGUAGES.includes(stored)) return stored
+  return 'English'
+}
+
 const getTodayDateKey = () => {
   const today = new Date()
   const year = today.getFullYear()
@@ -237,6 +245,7 @@ export function AuthProvider({ children }) {
   const [committees, setCommittees] = useState(getStoredCommittees)
   const [utilitiesByCommittee, setUtilitiesByCommittee] = useState(() => getStoredUtilitiesByCommittee(getStoredCommittees()))
   const [recruitments, setRecruitments] = useState(getStoredRecruitments)
+  const [appLanguage, setAppLanguage] = useState(getStoredAppLanguage)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -282,6 +291,12 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     localStorage.setItem(RECRUITMENT_STORAGE_KEY, JSON.stringify(recruitments))
   }, [recruitments])
+
+  useEffect(() => {
+    localStorage.setItem(APP_LANGUAGE_STORAGE_KEY, appLanguage)
+    const langCode = appLanguage === 'Filipino' ? 'fil' : appLanguage === 'Bisaya' ? 'ceb' : 'en'
+    document.documentElement.setAttribute('lang', langCode)
+  }, [appLanguage])
 
   const login = (idNumber, password) => {
     const normalizedIdNumber = idNumber.trim().toLowerCase()
@@ -894,6 +909,8 @@ export function AuthProvider({ children }) {
       submitRecruitmentApplication,
       rejectRecruitment,
       getRecruitments,
+      appLanguage,
+      setAppLanguage,
       users: users.map(omitPassword),
     }}>
       {children}
