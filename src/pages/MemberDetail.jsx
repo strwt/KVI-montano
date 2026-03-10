@@ -88,7 +88,7 @@ function MemberDetail() {
   if (!member) {
     return (
       <div className="animate-fade-in text-gray-900 dark:text-zinc-100">
-        <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl shadow-md p-12 text-center">
+        <div className="bg-white dark:bg-zinc-900 border border-red-600 rounded-xl shadow-md p-12 text-center">
           <User size={48} className="mx-auto text-gray-300 mb-4" />
           <p className="text-gray-500 dark:text-zinc-400 text-lg">Member not found</p>
           <button
@@ -124,7 +124,7 @@ function MemberDetail() {
       </div>
 
       <div className="space-y-6">
-        <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl shadow-md p-6">
+        <div className="bg-white dark:bg-zinc-900 border border-red-600 rounded-xl shadow-md p-6">
           <div className="flex items-start gap-6">
             <div className="w-24 h-24 rounded-full bg-gradient-to-r from-red-600 to-red-700 flex items-center justify-center flex-shrink-0 overflow-hidden">
               <img
@@ -208,7 +208,7 @@ function MemberDetail() {
 
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl shadow-xl p-6 max-w-md w-full mx-4 animate-fade-in">
+          <div className="bg-white dark:bg-zinc-900 border border-red-600 rounded-xl shadow-xl p-6 max-w-md w-full mx-4 animate-fade-in">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
                 <Trash2 size={24} className="text-red-600" />
@@ -241,7 +241,7 @@ function MemberDetail() {
 
       {showUpdateModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl shadow-xl p-6 max-w-md w-full mx-4 animate-fade-in">
+          <div className="bg-white dark:bg-zinc-900 border border-red-600 rounded-xl shadow-xl p-6 max-w-md w-full mx-4 animate-fade-in">
             <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4">Update Member</h3>
             <form onSubmit={handleUpdateMember} className="space-y-4">
               <div>

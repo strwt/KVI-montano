@@ -486,7 +486,7 @@ function Members() {
 
       {isAdmin && (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
-          <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl shadow-md p-5">
+          <div className="bg-white dark:bg-zinc-900 border border-red-600 rounded-2xl shadow-md p-5">
             <h3 className="font-semibold text-gray-800 dark:text-zinc-100 mb-3">Operation Management</h3>
             <div className="space-y-4 mb-3">
               <div className="max-w-3xl mx-auto space-y-4">
@@ -662,7 +662,7 @@ function Members() {
 
           </div>
 
-          <div className="bg-white rounded-xl shadow-md p-5">
+          <div className="bg-white border border-red-600 rounded-2xl shadow-md p-5">
             <h3 className="font-semibold text-gray-800 mb-3">Create Member</h3>
             {pendingApprovalRecruitmentId && (
               <div className="mb-3 p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm">
@@ -1000,7 +1000,7 @@ function Members() {
       )}
 
       {isAdmin && (
-        <div className="bg-white rounded-2xl shadow-md p-5 mb-6 animate-fade-in-up">
+        <div className="bg-white rounded-2xl shadow-md p-5 mb-6 animate-fade-in-up border border-red-600">
           <div className="flex items-center justify-between gap-3 mb-4">
             <div>
               <h3 className="font-semibold text-gray-800 flex items-center gap-2">
@@ -1130,7 +1130,7 @@ function Members() {
         </div>
       )}
 
-      <div className="bg-white rounded-xl shadow-md p-4 mb-4">
+      <div className="bg-white rounded-2xl border border-red-600 shadow-md p-4 mb-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
@@ -1185,7 +1185,7 @@ function Members() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {currentMembers.length === 0 ? (
-          <div className="col-span-full bg-white rounded-xl shadow-md p-12 text-center">
+          <div className="col-span-full bg-white rounded-xl border border-red-600 shadow-md p-12 text-center">
             <Users size={48} className="mx-auto text-gray-300 mb-4" />
             <p className="text-gray-500">No members found for the selected filters</p>
           </div>
@@ -1193,7 +1193,7 @@ function Members() {
           currentMembers.map((member, index) => (
             <div
               key={member.id}
-              className="bg-white rounded-xl shadow-md p-6 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 animate-fade-in relative"
+              className="bg-white rounded-xl border border-red-600 shadow-md p-6 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 animate-fade-in relative"
               style={{ animationDelay: `${index * 0.1}s` }}
             >
               <div className={isAdmin ? 'cursor-pointer' : ''} onClick={() => isAdmin && handleViewMember(member.id)}>

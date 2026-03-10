@@ -1,4 +1,4 @@
-import { useState } from 'react'
+  import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Mail, Hash, Lock, User, Eye, EyeOff, UserPlus } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
@@ -72,7 +72,7 @@ function Register() {
         </div>
 
         {/* Register Form */}
-        <div className="bg-white dark:bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-8 border border-gray-200 dark:border-white/20">
+        <div className="bg-white dark:bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-8 border border-red-600">
           <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
             <UserPlus className="text-red-500" />
             Create Account

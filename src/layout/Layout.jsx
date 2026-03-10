@@ -34,7 +34,7 @@ function Layout() {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-100 dark:bg-gray-950 w-full overflow-x-hidden transition-colors">
+    <div className="flex min-h-screen bg-neutral-100 dark:bg-neutral-900 w-full overflow-x-hidden transition-colors">
       {/* Mobile Toggle Button */}
       <button
         onClick={toggleSidebar}

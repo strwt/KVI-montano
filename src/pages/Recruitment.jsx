@@ -51,7 +51,7 @@ function Recruitment() {
         <div className="absolute -bottom-28 -right-20 w-80 h-80 bg-red-500/20 rounded-full blur-3xl" />
       </div>
 
-      <div className="relative w-full max-w-2xl rounded-3xl bg-white dark:bg-white/10 backdrop-blur-xl border border-gray-200 dark:border-white/20 shadow-2xl p-6 sm:p-8">
+<div className="relative w-full max-w-2xl rounded-3xl bg-white dark:bg-white/10 backdrop-blur-xl border border-red-600 shadow-2xl p-6 sm:p-8">
         <button
           type="button"
           onClick={() => navigate('/landing')}

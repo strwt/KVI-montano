@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+  import { useMemo, useState } from 'react'
 import { CheckCircle2, Shield, Bell, SlidersHorizontal, Lock } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
@@ -99,7 +99,7 @@ function Settings() {
 
   return (
     <div className="animate-fade-in space-y-6">
-      <header className="rounded-2xl border border-neutral-200 bg-gradient-to-br from-white to-neutral-100 p-6 text-neutral-900 dark:border-neutral-800 dark:bg-gradient-to-br dark:from-black dark:to-neutral-900 dark:text-white">
+<header className="rounded-2xl border border-red-600 bg-gradient-to-br from-white to-neutral-100 p-6 text-neutral-900 dark:border-red-600 dark:bg-gradient-to-br dark:from-black dark:to-neutral-900 dark:text-white">
         <h1 className="text-[32px] font-semibold leading-tight text-black dark:text-white">Settings</h1>
         <p className="mt-2 text-[14px] text-neutral-600 dark:text-neutral-300">Manage your account and dashboard preferences in one place.</p>
       </header>
@@ -112,7 +112,7 @@ function Settings() {
       )}
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <section className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-[0_8px_20px_rgba(0,0,0,0.08)] dark:border-zinc-700 dark:bg-zinc-900">
+<section className="rounded-2xl border border-red-600 bg-white p-6 shadow-[0_8px_20px_rgba(0,0,0,0.08)] dark:border-red-600 dark:bg-zinc-900">
           <div className="mb-4 flex items-center gap-2">
             <Shield size={18} className="text-red-600" />
             <h2 className="text-[24px] font-semibold text-black dark:text-zinc-100">Security</h2>
@@ -134,7 +134,7 @@ function Settings() {
           </div>
         </section>
 
-        <section className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-[0_8px_20px_rgba(0,0,0,0.08)] dark:border-zinc-700 dark:bg-zinc-900">
+<section className="rounded-2xl border border-red-600 bg-white p-6 shadow-[0_8px_20px_rgba(0,0,0,0.08)] dark:border-red-600 dark:bg-zinc-900">
           <div className="mb-4 flex items-center gap-2">
             <Bell size={18} className="text-red-600" />
             <h2 className="text-[24px] font-semibold text-black dark:text-zinc-100">Notifications</h2>
@@ -162,7 +162,7 @@ function Settings() {
           </div>
         </section>
 
-        <section className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-[0_8px_20px_rgba(0,0,0,0.08)] dark:border-zinc-700 dark:bg-zinc-900">
+<section className="rounded-2xl border border-red-600 bg-white p-6 shadow-[0_8px_20px_rgba(0,0,0,0.08)] dark:border-red-600 dark:bg-zinc-900">
           <div className="mb-4 flex items-center gap-2">
             <SlidersHorizontal size={18} className="text-red-600" />
             <h2 className="text-[24px] font-semibold text-black dark:text-zinc-100">Preferences</h2>
@@ -190,7 +190,7 @@ function Settings() {
           </div>
         </section>
 
-        <section className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-[0_8px_20px_rgba(0,0,0,0.08)] xl:col-span-2 dark:border-zinc-700 dark:bg-zinc-900">
+<section className="rounded-2xl border border-red-600 bg-white p-6 shadow-[0_8px_20px_rgba(0,0,0,0.08)] xl:col-span-2 dark:border-red-600 dark:bg-zinc-900">
           <div className="mb-4 flex items-center gap-2">
             <Lock size={18} className="text-red-600" />
             <h2 className="text-[24px] font-semibold text-black dark:text-zinc-100">Privacy</h2>
