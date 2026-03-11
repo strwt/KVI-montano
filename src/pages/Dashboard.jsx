@@ -349,9 +349,10 @@ function Dashboard() {
                     <span className="flex items-center gap-2 truncate text-neutral-600 dark:text-zinc-400">
                       <Users size={14} className="text-red-600" />
                       <span className="truncate">{item.name}</span>
+                      
                     </span>
                     <span className="font-medium text-neutral-900 dark:text-zinc-100">{item.count}</span>
-                  </div>
+                  </div> 
                   <div className="h-2 rounded-full bg-neutral-200 dark:bg-zinc-700">
                     <div className="h-2 rounded-full bg-red-600 transition-all duration-200" style={{ width: `${width || 4}%` }} />
                   </div>
