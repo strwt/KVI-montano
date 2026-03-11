@@ -26,7 +26,6 @@ const ROLE_OPTIONS = [
 ]
 const COMMITTEE_OPTIONS = ['Environmental', 'Relief Operations', 'Fire Response', 'Medical']
 const BLOOD_TYPE_OPTIONS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
-const UTILITY_TYPE_OPTIONS = ['gallon', 'piecs', 'liters', 'pesos', 'cubic']
 
 const splitCategoryAndType = (value = '') => {
   const raw = String(value || '').trim()
@@ -48,7 +47,6 @@ function Members() {
     editCommittee,
     deleteCommittee,
     utilitiesByCommittee,
-    addUtilityItem,
     getRecruitments,
     rejectRecruitment,
   } = useAuth()
@@ -59,7 +57,6 @@ function Members() {
   const [currentPage, setCurrentPage] = useState(1)
   const [committeeName, setCommitteeName] = useState('')
   const [showAddOperationModal, setShowAddOperationModal] = useState(false)
-  const [showAddUtilityInline, setShowAddUtilityInline] = useState(false)
   const [showAddOperationTypeInline, setShowAddOperationTypeInline] = useState(false)
   const [showEditOperationForm, setShowEditOperationForm] = useState(false)
   const [showDeleteOperationForm, setShowDeleteOperationForm] = useState(false)
@@ -74,10 +71,6 @@ function Members() {
   const [newOperationTypeName, setNewOperationTypeName] = useState('')
   const [addModalCategory, setAddModalCategory] = useState('')
   const [addModalType, setAddModalType] = useState('')
-  const [utilityOperationCategory, setUtilityOperationCategory] = useState('')
-  const [utilityOperationType, setUtilityOperationType] = useState('')
-  const [utilityName, setUtilityName] = useState('')
-  const [utilityType, setUtilityType] = useState('')
   const [committeeError, setCommitteeError] = useState('')
   const [formError, setFormError] = useState('')
   const [recruitmentActionError, setRecruitmentActionError] = useState('')
@@ -246,7 +239,6 @@ function Members() {
     setAddModalCategory(normalizedCategory)
     setAddModalType('General')
     setShowAddOperationModal(false)
-    setShowAddUtilityInline(false)
     setShowAddOperationTypeInline(false)
   }
 
@@ -360,40 +352,10 @@ function Members() {
   const selectedOperationKey = selectedOperationCategory && selectedOperationType
     ? (operationEntryByCategoryType[`${selectedOperationCategory}|||${selectedOperationType}`] || `${selectedOperationCategory} - ${selectedOperationType}`)
     : ''
-  const selectedUtilityOperationKey = utilityOperationCategory && utilityOperationType
-    ? (operationEntryByCategoryType[`${utilityOperationCategory}|||${utilityOperationType}`] || `${utilityOperationCategory} - ${utilityOperationType}`)
-    : ''
   const selectedOperationUtilities = selectedOperationKey ? (utilitiesByCommittee[selectedOperationKey] || []) : []
   const operationNameExists = operationCategories.some(
     category => category.toLowerCase() === committeeName.trim().toLowerCase()
   )
-
-  const handleAddUtility = e => {
-    e.preventDefault()
-    setCommitteeError('')
-    const selectedUtilityOperation = selectedUtilityOperationKey || selectedOperationKey
-    if (!selectedUtilityOperation) {
-      setCommitteeError('Select operation name and type of operation first.')
-      return
-    }
-    const name = utilityName.trim()
-    const type = utilityType.trim()
-    if (!name || !type) {
-      setCommitteeError('Utility name and type are required.')
-      return
-    }
-    const entry = `${name} | Type: ${type}`
-    const result = addUtilityItem(selectedUtilityOperation, entry)
-    if (!result.success) {
-      setCommitteeError(result.message)
-      return
-    }
-    setUtilityOperationCategory('')
-    setUtilityOperationType('')
-    setUtilityName('')
-    setUtilityType('')
-    setShowAddUtilityInline(false)
-  }
 
   const handleCreateMember = e => {
     e.preventDefault()
@@ -668,7 +630,6 @@ function Members() {
                 type="button"
                 onClick={() => {
                   setShowAddOperationModal(false)
-                  setShowAddUtilityInline(false)
                 }}
                 className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm"
               >
@@ -721,93 +682,6 @@ function Members() {
 	              </div>
 	            </form>
 
-	            <div className="flex flex-wrap gap-2">
-	              <button
-	                type="button"
-	                onClick={() => {
-	                  setShowAddUtilityInline(prev => !prev)
-	                }}
-	                className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
-	              >
-	                Add utility
-	              </button>
-	            </div>
-
-            {showAddUtilityInline && (
-              <form onSubmit={handleAddUtility} className="rounded-lg border border-gray-200 p-3 bg-gray-50 space-y-3">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-sm text-gray-600 mb-1">Operation name</label>
-                    <select
-                      value={utilityOperationCategory}
-                      onChange={e => {
-                        const value = e.target.value
-                        setUtilityOperationCategory(value)
-                        setUtilityOperationType('')
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                      required
-                    >
-                      <option value="">Select operation name</option>
-                      {operationCategories.map(operation => (
-                        <option key={operation} value={operation}>
-                          {operation}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm text-gray-600 mb-1">Type of Operation</label>
-                    <select
-                      value={utilityOperationType}
-                      onChange={e => setUtilityOperationType(e.target.value)}
-                      disabled={!utilityOperationCategory}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 disabled:bg-gray-100"
-                      required
-                    >
-                      <option value="">Select type of operation</option>
-                      {(operationTypesByCategory[utilityOperationCategory] || []).map(typeOption => (
-                        <option key={typeOption} value={typeOption}>
-                          {typeOption}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm text-gray-600 mb-1">Utility name</label>
-                    <input
-                      type="text"
-                      value={utilityName}
-                      onChange={e => setUtilityName(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm text-gray-600 mb-1">Type</label>
-                    <select
-                      value={utilityType}
-                      onChange={e => setUtilityType(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                      required
-                    >
-                      <option value="">Select type</option>
-                      {UTILITY_TYPE_OPTIONS.map(typeOption => (
-                        <option key={typeOption} value={typeOption}>
-                          {typeOption}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                <button
-                  type="submit"
-                  className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
-                >
-                  Save Utility
-                </button>
-              </form>
-            )}
           </div>
         </div>
       )}
