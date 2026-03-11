@@ -104,7 +104,6 @@ function Dashboard() {
   }, [events, t])
 
   const maxVolunteerCount = useMemo(() => Math.max(...volunteerBars.map(item => item.count), 1), [volunteerBars])
-  const categorySlices = useMemo(() => getCategorySlices(categoryCounts), [categoryCounts])
   const eventsThisMonth = useMemo(() => {
     return events.filter(event => {
       const dateValue = resolveEventDate(event)

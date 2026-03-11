@@ -1099,7 +1099,7 @@ function Calendar({ listOnly = false }) {
   }
 
   const openMarkDoneForm = event => {
-    if (!canManageEvents || event.status === 'done') return
+    if (!canManageEvents) return
     const defaults = getDefaultDynamicFields()
     if (event.category && defaults[event.category]) {
       defaults[event.category] = {
@@ -1174,11 +1174,13 @@ function Calendar({ listOnly = false }) {
               ...item,
               status: 'done',
               categoryData: {
+                ...(item.categoryData && typeof item.categoryData === 'object' ? item.categoryData : {}),
                 ...nextCategoryData,
                 partners: partnersValue,
                 ...(markDoneEvent.category === 'blood_letting' ? { blood_token: bloodTokensValue } : {}),
               },
-              completedAt: dayjs().toISOString(),
+              // Preserve the original completion time when updating done details.
+              completedAt: item.completedAt || dayjs().toISOString(),
             }
           : item
       )
@@ -1530,15 +1532,15 @@ function Calendar({ listOnly = false }) {
                             </div>
                             {canManageEvents && (
                               <div className="pt-2 flex items-center gap-2">
-                                {item.status !== 'done' && (
-                                  <button
-                                    type="button"
-                                    onClick={() => openMarkDoneForm(item)}
-                                    className="px-3 py-1.5 rounded-md bg-green-600 text-white text-xs font-medium hover:bg-green-700 transition-colors"
-                                  >
-                                    Mark as Done
-                                  </button>
-                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => openMarkDoneForm(item)}
+                                  className={`px-3 py-1.5 rounded-md text-white text-xs font-medium transition-colors ${
+                                    item.status === 'done' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700'
+                                  }`}
+                                >
+                                  {item.status === 'done' ? 'Edit Done Details' : 'Mark as Done'}
+                                </button>
                                 <button
                                   type="button"
                                   onClick={() => openEventForEdit(item)}
@@ -1897,15 +1899,15 @@ function Calendar({ listOnly = false }) {
                             </div>
                             {canManageEvents && (
                               <div className="pt-2 flex items-center gap-2">
-                                {item.status !== 'done' && (
-                                  <button
-                                    type="button"
-                                    onClick={() => openMarkDoneForm(item)}
-                                    className="px-3 py-1.5 rounded-md bg-green-600 text-white text-xs font-medium hover:bg-green-700 transition-colors"
-                                  >
-                                    Mark as Done
-                                  </button>
-                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => openMarkDoneForm(item)}
+                                  className={`px-3 py-1.5 rounded-md text-white text-xs font-medium transition-colors ${
+                                    item.status === 'done' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700'
+                                  }`}
+                                >
+                                  {item.status === 'done' ? 'Edit Done Details' : 'Mark as Done'}
+                                </button>
                                 <button
                                   type="button"
                                   onClick={() => openEventForEdit(item)}
@@ -2080,19 +2082,21 @@ function Calendar({ listOnly = false }) {
         </div>
       )}
 
-	      {canManageEvents && showDoneForm && markDoneEvent && (
-	        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-3 sm:p-4">
-	          <div className="w-full max-w-2xl max-h-[92vh] overflow-y-auto rounded-2xl bg-white border border-red-100 shadow-2xl animate-fade-in-up">
-            <div className="flex items-center justify-between p-4 sm:p-5 border-b border-gray-200 sticky top-0 bg-white z-10 rounded-t-2xl">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
-                  <MarkDoneIcon size={16} className="text-green-700" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-800">Mark Event as Done</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
+		      {canManageEvents && showDoneForm && markDoneEvent && (
+		        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-3 sm:p-4">
+		          <div className="w-full max-w-2xl max-h-[92vh] overflow-y-auto rounded-2xl bg-white border border-red-100 shadow-2xl animate-fade-in-up">
+	            <div className="flex items-center justify-between p-4 sm:p-5 border-b border-gray-200 sticky top-0 bg-white z-10 rounded-t-2xl">
+	              <div className="flex items-center gap-2">
+	                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${markDoneEvent.status === 'done' ? 'bg-blue-100' : 'bg-green-100'}`}>
+	                  <MarkDoneIcon size={16} className={markDoneEvent.status === 'done' ? 'text-blue-700' : 'text-green-700'} />
+	                </div>
+	                <h3 className="text-lg font-semibold text-gray-800">
+	                  {markDoneEvent.status === 'done' ? 'Update Done Details' : 'Mark Event as Done'}
+	                </h3>
+	              </div>
+	              <button
+	                type="button"
+	                onClick={() => {
                   setShowDoneForm(false)
                   setMarkDoneEventId(null)
                   setDoneFormError('')
@@ -2245,17 +2249,19 @@ function Calendar({ listOnly = false }) {
                 >
                   Cancel
                 </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors"
-                >
-                  Mark Done
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+	                <button
+	                  type="submit"
+	                  className={`px-4 py-2 rounded-lg text-white transition-colors ${
+	                    markDoneEvent.status === 'done' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700'
+	                  }`}
+	                >
+	                  {markDoneEvent.status === 'done' ? 'Save Done Details' : 'Mark Done'}
+	                </button>
+	              </div>
+	            </form>
+	          </div>
+	        </div>
+	      )}
 
       {pendingConfirmation && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4">
