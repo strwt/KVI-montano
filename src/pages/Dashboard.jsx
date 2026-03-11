@@ -7,7 +7,6 @@ import {
   HeartPulse,
   Calendar as CalendarIcon,
   ArrowRight,
-  Users,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
@@ -44,30 +43,9 @@ const getStoredLoginActivity = () => {
       .filter(entry => entry?.lastLoginAt && dayjs(entry.lastLoginAt).isValid())
       .sort((a, b) => dayjs(b.lastLoginAt).valueOf() - dayjs(a.lastLoginAt).valueOf())
       .slice(0, LOGIN_ACTIVITY_LIMIT)
-  } catch {
+	  } catch {
     return []
   }
-}
-
-const getCategorySlices = counts => {
-  const values = Object.values(counts)
-  const total = values.reduce((acc, value) => acc + value, 0) || 1
-  let offset = 0
-
-  return EVENT_CATEGORIES.map((category, index) => {
-    const value = counts[category.key] || 0
-    const dash = (value / total) * 100
-    const slice = {
-      key: category.key,
-      label: category.label,
-      value,
-      dash,
-      offset,
-      stroke: index % 2 === 0 ? 'var(--dashboard-accent-stroke)' : 'var(--dashboard-muted-stroke)',
-    }
-    offset += dash
-    return slice
-  })
 }
 
 const getIconThemeClass = categoryKey => {
@@ -107,27 +85,6 @@ function Dashboard() {
       return acc
     }, {})
   }, [events])
-
-  const volunteerBars = useMemo(() => {
-    const map = {}
-    events.forEach(event => {
-      const names = (event.membersInvolve || '')
-        .split(',')
-        .map(name => name.trim())
-        .filter(Boolean)
-      names.forEach(name => {
-        map[name] = (map[name] || 0) + 1
-      })
-    })
-    const items = Object.entries(map)
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5)
-    return items.length ? items : [{ name: t('No assigned volunteers'), count: 0 }]
-  }, [events, t])
-
-  const maxVolunteerCount = useMemo(() => Math.max(...volunteerBars.map(item => item.count), 1), [volunteerBars])
-  const categorySlices = useMemo(() => getCategorySlices(categoryCounts), [categoryCounts])
   const eventsThisMonth = useMemo(() => {
     return events.filter(event => {
       const dateValue = resolveEventDate(event)
@@ -296,74 +253,10 @@ function Dashboard() {
             </div>
           </article>
         </section>
-      )}
+	      )}
 
-	      <section className="grid grid-cols-12 items-stretch gap-4">
-        {isAdmin && (
-          <article className="col-span-12 rounded-2xl border border-red-600 bg-white p-5 md:p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] md:col-span-6 min-h-[400px] flex flex-col dark:border-red-600 dark:bg-zinc-900">
-            <h2 className="mb-3 text-[24px] font-semibold text-black dark:text-zinc-100">{t('Category Share')}</h2>
-            <div className="flex flex-1 flex-col items-center gap-4">
-              <svg viewBox="0 0 220 220" className="h-48 w-48">
-                <circle cx="110" cy="110" r="76" fill="none" stroke="#e5e5e5" strokeWidth="20" />
-                {categorySlices.map(slice => (
-                  <circle
-                    key={slice.key}
-                    cx="110"
-                    cy="110"
-                    r="76"
-                    fill="none"
-                    stroke={slice.stroke}
-                    strokeWidth="20"
-                    strokeDasharray={`${slice.dash} ${100 - slice.dash}`}
-                    strokeDashoffset={-slice.offset}
-                    pathLength="100"
-                    transform="rotate(-90 110 110)"
-                  />
-                ))}
-              </svg>
-              <div className="w-full space-y-2">
-                {categorySlices.map(slice => (
-                  <div key={slice.key} className="flex items-center justify-between text-[14px]">
-                    <span className="flex items-center gap-2 text-neutral-600 dark:text-zinc-400">
-                      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: slice.stroke }} />
-                       {t(slice.label)}
-                    </span>
-                    <span className="font-medium text-black dark:text-zinc-100">{`${Math.round(slice.dash)}%`}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </article>
-        )}
-
-        <article className={`col-span-12 rounded-2xl border border-red-600 bg-white shadow-[0_10px_20px_rgba(0,0,0,0.08)] flex flex-col dark:border-red-600 dark:bg-zinc-900 ${
-          isAdmin ? 'p-5 md:p-6 min-h-[400px] md:col-span-6' : 'p-4 md:p-5 md:col-span-6'
-        }`}>
-          <h2 className="mb-3 text-[24px] font-semibold text-black dark:text-zinc-100">{t('Volunteer Participation')}</h2>
-          <div className="space-y-4">
-            {volunteerBars.map((item, index) => {
-              const width = (item.count / maxVolunteerCount) * 100
-              return (
-                <div key={`${item.name}-${index}`} className="space-y-1">
-                  <div className="flex items-center justify-between text-[14px]">
-                    <span className="flex items-center gap-2 truncate text-neutral-600 dark:text-zinc-400">
-                      <Users size={14} className="text-red-600" />
-                      <span className="truncate">{item.name}</span>
-                      
-                    </span>
-                    <span className="font-medium text-neutral-900 dark:text-zinc-100">{item.count}</span>
-                  </div> 
-                  <div className="h-2 rounded-full bg-neutral-200 dark:bg-zinc-700">
-                    <div className="h-2 rounded-full bg-red-600 transition-all duration-200" style={{ width: `${width || 4}%` }} />
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </article>
-      </section>
-    </div>
-  )
-}
+	    </div>
+	  )
+	}
 
 export default Dashboard

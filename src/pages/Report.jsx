@@ -7,6 +7,7 @@ import {
   HeartPulse,
   Leaf,
   FileText,
+  Droplets,
   Filter,
   BarChart3,
   PieChart,
@@ -16,9 +17,13 @@ import {
 import { useAuth } from '../context/AuthContext'
 
 const CATEGORY_META = {
+  tuli: { label: 'Tuli', icon: HeartPulse, light: 'bg-red-50', text: 'text-red-700' },
+  blood_letting: { label: 'Blood Letting', icon: Activity, light: 'bg-red-50', text: 'text-red-700' },
+  donations: { label: 'Donations', icon: FileText, light: 'bg-red-50', text: 'text-red-700' },
   environmental: { label: 'Environmental', icon: Leaf, light: 'bg-green-50', text: 'text-green-700' },
-  'relief operation': { label: 'Relief Operation', icon: Activity, light: 'bg-blue-50', text: 'text-blue-700' },
-  'fire response': { label: 'Fire Response', icon: Flame, light: 'bg-orange-50', text: 'text-orange-700' },
+  relief_operation: { label: 'Relief Operation', icon: Activity, light: 'bg-blue-50', text: 'text-blue-700' },
+  fire_response: { label: 'Fire Response', icon: Flame, light: 'bg-orange-50', text: 'text-orange-700' },
+  water_distribution: { label: 'Water Distribution', icon: Droplets, light: 'bg-red-50', text: 'text-red-700' },
   notes: { label: 'Notes', icon: FileText, light: 'bg-indigo-50', text: 'text-indigo-700' },
   medical: { label: 'Medical', icon: HeartPulse, light: 'bg-pink-50', text: 'text-pink-700' },
 }
@@ -26,9 +31,13 @@ const CATEGORY_META = {
 const CATEGORY_KEYS = Object.keys(CATEGORY_META)
 
 const CATEGORY_COLORS = {
+  tuli: '#ef4444',
+  blood_letting: '#dc2626',
+  donations: '#b91c1c',
   environmental: '#22c55e',
-  'relief operation': '#3b82f6',
-  'fire response': '#f97316',
+  relief_operation: '#3b82f6',
+  fire_response: '#f97316',
+  water_distribution: '#f43f5e',
   notes: '#6366f1',
   medical: '#ec4899',
 }
@@ -41,14 +50,24 @@ const REPORT_COLUMNS = [
   { key: 'membersInvolve', label: 'Members Involve' },
   { key: 'dateTime', label: 'Date and Time' },
   { key: 'address', label: 'Address' },
-  { key: 'seedlingsUsed', label: 'Seedlings Used' },
-  { key: 'foodPacks', label: 'Food Packs' },
-  { key: 'familiesAccommodated', label: 'Families Accommodated' },
-  { key: 'gallons', label: 'Gallons' },
-  { key: 'tank', label: 'Tank' },
-  { key: 'cubicWater', label: 'Cubic Water' },
-  { key: 'respondedFireAccident', label: 'Responded Fire Accident' },
-  { key: 'trainings', label: 'Trainings' },
+  { key: 'partners', label: 'Partners' },
+  { key: 'tuli_children_count', label: 'Tuli Children Count' },
+  { key: 'tuli_residing_doctors', label: 'Tuli Residing Doctors' },
+  { key: 'blood_bags_count', label: 'Blood Bags Count' },
+  { key: 'blood_successful_donors', label: 'Successful Donors' },
+  { key: 'blood_token', label: 'Blood Token' },
+  { key: 'donation_request', label: 'Donation Request' },
+  { key: 'env_trees_planted', label: 'Trees Planted' },
+  { key: 'relief_families_count', label: 'Relief Families Count' },
+  { key: 'relief_items', label: 'Relief Items' },
+  { key: 'fire_alarm_status', label: 'Fire Alarm Status' },
+  { key: 'fire_affected_families', label: 'Affected Families' },
+  { key: 'fire_estimated_cost', label: 'Estimated Cost' },
+  { key: 'fire_liters', label: 'Fire Liters' },
+  { key: 'water_liters', label: 'Water Liters' },
+  { key: 'water_households', label: 'Water Households' },
+  { key: 'water_employees', label: 'Water Employees' },
+  { key: 'water_engine', label: 'Water Engine' },
   { key: 'medicalEquipmentUsed', label: 'Medical Equipment Used' },
   { key: 'expenses', label: 'Expenses' },
 ]
@@ -70,7 +89,17 @@ const getStoredEvents = () => {
   }
 }
 
-const normalizeCategory = category => (category || '').toLowerCase()
+const normalizeCategory = category =>
+  String(category || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '_')
+
+const splitPipe = value =>
+  String(value || '')
+    .split('|')
+    .map(x => x.trim())
+    .filter(Boolean)
 
 const resolveEventDate = event => {
   const raw = event.dateTime || event.date || null
@@ -209,9 +238,19 @@ function Report() {
 
   const stats = useMemo(() => {
     const template = {
-      environmental: { eventCount: 0, seedlingsUsed: 0, expenses: 0, monthlyCount: {} },
-      'relief operation': { eventCount: 0, foodPacks: 0, familiesAccommodated: 0, expenses: 0, monthlyCount: {} },
-      'fire response': { eventCount: 0, gallons: 0, tank: 0, cubicWater: 0, expenses: 0 },
+      tuli: { eventCount: 0, tuliChildrenCount: 0 },
+      blood_letting: {
+        eventCount: 0,
+        bloodBagsCount: 0,
+        bloodSuccessfulDonors: 0,
+        bloodTokenCount: 0,
+        bloodTokenCounts: {},
+      },
+      donations: { eventCount: 0 },
+      environmental: { eventCount: 0, envTreesPlanted: 0 },
+      relief_operation: { eventCount: 0, reliefFamiliesCount: 0, reliefItems: { grocery: 0, hygiene_kit: 0, both: 0 } },
+      fire_response: { eventCount: 0, fireAffectedFamilies: 0, fireEstimatedCost: 0, fireLiters: 0 },
+      water_distribution: { eventCount: 0, waterLiters: 0, waterHouseholds: 0 },
       notes: { trainings: 0, monthlyTrainingCount: {}, monthlyEventCount: {} },
       medical: { eventCount: 0, medicalEquipmentUsed: 0, expenses: 0 },
     }
@@ -220,27 +259,53 @@ function Report() {
       const category = event._category
       const monthKey = event._date.format('YYYY-MM')
 
+      if (category === 'tuli') {
+        template.tuli.eventCount += 1
+        template.tuli.tuliChildrenCount += toNumber(getFieldValue(event, 'tuli_children_count'))
+      }
+
+      if (category === 'blood_letting') {
+        template.blood_letting.eventCount += 1
+        template.blood_letting.bloodBagsCount += toNumber(getFieldValue(event, 'blood_bags_count'))
+        template.blood_letting.bloodSuccessfulDonors += toNumber(getFieldValue(event, 'blood_successful_donors'))
+        const tokens = splitPipe(getFieldValue(event, 'blood_token'))
+        template.blood_letting.bloodTokenCount += tokens.length
+        tokens.forEach(token => {
+          const normalized = token.toLowerCase()
+          template.blood_letting.bloodTokenCounts[normalized] =
+            (template.blood_letting.bloodTokenCounts[normalized] || 0) + 1
+        })
+      }
+
+      if (category === 'donations') {
+        template.donations.eventCount += 1
+      }
+
       if (category === 'environmental') {
         template.environmental.eventCount += 1
-        template.environmental.seedlingsUsed += toNumber(getFieldValue(event, 'seedlingsUsed', ['seedlings']))
-        template.environmental.expenses += toNumber(getFieldValue(event, 'expenses', ['expenses']))
-        template.environmental.monthlyCount[monthKey] = (template.environmental.monthlyCount[monthKey] || 0) + 1
+        template.environmental.envTreesPlanted += toNumber(getFieldValue(event, 'env_trees_planted'))
       }
 
-      if (category === 'relief operation') {
-        template['relief operation'].eventCount += 1
-        template['relief operation'].foodPacks += toNumber(getFieldValue(event, 'foodPacks', ['foodPacks']))
-        template['relief operation'].familiesAccommodated += toNumber(getFieldValue(event, 'familiesAccommodated', ['familiesAccommodated']))
-        template['relief operation'].expenses += toNumber(getFieldValue(event, 'expenses', ['expenses']))
-        template['relief operation'].monthlyCount[monthKey] = (template['relief operation'].monthlyCount[monthKey] || 0) + 1
+      if (category === 'relief_operation') {
+        template.relief_operation.eventCount += 1
+        template.relief_operation.reliefFamiliesCount += toNumber(getFieldValue(event, 'relief_families_count'))
+        const items = String(getFieldValue(event, 'relief_items')).trim().toLowerCase()
+        if (items && template.relief_operation.reliefItems[items] !== undefined) {
+          template.relief_operation.reliefItems[items] += 1
+        }
       }
 
-      if (category === 'fire response') {
-        template['fire response'].eventCount += 1
-        template['fire response'].gallons += toNumber(getFieldValue(event, 'gallons', ['gallonsWater']))
-        template['fire response'].tank += toNumber(getFieldValue(event, 'tank', ['tankWater']))
-        template['fire response'].cubicWater += toNumber(getFieldValue(event, 'cubicWater', ['cubicWater']))
-        template['fire response'].expenses += toNumber(getFieldValue(event, 'expenses', ['expenses']))
+      if (category === 'fire_response') {
+        template.fire_response.eventCount += 1
+        template.fire_response.fireAffectedFamilies += toNumber(getFieldValue(event, 'fire_affected_families'))
+        template.fire_response.fireEstimatedCost += toNumber(getFieldValue(event, 'fire_estimated_cost'))
+        template.fire_response.fireLiters += toNumber(getFieldValue(event, 'fire_liters'))
+      }
+
+      if (category === 'water_distribution') {
+        template.water_distribution.eventCount += 1
+        template.water_distribution.waterLiters += toNumber(getFieldValue(event, 'water_liters'))
+        template.water_distribution.waterHouseholds += toNumber(getFieldValue(event, 'water_households'))
       }
 
       if (category === 'notes') {
@@ -265,6 +330,13 @@ function Report() {
     return template
   }, [filteredEvents])
 
+  const bloodTokenRows = useMemo(() => {
+    const entries = Object.entries(stats.blood_letting.bloodTokenCounts || {})
+      .filter(([, count]) => Number(count) > 0)
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    return entries.map(([token, count]) => ({ token, count }))
+  }, [stats.blood_letting.bloodTokenCounts])
+
   const eventCountByCategory = useMemo(() => {
     return CATEGORY_KEYS.reduce((acc, key) => {
       acc[key] = filteredEvents.filter(event => event._category === key).length
@@ -281,14 +353,24 @@ function Report() {
       membersInvolve: event.membersInvolve || '',
       dateTime: event._date.format('YYYY-MM-DD HH:mm'),
       address: event.address || '',
-      seedlingsUsed: getFieldValue(event, 'seedlingsUsed', ['seedlings']),
-      foodPacks: getFieldValue(event, 'foodPacks', ['foodPacks']),
-      familiesAccommodated: getFieldValue(event, 'familiesAccommodated', ['familiesAccommodated']),
-      gallons: getFieldValue(event, 'gallons', ['gallonsWater']),
-      tank: getFieldValue(event, 'tank', ['tankWater']),
-      cubicWater: getFieldValue(event, 'cubicWater', ['cubicWater']),
-      respondedFireAccident: getFieldValue(event, 'respondedFireAccident', ['responseFireAccident']),
-      trainings: getFieldValue(event, 'trainings', ['trainings']),
+      partners: getFieldValue(event, 'partners'),
+      tuli_children_count: getFieldValue(event, 'tuli_children_count'),
+      tuli_residing_doctors: getFieldValue(event, 'tuli_residing_doctors'),
+      blood_bags_count: getFieldValue(event, 'blood_bags_count'),
+      blood_successful_donors: getFieldValue(event, 'blood_successful_donors'),
+      blood_token: getFieldValue(event, 'blood_token'),
+      donation_request: getFieldValue(event, 'donation_request'),
+      env_trees_planted: getFieldValue(event, 'env_trees_planted'),
+      relief_families_count: getFieldValue(event, 'relief_families_count'),
+      relief_items: getFieldValue(event, 'relief_items'),
+      fire_alarm_status: getFieldValue(event, 'fire_alarm_status'),
+      fire_affected_families: getFieldValue(event, 'fire_affected_families'),
+      fire_estimated_cost: getFieldValue(event, 'fire_estimated_cost'),
+      fire_liters: getFieldValue(event, 'fire_liters'),
+      water_liters: getFieldValue(event, 'water_liters'),
+      water_households: getFieldValue(event, 'water_households'),
+      water_employees: getFieldValue(event, 'water_employees'),
+      water_engine: getFieldValue(event, 'water_engine'),
       medicalEquipmentUsed: getFieldValue(event, 'medicalEquipmentUsed', ['medicalEquipmentsUsed']),
       expenses: getFieldValue(event, 'expenses', ['expenses']),
     }))
@@ -317,20 +399,27 @@ function Report() {
   }, [pieSegments, totalEvents])
 
   const summaryLines = [
-    `Total Environmental Events: ${stats.environmental.eventCount}`,
-    `Total Seedlings Used: ${stats.environmental.seedlingsUsed}`,
-    `Environmental Expenses: ${CURRENCY.format(stats.environmental.expenses)}`,
-    `Total Relief Operations: ${stats['relief operation'].eventCount}`,
-    `Total Food Packs Distributed: ${stats['relief operation'].foodPacks}`,
-    `Total Families Accommodated: ${stats['relief operation'].familiesAccommodated}`,
-    `Relief Expenses: ${CURRENCY.format(stats['relief operation'].expenses)}`,
-    `Total Fire Responses: ${stats['fire response'].eventCount}`,
-    `Total Gallons Used: ${stats['fire response'].gallons}`,
-    `Total Tank Usage: ${stats['fire response'].tank}`,
-    `Total Cubic Water: ${stats['fire response'].cubicWater}`,
-    `Fire Response Expenses: ${CURRENCY.format(stats['fire response'].expenses)}`,
-    `Total Trainings Conducted: ${stats.notes.trainings}`,
-    `Most Active Training Month: ${getMostActiveMonthLabel(stats.notes.monthlyEventCount)}`,
+    `Total Tuli Activities: ${stats.tuli.eventCount}`,
+    `Total Tuli Children Count: ${stats.tuli.tuliChildrenCount}`,
+    `Total Blood Letting Activities: ${stats.blood_letting.eventCount}`,
+    `Total Blood Bags Count: ${stats.blood_letting.bloodBagsCount}`,
+    `Total Successful Donors: ${stats.blood_letting.bloodSuccessfulDonors}`,
+    `Total Blood Tokens: ${stats.blood_letting.bloodTokenCount}`,
+    `Total Donation Activities: ${stats.donations.eventCount}`,
+    `Total Environmental Activities: ${stats.environmental.eventCount}`,
+    `Total Trees Planted: ${stats.environmental.envTreesPlanted}`,
+    `Total Relief Operations: ${stats.relief_operation.eventCount}`,
+    `Total Relief Families Count: ${stats.relief_operation.reliefFamiliesCount}`,
+    `Relief Items Grocery: ${stats.relief_operation.reliefItems.grocery}`,
+    `Relief Items Hygiene Kit: ${stats.relief_operation.reliefItems.hygiene_kit}`,
+    `Relief Items Both: ${stats.relief_operation.reliefItems.both}`,
+    `Total Fire Responses: ${stats.fire_response.eventCount}`,
+    `Total Affected Families: ${stats.fire_response.fireAffectedFamilies}`,
+    `Total Estimated Cost: ${stats.fire_response.fireEstimatedCost}`,
+    `Total Fire Liters: ${stats.fire_response.fireLiters}`,
+    `Total Water Distributions: ${stats.water_distribution.eventCount}`,
+    `Total Water Liters: ${stats.water_distribution.waterLiters}`,
+    `Total Water Households: ${stats.water_distribution.waterHouseholds}`,
     `Total Medical Events: ${stats.medical.eventCount}`,
     `Total Medical Equipment Used: ${stats.medical.medicalEquipmentUsed}`,
     `Medical Expenses: ${CURRENCY.format(stats.medical.expenses)}`,
@@ -343,8 +432,6 @@ function Report() {
     lines.push(`Generated At,${dayjs().format('YYYY-MM-DD HH:mm:ss')}`)
     lines.push(`Date Filter,${datePreset}`)
     lines.push(`Category Filter,${selectedCategory}`)
-    lines.push(`Field Filter,${selectedBranch}`)
-    lines.push(`Search Query,${searchQuery || 'N/A'}`)
     lines.push('')
     lines.push('Summary Statistics')
     summaryLines.forEach(line => lines.push(escapeCsv(line)))
@@ -591,46 +678,94 @@ function Report() {
 
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
-          <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><Leaf size={18} className="text-green-600" />Environmental Statistics</h3>
-          <div className="space-y-2 text-sm">
-            <div className="flex flex-wrap justify-between gap-2"><span>Total Environmental Events</span><strong>{stats.environmental.eventCount}</strong></div>
-            <div className="flex flex-wrap justify-between gap-2"><span>Total Seedlings Used</span><strong>{stats.environmental.seedlingsUsed}</strong></div>
-            <div className="flex flex-wrap justify-between gap-2"><span>Total Expenses</span><strong>{CURRENCY.format(stats.environmental.expenses)}</strong></div>
-          </div>
-        </div>
+	      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+	        <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
+	          <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><HeartPulse size={18} className="text-red-600" />Tuli Statistics</h3>
+	          <div className="space-y-2 text-sm">
+	            <div className="flex flex-wrap justify-between gap-2"><span>Total Tuli Activities</span><strong>{stats.tuli.eventCount}</strong></div>
+	            <div className="flex flex-wrap justify-between gap-2"><span>Total Children Count</span><strong>{stats.tuli.tuliChildrenCount}</strong></div>
+	          </div>
+	        </div>
 
-        <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
-          <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><Activity size={18} className="text-blue-600" />Relief Operation Statistics</h3>
-          <div className="space-y-2 text-sm">
-            <div className="flex flex-wrap justify-between gap-2"><span>Total Relief Operations</span><strong>{stats['relief operation'].eventCount}</strong></div>
-            <div className="flex flex-wrap justify-between gap-2"><span>Total Food Packs Distributed</span><strong>{stats['relief operation'].foodPacks}</strong></div>
-            <div className="flex flex-wrap justify-between gap-2"><span>Total Families Accommodated</span><strong>{stats['relief operation'].familiesAccommodated}</strong></div>
-            <div className="flex flex-wrap justify-between gap-2"><span>Total Expenses</span><strong>{CURRENCY.format(stats['relief operation'].expenses)}</strong></div>
-          </div>
-        </div>
+	        <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
+	          <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><Activity size={18} className="text-red-600" />Blood Letting Statistics</h3>
+	          <div className="space-y-2 text-sm">
+	            <div className="flex flex-wrap justify-between gap-2"><span>Total Blood Letting Activities</span><strong>{stats.blood_letting.eventCount}</strong></div>
+	            <div className="flex flex-wrap justify-between gap-2"><span>Total Blood Bags</span><strong>{stats.blood_letting.bloodBagsCount}</strong></div>
+	            <div className="flex flex-wrap justify-between gap-2"><span>Total Successful Donors</span><strong>{stats.blood_letting.bloodSuccessfulDonors}</strong></div>
+	            <div className="flex flex-wrap justify-between gap-2"><span>Total Tokens</span><strong>{stats.blood_letting.bloodTokenCount}</strong></div>
+	            <div className="pt-2 border-t border-gray-200 dark:border-zinc-700">
+	              <p className="text-xs font-semibold text-gray-700 dark:text-zinc-300 mb-2">Token Totals</p>
+	              {bloodTokenRows.length > 0 ? (
+	                <div className="space-y-1">
+	                  {bloodTokenRows.map(row => (
+	                    <div key={row.token} className="flex flex-wrap justify-between gap-2">
+	                      <span className="capitalize">{row.token}</span>
+	                      <strong>{row.count}</strong>
+	                    </div>
+	                  ))}
+	                </div>
+	              ) : (
+	                <p className="text-xs text-gray-500 dark:text-zinc-400">No tokens recorded for this filter.</p>
+	              )}
+	            </div>
+	          </div>
+	        </div>
 
-        <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
-          <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><Flame size={18} className="text-orange-600" />Fire Response Statistics</h3>
-          <div className="space-y-2 text-sm">
-            <div className="flex flex-wrap justify-between gap-2"><span>Total Fire Responses</span><strong>{stats['fire response'].eventCount}</strong></div>
-            <div className="flex flex-wrap justify-between gap-2"><span>Total Gallons</span><strong>{stats['fire response'].gallons}</strong></div>
-            <div className="flex flex-wrap justify-between gap-2"><span>Total Tank</span><strong>{stats['fire response'].tank}</strong></div>
-            <div className="flex flex-wrap justify-between gap-2"><span>Total Cubic Water</span><strong>{stats['fire response'].cubicWater}</strong></div>
-            <div className="flex flex-wrap justify-between gap-2"><span>Total Expenses</span><strong>{CURRENCY.format(stats['fire response'].expenses)}</strong></div>
-          </div>
-        </div>
+	        <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
+	          <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><FileText size={18} className="text-red-600" />Donations Statistics</h3>
+	          <div className="space-y-2 text-sm">
+	            <div className="flex flex-wrap justify-between gap-2"><span>Total Donation Activities</span><strong>{stats.donations.eventCount}</strong></div>
+	          </div>
+	        </div>
 
-        <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
-          <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><HeartPulse size={18} className="text-pink-600" />Medical Statistics</h3>
-          <div className="space-y-2 text-sm">
-            <div className="flex flex-wrap justify-between gap-2"><span>Total Medical Events</span><strong>{stats.medical.eventCount}</strong></div>
-            <div className="flex flex-wrap justify-between gap-2"><span>Total Medical Equipment Used</span><strong>{stats.medical.medicalEquipmentUsed}</strong></div>
-            <div className="flex flex-wrap justify-between gap-2"><span>Total Expenses</span><strong>{CURRENCY.format(stats.medical.expenses)}</strong></div>
-          </div>
-        </div>
-      </div>
+	        <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
+	          <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><Leaf size={18} className="text-green-600" />Environmental Statistics</h3>
+	          <div className="space-y-2 text-sm">
+	            <div className="flex flex-wrap justify-between gap-2"><span>Total Environmental Activities</span><strong>{stats.environmental.eventCount}</strong></div>
+	            <div className="flex flex-wrap justify-between gap-2"><span>Total Trees Planted</span><strong>{stats.environmental.envTreesPlanted}</strong></div>
+	          </div>
+	        </div>
+
+	        <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
+	          <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><Activity size={18} className="text-blue-600" />Relief Operation Statistics</h3>
+	          <div className="space-y-2 text-sm">
+	            <div className="flex flex-wrap justify-between gap-2"><span>Total Relief Operations</span><strong>{stats.relief_operation.eventCount}</strong></div>
+	            <div className="flex flex-wrap justify-between gap-2"><span>Total Families Count</span><strong>{stats.relief_operation.reliefFamiliesCount}</strong></div>
+	            <div className="flex flex-wrap justify-between gap-2"><span>Items: Grocery</span><strong>{stats.relief_operation.reliefItems.grocery}</strong></div>
+	            <div className="flex flex-wrap justify-between gap-2"><span>Items: Hygiene Kit</span><strong>{stats.relief_operation.reliefItems.hygiene_kit}</strong></div>
+	            <div className="flex flex-wrap justify-between gap-2"><span>Items: Both</span><strong>{stats.relief_operation.reliefItems.both}</strong></div>
+	          </div>
+	        </div>
+
+	        <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
+	          <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><Flame size={18} className="text-orange-600" />Fire Response Statistics</h3>
+	          <div className="space-y-2 text-sm">
+	            <div className="flex flex-wrap justify-between gap-2"><span>Total Fire Responses</span><strong>{stats.fire_response.eventCount}</strong></div>
+	            <div className="flex flex-wrap justify-between gap-2"><span>Total Affected Families</span><strong>{stats.fire_response.fireAffectedFamilies}</strong></div>
+	            <div className="flex flex-wrap justify-between gap-2"><span>Total Estimated Cost</span><strong>{stats.fire_response.fireEstimatedCost}</strong></div>
+	            <div className="flex flex-wrap justify-between gap-2"><span>Total Liters Used</span><strong>{stats.fire_response.fireLiters}</strong></div>
+	          </div>
+	        </div>
+
+	        <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
+	          <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><Droplets size={18} className="text-red-600" />Water Distribution Statistics</h3>
+	          <div className="space-y-2 text-sm">
+	            <div className="flex flex-wrap justify-between gap-2"><span>Total Water Distributions</span><strong>{stats.water_distribution.eventCount}</strong></div>
+	            <div className="flex flex-wrap justify-between gap-2"><span>Total Liters</span><strong>{stats.water_distribution.waterLiters}</strong></div>
+	            <div className="flex flex-wrap justify-between gap-2"><span>Total Households</span><strong>{stats.water_distribution.waterHouseholds}</strong></div>
+	          </div>
+	        </div>
+
+	        <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
+	          <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><HeartPulse size={18} className="text-pink-600" />Medical Statistics</h3>
+	          <div className="space-y-2 text-sm">
+	            <div className="flex flex-wrap justify-between gap-2"><span>Total Medical Events</span><strong>{stats.medical.eventCount}</strong></div>
+	            <div className="flex flex-wrap justify-between gap-2"><span>Total Medical Equipment Used</span><strong>{stats.medical.medicalEquipmentUsed}</strong></div>
+	            <div className="flex flex-wrap justify-between gap-2"><span>Total Expenses</span><strong>{CURRENCY.format(stats.medical.expenses)}</strong></div>
+	          </div>
+	        </div>
+	      </div>
 
       {!isAdmin && <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-sm text-yellow-800">Export feature is available to Admin users only.</div>}
     </div>
