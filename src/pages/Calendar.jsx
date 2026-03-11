@@ -483,7 +483,7 @@ function EventLocationPicker({ address, location, onAddressInput, onLocationSele
         )}
       </div>
 
-      <div className="relative isolate z-0 rounded-2xl border border-gray-300 shadow-sm overflow-hidden">
+<div className="relative isolate z-0 rounded-2xl border border-red-600 shadow-sm overflow-hidden">
         <div ref={mapContainerRef} className="relative z-0 h-52 sm:h-64 md:h-72 w-full" />
       </div>
       {mapError && <p className="text-sm text-red-600">{mapError}</p>}
@@ -1166,7 +1166,7 @@ function Calendar({ listOnly = false }) {
   if (listOnly) {
     return (
       <div className="animate-fade-in max-w-7xl 2xl:max-w-[1500px] mx-auto">
-        <div className="relative overflow-hidden rounded-2xl border border-red-100 bg-white p-6 sm:p-7 shadow-lg mb-6">
+        <div className="relative overflow-hidden rounded-2xl border border-red-600 bg-white p-6 sm:p-7 shadow-lg mb-6">
           <div className="absolute -right-20 -top-20 h-48 w-48 rounded-full bg-red-500/10 blur-3xl" />
           <div className="relative">
             <div className="flex items-center justify-between gap-3">
@@ -1204,7 +1204,7 @@ function Calendar({ listOnly = false }) {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-xl overflow-hidden layout-glow animate-fade-in-up">
+        <div className="bg-white rounded-2xl shadow-xl overflow-hidden layout-glow animate-fade-in-up border border-red-600">
           <div className="p-4 sm:p-6 md:p-7 space-y-5">
             <div className="flex flex-col lg:flex-row gap-4">
               <input
@@ -1576,7 +1576,7 @@ function Calendar({ listOnly = false }) {
       )}
 
       {selectedMonth && (
-        <div className="bg-white rounded-2xl shadow-xl overflow-hidden max-w-6xl mx-auto layout-glow dark:bg-zinc-900 dark:border dark:border-zinc-700">
+        <div className="bg-white rounded-2xl shadow-xl overflow-hidden max-w-6xl mx-auto layout-glow dark:bg-zinc-900 dark:border dark:border-zinc-700 border border-red-600">
           <div className="bg-gradient-to-r from-white to-gray-100 dark:from-gray-900 dark:to-black p-5 flex items-center justify-between border-b border-gray-200 dark:border-gray-800">
             <div>
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{selectedMonth.monthLabel}</h3>

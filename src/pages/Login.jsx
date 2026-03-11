@@ -58,7 +58,7 @@ function Login() {
         </div>
 
         {/* Login Form */}
-        <div className="bg-white dark:bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-8 border border-gray-200 dark:border-white/20">
+<div className="bg-white dark:bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-8 border border-red-600">
           <div className="flex flex-wrap items-center justify-between gap-2 mb-5">
             <button
               type="button"

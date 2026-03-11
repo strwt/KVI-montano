@@ -502,7 +502,8 @@ function Report() {
 
   return (
     <div className="animate-fade-in space-y-6 max-w-7xl 2xl:max-w-[1500px] mx-auto text-gray-700 dark:text-zinc-300">
-      <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-md p-5 border border-gray-100 dark:border-zinc-700 layout-glow">
+      <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)]">
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-md p-5 border border-red-600 layout-glow">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
           <div className="flex items-center gap-2">
             <Filter size={18} className="text-red-600" />
@@ -557,10 +558,11 @@ function Report() {
             </select>
           </div>
         </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-md p-5 border border-gray-100 dark:border-zinc-700 layout-glow">
+        <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
           <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><BarChart3 size={18} className="text-red-600" />Events Per Category</h3>
           <div className="space-y-3">
             {categoryBarKeys.map(key => (
@@ -572,7 +574,7 @@ function Report() {
           </div>
         </div>
 
-        <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-md p-5 border border-gray-100 dark:border-zinc-700 layout-glow">
+        <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
           <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><PieChart size={18} className="text-red-600" />Category Distribution</h3>
           <div className="flex flex-col items-center">
             <div className="w-44 h-44 sm:w-48 sm:h-48 rounded-full mb-4" style={{ background: pieGradient }} />
@@ -590,7 +592,7 @@ function Report() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-md p-5 border border-gray-100 dark:border-zinc-700 layout-glow">
+        <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
           <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><Leaf size={18} className="text-green-600" />Environmental Statistics</h3>
           <div className="space-y-2 text-sm">
             <div className="flex flex-wrap justify-between gap-2"><span>Total Environmental Events</span><strong>{stats.environmental.eventCount}</strong></div>
@@ -599,7 +601,7 @@ function Report() {
           </div>
         </div>
 
-        <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-md p-5 border border-gray-100 dark:border-zinc-700 layout-glow">
+        <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
           <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><Activity size={18} className="text-blue-600" />Relief Operation Statistics</h3>
           <div className="space-y-2 text-sm">
             <div className="flex flex-wrap justify-between gap-2"><span>Total Relief Operations</span><strong>{stats['relief operation'].eventCount}</strong></div>
@@ -609,7 +611,7 @@ function Report() {
           </div>
         </div>
 
-        <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-md p-5 border border-gray-100 dark:border-zinc-700 layout-glow">
+        <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
           <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><Flame size={18} className="text-orange-600" />Fire Response Statistics</h3>
           <div className="space-y-2 text-sm">
             <div className="flex flex-wrap justify-between gap-2"><span>Total Fire Responses</span><strong>{stats['fire response'].eventCount}</strong></div>
@@ -620,7 +622,7 @@ function Report() {
           </div>
         </div>
 
-        <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-md p-5 border border-gray-100 dark:border-zinc-700 layout-glow">
+        <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
           <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><HeartPulse size={18} className="text-pink-600" />Medical Statistics</h3>
           <div className="space-y-2 text-sm">
             <div className="flex flex-wrap justify-between gap-2"><span>Total Medical Events</span><strong>{stats.medical.eventCount}</strong></div>
