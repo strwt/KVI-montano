@@ -16,7 +16,6 @@ import {
   Flame,
   FileText,
   HeartPulse,
-  GitBranch,
   Users,
   Check,
   Eye,
@@ -961,8 +960,8 @@ function Calendar({ listOnly = false }) {
       return
     }
 
-    if (!formData.dateTime || !formData.category || !formData.branch || !formData.address.trim()) {
-      setFormError('Date and Time, Category, Type, and Address are required.')
+    if (!formData.dateTime || !formData.category || !formData.address.trim()) {
+      setFormError('Date and Time, Category, and Address are required.')
       return
     }
     if (!formData.location) {
@@ -973,12 +972,14 @@ function Calendar({ listOnly = false }) {
     const involvedMemberNames = Array.isArray(formData.assignedMemberIds)
       ? formData.assignedMemberIds.map(memberId => memberNameById[memberId]).filter(Boolean)
       : []
+    const existingEvent = editingEventId ? events.find(item => item.id === editingEventId) : null
     const eventPayload = {
       title: CATEGORY_CONFIG[formData.category]?.label || 'Untitled Event',
       content: formData.content.trim(),
       dateTime: formData.dateTime,
       address: formData.address.trim(),
-      branch: formData.category === 'notes' ? '' : formData.branch,
+      // Type is no longer collected in the create/update form; preserve existing value if present.
+      branch: existingEvent?.branch || '',
       membersInvolve: formData.category === 'notes' ? involvedMemberNames.join(', ') : '',
       assignedMemberIds: formData.assignedMemberIds,
       viewedBy: [],
@@ -1813,28 +1814,20 @@ function Calendar({ listOnly = false }) {
               <div className="layout-glow rounded-2xl p-4 sm:p-5 bg-white">
                 <h4 className="text-sm font-semibold text-gray-800 uppercase tracking-wide mb-3">Category</h4>
                 <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
-                      <div className="relative">
+	                  <div className="grid grid-cols-1 gap-4">
+	                    <div>
+	                      <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+	                      <div className="relative">
                         <SelectedCategoryIcon
                           size={16}
                           className={`absolute left-3 top-1/2 -translate-y-1/2 ${selectedCategoryMeta?.text || 'text-gray-500'} ${selectedCategoryMeta?.iconClass || ''}`}
                         />
-                        <select
-                          value={formData.category}
-                          onChange={e =>
-                            {
-                              setFormData({
-                                ...formData,
-                                category: e.target.value,
-                                branch: '',
-                              })
-                            }
-                          }
-                          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                          required
-                        >
+	                        <select
+	                          value={formData.category}
+	                          onChange={e => setFormData({ ...formData, category: e.target.value })}
+	                          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+	                          required
+	                        >
                           <option value="" disabled>
                             Select category
                           </option>
@@ -1843,24 +1836,10 @@ function Calendar({ listOnly = false }) {
                               {CATEGORY_CONFIG[category].label}
                             </option>
                           ))}
-                        </select>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
-                      <div className="relative">
-                        <GitBranch size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                        <input
-                          type="text"
-                          value={formData.branch}
-                          onChange={e => setFormData({ ...formData, branch: e.target.value })}
-                          placeholder="Enter type"
-                          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                          required
-                        />
-                      </div>
-                    </div>
-                  </div>
+	                        </select>
+	                      </div>
+	                    </div>
+	                  </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Content</label>
