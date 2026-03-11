@@ -53,7 +53,7 @@ function Profile() {
 
   return (
     <div className="animate-fade-in">
-      <div className="relative overflow-hidden rounded-3xl border border-red-200 bg-gradient-to-br from-white via-zinc-50 to-red-50 p-1 mb-6 dark:border-red-900/40 dark:from-black dark:via-zinc-950 dark:to-red-950">
+<div className="relative overflow-hidden rounded-3xl border border-red-600 bg-gradient-to-br from-white via-zinc-50 to-red-50 p-1 mb-6 dark:border-red-600 dark:from-black dark:via-zinc-950 dark:to-red-950">
         <div className="absolute -top-20 -right-20 h-56 w-56 rounded-full bg-red-600/10 blur-3xl dark:bg-red-600/20" />
         <div className="absolute -bottom-24 -left-20 h-64 w-64 rounded-full bg-red-500/10 blur-3xl dark:bg-red-500/20" />
 
@@ -157,7 +157,7 @@ function Profile() {
         </div>
       </div>
 
-      <div className="bg-white rounded-3xl border border-zinc-200 shadow-xl p-6 md:p-7 mb-6">
+<div className="bg-white rounded-3xl border border-red-600 shadow-xl p-6 md:p-7 mb-6">
         <h3 className="text-lg font-semibold text-zinc-900 mb-5 flex items-center gap-2">
           <User size={20} className="text-red-600" />
           {t('Profile Details')}
