@@ -93,7 +93,6 @@ function Dashboard() {
     return () => clearTimeout(timer)
   }, [])
 
-  const totalEvents = events.length
   const recentEvents = useMemo(() => {
     return [...events]
       .filter(event => resolveEventDate(event) && dayjs(resolveEventDate(event)).isValid())
@@ -128,12 +127,6 @@ function Dashboard() {
 
   const maxVolunteerCount = useMemo(() => Math.max(...volunteerBars.map(item => item.count), 1), [volunteerBars])
   const categorySlices = useMemo(() => getCategorySlices(categoryCounts), [categoryCounts])
-  const eventsThisMonth = useMemo(() => {
-    return events.filter(event => {
-      const dateValue = resolveEventDate(event)
-      return dateValue && dayjs(dateValue).isValid() && dayjs(dateValue).isSame(dayjs(), 'month')
-    }).length
-  }, [events])
 
   const handleOpenEventInCalendar = event => {
     navigate('/calendar', {
@@ -166,7 +159,11 @@ function Dashboard() {
           </div>
           <button
             type="button"
-            onClick={() => navigate('/calendar')}
+            onClick={() =>
+              navigate('/calendar', {
+                state: { openCreateEventForm: true },
+              })
+            }
             className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-red-600 bg-red-600 px-6 py-2 text-[14px] font-semibold text-white transition-all duration-200 hover:scale-[1.02] hover:bg-red-700"
           >
             {t('Create Event')}
