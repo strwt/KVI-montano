@@ -593,6 +593,7 @@ function ReadOnlyEventMap({ address, location }) {
         requestAnimationFrame(() => map.invalidateSize())
         setTimeout(() => map.invalidateSize(), 220)
       } catch {
+        // Leaflet can fail to initialize if the container isn't ready yet; ignore and let the next render retry.
       }
     }
 
@@ -762,6 +763,21 @@ function Calendar({ listOnly = false }) {
   const eventRefs = useRef({})
   const handledRedirectRef = useRef(false)
   const routeCategory = searchParams.get('category') || ''
+
+  const resetForm = () => {
+    setEditingEventId(null)
+    setFormData({
+      title: '',
+      content: '',
+      dateTime: '',
+      address: '',
+      location: null,
+      category: '',
+      branch: '',
+      assignedMemberIds: [],
+    })
+    setFormError('')
+  }
 
   useEffect(() => {
     localStorage.setItem('kusgan_events', JSON.stringify(events))
@@ -987,21 +1003,6 @@ function Calendar({ listOnly = false }) {
         [fieldKey]: value,
       },
     }))
-  }
-
-  const resetForm = () => {
-    setEditingEventId(null)
-    setFormData({
-      title: '',
-      content: '',
-      dateTime: '',
-      address: '',
-      location: null,
-      category: '',
-      branch: '',
-      assignedMemberIds: [],
-    })
-    setFormError('')
   }
 
   const handleAddEvent = e => {

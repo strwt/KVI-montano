@@ -71,7 +71,6 @@ function Dashboard() {
     return () => clearTimeout(timer)
   }, [])
 
-  const totalEvents = events.length
   const recentEvents = useMemo(() => {
     return [...events]
       .filter(event => resolveEventDate(event) && dayjs(resolveEventDate(event)).isValid())
@@ -85,6 +84,27 @@ function Dashboard() {
       return acc
     }, {})
   }, [events])
+
+  const volunteerBars = useMemo(() => {
+    const map = {}
+    events.forEach(event => {
+      const names = (event.membersInvolve || '')
+        .split(',')
+        .map(name => name.trim())
+        .filter(Boolean)
+      names.forEach(name => {
+        map[name] = (map[name] || 0) + 1
+      })
+    })
+    const items = Object.entries(map)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5)
+    return items.length ? items : [{ name: t('No assigned volunteers'), count: 0 }]
+  }, [events, t])
+
+  const maxVolunteerCount = useMemo(() => Math.max(...volunteerBars.map(item => item.count), 1), [volunteerBars])
+  const categorySlices = useMemo(() => getCategorySlices(categoryCounts), [categoryCounts])
   const eventsThisMonth = useMemo(() => {
     return events.filter(event => {
       const dateValue = resolveEventDate(event)
@@ -123,7 +143,11 @@ function Dashboard() {
           </div>
           <button
             type="button"
-            onClick={() => navigate('/calendar')}
+            onClick={() =>
+              navigate('/calendar', {
+                state: { openCreateEventForm: true },
+              })
+            }
             className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-red-600 bg-red-600 px-6 py-2 text-[14px] font-semibold text-white transition-all duration-200 hover:scale-[1.02] hover:bg-red-700"
           >
             {t('Create Event')}
