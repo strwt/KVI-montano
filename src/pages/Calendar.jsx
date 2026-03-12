@@ -16,6 +16,7 @@ import {
   Flame,
   FileText,
   HeartPulse,
+  Droplets,
   Users,
   Check,
   Eye,
@@ -23,32 +24,62 @@ import {
 import dayjs from 'dayjs'
 import { useAuth } from '../context/AuthContext'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { Button } from '../components/ui/button'
+import { Input } from '../components/ui/input'
+import { Label } from '../components/ui/label'
 
 const CATEGORY_CONFIG = {
+  tuli: {
+    label: 'Tuli',
+    fields: [
+      { key: 'tuli_children_count', label: 'Tuli children count', type: 'number', min: 0, step: 1 },
+      { key: 'tuli_residing_doctors', label: 'Residing doctors', type: 'text' },
+    ],
+  },
+  blood_letting: {
+    label: 'Blood Letting',
+    fields: [
+      { key: 'blood_bags_count', label: 'Blood bags count', type: 'number', min: 0, step: 1 },
+      { key: 'blood_successful_donors', label: 'Successful donors', type: 'number', min: 0, step: 1 },
+      { key: 'blood_token', label: 'Blood token (use | to separate)', type: 'text' },
+    ],
+  },
+  donations: {
+    label: 'Donations',
+    fields: [{ key: 'donation_request', label: 'Donation request', type: 'text' }],
+  },
   environmental: {
     label: 'Environmental',
-    fields: [
-      { key: 'seedlingName', label: 'Seedling name', type: 'text' },
-      { key: 'seedlingsUsed', label: 'Seedling counts', type: 'number', min: 0, step: 1 },
-      { key: 'expenses', label: 'Expenses', type: 'number', min: 0, step: 0.01 },
-    ],
+    fields: [{ key: 'env_trees_planted', label: 'Trees planted', type: 'number', min: 0, step: 1 }],
   },
-  'relief operation': {
+  relief_operation: {
     label: 'Relief Operation',
     fields: [
-      { key: 'foodPacks', label: 'Food Packs', type: 'number', min: 0, step: 1 },
-      { key: 'expenses', label: 'Expenses', type: 'number', min: 0, step: 0.01 },
-      { key: 'familiesAccommodated', label: 'Families Accommodated', type: 'number', min: 0, step: 1 },
+      { key: 'relief_families_count', label: 'Families count', type: 'number', min: 0, step: 1 },
+      { key: 'relief_items', label: 'Relief items', type: 'select', options: ['grocery', 'hygiene_kit', 'both'] },
     ],
   },
-  'fire response': {
+  fire_response: {
     label: 'Fire Response',
     fields: [
-      { key: 'gallons', label: 'Gallons', type: 'number', min: 0, step: 0.01 },
-      { key: 'tank', label: 'Tank', type: 'number', min: 0, step: 1 },
-      { key: 'cubicWater', label: 'Cubic Water', type: 'number', min: 0, step: 0.01 },
-      { key: 'respondedFireAccident', label: 'Responded Fire Accident (details)', type: 'text' },
-      { key: 'expenses', label: 'Expenses', type: 'number', min: 0, step: 0.01 },
+      {
+        key: 'fire_alarm_status',
+        label: 'Alarm status',
+        type: 'select',
+        options: ['1st_alarm', '2nd_alarm', '3rd_alarm', '4th_alarm_city_director', 'alpha'],
+      },
+      { key: 'fire_affected_families', label: 'Affected families', type: 'number', min: 0, step: 1 },
+      { key: 'fire_estimated_cost', label: 'Estimated cost', type: 'number', min: 0, step: 0.01 },
+      { key: 'fire_liters', label: 'Liters used', type: 'number', min: 0, step: 0.01 },
+    ],
+  },
+  water_distribution: {
+    label: 'Water Distribution',
+    fields: [
+      { key: 'water_liters', label: 'Liters', type: 'number', min: 0, step: 0.01 },
+      { key: 'water_households', label: 'Households', type: 'number', min: 0, step: 1 },
+      { key: 'water_employees', label: 'Employees', type: 'text' },
+      { key: 'water_engine', label: 'Engine', type: 'select', options: ['engine_1', 'engine_2'] },
     ],
   },
   notes: {
@@ -65,11 +96,24 @@ const CATEGORY_CONFIG = {
 }
 
 const CATEGORY_KEYS = Object.keys(CATEGORY_CONFIG)
+const CREATE_CATEGORY_KEYS = [
+  'tuli',
+  'blood_letting',
+  'donations',
+  'environmental',
+  'relief_operation',
+  'fire_response',
+  'water_distribution',
+]
 
 const CATEGORY_META = {
+  tuli: { icon: HeartPulse, iconClass: '', bg: 'from-red-50 to-red-100', text: 'text-red-700' },
+  blood_letting: { icon: Activity, iconClass: '', bg: 'from-red-50 to-red-100', text: 'text-red-700' },
+  donations: { icon: FileText, iconClass: '', bg: 'from-red-50 to-red-100', text: 'text-red-700' },
   environmental: { icon: Leaf, iconClass: '', bg: 'from-red-50 to-red-100', text: 'text-red-700' },
-  'relief operation': { icon: Activity, iconClass: '', bg: 'from-red-50 to-red-100', text: 'text-red-700' },
-  'fire response': { icon: Flame, iconClass: '', bg: 'from-red-50 to-red-100', text: 'text-red-700' },
+  relief_operation: { icon: Activity, iconClass: '', bg: 'from-red-50 to-red-100', text: 'text-red-700' },
+  fire_response: { icon: Flame, iconClass: '', bg: 'from-red-50 to-red-100', text: 'text-red-700' },
+  water_distribution: { icon: Droplets, iconClass: '', bg: 'from-red-50 to-red-100', text: 'text-red-700' },
   notes: { icon: FileText, iconClass: '', bg: 'from-red-50 to-red-100', text: 'text-red-700' },
   medical: { icon: HeartPulse, iconClass: '', bg: 'from-red-50 to-red-100', text: 'text-red-700' },
 }
@@ -193,6 +237,12 @@ const getSearchZoom = (query, selected = false) => {
   return 11
 }
 
+const splitPipe = value =>
+  String(value || '')
+    .split('|')
+    .map(item => item.trim())
+    .filter(Boolean)
+
 const resolveStoredLocation = event => {
   if (event?.location && typeof event.location.lat === 'number' && typeof event.location.lng === 'number') {
     return { lat: event.location.lat, lng: event.location.lng }
@@ -226,7 +276,9 @@ const getStoredEvents = () => {
         assignedMemberIds: Array.isArray(event.assignedMemberIds) ? event.assignedMemberIds : [],
         viewedBy: Array.isArray(event.viewedBy) ? event.viewedBy : [],
         location: resolveStoredLocation(event),
-        category: (event.category || 'notes').toLowerCase(),
+        category: String(event.category || 'notes')
+          .toLowerCase()
+          .replace(/\s+/g, '_'),
         categoryData: event.categoryData || {},
         status: event.status === 'done' ? 'done' : 'ongoing',
         completedAt: event.completedAt || null,
@@ -701,12 +753,13 @@ function Calendar({ listOnly = false }) {
     category: '',
     branch: '',
     assignedMemberIds: [],
-    dynamicFields: getDefaultDynamicFields(),
   })
   const [searchQuery, setSearchQuery] = useState(storedFilters.searchQuery)
   const [selectedCategory, setSelectedCategory] = useState(storedFilters.selectedCategory)
   const [selectedDateFilter, setSelectedDateFilter] = useState('')
   const [doneFields, setDoneFields] = useState(getDefaultDynamicFields())
+  const [donePartners, setDonePartners] = useState([''])
+  const [doneBloodTokens, setDoneBloodTokens] = useState([''])
   const eventRefs = useRef({})
   const handledRedirectRef = useRef(false)
   const routeCategory = searchParams.get('category') || ''
@@ -722,7 +775,6 @@ function Calendar({ listOnly = false }) {
       category: '',
       branch: '',
       assignedMemberIds: [],
-      dynamicFields: getDefaultDynamicFields(),
     })
     setFormError('')
   }
@@ -974,6 +1026,9 @@ function Calendar({ listOnly = false }) {
       ? formData.assignedMemberIds.map(memberId => memberNameById[memberId]).filter(Boolean)
       : []
     const existingEvent = editingEventId ? events.find(item => item.id === editingEventId) : null
+    const existingCategoryData = existingEvent?.categoryData && typeof existingEvent.categoryData === 'object'
+      ? existingEvent.categoryData
+      : {}
     const eventPayload = {
       title: CATEGORY_CONFIG[formData.category]?.label || 'Untitled Event',
       content: formData.content.trim(),
@@ -986,7 +1041,8 @@ function Calendar({ listOnly = false }) {
       viewedBy: [],
       location: formData.location,
       category: formData.category,
-      categoryData: {},
+      // Partners + activity fields are collected when marking the event as done.
+      categoryData: existingCategoryData,
     }
 
     if (editingEventId) {
@@ -1014,14 +1070,6 @@ function Calendar({ listOnly = false }) {
   const openEventForEdit = item => {
     if (!canManageEvents) return
     const category = item.category || ''
-    const defaults = getDefaultDynamicFields()
-    if (category && defaults[category]) {
-      defaults[category] = {
-        ...defaults[category],
-        ...(item.categoryData || {}),
-      }
-    }
-
     setEditingEventId(item.id)
     setFormError('')
     setFormData({
@@ -1033,7 +1081,6 @@ function Calendar({ listOnly = false }) {
       category,
       branch: item.branch || '',
       assignedMemberIds: Array.isArray(item.assignedMemberIds) ? item.assignedMemberIds : [],
-      dynamicFields: defaults,
     })
     setShowEventForm(true)
   }
@@ -1052,7 +1099,7 @@ function Calendar({ listOnly = false }) {
   }
 
   const openMarkDoneForm = event => {
-    if (!canManageEvents || event.status === 'done') return
+    if (!canManageEvents) return
     const defaults = getDefaultDynamicFields()
     if (event.category && defaults[event.category]) {
       defaults[event.category] = {
@@ -1061,6 +1108,22 @@ function Calendar({ listOnly = false }) {
       }
     }
     setDoneFields(defaults)
+    setDonePartners(
+      String(event.categoryData?.partners || '')
+        .split('|')
+        .map(x => x.trim())
+        .filter(Boolean)
+        .concat([''])
+        .slice(0, 20)
+    )
+    setDoneBloodTokens(
+      String(event.categoryData?.blood_token || '')
+        .split('|')
+        .map(x => x.trim())
+        .filter(Boolean)
+        .concat([''])
+        .slice(0, 20)
+    )
     setDoneFormError('')
     setMarkDoneEventId(event.id)
     setShowDoneForm(true)
@@ -1071,6 +1134,16 @@ function Calendar({ listOnly = false }) {
     if (!markDoneEvent || !markDoneCategoryConfig) return
     const values = doneFields[markDoneEvent.category] || {}
     for (const field of markDoneCategoryConfig.fields) {
+      if (field.key === 'blood_token') {
+        const tokenValue = Array.isArray(doneBloodTokens)
+          ? doneBloodTokens.map(item => String(item || '').trim()).filter(Boolean).join('|')
+          : ''
+        if (!tokenValue) {
+          setDoneFormError(`${field.label} is required.`)
+          return
+        }
+        continue
+      }
       const value = values[field.key]
       if (String(value).trim() === '') {
         setDoneFormError(`${field.label} is required.`)
@@ -1082,18 +1155,32 @@ function Calendar({ listOnly = false }) {
       }
     }
     const nextCategoryData = markDoneCategoryConfig.fields.reduce((acc, field) => {
+      if (field.key === 'blood_token') return acc
       const raw = values[field.key]
-      acc[field.key] = field.type === 'number' ? Number(raw) : raw
+      if (field.type === 'number') acc[field.key] = Number(raw)
+      else acc[field.key] = raw
       return acc
     }, {})
+    const partnersValue = Array.isArray(donePartners)
+      ? donePartners.map(item => String(item || '').trim()).filter(Boolean).join('|')
+      : ''
+    const bloodTokensValue = Array.isArray(doneBloodTokens)
+      ? doneBloodTokens.map(item => String(item || '').trim()).filter(Boolean).join('|')
+      : ''
     setEvents(prev =>
       prev.map(item =>
         item.id === markDoneEvent.id
           ? {
               ...item,
               status: 'done',
-              categoryData: nextCategoryData,
-              completedAt: dayjs().toISOString(),
+              categoryData: {
+                ...(item.categoryData && typeof item.categoryData === 'object' ? item.categoryData : {}),
+                ...nextCategoryData,
+                partners: partnersValue,
+                ...(markDoneEvent.category === 'blood_letting' ? { blood_token: bloodTokensValue } : {}),
+              },
+              // Preserve the original completion time when updating done details.
+              completedAt: item.completedAt || dayjs().toISOString(),
             }
           : item
       )
@@ -1154,6 +1241,68 @@ function Calendar({ listOnly = false }) {
           ],
         }
       })
+    )
+  }
+
+  const renderDoneDetails = item => {
+    if (item.status !== 'done') return null
+    const partners = splitPipe(item.categoryData?.partners)
+    const tokens = item.category === 'blood_letting' ? splitPipe(item.categoryData?.blood_token) : []
+    const configFields = CATEGORY_CONFIG[item.category]?.fields || []
+    const showAny =
+      partners.length > 0 ||
+      tokens.length > 0 ||
+      configFields.some(field => field.key !== 'blood_token' && item.categoryData?.[field.key] !== undefined && String(item.categoryData?.[field.key] ?? '').trim() !== '')
+
+    if (!showAny) return null
+
+    return (
+      <div className="rounded-xl border border-green-200 bg-green-50/50 p-4 space-y-3">
+        <p className="text-sm font-semibold text-green-800">Done Details</p>
+
+        {partners.length > 0 && (
+          <div className="space-y-1">
+            <p className="text-xs font-semibold text-gray-600">Partners</p>
+            <div className="flex flex-wrap gap-2">
+              {partners.map(partner => (
+                <span key={partner} className="px-2 py-1 bg-white border border-green-200 rounded-full text-xs text-green-800">
+                  {partner}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {tokens.length > 0 && (
+          <div className="space-y-1">
+            <p className="text-xs font-semibold text-gray-600">Tokens</p>
+            <div className="flex flex-wrap gap-2">
+              {tokens.map((token, idx) => (
+                <span key={`${token}-${idx}`} className="px-2 py-1 bg-white border border-green-200 rounded-full text-xs text-green-800">
+                  {token}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {configFields.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            {configFields
+              .filter(field => field.key !== 'blood_token')
+              .map(field => {
+                const value = item.categoryData?.[field.key]
+                if (value === undefined || value === null || String(value).trim() === '') return null
+                return (
+                  <div key={field.key} className="px-3 py-2 rounded bg-white border border-green-200">
+                    <p className="text-xs text-gray-500">{field.label}</p>
+                    <p className="font-medium text-gray-800">{String(value)}</p>
+                  </div>
+                )
+              })}
+          </div>
+        )}
+      </div>
     )
   }
 
@@ -1327,12 +1476,13 @@ function Calendar({ listOnly = false }) {
                     {isExpanded && (
                       <div className="px-4 pb-4 border-t border-gray-200 pt-3 text-sm text-gray-700">
                         <div className={`${item.address ? 'grid grid-cols-1 lg:grid-cols-2 gap-3 items-start' : ''}`}>
-                          <div className="space-y-3">
-                            <p>{item.content || 'No content provided.'}</p>
-                            <div className="flex items-center gap-2 text-gray-600">
-                              <Clock size={14} />
-                              <span>{dayjs(item.dateTime).format('h:mm A')}</span>
-                            </div>
+	                          <div className="space-y-3">
+	                            <p>{item.content || 'No content provided.'}</p>
+	                            {renderDoneDetails(item)}
+	                            <div className="flex items-center gap-2 text-gray-600">
+	                              <Clock size={14} />
+	                              <span>{dayjs(item.dateTime).format('h:mm A')}</span>
+	                            </div>
                             <div className="flex items-center gap-2 text-gray-600">
                               <User size={14} />
                               <span>{item.createdBy || 'Unknown creator'}</span>
@@ -1382,15 +1532,15 @@ function Calendar({ listOnly = false }) {
                             </div>
                             {canManageEvents && (
                               <div className="pt-2 flex items-center gap-2">
-                                {item.status !== 'done' && (
-                                  <button
-                                    type="button"
-                                    onClick={() => openMarkDoneForm(item)}
-                                    className="px-3 py-1.5 rounded-md bg-green-600 text-white text-xs font-medium hover:bg-green-700 transition-colors"
-                                  >
-                                    Mark as Done
-                                  </button>
-                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => openMarkDoneForm(item)}
+                                  className={`px-3 py-1.5 rounded-md text-white text-xs font-medium transition-colors ${
+                                    item.status === 'done' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700'
+                                  }`}
+                                >
+                                  {item.status === 'done' ? 'Edit Done Details' : 'Mark as Done'}
+                                </button>
                                 <button
                                   type="button"
                                   onClick={() => openEventForEdit(item)}
@@ -1693,12 +1843,13 @@ function Calendar({ listOnly = false }) {
                     {isExpanded && (
                       <div className="px-4 pb-4 border-t border-gray-200 pt-3 text-sm text-gray-700">
                         <div className={`${item.address ? 'grid grid-cols-1 lg:grid-cols-2 gap-3 items-start' : ''}`}>
-                          <div className="space-y-3">
-                            <p>{item.content || 'No content provided.'}</p>
-                            <div className="flex items-center gap-2 text-gray-600">
-                              <Clock size={14} />
-                              <span>{dayjs(item.dateTime).format('h:mm A')}</span>
-                            </div>
+	                          <div className="space-y-3">
+	                            <p>{item.content || 'No content provided.'}</p>
+	                            {renderDoneDetails(item)}
+	                            <div className="flex items-center gap-2 text-gray-600">
+	                              <Clock size={14} />
+	                              <span>{dayjs(item.dateTime).format('h:mm A')}</span>
+	                            </div>
                             <div className="flex items-center gap-2 text-gray-600">
                               <User size={14} />
                               <span>{item.createdBy || 'Unknown creator'}</span>
@@ -1748,15 +1899,15 @@ function Calendar({ listOnly = false }) {
                             </div>
                             {canManageEvents && (
                               <div className="pt-2 flex items-center gap-2">
-                                {item.status !== 'done' && (
-                                  <button
-                                    type="button"
-                                    onClick={() => openMarkDoneForm(item)}
-                                    className="px-3 py-1.5 rounded-md bg-green-600 text-white text-xs font-medium hover:bg-green-700 transition-colors"
-                                  >
-                                    Mark as Done
-                                  </button>
-                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => openMarkDoneForm(item)}
+                                  className={`px-3 py-1.5 rounded-md text-white text-xs font-medium transition-colors ${
+                                    item.status === 'done' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700'
+                                  }`}
+                                >
+                                  {item.status === 'done' ? 'Edit Done Details' : 'Mark as Done'}
+                                </button>
                                 <button
                                   type="button"
                                   onClick={() => openEventForEdit(item)}
@@ -1829,18 +1980,27 @@ function Calendar({ listOnly = false }) {
 	                          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
 	                          required
 	                        >
-                          <option value="" disabled>
-                            Select category
-                          </option>
-                          {CATEGORY_KEYS.map(category => (
-                            <option key={category} value={category}>
-                              {CATEGORY_CONFIG[category].label}
-                            </option>
-                          ))}
+	                          <option value="" disabled>
+	                            Select category
+	                          </option>
+	                          {CREATE_CATEGORY_KEYS.map(category => (
+	                            <option key={category} value={category}>
+	                              {CATEGORY_CONFIG[category].label}
+	                            </option>
+	                          ))}
+	                          {!CREATE_CATEGORY_KEYS.includes(formData.category) &&
+	                            formData.category &&
+	                            CATEGORY_CONFIG[formData.category] && (
+	                              <option value={formData.category}>
+	                                {CATEGORY_CONFIG[formData.category].label}
+	                              </option>
+	                            )}
 	                        </select>
 	                      </div>
 	                    </div>
 	                  </div>
+
+	                  {/* Partners + Activity fields are collected when marking an event as Done. */}
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Content</label>
@@ -1922,19 +2082,21 @@ function Calendar({ listOnly = false }) {
         </div>
       )}
 
-      {canManageEvents && showDoneForm && markDoneEvent && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-3 sm:p-4">
-          <div className="w-full max-w-2xl max-h-[92vh] overflow-y-auto rounded-2xl bg-white border border-red-100 shadow-2xl animate-fade-in-up">
-            <div className="flex items-center justify-between p-4 sm:p-5 border-b border-gray-200 sticky top-0 bg-white z-10 rounded-t-2xl">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
-                  <MarkDoneIcon size={16} className="text-green-700" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-800">Mark Event as Done</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
+		      {canManageEvents && showDoneForm && markDoneEvent && (
+		        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-3 sm:p-4">
+		          <div className="w-full max-w-2xl max-h-[92vh] overflow-y-auto rounded-2xl bg-white border border-red-100 shadow-2xl animate-fade-in-up">
+	            <div className="flex items-center justify-between p-4 sm:p-5 border-b border-gray-200 sticky top-0 bg-white z-10 rounded-t-2xl">
+	              <div className="flex items-center gap-2">
+	                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${markDoneEvent.status === 'done' ? 'bg-blue-100' : 'bg-green-100'}`}>
+	                  <MarkDoneIcon size={16} className={markDoneEvent.status === 'done' ? 'text-blue-700' : 'text-green-700'} />
+	                </div>
+	                <h3 className="text-lg font-semibold text-gray-800">
+	                  {markDoneEvent.status === 'done' ? 'Update Done Details' : 'Mark Event as Done'}
+	                </h3>
+	              </div>
+	              <button
+	                type="button"
+	                onClick={() => {
                   setShowDoneForm(false)
                   setMarkDoneEventId(null)
                   setDoneFormError('')
@@ -1945,45 +2107,135 @@ function Calendar({ listOnly = false }) {
               </button>
             </div>
 
-            <form onSubmit={handleMarkDone} className="p-4 sm:p-6 space-y-5">
-              {doneFormError && <p className="text-sm text-red-600">{doneFormError}</p>}
+	            <form onSubmit={handleMarkDone} className="p-4 sm:p-6 space-y-5">
+	              {doneFormError && <p className="text-sm text-red-600">{doneFormError}</p>}
 
-              <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-                <p className="text-xs uppercase tracking-wide text-gray-500">{getCategoryLabel(markDoneEvent.category)}</p>
-                <p className="text-sm font-medium text-gray-800 mt-1">{markDoneEvent.title || 'Untitled Event'}</p>
-                <p className="text-xs text-gray-500 mt-1">{dayjs(markDoneEvent.dateTime).format('MMMM D, YYYY h:mm A')}</p>
-              </div>
+	              <div className="space-y-2">
+	                <div className="flex items-center justify-between gap-2">
+	                  <Label>Partners</Label>
+	                  <Button
+	                    type="button"
+	                    size="sm"
+	                    variant="secondary"
+	                    onClick={() => setDonePartners(prev => [...(Array.isArray(prev) ? prev : []), ''])}
+	                  >
+	                    + Add row
+	                  </Button>
+	                </div>
+	                <div className="space-y-2">
+	                  {(Array.isArray(donePartners) ? donePartners : ['']).map((value, index) => (
+	                    <div key={`done-partner-${index}`} className="flex items-center gap-2">
+	                      <Input
+	                        value={value}
+	                        onChange={e => {
+	                          const next = [...donePartners]
+	                          next[index] = e.target.value
+	                          setDonePartners(next)
+	                        }}
+	                        placeholder={`Partner ${index + 1}`}
+	                      />
+	                      <Button
+	                        type="button"
+	                        size="icon"
+	                        variant="outline"
+	                        onClick={() => {
+	                          const next = donePartners.filter((_, i) => i !== index)
+	                          setDonePartners(next.length ? next : [''])
+	                        }}
+	                        aria-label="Remove partner"
+	                      >
+	                        <X size={16} />
+	                      </Button>
+	                    </div>
+	                  ))}
+	                </div>
+	                <p className="text-xs text-gray-500">Saved as pipe-separated values.</p>
+	              </div>
 
-              {markDoneCategoryConfig && markDoneCategoryConfig.fields.length > 0 ? (
-                <div className="space-y-3">
-                  {markDoneCategoryConfig.fields.map(field => (
-                    <div key={field.key}>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">{field.label}</label>
-                      {field.type === 'text' ? (
-                        <input
-                          type="text"
-                          value={doneFields[markDoneEvent.category]?.[field.key] ?? ''}
-                          onChange={e => handleDoneFieldChange(markDoneEvent.category, field.key, e.target.value)}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-red-500"
-                          required
-                        />
-                      ) : (
-                        <input
-                          type="number"
-                          min={field.min}
-                          step={field.step}
-                          value={doneFields[markDoneEvent.category]?.[field.key] ?? ''}
-                          onChange={e => handleDoneFieldChange(markDoneEvent.category, field.key, e.target.value)}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-red-500"
-                          required
-                        />
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-gray-600">No additional fields required for this category.</p>
-              )}
+	              {markDoneCategoryConfig && markDoneCategoryConfig.fields.length > 0 ? (
+	                <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3">
+	                  <p className="text-sm font-semibold text-gray-800">Activity Fields</p>
+	                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+	                    {markDoneCategoryConfig.fields.map(field => (
+	                      <div key={field.key} className={field.type === 'text' ? 'md:col-span-2' : ''}>
+	                        <label className="block text-sm font-medium text-gray-700 mb-2">{field.label}</label>
+	                        {field.key === 'blood_token' ? (
+	                          <div className="space-y-2 md:col-span-2">
+	                            <div className="flex items-center justify-between gap-2">
+	                              <span className="text-xs text-gray-500">Add multiple tokens</span>
+	                              <Button
+	                                type="button"
+	                                size="sm"
+	                                variant="secondary"
+	                                onClick={() => setDoneBloodTokens(prev => [...(Array.isArray(prev) ? prev : []), ''])}
+	                              >
+	                                + Add row
+	                              </Button>
+	                            </div>
+	                            <div className="space-y-2">
+	                              {(Array.isArray(doneBloodTokens) ? doneBloodTokens : ['']).map((value, index) => (
+	                                <div key={`done-token-${index}`} className="flex items-center gap-2">
+	                                  <Input
+	                                    value={value}
+	                                    onChange={e => {
+	                                      const next = [...doneBloodTokens]
+	                                      next[index] = e.target.value
+	                                      setDoneBloodTokens(next)
+	                                    }}
+	                                    placeholder={`Token ${index + 1}`}
+	                                  />
+	                                  <Button
+	                                    type="button"
+	                                    size="icon"
+	                                    variant="outline"
+	                                    onClick={() => {
+	                                      const next = doneBloodTokens.filter((_, i) => i !== index)
+	                                      setDoneBloodTokens(next.length ? next : [''])
+	                                    }}
+	                                    aria-label="Remove token"
+	                                  >
+	                                    <X size={16} />
+	                                  </Button>
+	                                </div>
+	                              ))}
+	                            </div>
+	                            <p className="text-xs text-gray-500">Saved as pipe-separated values.</p>
+	                          </div>
+	                        ) : field.type === 'select' ? (
+	                          <select
+	                            value={doneFields[markDoneEvent.category]?.[field.key] ?? ''}
+	                            onChange={e => handleDoneFieldChange(markDoneEvent.category, field.key, e.target.value)}
+	                            className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-red-500"
+	                            required
+	                          >
+	                            <option value="">Select</option>
+	                            {(field.options || []).map(optionValue => (
+	                              <option key={optionValue} value={optionValue}>
+	                                {optionValue}
+	                              </option>
+	                            ))}
+	                          </select>
+	                        ) : field.type === 'number' ? (
+	                          <Input
+	                            type="number"
+	                            min={field.min}
+	                            step={field.step}
+	                            value={doneFields[markDoneEvent.category]?.[field.key] ?? ''}
+	                            onChange={e => handleDoneFieldChange(markDoneEvent.category, field.key, e.target.value)}
+	                            required
+	                          />
+	                        ) : (
+	                          <Input
+	                            value={doneFields[markDoneEvent.category]?.[field.key] ?? ''}
+	                            onChange={e => handleDoneFieldChange(markDoneEvent.category, field.key, e.target.value)}
+	                            required
+	                          />
+	                        )}
+	                      </div>
+	                    ))}
+	                  </div>
+	                </div>
+	              ) : null}
 
               <div className="flex items-center justify-end gap-2 pt-2">
                 <button
@@ -1997,17 +2249,19 @@ function Calendar({ listOnly = false }) {
                 >
                   Cancel
                 </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors"
-                >
-                  Mark Done
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+	                <button
+	                  type="submit"
+	                  className={`px-4 py-2 rounded-lg text-white transition-colors ${
+	                    markDoneEvent.status === 'done' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700'
+	                  }`}
+	                >
+	                  {markDoneEvent.status === 'done' ? 'Save Done Details' : 'Mark Done'}
+	                </button>
+	              </div>
+	            </form>
+	          </div>
+	        </div>
+	      )}
 
       {pendingConfirmation && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4">
