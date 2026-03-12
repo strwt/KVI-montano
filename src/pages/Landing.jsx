@@ -112,94 +112,179 @@ const CORE_VALUES = [
   },
 ]
 
-const ORG_STRUCTURE = {
+const KUSGAN_STRUCTURE = {
   president: {
-    role: 'President',
+    position: 'President',
     name: 'Juan Dela Cruz',
+    committee: 'Executive Council',
     image: 'https://i.pravatar.cc/520?img=12',
     icon: Crown,
   },
   vicePresident: {
-    role: 'Vice President',
+    position: 'Vice President',
     name: 'Maria Santos',
+    committee: 'Executive Council',
     image: 'https://i.pravatar.cc/520?img=5',
     icon: ShieldCheck,
   },
   committees: [
     {
       name: 'Environmental Committee',
-      head: { name: 'Carlo Reyes', role: 'Committee Head', image: 'https://i.pravatar.cc/420?img=32' },
+      head: {
+        name: 'Carlo Reyes',
+        position: 'Committee Head',
+        committee: 'Environmental Committee',
+        image: 'https://i.pravatar.cc/420?img=32',
+      },
       members: [
-        { name: 'Ana Lopez', role: 'KUSGAN Member', image: 'https://i.pravatar.cc/360?img=47' },
-        { name: 'Mark Villanueva', role: 'KUSGAN Member', image: 'https://i.pravatar.cc/360?img=54' },
-        { name: 'James Cruz', role: 'KUSGAN Member', image: 'https://i.pravatar.cc/360?img=60' },
+        { name: 'Ana Lopez', position: 'Member', committee: 'Environmental Committee', image: 'https://i.pravatar.cc/360?img=47' },
+        { name: 'Mark Villanueva', position: 'Member', committee: 'Environmental Committee', image: 'https://i.pravatar.cc/360?img=54' },
+        { name: 'James Cruz', position: 'Member', committee: 'Environmental Committee', image: 'https://i.pravatar.cc/360?img=60' },
       ],
     },
     {
       name: 'Relief Operation Committee',
-      head: { name: 'Sophia Ramos', role: 'Committee Head', image: 'https://i.pravatar.cc/420?img=23' },
+      head: {
+        name: 'Sophia Ramos',
+        position: 'Committee Head',
+        committee: 'Relief Operation Committee',
+        image: 'https://i.pravatar.cc/420?img=23',
+      },
       members: [
-        { name: 'Kevin Torres', role: 'KUSGAN Member', image: 'https://i.pravatar.cc/360?img=14' },
-        { name: 'Angelica Lim', role: 'KUSGAN Member', image: 'https://i.pravatar.cc/360?img=44' },
-        { name: 'Brian Flores', role: 'KUSGAN Member', image: 'https://i.pravatar.cc/360?img=17' },
+        { name: 'Kevin Torres', position: 'Member', committee: 'Relief Operation Committee', image: 'https://i.pravatar.cc/360?img=14' },
+        { name: 'Angelica Lim', position: 'Member', committee: 'Relief Operation Committee', image: 'https://i.pravatar.cc/360?img=44' },
+        { name: 'Brian Flores', position: 'Member', committee: 'Relief Operation Committee', image: 'https://i.pravatar.cc/360?img=17' },
       ],
     },
     {
       name: 'Fire Response Committee',
-      head: { name: 'Michael Tan', role: 'Committee Head', image: 'https://i.pravatar.cc/420?img=36' },
+      head: {
+        name: 'Michael Tan',
+        position: 'Committee Head',
+        committee: 'Fire Response Committee',
+        image: 'https://i.pravatar.cc/420?img=36',
+      },
       members: [
-        { name: 'David Garcia', role: 'KUSGAN Member', image: 'https://i.pravatar.cc/360?img=26' },
-        { name: 'Louie Mendoza', role: 'KUSGAN Member', image: 'https://i.pravatar.cc/360?img=31' },
-        { name: 'Patrick Sy', role: 'KUSGAN Member', image: 'https://i.pravatar.cc/360?img=63' },
+        { name: 'David Garcia', position: 'Member', committee: 'Fire Response Committee', image: 'https://i.pravatar.cc/360?img=26' },
+        { name: 'Louie Mendoza', position: 'Member', committee: 'Fire Response Committee', image: 'https://i.pravatar.cc/360?img=31' },
+        { name: 'Patrick Sy', position: 'Member', committee: 'Fire Response Committee', image: 'https://i.pravatar.cc/360?img=63' },
       ],
     },
     {
       name: 'Medical Committee',
-      head: { name: 'Angela Rivera', role: 'Committee Head', image: 'https://i.pravatar.cc/420?img=45' },
+      head: {
+        name: 'Angela Rivera',
+        position: 'Committee Head',
+        committee: 'Medical Committee',
+        image: 'https://i.pravatar.cc/420?img=45',
+      },
       members: [
-        { name: 'Paolo Dizon', role: 'KUSGAN Member', image: 'https://i.pravatar.cc/360?img=12' },
-        { name: 'Shane Ortega', role: 'KUSGAN Member', image: 'https://i.pravatar.cc/360?img=58' },
-        { name: 'Rico Medina', role: 'KUSGAN Member', image: 'https://i.pravatar.cc/360?img=50' },
+        { name: 'Paolo Dizon', position: 'Member', committee: 'Medical Committee', image: 'https://i.pravatar.cc/360?img=12' },
+        { name: 'Shane Ortega', position: 'Member', committee: 'Medical Committee', image: 'https://i.pravatar.cc/360?img=58' },
+        { name: 'Rico Medina', position: 'Member', committee: 'Medical Committee', image: 'https://i.pravatar.cc/360?img=50' },
       ],
     },
     {
       name: 'Community Outreach Committee',
-      head: { name: 'Loren Santos', role: 'Committee Head', image: 'https://i.pravatar.cc/420?img=9' },
+      head: {
+        name: 'Loren Santos',
+        position: 'Committee Head',
+        committee: 'Community Outreach Committee',
+        image: 'https://i.pravatar.cc/420?img=9',
+      },
       members: [
-        { name: 'Mia Alvarez', role: 'KUSGAN Member', image: 'https://i.pravatar.cc/360?img=41' },
-        { name: 'Joel Navarro', role: 'KUSGAN Member', image: 'https://i.pravatar.cc/360?img=53' },
-        { name: 'Nina Delgado', role: 'KUSGAN Member', image: 'https://i.pravatar.cc/360?img=62' },
+        { name: 'Mia Alvarez', position: 'Member', committee: 'Community Outreach Committee', image: 'https://i.pravatar.cc/360?img=41' },
+        { name: 'Joel Navarro', position: 'Member', committee: 'Community Outreach Committee', image: 'https://i.pravatar.cc/360?img=53' },
+        { name: 'Nina Delgado', position: 'Member', committee: 'Community Outreach Committee', image: 'https://i.pravatar.cc/360?img=62' },
       ],
     },
     {
       name: 'Logistics Committee',
-      head: { name: 'Carmina Lopez', role: 'Committee Head', image: 'https://i.pravatar.cc/420?img=8' },
+      head: {
+        name: 'Carmina Lopez',
+        position: 'Committee Head',
+        committee: 'Logistics Committee',
+        image: 'https://i.pravatar.cc/420?img=8',
+      },
       members: [
-        { name: 'Troy Mendoza', role: 'KUSGAN Member', image: 'https://i.pravatar.cc/360?img=11' },
-        { name: 'Ella Fernandez', role: 'KUSGAN Member', image: 'https://i.pravatar.cc/360?img=49' },
-        { name: 'Ronel Castro', role: 'KUSGAN Member', image: 'https://i.pravatar.cc/360?img=21' },
+        { name: 'Troy Mendoza', position: 'Member', committee: 'Logistics Committee', image: 'https://i.pravatar.cc/360?img=11' },
+        { name: 'Ella Fernandez', position: 'Member', committee: 'Logistics Committee', image: 'https://i.pravatar.cc/360?img=49' },
+        { name: 'Ronel Castro', position: 'Member', committee: 'Logistics Committee', image: 'https://i.pravatar.cc/360?img=21' },
       ],
     },
     {
       name: 'Youth Engagement Committee',
-      head: { name: 'Denise Salazar', role: 'Committee Head', image: 'https://i.pravatar.cc/420?img=38' },
+      head: {
+        name: 'Denise Salazar',
+        position: 'Committee Head',
+        committee: 'Youth Engagement Committee',
+        image: 'https://i.pravatar.cc/420?img=38',
+      },
       members: [
-        { name: 'Kyle Ramos', role: 'KUSGAN Member', image: 'https://i.pravatar.cc/360?img=57' },
-        { name: 'Faith Aquino', role: 'KUSGAN Member', image: 'https://i.pravatar.cc/360?img=33' },
-        { name: 'Ian Morales', role: 'KUSGAN Member', image: 'https://i.pravatar.cc/360?img=25' },
+        { name: 'Kyle Ramos', position: 'Member', committee: 'Youth Engagement Committee', image: 'https://i.pravatar.cc/360?img=57' },
+        { name: 'Faith Aquino', position: 'Member', committee: 'Youth Engagement Committee', image: 'https://i.pravatar.cc/360?img=33' },
+        { name: 'Ian Morales', position: 'Member', committee: 'Youth Engagement Committee', image: 'https://i.pravatar.cc/360?img=25' },
       ],
     },
     {
       name: 'Education Support Committee',
-      head: { name: 'Marvin De Leon', role: 'Committee Head', image: 'https://i.pravatar.cc/420?img=29' },
+      head: {
+        name: 'Marvin De Leon',
+        position: 'Committee Head',
+        committee: 'Education Support Committee',
+        image: 'https://i.pravatar.cc/420?img=29',
+      },
       members: [
-        { name: 'Jessa Cruz', role: 'KUSGAN Member', image: 'https://i.pravatar.cc/360?img=64' },
-        { name: 'Paolo Reyes', role: 'KUSGAN Member', image: 'https://i.pravatar.cc/360?img=40' },
-        { name: 'Grace Uy', role: 'KUSGAN Member', image: 'https://i.pravatar.cc/360?img=52' },
+        { name: 'Jessa Cruz', position: 'Member', committee: 'Education Support Committee', image: 'https://i.pravatar.cc/360?img=64' },
+        { name: 'Paolo Reyes', position: 'Member', committee: 'Education Support Committee', image: 'https://i.pravatar.cc/360?img=40' },
+        { name: 'Grace Uy', position: 'Member', committee: 'Education Support Committee', image: 'https://i.pravatar.cc/360?img=52' },
       ],
     },
   ],
 }
+
+const BOARD_STRUCTURE = {
+  chairperson: {
+    name: 'Isabel Navarro',
+    position: 'Board Chairperson',
+    committee: 'Executive Board',
+    image: 'https://i.pravatar.cc/520?img=6',
+    icon: Crown,
+  },
+  viceChairperson: {
+    name: 'Rafael Garcia',
+    position: 'Vice Chairperson',
+    committee: 'Executive Board',
+    image: 'https://i.pravatar.cc/520?img=20',
+    icon: ShieldCheck,
+  },
+  officers: [
+    { name: 'Camille Reyes', position: 'Board Secretary', committee: 'Executive Board', image: 'https://i.pravatar.cc/420?img=19' },
+    { name: 'Julian Cruz', position: 'Board Treasurer', committee: 'Finance Committee', image: 'https://i.pravatar.cc/420?img=30' },
+    { name: 'Maya Torres', position: 'Board Auditor', committee: 'Audit Committee', image: 'https://i.pravatar.cc/420?img=15' },
+  ],
+  directors: [
+    { name: 'Noah Santos', position: 'Board Director', committee: 'Programs Committee', image: 'https://i.pravatar.cc/420?img=39' },
+    { name: 'Angel Rivera', position: 'Board Director', committee: 'Community Relations', image: 'https://i.pravatar.cc/420?img=34' },
+    { name: 'Selena Lim', position: 'Board Director', committee: 'Operations Committee', image: 'https://i.pravatar.cc/420?img=41' },
+    { name: 'Eric Flores', position: 'Board Director', committee: 'Compliance Committee', image: 'https://i.pravatar.cc/420?img=24' },
+  ],
+}
+
+const ORGANIZATION_VIEWS = [
+  {
+    key: 'board',
+    label: 'Board Organizational Structure',
+    subtitle: 'Board of Trustees and executive officers overseeing governance and strategy.',
+    data: BOARD_STRUCTURE,
+  },
+  {
+    key: 'kusgan',
+    label: 'KUSGAN Organizational Structure',
+    subtitle: 'Leadership hierarchy and committee teams of KUSGAN.',
+    data: KUSGAN_STRUCTURE,
+  },
+]
 
 /* ── Sub-components ─────────────────────────────── */
 
@@ -364,6 +449,7 @@ function SectionHeader({ eyebrow, title, subtitle, centered = false }) {
 
 function OrgPersonCard({ person, large = false }) {
   const Icon = person.icon
+  const position = person.position || person.role
   return (
     <article className="text-center mx-auto">
       <div
@@ -382,17 +468,24 @@ function OrgPersonCard({ person, large = false }) {
       >
         {person.name}
       </p>
-      <span
-        className="mt-1 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold border"
-        style={{
-          background: 'rgba(220,38,38,0.15)',
-          borderColor: 'rgba(220,38,38,0.3)',
-          color: '#fca5a5',
-        }}
-      >
-        {Icon ? <Icon size={10} /> : null}
-        {person.role}
-      </span>
+      {position ? (
+        <span
+          className="mt-1 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold border"
+          style={{
+            background: 'rgba(220,38,38,0.15)',
+            borderColor: 'rgba(220,38,38,0.3)',
+            color: '#fca5a5',
+          }}
+        >
+          {Icon ? <Icon size={10} /> : null}
+          {position}
+        </span>
+      ) : null}
+      {person.committee ? (
+        <p className="mt-1 text-[10px] uppercase tracking-widest" style={{ color: 'rgba(248,113,113,0.7)' }}>
+          {person.committee}
+        </p>
+      ) : null}
     </article>
   )
 }
@@ -449,6 +542,8 @@ function CommitteeCard({ committee }) {
 function Landing() {
   const navigate = useNavigate()
   const pageRef = useRef(null)
+  const [structureKey, setStructureKey] = useState('kusgan')
+  const activeStructure = ORGANIZATION_VIEWS.find(view => view.key === structureKey) || ORGANIZATION_VIEWS[1]
 
   useEffect(() => {
     const root = pageRef.current
@@ -809,46 +904,136 @@ function Landing() {
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <SectionHeader
             eyebrow="Leadership"
-            title="Organizational Structure"
-            subtitle="Leadership hierarchy and committee teams of KUSGAN."
+            title="Organization Structure"
+            subtitle={activeStructure.subtitle}
           />
 
+          <div className="flex flex-wrap items-center gap-3 mb-8">
+            <div
+              className="inline-flex rounded-full p-1 border"
+              style={{
+                background: 'rgba(12,12,12,0.7)',
+                borderColor: 'rgba(255,255,255,0.12)',
+                boxShadow: '0 10px 30px rgba(0,0,0,0.35)',
+              }}
+            >
+              {ORGANIZATION_VIEWS.map(view => {
+                const isActive = view.key === activeStructure.key
+                return (
+                  <button
+                    key={view.key}
+                    type="button"
+                    onClick={() => setStructureKey(view.key)}
+                    className="px-4 sm:px-5 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all duration-200"
+                    style={{
+                      background: isActive ? 'rgba(220,38,38,0.2)' : 'transparent',
+                      color: isActive ? '#fee2e2' : '#9ca3af',
+                      border: isActive ? '1px solid rgba(248,113,113,0.4)' : '1px solid transparent',
+                    }}
+                  >
+                    {view.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
           <div className="flex flex-col items-center">
+            {activeStructure.key === 'kusgan' ? (
+              <>
+                {/* President */}
+                <div className="w-full max-w-[180px]">
+                  <OrgPersonCard person={activeStructure.data.president} large />
+                </div>
 
-            {/* President */}
-            <div className="w-full max-w-[180px]">
-              <OrgPersonCard person={ORG_STRUCTURE.president} large />
-            </div>
+                {/* Connector */}
+                <div className="w-px h-8 my-1" style={{ background: 'linear-gradient(to bottom, rgba(220,38,38,0.55), rgba(220,38,38,0.15))' }} />
 
-            {/* Connector */}
-            <div className="w-px h-8 my-1" style={{ background: 'linear-gradient(to bottom, rgba(220,38,38,0.55), rgba(220,38,38,0.15))' }} />
+                {/* Vice President */}
+                <div className="w-full max-w-[180px]">
+                  <OrgPersonCard person={activeStructure.data.vicePresident} large />
+                </div>
 
-            {/* Vice President */}
-            <div className="w-full max-w-[180px]">
-              <OrgPersonCard person={ORG_STRUCTURE.vicePresident} large />
-            </div>
+                {/* Connector to committees */}
+                <div className="w-px h-8 my-1" style={{ background: 'linear-gradient(to bottom, rgba(220,38,38,0.55), rgba(220,38,38,0.15))' }} />
 
-            {/* Connector to committees */}
-            <div className="w-px h-8 my-1" style={{ background: 'linear-gradient(to bottom, rgba(220,38,38,0.55), rgba(220,38,38,0.15))' }} />
+                {/* Horizontal divider label */}
+                <div className="w-full flex items-center gap-3 mb-6 max-w-5xl">
+                  <div className="flex-1 h-px" style={{ background: 'linear-gradient(to right, transparent, rgba(220,38,38,0.25))' }} />
+                  <span
+                    className="px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase border shrink-0"
+                    style={{ color: '#fca5a5', background: 'rgba(220,38,38,0.1)', borderColor: 'rgba(220,38,38,0.2)' }}
+                  >
+                    Committees
+                  </span>
+                  <div className="flex-1 h-px" style={{ background: 'linear-gradient(to left, transparent, rgba(220,38,38,0.25))' }} />
+                </div>
 
-            {/* Horizontal divider label */}
-            <div className="w-full flex items-center gap-3 mb-6 max-w-5xl">
-              <div className="flex-1 h-px" style={{ background: 'linear-gradient(to right, transparent, rgba(220,38,38,0.25))' }} />
-              <span
-                className="px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase border shrink-0"
-                style={{ color: '#fca5a5', background: 'rgba(220,38,38,0.1)', borderColor: 'rgba(220,38,38,0.2)' }}
-              >
-                Committees
-              </span>
-              <div className="flex-1 h-px" style={{ background: 'linear-gradient(to left, transparent, rgba(220,38,38,0.25))' }} />
-            </div>
+                {/* All 8 committees — 4-column grid, 2 rows */}
+                <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {activeStructure.data.committees.map(committee => (
+                    <CommitteeCard key={committee.name} committee={committee} />
+                  ))}
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Board Chairperson */}
+                <div className="w-full max-w-[180px]">
+                  <OrgPersonCard person={activeStructure.data.chairperson} large />
+                </div>
 
-            {/* All 8 committees — 4-column grid, 2 rows */}
-            <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {ORG_STRUCTURE.committees.map(committee => (
-                <CommitteeCard key={committee.name} committee={committee} />
-              ))}
-            </div>
+                {/* Connector */}
+                <div className="w-px h-8 my-1" style={{ background: 'linear-gradient(to bottom, rgba(220,38,38,0.55), rgba(220,38,38,0.15))' }} />
+
+                {/* Vice Chairperson */}
+                <div className="w-full max-w-[180px]">
+                  <OrgPersonCard person={activeStructure.data.viceChairperson} large />
+                </div>
+
+                {/* Connector to officers */}
+                <div className="w-px h-8 my-1" style={{ background: 'linear-gradient(to bottom, rgba(220,38,38,0.55), rgba(220,38,38,0.15))' }} />
+
+                {/* Officers label */}
+                <div className="w-full flex items-center gap-3 mb-6 max-w-4xl">
+                  <div className="flex-1 h-px" style={{ background: 'linear-gradient(to right, transparent, rgba(220,38,38,0.25))' }} />
+                  <span
+                    className="px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase border shrink-0"
+                    style={{ color: '#fca5a5', background: 'rgba(220,38,38,0.1)', borderColor: 'rgba(220,38,38,0.2)' }}
+                  >
+                    Board Officers
+                  </span>
+                  <div className="flex-1 h-px" style={{ background: 'linear-gradient(to left, transparent, rgba(220,38,38,0.25))' }} />
+                </div>
+
+                <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-4xl">
+                  {activeStructure.data.officers.map(officer => (
+                    <OrgPersonCard key={officer.name} person={officer} />
+                  ))}
+                </div>
+
+                {/* Connector to directors */}
+                <div className="w-px h-8 my-6" style={{ background: 'linear-gradient(to bottom, rgba(220,38,38,0.55), rgba(220,38,38,0.15))' }} />
+
+                {/* Directors label */}
+                <div className="w-full flex items-center gap-3 mb-6 max-w-5xl">
+                  <div className="flex-1 h-px" style={{ background: 'linear-gradient(to right, transparent, rgba(220,38,38,0.25))' }} />
+                  <span
+                    className="px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase border shrink-0"
+                    style={{ color: '#fca5a5', background: 'rgba(220,38,38,0.1)', borderColor: 'rgba(220,38,38,0.2)' }}
+                  >
+                    Board Directors
+                  </span>
+                  <div className="flex-1 h-px" style={{ background: 'linear-gradient(to left, transparent, rgba(220,38,38,0.25))' }} />
+                </div>
+
+                <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {activeStructure.data.directors.map(director => (
+                    <OrgPersonCard key={director.name} person={director} />
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         </div>
       </section>
