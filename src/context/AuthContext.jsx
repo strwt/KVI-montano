@@ -20,6 +20,7 @@ const APP_LANGUAGE_STORAGE_KEY = 'kusgan_app_language'
 const SUPPORTED_APP_LANGUAGES = ['English', 'Filipino', 'Bisaya']
 const COMMITTEES_STORAGE_KEY = 'kusgan_committees'
 const COMMITTEES_UPDATED_EVENT = 'kusgan-committees-updated'
+const LOGIN_ACTIVITY_UPDATED_EVENT = 'kusgan-login-activity-updated'
 
 const parseStoredJson = (value, fallback) => {
   if (!value) return fallback
@@ -300,6 +301,7 @@ const recordDailyPresence = (loggedInUser) => {
     role: loggedInUser.role,
     profileImage: loggedInUser.profileImage,
     lastLoginAt: timestamp,
+    isOnline: true,
   }
 
   if (existingIndex >= 0) {
@@ -309,6 +311,7 @@ const recordDailyPresence = (loggedInUser) => {
   }
 
   localStorage.setItem(activityKey, JSON.stringify(activity))
+  window.dispatchEvent(new Event(LOGIN_ACTIVITY_UPDATED_EVENT))
 }
 
 export function AuthProvider({ children }) {

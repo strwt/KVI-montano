@@ -82,6 +82,7 @@ const RECENT_ACTIVITY_LIMIT = 5
 const LOGIN_ACTIVITY_LIMIT = 8
 const NOTIFICATIONS_STORAGE_KEY = 'kusgan_notifications'
 const NOTIFICATIONS_UPDATED_EVENT = 'kusgan-notifications-updated'
+const LOGIN_ACTIVITY_UPDATED_EVENT = 'kusgan-login-activity-updated'
 
 const getEventMatchKey = event => {
   const baseId = event?.id
@@ -141,7 +142,7 @@ function Dashboard() {
   const isAdmin = user?.role === 'admin'
   const [animatedStats, setAnimatedStats] = useState(false)
   const [events, setEvents] = useState(getStoredEvents)
-  const [recentLogins] = useState(getStoredLoginActivity)
+  const [recentLogins, setRecentLogins] = useState(getStoredLoginActivity)
   const [notifications, setNotifications] = useState(getStoredNotifications)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
 
@@ -167,6 +168,22 @@ function Dashboard() {
       window.removeEventListener('focus', reloadEvents)
       window.removeEventListener('kusgan-events-updated', reloadEvents)
       document.removeEventListener('visibilitychange', onVisibilityChange)
+    }
+  }, [])
+
+  useEffect(() => {
+    const refreshLogins = () => setRecentLogins(getStoredLoginActivity())
+    const onStorage = event => {
+      if (event?.key === 'kusgan_login_activity') refreshLogins()
+    }
+
+    refreshLogins()
+    window.addEventListener('storage', onStorage)
+    window.addEventListener(LOGIN_ACTIVITY_UPDATED_EVENT, refreshLogins)
+
+    return () => {
+      window.removeEventListener('storage', onStorage)
+      window.removeEventListener(LOGIN_ACTIVITY_UPDATED_EVENT, refreshLogins)
     }
   }, [])
 
@@ -329,11 +346,9 @@ function Dashboard() {
     saveNotifications(updated)
   }
 
-  const onlineUserId = String(user?.id || '')
-
   return (
     <div className="animate-fade-in space-y-6">
-      <section className="relative overflow-hidden rounded-2xl border border-red-600 bg-gradient-to-br from-white to-neutral-100 p-6 text-neutral-900 shadow-[0_12px_30px_rgba(0,0,0,0.08)] transition-colors dark:from-black dark:to-neutral-900 dark:text-zinc-100 dark:shadow-[0_12px_30px_rgba(0,0,0,0.35)]">
+      <section className="relative rounded-2xl border border-red-600 bg-gradient-to-br from-white to-neutral-100 p-6 text-neutral-900 shadow-[0_12px_30px_rgba(0,0,0,0.08)] transition-colors dark:from-black dark:to-neutral-900 dark:text-zinc-100 dark:shadow-[0_12px_30px_rgba(0,0,0,0.35)]">
         <div className="absolute -right-16 -top-16 h-44 w-44 rounded-full bg-red-600/15 blur-3xl dark:bg-red-600/25" />
         <div className="relative z-10 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="space-y-2">
@@ -349,102 +364,106 @@ function Dashboard() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                setNotificationsOpen(prev => !prev)
-              }}
-              data-notification-button
-              className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl border border-red-600 bg-white text-red-600 transition-all duration-200 hover:scale-[1.02] hover:bg-red-50 dark:border-red-600 dark:bg-zinc-900 dark:text-red-300 dark:hover:bg-red-950/30"
-              aria-label={t('Notifications')}
-              title={t('Notifications')}
-            >
-              <Bell size={18} />
-              {unreadCount > 0 && (
-                <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-red-600 ring-2 ring-white dark:ring-zinc-900" />
-              )}
-            </button>
-            {notificationsOpen && (
-              <div
-                data-notification-panel
-                className="absolute right-0 top-12 z-20 w-[320px] overflow-hidden rounded-2xl border border-red-600 bg-white shadow-[0_16px_30px_rgba(0,0,0,0.12)] dark:border-red-600 dark:bg-zinc-950"
-              >
-                <div className="flex items-center justify-between border-b border-red-100 px-4 py-3 dark:border-red-900/40">
-                  <h3 className="text-sm font-semibold text-neutral-900 dark:text-zinc-100">
-                    {t('Notifications')}
-                  </h3>
-                  <div className="flex items-center gap-2">
-                    <span className="rounded-full border border-red-600 bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-700 dark:bg-red-950/30 dark:text-red-300">
-                      {unreadCount} {t('unread')}
-                    </span>
-                    {unreadCount === 0 && (
-                      <button
-                        type="button"
-                        onClick={() => setNotificationsOpen(false)}
-                        className="inline-flex h-7 w-7 items-center justify-center rounded-full text-neutral-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40"
-                        aria-label={t('Close notifications')}
-                        title={t('Close notifications')}
-                      >
-                        <X size={14} />
-                      </button>
-                    )}
-                  </div>
-                </div>
-                <div className="max-h-[320px] overflow-y-auto">
-                  {visibleNotifications.map((notification, index) => {
-                    const hasValidDate = notification.dateTime && dayjs(notification.dateTime).isValid()
-                    return (
-                      <button
-                        type="button"
-                        key={`${notification.id || 'note'}-${index}`}
-                        onClick={() => {
-                          handleOpenNotification(notification)
-                          setNotificationsOpen(false)
-                        }}
-                        className={`flex w-full items-start gap-3 border-b border-red-100 px-4 py-3 text-left transition-colors hover:bg-red-50 dark:border-red-900/40 dark:hover:bg-red-950/40 ${
-                          notification.readAt ? '' : 'bg-red-50/50 dark:bg-red-950/30'
-                        }`}
-                      >
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-[13px] font-semibold text-neutral-900 dark:text-zinc-100">
-                            {notification.title || t('Untitled Event')}
-                          </p>
-                          <p className="mt-1 text-[12px] text-neutral-500 dark:text-zinc-400">
-                            {hasValidDate ? dayjs(notification.dateTime).format('MMM D, YYYY h:mm A') : t('Date TBA')}
-                          </p>
-                          {notification.details && (
-                            <p className="mt-1 line-clamp-2 text-[12px] text-neutral-600 dark:text-zinc-300">
-                              {notification.details}
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {!notification.readAt && (
-                            <span className="mt-1 h-2 w-2 rounded-full bg-red-600" />
-                          )}
+            {!isAdmin && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNotificationsOpen(prev => !prev)
+                  }}
+                  data-notification-button
+                  className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl border border-red-600 bg-white text-red-600 transition-all duration-200 hover:scale-[1.02] hover:bg-red-50 dark:border-red-600 dark:bg-zinc-900 dark:text-red-300 dark:hover:bg-red-950/30"
+                  aria-label={t('Notifications')}
+                  title={t('Notifications')}
+                >
+                  <Bell size={18} />
+                  {unreadCount > 0 && (
+                    <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-red-600 ring-2 ring-white dark:ring-zinc-900" />
+                  )}
+                </button>
+                {notificationsOpen && (
+                  <div
+                    data-notification-panel
+                    className="absolute right-0 top-12 z-20 w-[320px] rounded-2xl border border-red-600 bg-white shadow-[0_16px_30px_rgba(0,0,0,0.12)] dark:border-red-600 dark:bg-zinc-950"
+                  >
+                    <div className="flex items-center justify-between border-b border-red-100 px-4 py-3 dark:border-red-900/40">
+                      <h3 className="text-sm font-semibold text-neutral-900 dark:text-zinc-100">
+                        {t('Notifications')}
+                      </h3>
+                      <div className="flex items-center gap-2">
+                        <span className="rounded-full border border-red-600 bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-700 dark:bg-red-950/30 dark:text-red-300">
+                          {unreadCount} {t('unread')}
+                        </span>
+                        {unreadCount === 0 && (
                           <button
                             type="button"
-                            onClick={event => {
-                              event.stopPropagation()
-                              dismissNotification(notification.id)
-                            }}
-                            className="inline-flex h-6 w-6 items-center justify-center rounded-full text-neutral-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40"
-                            aria-label={t('Remove notification')}
-                            title={t('Remove notification')}
+                            onClick={() => setNotificationsOpen(false)}
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-full text-neutral-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40"
+                            aria-label={t('Close notifications')}
+                            title={t('Close notifications')}
                           >
                             <X size={14} />
                           </button>
-                        </div>
-                      </button>
-                    )
-                  })}
-                  {visibleNotifications.length === 0 && (
-                    <p className="px-4 py-6 text-center text-[13px] text-neutral-500 dark:text-zinc-400">
-                      {t('No notifications yet.')}
-                    </p>
-                  )}
-                </div>
-              </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="overflow-visible">
+                      {visibleNotifications.map((notification, index) => {
+                        const hasValidDate = notification.dateTime && dayjs(notification.dateTime).isValid()
+                        return (
+                          <button
+                            type="button"
+                            key={`${notification.id || 'note'}-${index}`}
+                            onClick={() => {
+                              handleOpenNotification(notification)
+                              setNotificationsOpen(false)
+                            }}
+                            className={`flex w-full items-start gap-3 border-b border-red-100 px-4 py-3 text-left transition-colors hover:bg-red-50 dark:border-red-900/40 dark:hover:bg-red-950/40 ${
+                              notification.readAt ? '' : 'bg-red-50/50 dark:bg-red-950/30'
+                            }`}
+                          >
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-[13px] font-semibold text-neutral-900 dark:text-zinc-100">
+                                {notification.title || t('Untitled Event')}
+                              </p>
+                              <p className="mt-1 text-[12px] text-neutral-500 dark:text-zinc-400">
+                                {hasValidDate ? dayjs(notification.dateTime).format('MMM D, YYYY h:mm A') : t('Date TBA')}
+                              </p>
+                              {notification.details && (
+                                <p className="mt-1 line-clamp-2 text-[12px] text-neutral-600 dark:text-zinc-300">
+                                  {notification.details}
+                                </p>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {!notification.readAt && (
+                                <span className="mt-1 h-2 w-2 rounded-full bg-red-600" />
+                              )}
+                              <button
+                                type="button"
+                                onClick={event => {
+                                  event.stopPropagation()
+                                  dismissNotification(notification.id)
+                                }}
+                                className="inline-flex h-6 w-6 items-center justify-center rounded-full text-neutral-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40"
+                                aria-label={t('Remove notification')}
+                                title={t('Remove notification')}
+                              >
+                                <X size={14} />
+                              </button>
+                            </div>
+                          </button>
+                        )
+                      })}
+                      {visibleNotifications.length === 0 && (
+                        <p className="px-4 py-6 text-center text-[13px] text-neutral-500 dark:text-zinc-400">
+                          {t('No notifications yet.')}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </>
             )}
             {isAdmin && (
               <button
@@ -503,7 +522,7 @@ function Dashboard() {
               {recentLogins
                 .filter(entry => entry.role === 'member')
                 .map((entry, index) => {
-                  const isOnline = String(entry.userId) === onlineUserId
+                  const isOnline = entry.isOnline === true
                   return (
                     <div
                       key={`${entry.userId}-${entry.lastLoginAt}-${index}`}
