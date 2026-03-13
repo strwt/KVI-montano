@@ -378,23 +378,7 @@ function NavBar({ navigate }) {
         </nav>
 
         {/* Desktop CTA */}
-        <div className="hidden md:flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => navigate('/login')}
-            className="text-sm px-4 py-1.5 rounded-lg text-gray-300 hover:text-white transition-all duration-200 border border-transparent hover:border-white/15 hover:bg-white/8"
-          >
-            Login
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate('/recruitment')}
-            className="text-sm px-5 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white font-semibold transition-all duration-200"
-            style={{ boxShadow: '0 4px 16px rgba(185,28,28,0.45)' }}
-          >
-            Join Us
-          </button>
-        </div>
+       
 
         {/* Mobile toggle */}
         <button
@@ -639,18 +623,6 @@ function Landing() {
         >
           {/* Left — text */}
           <div className="space-y-6 lg:space-y-7">
-            <span
-              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold tracking-wider border"
-              style={{
-                background: 'rgba(220,38,38,0.12)',
-                borderColor: 'rgba(220,38,38,0.3)',
-                color: '#fca5a5',
-              }}
-            >
-              <Sparkles size={12} />
-              Community In Action
-            </span>
-
             <div>
               <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold leading-[1.02] font-heading tracking-tight">
                 KUSGAN
@@ -743,76 +715,13 @@ function Landing() {
               </div>
 
               {/* Floating card — top-left */}
-              <div
-                className="floating-card-1 absolute -top-5 -left-6 sm:-left-10 rounded-2xl px-3.5 py-2.5 border"
-                style={{
-                  background: 'rgba(14,14,14,0.9)',
-                  borderColor: 'rgba(255,255,255,0.12)',
-                  backdropFilter: 'blur(16px)',
-                  boxShadow: '0 16px 40px rgba(0,0,0,0.5)',
-                }}
-              >
-                <div className="flex items-center gap-2">
-                  <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center"
-                    style={{ background: 'rgba(220,38,38,0.2)', color: '#f87171' }}
-                  >
-                    <Users size={13} />
-                  </div>
-                  <div>
-                    <p className="text-white font-bold text-sm font-heading leading-none">150+</p>
-                    <p className="text-gray-500 text-[10px] mt-0.5">Volunteers</p>
-                  </div>
-                </div>
-              </div>
+           
 
               {/* Floating card — top-right */}
-              <div
-                className="floating-card-3 absolute -top-5 -right-5 sm:-right-8 rounded-2xl px-3.5 py-2.5 border"
-                style={{
-                  background: 'rgba(14,14,14,0.9)',
-                  borderColor: 'rgba(255,255,255,0.12)',
-                  backdropFilter: 'blur(16px)',
-                  boxShadow: '0 16px 40px rgba(0,0,0,0.5)',
-                }}
-              >
-                <div className="flex items-center gap-2">
-                  <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center"
-                    style={{ background: 'rgba(220,38,38,0.2)', color: '#f87171' }}
-                  >
-                    <CalendarDays size={13} />
-                  </div>
-                  <div>
-                    <p className="text-white font-bold text-sm font-heading leading-none">Est. 2020</p>
-                    <p className="text-gray-500 text-[10px] mt-0.5">Founded</p>
-                  </div>
-                </div>
-              </div>
+              
 
               {/* Floating card — bottom-left */}
-              <div
-                className="floating-card-2 absolute -bottom-5 -left-4 sm:-left-8 rounded-2xl px-3.5 py-2.5 border"
-                style={{
-                  background: 'rgba(14,14,14,0.9)',
-                  borderColor: 'rgba(255,255,255,0.12)',
-                  backdropFilter: 'blur(16px)',
-                  boxShadow: '0 16px 40px rgba(0,0,0,0.5)',
-                }}
-              >
-                <div className="flex items-center gap-2">
-                  <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center"
-                    style={{ background: 'rgba(220,38,38,0.2)', color: '#f87171' }}
-                  >
-                    <FolderCheck size={13} />
-                  </div>
-                  <div>
-                    <p className="text-white font-bold text-sm font-heading leading-none">150+</p>
-                    <p className="text-gray-500 text-[10px] mt-0.5">Projects Done</p>
-                  </div>
-                </div>
-              </div>
+              
 
               {/* Red glow behind card */}
               <div
@@ -883,7 +792,6 @@ function Landing() {
       <section id="services" data-reveal className="reveal-on-scroll relative py-20 sm:py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <SectionHeader
-            eyebrow="What We Do"
             title="Our Services"
             subtitle="Focused volunteer initiatives making real community impact."
           />
@@ -937,7 +845,6 @@ function Landing() {
         />
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <SectionHeader
-            eyebrow="Leadership"
             title="Organization Structure"
             subtitle={activeStructure.subtitle}
           />
@@ -1077,7 +984,6 @@ function Landing() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-5xl mx-auto">
             <SectionHeader
-              eyebrow="About Us"
               title="Who We Are"
               subtitle="KUSGAN Volunteer Inc. is committed to inclusive community service through compassion, coordinated action, and unity."
               centered
