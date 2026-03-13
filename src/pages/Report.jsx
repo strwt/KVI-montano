@@ -28,8 +28,6 @@ const CATEGORY_META = {
   medical: { label: 'Medical', icon: HeartPulse, light: 'bg-pink-50', text: 'text-pink-700' },
 }
 
-const CATEGORY_KEYS = Object.keys(CATEGORY_META)
-
 const CATEGORY_COLORS = {
   tuli: '#ef4444',
   blood_letting: '#dc2626',
@@ -95,6 +93,44 @@ const normalizeCategory = category =>
     .toLowerCase()
     .replace(/\s+/g, '_')
 
+const splitCategoryAndType = (value = '') => {
+  const raw = String(value || '').trim()
+  if (!raw) return { category: '', type: '' }
+  const parts = raw.split(' - ')
+  if (parts.length === 1) return { category: parts[0], type: 'General' }
+  const category = parts.shift()?.trim() || ''
+  const type = parts.join(' - ').trim() || 'General'
+  return { category, type }
+}
+
+const OPERATION_KEY_ALIASES = {
+  relief_operations: 'relief_operation',
+  fire_responses: 'fire_response',
+  water_distributions: 'water_distribution',
+  blood_lettings: 'blood_letting',
+}
+
+const canonicalizeOperationKey = key => OPERATION_KEY_ALIASES[key] || key
+
+const titleCaseFromKey = key =>
+  String(key || '')
+    .trim()
+    .replace(/_/g, ' ')
+    .replace(/\w\S*/g, word => word.charAt(0).toUpperCase() + word.slice(1))
+
+const getCategoryLabel = key => CATEGORY_META[key]?.label || titleCaseFromKey(key) || 'Uncategorized'
+
+const hashColor = key => {
+  const input = String(key || '')
+  let hash = 0
+  for (let i = 0; i < input.length; i += 1) {
+    hash = (hash * 31 + input.charCodeAt(i)) % 360
+  }
+  return `hsl(${hash} 70% 45%)`
+}
+
+const getCategoryColor = key => CATEGORY_COLORS[key] || hashColor(key) || '#94a3b8'
+
 const splitPipe = value =>
   String(value || '')
     .split('|')
@@ -122,13 +158,6 @@ const getFieldValue = (event, key, fallbackKeys = []) => {
     }
   }
   return ''
-}
-
-const getMostActiveMonthLabel = countByMonth => {
-  const entries = Object.entries(countByMonth)
-  if (entries.length === 0) return 'N/A'
-  const [monthKey] = entries.sort((a, b) => b[1] - a[1])[0]
-  return dayjs(`${monthKey}-01`).format('MMMM YYYY')
 }
 
 const getDateWindow = preset => {
@@ -193,7 +222,7 @@ const loadJsPdf = () => {
 }
 
 function Report() {
-  const { user } = useAuth()
+  const { user, committees } = useAuth()
   const [events, setEvents] = useState(getStoredEvents)
   const [datePreset, setDatePreset] = useState('monthly')
   const [selectedCategory, setSelectedCategory] = useState('all')
@@ -223,18 +252,44 @@ function Report() {
     }
   }, [])
 
-  const filteredEvents = useMemo(() => {
+  const baseEvents = useMemo(() => {
     return events
-      .map(event => ({ ...event, _date: resolveEventDate(event), _category: normalizeCategory(event.category) }))
-      .filter(event => Boolean(event._date) && CATEGORY_KEYS.includes(event._category))
+      .map(event => ({
+        ...event,
+        _date: resolveEventDate(event),
+        _category: canonicalizeOperationKey(normalizeCategory(event.category)),
+      }))
       .filter(event => event.status === 'done')
       .filter(event => {
-        if (selectedCategory !== 'all' && event._category !== selectedCategory) return false
         if (start && event._date.isBefore(start)) return false
         if (end && event._date.isAfter(end)) return false
         return true
       })
-  }, [events, selectedCategory, start, end])
+  }, [events, start, end])
+
+  const availableCategoryKeys = useMemo(() => {
+    const set = new Set(Object.keys(CATEGORY_META))
+    const committeeEntries = Array.isArray(committees) ? committees : []
+    committeeEntries.forEach(entry => {
+      const { category } = splitCategoryAndType(entry)
+      const key = canonicalizeOperationKey(normalizeCategory(category))
+      if (key) set.add(key)
+    })
+    baseEvents.forEach(event => {
+      if (event._category) set.add(event._category)
+    })
+    return Array.from(set).sort((a, b) => getCategoryLabel(a).localeCompare(getCategoryLabel(b)))
+  }, [baseEvents, committees])
+
+  useEffect(() => {
+    if (selectedCategory === 'all') return
+    if (!availableCategoryKeys.includes(selectedCategory)) setSelectedCategory('all')
+  }, [availableCategoryKeys, selectedCategory])
+
+  const filteredEvents = useMemo(() => {
+    if (selectedCategory === 'all') return baseEvents
+    return baseEvents.filter(event => event._category === selectedCategory)
+  }, [baseEvents, selectedCategory])
 
   const stats = useMemo(() => {
     const template = {
@@ -338,17 +393,24 @@ function Report() {
   }, [stats.blood_letting.bloodTokenCounts])
 
   const eventCountByCategory = useMemo(() => {
-    return CATEGORY_KEYS.reduce((acc, key) => {
-      acc[key] = filteredEvents.filter(event => event._category === key).length
-      return acc
-    }, {})
-  }, [filteredEvents])
+    const counts = {}
+    availableCategoryKeys.forEach(key => {
+      counts[key] = 0
+    })
+    filteredEvents.forEach(event => {
+      const key = event._category || 'uncategorized'
+      counts[key] = (counts[key] || 0) + 1
+    })
+    return counts
+  }, [filteredEvents, availableCategoryKeys])
+
+  const chartCategoryKeys = availableCategoryKeys
 
   const reportRows = useMemo(() => {
     return filteredEvents.map(event => ({
       title: event.title || '',
       content: event.content || '',
-      category: CATEGORY_META[event._category]?.label || event._category,
+      category: getCategoryLabel(event._category),
       branch: event.branch || '',
       membersInvolve: event.membersInvolve || '',
       dateTime: event._date.format('YYYY-MM-DD HH:mm'),
@@ -376,12 +438,14 @@ function Report() {
     }))
   }, [filteredEvents])
 
-  const distributionCategoryKeys = CATEGORY_KEYS.filter(key => key !== 'notes')
-  const totalEvents = distributionCategoryKeys.reduce((sum, key) => sum + eventCountByCategory[key], 0)
-  const categoryBarKeys = CATEGORY_KEYS.filter(key => key !== 'notes')
-  const maxBarValue = Math.max(1, ...categoryBarKeys.map(key => eventCountByCategory[key]))
-  const pieSegments = distributionCategoryKeys.map(key => {
-    const value = eventCountByCategory[key]
+  const totalEvents = chartCategoryKeys.reduce((sum, key) => sum + (eventCountByCategory[key] || 0), 0)
+  const maxBarValue = useMemo(() => {
+    if (chartCategoryKeys.length === 0) return 1
+    return Math.max(1, ...chartCategoryKeys.map(key => eventCountByCategory[key] || 0))
+  }, [chartCategoryKeys, eventCountByCategory])
+
+  const pieSegments = chartCategoryKeys.map(key => {
+    const value = eventCountByCategory[key] || 0
     const percent = totalEvents > 0 ? (value / totalEvents) * 100 : 0
     return { key, value, percent }
   })
@@ -393,7 +457,7 @@ function Report() {
       const startPct = current
       const endPct = current + segment.percent
       current = endPct
-      return `${CATEGORY_COLORS[segment.key]} ${startPct}% ${endPct}%`
+      return `${getCategoryColor(segment.key)} ${startPct}% ${endPct}%`
     })
     return `conic-gradient(${pieces.join(', ')})`
   }, [pieSegments, totalEvents])
@@ -462,7 +526,7 @@ function Report() {
       <body style="font-family:Arial,sans-serif;">
         <h1>KUSGAN Report</h1>
         <p>Date Generated: ${dayjs().format('YYYY-MM-DD HH:mm:ss')}</p>
-        <p>Filters - Date: ${datePreset}, Category: ${selectedCategory}, Field: ${selectedBranch}, Search: ${searchQuery || 'N/A'}</p>
+        <p>Filters - Date: ${datePreset}, Category: ${selectedCategory}</p>
         <h2>Summary Statistics</h2>
         <ul>${summaryHtml}</ul>
         <h2>Event Details</h2>
@@ -492,7 +556,7 @@ function Report() {
     doc.setFontSize(10)
     doc.text(`Generated: ${dayjs().format('YYYY-MM-DD HH:mm:ss')}`, margin, y)
     y += 14
-    doc.text(`Filters - Date: ${datePreset} | Category: ${selectedCategory} | Field: ${selectedBranch} | Search: ${searchQuery || 'N/A'}`, margin, y)
+    doc.text(`Filters - Date: ${datePreset} | Category: ${selectedCategory}`, margin, y)
     y += 18
 
     doc.setFontSize(12)
@@ -633,48 +697,48 @@ function Report() {
           </div>
           <div>
             <label className="block text-xs text-gray-500 dark:text-zinc-400 mb-1">Category</label>
-            <select
-              value={selectedCategory}
-              onChange={e => setSelectedCategory(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-sm text-gray-700 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-red-500"
-            >
-              <option value="all">All Categories</option>
-              {CATEGORY_KEYS.filter(key => key !== 'notes').map(key => (
-                <option key={key} value={key}>{CATEGORY_META[key].label}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-        </div>
+	            <select
+	              value={selectedCategory}
+	              onChange={e => setSelectedCategory(e.target.value)}
+	              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-sm text-gray-700 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-red-500"
+	            >
+	              <option value="all">All Categories</option>
+	              {availableCategoryKeys.map(key => (
+	                <option key={key} value={key}>{getCategoryLabel(key)}</option>
+	              ))}
+	            </select>
+	          </div>
+	        </div>
+	        </div>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
-          <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><BarChart3 size={18} className="text-red-600" />Events Per Category</h3>
-          <div className="space-y-3">
-            {categoryBarKeys.map(key => (
-              <div key={key}>
-                <div className="flex items-center justify-between text-sm mb-1"><span className="text-gray-600 dark:text-zinc-400">{CATEGORY_META[key].label}</span><span className="font-semibold text-gray-800 dark:text-zinc-100">{eventCountByCategory[key]}</span></div>
-                <div className="w-full bg-gray-100 dark:bg-zinc-700 rounded-full h-2"><div className="h-2 rounded-full transition-all duration-300" style={{ width: `${(eventCountByCategory[key] / maxBarValue) * 100}%`, backgroundColor: CATEGORY_COLORS[key] }} /></div>
-              </div>
-            ))}
-          </div>
-        </div>
+	        <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
+	          <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><BarChart3 size={18} className="text-red-600" />Events Per Category</h3>
+	          <div className="space-y-3">
+	            {chartCategoryKeys.map(key => (
+	              <div key={key}>
+	                <div className="flex items-center justify-between text-sm mb-1"><span className="text-gray-600 dark:text-zinc-400">{getCategoryLabel(key)}</span><span className="font-semibold text-gray-800 dark:text-zinc-100">{eventCountByCategory[key] || 0}</span></div>
+	                <div className="w-full bg-gray-100 dark:bg-zinc-700 rounded-full h-2"><div className="h-2 rounded-full transition-all duration-300" style={{ width: `${((eventCountByCategory[key] || 0) / maxBarValue) * 100}%`, backgroundColor: getCategoryColor(key) }} /></div>
+	              </div>
+	            ))}
+	          </div>
+	        </div>
 
         <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
           <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><PieChart size={18} className="text-red-600" />Category Distribution</h3>
           <div className="flex flex-col items-center">
             <div className="w-44 h-44 sm:w-48 sm:h-48 rounded-full mb-4" style={{ background: pieGradient }} />
-            <div className="w-full space-y-2">
-              {pieSegments.map(segment => (
-                <div key={segment.key} className="flex items-center justify-between text-sm">
-                  <span className="flex items-center gap-2 text-gray-600 dark:text-zinc-400"><span className="w-3 h-3 rounded-sm" style={{ backgroundColor: CATEGORY_COLORS[segment.key] }} />{CATEGORY_META[segment.key].label}</span>
-                  <span className="font-semibold text-gray-800 dark:text-zinc-100">{segment.value} ({segment.percent.toFixed(1)}%)</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+	            <div className="w-full space-y-2">
+	              {pieSegments.map(segment => (
+	                <div key={segment.key} className="flex items-center justify-between text-sm">
+	                  <span className="flex items-center gap-2 text-gray-600 dark:text-zinc-400"><span className="w-3 h-3 rounded-sm" style={{ backgroundColor: getCategoryColor(segment.key) }} />{getCategoryLabel(segment.key)}</span>
+	                  <span className="font-semibold text-gray-800 dark:text-zinc-100">{segment.value} ({segment.percent.toFixed(1)}%)</span>
+	                </div>
+	              ))}
+	            </div>
+	          </div>
+	        </div>
 
       </div>
 
