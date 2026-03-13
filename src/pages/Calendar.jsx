@@ -158,16 +158,49 @@ const getStoredCalendarFilters = () => {
 
 const getCategoryKeyFromLabel = label => {
   const normalized = String(label || '').trim().toLowerCase()
+  if (CATEGORY_CONFIG[normalized]) return normalized
   const exact = CATEGORY_KEYS.find(key => CATEGORY_CONFIG[key].label.toLowerCase() === normalized)
   return exact || null
 }
+
+const normalizeCategoryKey = value =>
+  String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '_')
+
+const splitCategoryAndType = (value = '') => {
+  const raw = String(value || '').trim()
+  if (!raw) return { category: '', type: '' }
+  const parts = raw.split(' - ')
+  if (parts.length === 1) return { category: parts[0], type: 'General' }
+  const category = parts.shift()?.trim() || ''
+  const type = parts.join(' - ').trim() || 'General'
+  return { category, type }
+}
+
+const OPERATION_KEY_ALIASES = {
+  relief_operations: 'relief_operation',
+  fire_responses: 'fire_response',
+  water_distributions: 'water_distribution',
+  blood_lettings: 'blood_letting',
+}
+
+const canonicalizeOperationKey = key => OPERATION_KEY_ALIASES[key] || key
+
+const titleCaseFromKey = key =>
+  String(key || '')
+    .trim()
+    .replace(/_/g, ' ')
+    .replace(/\w\S*/g, word => word.charAt(0).toUpperCase() + word.slice(1))
 
 const getCategoryLabelFromQuery = value => {
   const normalized = String(value || '').trim().toLowerCase()
   if (!normalized || normalized === 'all') return 'All'
   if (CATEGORY_CONFIG[normalized]) return CATEGORY_CONFIG[normalized].label
   const fromLabel = getCategoryKeyFromLabel(value)
-  return fromLabel ? CATEGORY_CONFIG[fromLabel].label : 'All'
+  if (fromLabel) return CATEGORY_CONFIG[fromLabel].label
+  return titleCaseFromKey(canonicalizeOperationKey(normalizeCategoryKey(value)))
 }
 
 let leafletLoaderPromise = null
@@ -725,7 +758,7 @@ function AssignMembersPicker({ allMembers, selectedIds, onChange, label = 'Assig
 }
 
 function Calendar({ listOnly = false }) {
-  const { user, getAllMembers } = useAuth()
+  const { user, getAllMembers, committees } = useAuth()
   const canManageEvents = user?.role === 'admin'
   const routerLocation = useLocation()
   const navigate = useNavigate()
@@ -789,6 +822,40 @@ function Calendar({ listOnly = false }) {
     [getAllMembers]
   )
 
+  const dynamicCategoryLabels = useMemo(() => {
+    const entries = Array.isArray(committees) ? committees : []
+    const map = {}
+    entries.forEach(entry => {
+      const { category } = splitCategoryAndType(entry)
+      const key = canonicalizeOperationKey(normalizeCategoryKey(category))
+      if (!key) return
+      if (!map[key]) map[key] = category.trim()
+    })
+    return map
+  }, [committees])
+
+  const categoryLabelByKey = useMemo(() => {
+    const map = {}
+    CATEGORY_KEYS.forEach(key => {
+      map[key] = CATEGORY_CONFIG[key]?.label || titleCaseFromKey(key)
+    })
+    Object.entries(dynamicCategoryLabels).forEach(([key, label]) => {
+      if (!map[key]) map[key] = label
+    })
+    return map
+  }, [dynamicCategoryLabels])
+
+  const additionalCategoryKeys = useMemo(() => {
+    const set = new Set()
+    Object.keys(dynamicCategoryLabels).forEach(key => set.add(key))
+    events.forEach(event => {
+      const key = canonicalizeOperationKey(normalizeCategoryKey(event.category))
+      if (key && !CATEGORY_CONFIG[key]) set.add(key)
+    })
+    const keys = Array.from(set).filter(key => !CATEGORY_CONFIG[key])
+    return keys.sort((a, b) => (categoryLabelByKey[a] || titleCaseFromKey(a)).localeCompare(categoryLabelByKey[b] || titleCaseFromKey(b)))
+  }, [dynamicCategoryLabels, events, categoryLabelByKey])
+
   const memberNameById = useMemo(() => {
     const map = {}
     assignableMembers.forEach(member => {
@@ -817,10 +884,11 @@ function Calendar({ listOnly = false }) {
 
   const updateCategoryRoute = categoryLabel => {
     const params = new URLSearchParams(searchParams)
-    const nextKey = getCategoryKeyFromLabel(categoryLabel)
-    if (!nextKey || categoryLabel === 'All') {
+    if (categoryLabel === 'All') {
       params.delete('category')
     } else {
+      const nextKey =
+        getCategoryKeyFromLabel(categoryLabel) || canonicalizeOperationKey(normalizeCategoryKey(categoryLabel))
       params.set('category', nextKey)
     }
     setSearchParams(params, { replace: true })
@@ -934,8 +1002,13 @@ function Calendar({ listOnly = false }) {
         item.membersInvolve?.toLowerCase().includes(searchLower) ||
         item.branch?.toLowerCase().includes(searchLower) ||
         item.category?.toLowerCase().includes(searchLower)
-      const selectedLower = selectedCategory.toLowerCase()
-      const matchesCategory = selectedCategory === 'All' || item.category === selectedLower
+      const activeCategoryKey =
+        selectedCategory === 'All'
+          ? null
+          : getCategoryKeyFromLabel(selectedCategory) ||
+            canonicalizeOperationKey(normalizeCategoryKey(selectedCategory))
+      const itemCategoryKey = canonicalizeOperationKey(normalizeCategoryKey(item.category))
+      const matchesCategory = selectedCategory === 'All' || itemCategoryKey === activeCategoryKey
       const matchesDate = !selectedDateFilter || dayjs(item.dateTime).format('YYYY-MM-DD') === selectedDateFilter
       return matchesSearch && matchesCategory && matchesDate
     }).sort((a, b) => {
@@ -957,8 +1030,13 @@ function Calendar({ listOnly = false }) {
           item.membersInvolve?.toLowerCase().includes(searchLower) ||
           item.branch?.toLowerCase().includes(searchLower) ||
           item.category?.toLowerCase().includes(searchLower)
-        const selectedLower = selectedCategory.toLowerCase()
-        const matchesCategory = selectedCategory === 'All' || item.category === selectedLower
+        const activeCategoryKey =
+          selectedCategory === 'All'
+            ? null
+            : getCategoryKeyFromLabel(selectedCategory) ||
+              canonicalizeOperationKey(normalizeCategoryKey(selectedCategory))
+        const itemCategoryKey = canonicalizeOperationKey(normalizeCategoryKey(item.category))
+        const matchesCategory = selectedCategory === 'All' || itemCategoryKey === activeCategoryKey
         return matchesSearch && matchesCategory
       })
       .sort((a, b) => {
@@ -1030,7 +1108,7 @@ function Calendar({ listOnly = false }) {
       ? existingEvent.categoryData
       : {}
     const eventPayload = {
-      title: CATEGORY_CONFIG[formData.category]?.label || 'Untitled Event',
+      title: categoryLabelByKey[formData.category] || CATEGORY_CONFIG[formData.category]?.label || 'Untitled Event',
       content: formData.content.trim(),
       dateTime: formData.dateTime,
       address: formData.address.trim(),
@@ -1308,8 +1386,14 @@ function Calendar({ listOnly = false }) {
 
   const getMonthColor = () => 'from-red-500 to-red-600'
 
-  const getCategoryLabel = category => CATEGORY_CONFIG[category]?.label || 'Uncategorized'
-  const selectedCategoryKey = getCategoryKeyFromLabel(selectedCategory)
+  const getCategoryLabel = category => {
+    const key = canonicalizeOperationKey(normalizeCategoryKey(category))
+    return categoryLabelByKey[key] || CATEGORY_CONFIG[key]?.label || 'Uncategorized'
+  }
+  const selectedCategoryKey =
+    selectedCategory === 'All'
+      ? null
+      : getCategoryKeyFromLabel(selectedCategory) || canonicalizeOperationKey(normalizeCategoryKey(selectedCategory))
   const selectedCategoryListMeta = selectedCategoryKey ? CATEGORY_META[selectedCategoryKey] : null
   const listHeading = selectedCategory === 'All' ? 'All Events' : `${selectedCategory} Events`
 
@@ -1364,23 +1448,35 @@ function Calendar({ listOnly = false }) {
                 onChange={e => setSearchQuery(e.target.value)}
                 className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
               />
-              <select
-                value={selectedCategory}
-                onChange={e => {
-                  const next = e.target.value
-                  setSelectedCategory(next)
-                  updateCategoryRoute(next)
-                }}
-                className="lg:w-64 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
-              >
-                <option value="All">All Categories</option>
-                {CATEGORY_KEYS.map(category => (
-                  <option key={category} value={CATEGORY_CONFIG[category].label}>
-                    {CATEGORY_CONFIG[category].label}
-                  </option>
-                ))}
-              </select>
-            </div>
+	              <select
+	                value={selectedCategory}
+	                onChange={e => {
+	                  const next = e.target.value
+	                  setSelectedCategory(next)
+	                  updateCategoryRoute(next)
+	                }}
+	                className="lg:w-64 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
+	              >
+	                <option value="All">All Categories</option>
+	                {CATEGORY_KEYS.map(category => (
+	                  <option key={category} value={CATEGORY_CONFIG[category].label}>
+	                    {CATEGORY_CONFIG[category].label}
+	                  </option>
+	                ))}
+	                {additionalCategoryKeys.map(categoryKey => {
+	                  const label = categoryLabelByKey[categoryKey] || titleCaseFromKey(categoryKey)
+	                  return (
+	                    <option key={categoryKey} value={label}>
+	                      {label}
+	                    </option>
+	                  )
+	                })}
+	                {selectedCategory !== 'All' &&
+	                  !CATEGORY_KEYS.some(category => CATEGORY_CONFIG[category].label === selectedCategory) && (
+	                    <option value={selectedCategory}>{selectedCategory}</option>
+	                  )}
+	              </select>
+	            </div>
 
             <div className="flex flex-wrap gap-2">
               <button
@@ -1397,25 +1493,45 @@ function Calendar({ listOnly = false }) {
               >
                 All
               </button>
-              {CATEGORY_KEYS.map(categoryKey => (
-                <button
-                  key={categoryKey}
-                  type="button"
-                  onClick={() => {
-                    const next = CATEGORY_CONFIG[categoryKey].label
-                    setSelectedCategory(next)
-                    updateCategoryRoute(next)
-                  }}
-                  className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
-                    selectedCategory === CATEGORY_CONFIG[categoryKey].label
-                      ? 'bg-red-600 border-red-600 text-white'
-                      : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  {CATEGORY_CONFIG[categoryKey].label}
-                </button>
-              ))}
-            </div>
+	              {CATEGORY_KEYS.map(categoryKey => (
+	                <button
+	                  key={categoryKey}
+	                  type="button"
+	                  onClick={() => {
+	                    const next = CATEGORY_CONFIG[categoryKey].label
+	                    setSelectedCategory(next)
+	                    updateCategoryRoute(next)
+	                  }}
+	                  className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+	                    selectedCategory === CATEGORY_CONFIG[categoryKey].label
+	                      ? 'bg-red-600 border-red-600 text-white'
+	                      : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+	                  }`}
+	                >
+	                  {CATEGORY_CONFIG[categoryKey].label}
+	                </button>
+	              ))}
+	              {additionalCategoryKeys.map(categoryKey => {
+	                const label = categoryLabelByKey[categoryKey] || titleCaseFromKey(categoryKey)
+	                return (
+	                  <button
+	                    key={categoryKey}
+	                    type="button"
+	                    onClick={() => {
+	                      setSelectedCategory(label)
+	                      updateCategoryRoute(label)
+	                    }}
+	                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+	                      selectedCategory === label
+	                        ? 'bg-red-600 border-red-600 text-white'
+	                        : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+	                    }`}
+	                  >
+	                    {label}
+	                  </button>
+	                )
+	              })}
+	            </div>
 
             <div className="space-y-3 max-h-[68vh] overflow-y-auto pr-1">
               {allFilteredItems.map(item => {
@@ -1983,19 +2099,24 @@ function Calendar({ listOnly = false }) {
 	                          <option value="" disabled>
 	                            Select category
 	                          </option>
-	                          {CREATE_CATEGORY_KEYS.map(category => (
-	                            <option key={category} value={category}>
-	                              {CATEGORY_CONFIG[category].label}
-	                            </option>
-	                          ))}
-	                          {!CREATE_CATEGORY_KEYS.includes(formData.category) &&
-	                            formData.category &&
-	                            CATEGORY_CONFIG[formData.category] && (
-	                              <option value={formData.category}>
-	                                {CATEGORY_CONFIG[formData.category].label}
-	                              </option>
-	                            )}
-	                        </select>
+		                          {CREATE_CATEGORY_KEYS.map(category => (
+		                            <option key={category} value={category}>
+		                              {CATEGORY_CONFIG[category].label}
+		                            </option>
+		                          ))}
+		                          {additionalCategoryKeys.map(categoryKey => (
+		                            <option key={categoryKey} value={categoryKey}>
+		                              {categoryLabelByKey[categoryKey] || titleCaseFromKey(categoryKey)}
+		                            </option>
+		                          ))}
+		                          {!CREATE_CATEGORY_KEYS.includes(formData.category) &&
+		                            formData.category &&
+		                            (CATEGORY_CONFIG[formData.category] || categoryLabelByKey[formData.category]) && (
+		                              <option value={formData.category}>
+		                                {CATEGORY_CONFIG[formData.category]?.label || categoryLabelByKey[formData.category]}
+		                              </option>
+		                            )}
+		                        </select>
 	                      </div>
 	                    </div>
 	                  </div>
