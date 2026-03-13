@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { User, Mail, Hash, ArrowLeft, Send, Phone, MapPin, Droplets } from 'lucide-react'
+import { User, Mail, ArrowLeft, Send, Phone, MapPin, Droplets, Shield, Calendar } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
 function Recruitment() {
@@ -9,10 +9,11 @@ function Recruitment() {
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
-    idNumber: '',
     contactNumber: '',
     address: '',
     bloodType: '',
+    insuranceStatus: 'N/A',
+    insuranceYear: '',
   })
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -36,10 +37,11 @@ function Recruitment() {
     setFormData({
       fullName: '',
       email: '',
-      idNumber: '',
       contactNumber: '',
       address: '',
       bloodType: '',
+      insuranceStatus: 'N/A',
+      insuranceYear: '',
     })
     setIsSubmitting(false)
   }
@@ -108,18 +110,47 @@ function Recruitment() {
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm text-gray-700 dark:text-gray-200 mb-2">ID Number</label>
-            <div className="relative">
-              <Hash size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                value={formData.idNumber}
-                onChange={e => setFormData(prev => ({ ...prev, idNumber: e.target.value }))}
-                className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900/60 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500"
-                placeholder="Enter your ID Number"
-                required
-              />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className="block text-sm text-gray-700 dark:text-gray-200 mb-2">Insurance</label>
+              <div className="relative">
+                <Shield size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <select
+                  value={formData.insuranceStatus}
+                  onChange={e => {
+                    const nextStatus = e.target.value
+                    setFormData(prev => ({
+                      ...prev,
+                      insuranceStatus: nextStatus,
+                      insuranceYear: nextStatus === 'Insured' ? prev.insuranceYear : '',
+                    }))
+                  }}
+                  className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900/60 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500 appearance-none"
+                  required
+                >
+                  <option value="N/A" className="text-gray-900">N/A</option>
+                  <option value="Insured" className="text-gray-900">Insured</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm text-gray-700 dark:text-gray-200 mb-2">What Year</label>
+              <div className="relative">
+                <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  value={formData.insuranceYear}
+                  onChange={e => setFormData(prev => ({ ...prev, insuranceYear: e.target.value }))}
+                  className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900/60 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                  placeholder="What year"
+                  min="1900"
+                  max={String(new Date().getFullYear() + 1)}
+                  disabled={formData.insuranceStatus !== 'Insured'}
+                  required={formData.insuranceStatus === 'Insured'}
+                />
+              </div>
             </div>
           </div>
 
