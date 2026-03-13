@@ -439,6 +439,15 @@ const getStoredEvents = () => {
   }
 }
 
+const getEventMatchKey = event => {
+  const baseId = event?.id
+  if (baseId !== undefined && baseId !== null && String(baseId).trim()) return `id:${baseId}`
+  const dateValue = event?.dateTime || event?.date || ''
+  const title = event?.title || ''
+  const category = event?.category || ''
+  return `fallback:${dateValue}|${title}|${category}`
+}
+
 function EventLocationPicker({ address, location, onAddressInput, onLocationSelect }) {
   const [suggestions, setSuggestions] = useState([])
   const [isSearching, setIsSearching] = useState(false)
@@ -1126,13 +1135,26 @@ function Calendar({ listOnly = false }) {
     }
 
     const focusEventId = state.focusEventId
-    if (focusEventId && !handledRedirectRef.current) {
-      const targetEvent = events.find(event => event.id === focusEventId)
+    const focusEventKey = typeof state.focusEventKey === 'string' ? state.focusEventKey.trim() : ''
+    const forceFocusEvent = Boolean(state.forceFocusEvent)
+    if ((focusEventId || focusEventKey) && !handledRedirectRef.current) {
+      const normalizedFocusId = focusEventId !== undefined && focusEventId !== null ? `id:${focusEventId}` : ''
+      const targetEvent = events.find(event => {
+        const matchKey = getEventMatchKey(event)
+        if (focusEventKey) return matchKey === focusEventKey
+        if (normalizedFocusId) return matchKey === normalizedFocusId
+        return false
+      })
       if (targetEvent?.dateTime && dayjs(targetEvent.dateTime).isValid()) {
         handledRedirectRef.current = true
         const monthKey = dayjs(targetEvent.dateTime).format('YYYY-MM')
         setCurrentYear(dayjs(targetEvent.dateTime).year())
         setSelectedMonthKey(monthKey)
+        if (forceFocusEvent) {
+          setSearchQuery('')
+          setSelectedCategory('All')
+          setSelectedDateFilter('')
+        }
         setExpandedItemId(targetEvent.id)
         setHighlightedEventId(targetEvent.id)
         setTimeout(() => setHighlightedEventId(null), 3000)

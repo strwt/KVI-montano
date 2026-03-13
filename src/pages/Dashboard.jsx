@@ -79,6 +79,14 @@ const getEventsCategoryRoute = categoryKey => `/events?category=${encodeURICompo
 const RECENT_ACTIVITY_LIMIT = 5
 const LOGIN_ACTIVITY_LIMIT = 8
 
+const getEventMatchKey = event => {
+  const baseId = event?.id
+  if (baseId !== undefined && baseId !== null && String(baseId).trim()) return `id:${baseId}`
+  const dateValue = resolveEventDate(event) || ''
+  const title = event?.title || ''
+  const category = event?.category || ''
+  return `fallback:${dateValue}|${title}|${category}`
+}
 
 const getStoredLoginActivity = () => {
   const stored = localStorage.getItem('kusgan_login_activity')
@@ -215,7 +223,8 @@ function Dashboard() {
     navigate('/calendar', {
       state: {
         focusEventId: event.id,
-        preserveFilters: true,
+        focusEventKey: getEventMatchKey(event),
+        forceFocusEvent: true,
         scrollToEvent: true,
       },
     })
@@ -240,18 +249,20 @@ function Dashboard() {
               </span>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() =>
-              navigate('/calendar', {
-                state: { openCreateEventForm: true },
-              })
-            }
-            className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-red-600 bg-red-600 px-6 py-2 text-[14px] font-semibold text-white transition-all duration-200 hover:scale-[1.02] hover:bg-red-700"
-          >
-            {t('Create Event')}
-            <ArrowRight size={16} />
-          </button>
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={() =>
+                navigate('/calendar', {
+                  state: { openCreateEventForm: true },
+                })
+              }
+              className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-red-600 bg-red-600 px-6 py-2 text-[14px] font-semibold text-white transition-all duration-200 hover:scale-[1.02] hover:bg-red-700"
+            >
+              {t('Create Event')}
+              <ArrowRight size={16} />
+            </button>
+          )}
         </div>
       </section>
 
@@ -332,11 +343,11 @@ function Dashboard() {
         </section>
       )}
 
-      {isAdmin && (
-        <section className="grid grid-cols-12 gap-4">
-          <article className="col-span-12 rounded-2xl border border-red-600 bg-white p-5 md:p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] dark:border-red-600 dark:bg-zinc-900">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-[24px] font-semibold text-black dark:text-zinc-100">{t('Recent Activity')}</h2>
+      <section className="grid grid-cols-12 gap-4">
+        <article className="col-span-12 rounded-2xl border border-red-600 bg-white p-5 md:p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] dark:border-red-600 dark:bg-zinc-900">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-[24px] font-semibold text-black dark:text-zinc-100">{t('Recent Activity')}</h2>
+            {isAdmin && (
               <button
                 type="button"
                 onClick={() => navigate('/calendar')}
@@ -344,40 +355,40 @@ function Dashboard() {
               >
                 {t('View All')}
               </button>
-            </div>
-            <div className="max-h-[360px] space-y-3 overflow-y-auto pr-1">
-              {recentEvents.map((event, index) => (
-                <button
-                  type="button"
-                  key={`${event.id || 'event'}-${resolveEventDate(event) || 'no-date'}-${index}`}
-                  onClick={() => handleOpenEventInCalendar(event)}
-                  className={`group flex w-full cursor-pointer items-start gap-4 rounded-xl border border-red-600 bg-white p-3 md:p-4 text-left transition-all duration-200 hover:scale-[1.02] hover:shadow-[0_10px_16px_rgba(0,0,0,0.08)] dark:border-red-600 dark:bg-zinc-950 ${
-                    animatedStats ? 'animate-fade-in-up' : 'opacity-0'
-                  }`}
-                  style={{ animationDelay: `${index * 0.08}s` }}
-                >
-                  <div className="relative flex flex-col items-center">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-red-600 text-white">
-                      <CalendarIcon size={14} />
-                    </span>
-                    {index !== recentEvents.length - 1 && <span className="mt-2 h-12 w-px bg-neutral-300 dark:bg-zinc-700" />}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[18px] font-medium text-black dark:text-zinc-100">{event.title || t('Untitled Event')}</p>
-                    <p className="mt-1 text-[14px] text-neutral-500 dark:text-zinc-400">
-                      {dayjs(resolveEventDate(event)).format('MMM D, YYYY h:mm A')}
-                    </p>
-                  </div>
-                  <span className="rounded-md border border-neutral-300 bg-neutral-100 px-2 py-1 text-[14px] capitalize text-neutral-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-                    {event.category || t('Uncategorized')}
+            )}
+          </div>
+          <div className="max-h-[360px] space-y-3 overflow-y-auto pr-1">
+            {recentEvents.map((event, index) => (
+              <button
+                type="button"
+                key={`${event.id || 'event'}-${resolveEventDate(event) || 'no-date'}-${index}`}
+                onClick={() => handleOpenEventInCalendar(event)}
+                className={`group flex w-full cursor-pointer items-start gap-4 rounded-xl border border-red-600 bg-white p-3 md:p-4 text-left transition-all duration-200 hover:scale-[1.02] hover:shadow-[0_10px_16px_rgba(0,0,0,0.08)] dark:border-red-600 dark:bg-zinc-950 ${
+                  animatedStats ? 'animate-fade-in-up' : 'opacity-0'
+                }`}
+                style={{ animationDelay: `${index * 0.08}s` }}
+              >
+                <div className="relative flex flex-col items-center">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-red-600 text-white">
+                    <CalendarIcon size={14} />
                   </span>
-                </button>
-              ))}
-              {recentEvents.length === 0 && <p className="py-4 text-center text-[14px] text-neutral-500 dark:text-zinc-400">{t('No activity yet')}</p>}
-            </div>
-          </article>
-        </section>
-	      )}
+                  {index !== recentEvents.length - 1 && <span className="mt-2 h-12 w-px bg-neutral-300 dark:bg-zinc-700" />}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[18px] font-medium text-black dark:text-zinc-100">{event.title || t('Untitled Event')}</p>
+                  <p className="mt-1 text-[14px] text-neutral-500 dark:text-zinc-400">
+                    {dayjs(resolveEventDate(event)).format('MMM D, YYYY h:mm A')}
+                  </p>
+                </div>
+                <span className="rounded-md border border-neutral-300 bg-neutral-100 px-2 py-1 text-[14px] capitalize text-neutral-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                  {event.category || t('Uncategorized')}
+                </span>
+              </button>
+            ))}
+            {recentEvents.length === 0 && <p className="py-4 text-center text-[14px] text-neutral-500 dark:text-zinc-400">{t('No activity yet')}</p>}
+          </div>
+        </article>
+      </section>
 
 	    </div>
 	  )
