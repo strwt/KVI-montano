@@ -1374,14 +1374,10 @@ function Landing() {
           */}
 
           {/* Copyright */}
-          <div
-            className="mt-10 pt-8 flex flex-col sm:flex-row items-center justify-between gap-2"
-            style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
-          >
             <p className="text-xs" style={{ color: '#374151' }}>
               © {new Date().getFullYear()} KUSGAN Volunteer Inc. All rights reserved.
             </p>
-          </div>
+    
         </div>
       </footer>
     </div>
