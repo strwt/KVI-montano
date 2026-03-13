@@ -30,10 +30,10 @@ const NAV_LINKS = [
 ]
 
 const STATS = [
-  { label: 'Volunteers', value: '500+', icon: Users },
-  { label: 'Projects', value: '50+', icon: FolderCheck },
+  { label: 'Volunteers', value: '100+', icon: Users },
+  { label: 'Activities', value: '150+', icon: FolderCheck },
   { label: 'Committees', value: '8', icon: LayoutGrid },
-  { label: 'Years Active', value: '6+', icon: CalendarDays },
+  { label: 'Years Active', value: '5', icon: CalendarDays },
 ]
 
 const SERVICES = [
@@ -729,7 +729,7 @@ function Landing() {
                     <Users size={13} />
                   </div>
                   <div>
-                    <p className="text-white font-bold text-sm font-heading leading-none">500+</p>
+                    <p className="text-white font-bold text-sm font-heading leading-none">150+</p>
                     <p className="text-gray-500 text-[10px] mt-0.5">Volunteers</p>
                   </div>
                 </div>
@@ -753,7 +753,7 @@ function Landing() {
                     <CalendarDays size={13} />
                   </div>
                   <div>
-                    <p className="text-white font-bold text-sm font-heading leading-none">Est. 2018</p>
+                    <p className="text-white font-bold text-sm font-heading leading-none">Est. 2020</p>
                     <p className="text-gray-500 text-[10px] mt-0.5">Founded</p>
                   </div>
                 </div>
@@ -777,7 +777,7 @@ function Landing() {
                     <FolderCheck size={13} />
                   </div>
                   <div>
-                    <p className="text-white font-bold text-sm font-heading leading-none">50+</p>
+                    <p className="text-white font-bold text-sm font-heading leading-none">150+</p>
                     <p className="text-gray-500 text-[10px] mt-0.5">Projects Done</p>
                   </div>
                 </div>
