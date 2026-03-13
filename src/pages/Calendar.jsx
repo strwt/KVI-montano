@@ -244,8 +244,9 @@ const loadLeaflet = () => {
 }
 
 const geocodeAddress = async (query, signal) => {
+  const PHILIPPINES_VIEWBOX = '116.8,21.3,126.6,4.5'
   const response = await fetch(
-    `https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=6&q=${encodeURIComponent(query)}`,
+    `https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=6&countrycodes=ph&bounded=1&viewbox=${PHILIPPINES_VIEWBOX}&q=${encodeURIComponent(query)}`,
     { signal }
   )
   if (!response.ok) throw new Error('Address search failed')
@@ -342,13 +343,13 @@ function EventLocationPicker({ address, location, onAddressInput, onLocationSele
       try {
         const L = await loadLeaflet()
         if (!active || !L || !mapContainerRef.current || mapRef.current) return
-        leafletRef.current = L
-
-        const defaultCenter = location || { lat: 14.5995, lng: 120.9842 }
-        const map = L.map(mapContainerRef.current, {
-          center: [defaultCenter.lat, defaultCenter.lng],
-          zoom: location ? 15 : 12,
-        })
+	        leafletRef.current = L
+	
+	        const defaultCenter = location || { lat: 12.8797, lng: 121.774 }
+	        const map = L.map(mapContainerRef.current, {
+	          center: [defaultCenter.lat, defaultCenter.lng],
+	          zoom: location ? 15 : 6,
+	        })
 
         map.getContainer().style.zIndex = '0'
 
@@ -793,8 +794,8 @@ function Calendar({ listOnly = false }) {
   const [doneFields, setDoneFields] = useState(getDefaultDynamicFields())
   const [donePartners, setDonePartners] = useState([''])
   const [doneBloodTokens, setDoneBloodTokens] = useState([''])
-  const [doneContributorCommittee, setDoneContributorCommittee] = useState('')
   const [doneContributorMemberIds, setDoneContributorMemberIds] = useState([])
+  const [doneContributorSearch, setDoneContributorSearch] = useState('')
   const eventRefs = useRef({})
   const handledRedirectRef = useRef(false)
   const routeCategory = searchParams.get('category') || ''
@@ -910,20 +911,22 @@ function Calendar({ listOnly = false }) {
     return map
   }, [assignableMembers])
 
-  const contributorCommittees = useMemo(() => {
-    const set = new Set()
-    assignableMembers.forEach(member => {
-      const committee = String(member.committee || '').trim()
-      if (committee) set.add(committee)
-    })
-    return Array.from(set).sort((a, b) => a.localeCompare(b))
-  }, [assignableMembers])
-
   const contributorMembers = useMemo(() => {
-    const committee = String(doneContributorCommittee || '').trim()
-    if (!committee) return assignableMembers
-    return assignableMembers.filter(member => String(member.committee || '').trim() === committee)
-  }, [assignableMembers, doneContributorCommittee])
+    const query = String(doneContributorSearch || '').trim().toLowerCase()
+    if (!query) return assignableMembers
+    return assignableMembers.filter(member => {
+      const haystack = [
+        member?.name,
+        member?.email,
+        member?.idNumber,
+        member?.committee,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+      return haystack.includes(query)
+    })
+  }, [assignableMembers, doneContributorSearch])
 
   const toggleContributorMember = memberId => {
     const id = String(memberId)
@@ -1278,14 +1281,7 @@ function Calendar({ listOnly = false }) {
         ? event.assignedMemberIds.map(x => String(x))
         : []
     setDoneContributorMemberIds(Array.from(new Set(existingContributorIds)).filter(Boolean))
-    const storedCommittee = String(event.categoryData?.contributorCommittee || '').trim()
-    if (storedCommittee) {
-      setDoneContributorCommittee(storedCommittee)
-    } else {
-      const firstMemberId = existingContributorIds.find(id => memberById[id])
-      const inferred = firstMemberId ? String(memberById[firstMemberId]?.committee || '').trim() : ''
-      setDoneContributorCommittee(inferred)
-    }
+    setDoneContributorSearch('')
     setDoneFormError('')
     setMarkDoneEventId(event.id)
     setShowDoneForm(true)
@@ -1329,10 +1325,17 @@ function Calendar({ listOnly = false }) {
     const bloodTokensValue = Array.isArray(doneBloodTokens)
       ? doneBloodTokens.map(item => String(item || '').trim()).filter(Boolean).join('|')
       : ''
-    const contributorCommitteeValue = String(doneContributorCommittee || '').trim()
     const contributorMemberIdsValue = Array.isArray(doneContributorMemberIds)
       ? Array.from(new Set(doneContributorMemberIds.map(x => String(x)).filter(Boolean)))
       : []
+    const contributorCommittees = Array.from(
+      new Set(
+        contributorMemberIdsValue
+          .map(id => String(memberById[id]?.committee || '').trim())
+          .filter(Boolean)
+      )
+    )
+    const contributorCommitteeValue = contributorCommittees.length === 1 ? contributorCommittees[0] : ''
     setEvents(prev =>
       prev.map(item =>
         item.id === markDoneEvent.id
@@ -2350,19 +2353,12 @@ function Calendar({ listOnly = false }) {
 		                </div>
 		                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
 		                  <div>
-		                    <label className="block text-sm font-medium text-gray-700 mb-2">Committee</label>
-		                    <select
-		                      value={doneContributorCommittee}
-		                      onChange={e => setDoneContributorCommittee(e.target.value)}
-		                      className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-red-500"
-		                    >
-		                      <option value="">All Committees</option>
-		                      {contributorCommittees.map(committee => (
-		                        <option key={committee} value={committee}>
-		                          {committee}
-		                        </option>
-		                      ))}
-		                    </select>
+		                    <label className="block text-sm font-medium text-gray-700 mb-2">Search member</label>
+		                    <Input
+		                      value={doneContributorSearch}
+		                      onChange={e => setDoneContributorSearch(e.target.value)}
+		                      placeholder="Search by name, email, ID number, or committee..."
+		                    />
 		                  </div>
 		                  <div className="md:col-span-2">
 		                    <p className="text-xs text-gray-500 mb-2">Select members who contributed to this event.</p>
@@ -2386,7 +2382,7 @@ function Calendar({ listOnly = false }) {
 		                        )
 		                      })}
 		                      {contributorMembers.length === 0 && (
-		                        <p className="text-sm text-gray-500">No members found for this committee.</p>
+		                        <p className="text-sm text-gray-500">No matching members found.</p>
 		                      )}
 		                    </div>
 		                  </div>
