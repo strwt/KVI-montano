@@ -158,11 +158,7 @@ function Dashboard() {
     })
 
     const keysFromCommittees = Object.keys(labelByKey)
-    const keysFromEvents = events
-      .map(event => canonicalizeOperationKey(normalizeCategoryKey(event.category)))
-      .filter(Boolean)
-
-    const keySet = new Set([...DEFAULT_OPERATION_ORDER, ...keysFromCommittees, ...keysFromEvents])
+    const keySet = new Set(keysFromCommittees)
     const keys = Array.from(keySet)
     const unknownKeys = keys
       .filter(key => !DEFAULT_OPERATION_ORDER.includes(key))
@@ -174,7 +170,7 @@ function Dashboard() {
 
     return orderedKeys.map(key => ({
       key,
-      label: OPERATION_META[key]?.label || labelByKey[key] || titleCaseFromKey(key) || 'Uncategorized',
+      label: labelByKey[key] || OPERATION_META[key]?.label || titleCaseFromKey(key) || 'Uncategorized',
       icon: OPERATION_META[key]?.icon || FileText,
     }))
   }, [events, committees])

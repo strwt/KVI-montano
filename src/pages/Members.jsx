@@ -28,6 +28,40 @@ const ROLE_OPTIONS = [
 const COMMITTEE_OPTIONS = ['Environmental', 'Relief Operations', 'Fire Response', 'Medical']
 const BLOOD_TYPE_OPTIONS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
 
+const EVENTS_STORAGE_KEY = 'kusgan_events'
+
+const getStoredEvents = () => {
+  const stored = localStorage.getItem(EVENTS_STORAGE_KEY)
+  if (!stored) return []
+  try {
+    const parsed = JSON.parse(stored)
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+const normalizeCategoryKey = value =>
+  String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '_')
+
+const OPERATION_KEY_ALIASES = {
+  relief_operations: 'relief_operation',
+  fire_responses: 'fire_response',
+  water_distributions: 'water_distribution',
+  blood_lettings: 'blood_letting',
+}
+
+const canonicalizeCategoryKey = key => OPERATION_KEY_ALIASES[key] || key
+
+const titleCaseFromKey = key =>
+  String(key || '')
+    .trim()
+    .replace(/_/g, ' ')
+    .replace(/\w\S*/g, word => word.charAt(0).toUpperCase() + word.slice(1))
+
 const splitCategoryAndType = (value = '') => {
   const raw = String(value || '').trim()
   if (!raw) return { category: '', type: '' }
@@ -95,6 +129,46 @@ function Members() {
   const allMembers = getAllMembers()
   const isAdmin = user?.role === 'admin'
   const recruitments = getRecruitments()
+  const [events, setEvents] = useState(getStoredEvents)
+
+  useEffect(() => {
+    const reloadEvents = () => setEvents(getStoredEvents())
+    const handleStorage = event => {
+      if (event?.key === EVENTS_STORAGE_KEY) reloadEvents()
+    }
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') reloadEvents()
+    }
+
+    reloadEvents()
+    window.addEventListener('storage', handleStorage)
+    window.addEventListener('focus', reloadEvents)
+    window.addEventListener('kusgan-events-updated', reloadEvents)
+    document.addEventListener('visibilitychange', onVisibilityChange)
+
+    return () => {
+      window.removeEventListener('storage', handleStorage)
+      window.removeEventListener('focus', reloadEvents)
+      window.removeEventListener('kusgan-events-updated', reloadEvents)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+    }
+  }, [])
+
+  const updateEventsCategoryKey = (sourceKey, targetKey) => {
+    const fromKey = canonicalizeCategoryKey(normalizeCategoryKey(sourceKey))
+    const toKey = targetKey ? canonicalizeCategoryKey(normalizeCategoryKey(targetKey)) : ''
+    if (!fromKey) return
+
+    const next = getStoredEvents().map(event => {
+      const eventKey = canonicalizeCategoryKey(normalizeCategoryKey(event?.category))
+      if (!eventKey || eventKey !== fromKey) return event
+      return { ...event, category: toKey }
+    })
+
+    localStorage.setItem(EVENTS_STORAGE_KEY, JSON.stringify(next))
+    window.dispatchEvent(new Event('kusgan-events-updated'))
+    setEvents(next)
+  }
 
   const pendingRecruitments = useMemo(
     () => recruitments.filter(item => item.status === 'pending'),
@@ -121,6 +195,17 @@ function Members() {
     return operations.length > 0 ? operations : COMMITTEE_OPTIONS
   }, [memberCommittees])
 
+  const categoryLabelByKey = useMemo(() => {
+    const map = {}
+    memberCommittees.forEach(entry => {
+      const { category } = splitCategoryAndType(entry)
+      const key = canonicalizeCategoryKey(normalizeCategoryKey(category))
+      if (!key) return
+      if (!map[key]) map[key] = category.trim()
+    })
+    return map
+  }, [memberCommittees])
+
   useEffect(() => {
     if (!newMember.committee) {
       setNewMember(prev => ({ ...prev, committee: memberOperations[0], category: memberOperations[0] }))
@@ -133,16 +218,17 @@ function Members() {
   const operationTypesByCategory = useMemo(() => {
     return memberCommittees.reduce((acc, entry) => {
       const { category, type } = splitCategoryAndType(entry)
-      if (!category) return acc
-      if (!acc[category]) acc[category] = []
-      if (type && !acc[category].includes(type)) acc[category].push(type)
+      const key = canonicalizeCategoryKey(normalizeCategoryKey(category))
+      if (!key) return acc
+      if (!acc[key]) acc[key] = []
+      if (type && !acc[key].includes(type)) acc[key].push(type)
       return acc
     }, {})
   }, [memberCommittees])
 
   const operationCategories = useMemo(
-    () => Object.keys(operationTypesByCategory),
-    [operationTypesByCategory]
+    () => Object.keys(categoryLabelByKey).sort((a, b) => (categoryLabelByKey[a] || a).localeCompare(categoryLabelByKey[b] || b)),
+    [categoryLabelByKey]
   )
 
   const selectedCategoryTypes = useMemo(
@@ -156,8 +242,9 @@ function Members() {
   const operationEntryByCategoryType = useMemo(() => {
     return memberCommittees.reduce((acc, entry) => {
       const { category, type } = splitCategoryAndType(entry)
-      if (!category || !type) return acc
-      acc[`${category}|||${type}`] = entry
+      const key = canonicalizeCategoryKey(normalizeCategoryKey(category))
+      if (!key || !type) return acc
+      acc[`${key}|||${type}`] = entry
       return acc
     }, {})
   }, [memberCommittees])
@@ -184,11 +271,11 @@ function Members() {
     }
   }, [deleteCategoryTypes, deleteOperationType])
 
-  useEffect(() => {
-    if (selectedOperationCategory && !editedOperationCategory) {
-      setEditedOperationCategory(selectedOperationCategory)
-    }
-  }, [selectedOperationCategory, editedOperationCategory])
+	  useEffect(() => {
+	    if (selectedOperationCategory && !editedOperationCategory) {
+	      setEditedOperationCategory(categoryLabelByKey[selectedOperationCategory] || titleCaseFromKey(selectedOperationCategory))
+	    }
+	  }, [selectedOperationCategory, editedOperationCategory, categoryLabelByKey])
 
   const filteredMembers = allMembers.filter(member => {
     const matchesSearch =
@@ -218,26 +305,28 @@ function Members() {
     e.preventDefault()
     setCommitteeError('')
     const normalizedCategory = committeeName.trim()
-    if (!normalizedCategory) {
-      setCommitteeError('Operation name is required.')
-      return
-    }
-    const operationExists = operationCategories.some(
-      category => category.toLowerCase() === normalizedCategory.toLowerCase()
-    )
-    if (operationExists) {
-      setCommitteeError('Operation name already exists.')
-      return
-    }
+	    if (!normalizedCategory) {
+	      setCommitteeError('Category name is required.')
+	      return
+	    }
+	    const normalizedLower = normalizedCategory.toLowerCase()
+	    const operationExists = operationCategories.some(categoryKey => {
+	      const label = categoryLabelByKey[categoryKey] || titleCaseFromKey(categoryKey)
+	      return label.toLowerCase() === normalizedLower
+	    })
+	    if (operationExists) {
+	      setCommitteeError('Category name already exists.')
+	      return
+	    }
     const result = addCommittee(`${normalizedCategory} - General`)
     if (!result.success) {
       setCommitteeError(result.message)
       return
     }
-    setSelectedOperationCategory(normalizedCategory)
+    setSelectedOperationCategory(canonicalizeCategoryKey(normalizeCategoryKey(normalizedCategory)))
     setSelectedOperationType('General')
     setCommitteeName('')
-    setAddModalCategory(normalizedCategory)
+    setAddModalCategory(canonicalizeCategoryKey(normalizeCategoryKey(normalizedCategory)))
     setAddModalType('General')
     setShowAddOperationModal(false)
     setShowAddOperationTypeInline(false)
@@ -246,16 +335,16 @@ function Members() {
   const handleAddOperationType = e => {
     e.preventDefault()
     setCommitteeError('')
-    const operationName = addTypeOperationCategory.trim()
+    const operationName = (categoryLabelByKey[addTypeOperationCategory] || '').trim()
     const typeName = newOperationTypeName.trim()
     if (!operationName || !typeName) {
-      setCommitteeError('Operation name and new type of operation are required.')
+      setCommitteeError('Category name and new type are required.')
       return
     }
-    const existingTypes = operationTypesByCategory[operationName] || []
+    const existingTypes = operationTypesByCategory[addTypeOperationCategory] || []
     const hasDuplicateType = existingTypes.some(type => type.toLowerCase() === typeName.toLowerCase())
     if (hasDuplicateType) {
-      setCommitteeError('Type of operation already exists under this operation.')
+      setCommitteeError('Type already exists under this category.')
       return
     }
     const result = addCommittee(`${operationName} - ${typeName}`)
@@ -263,9 +352,9 @@ function Members() {
       setCommitteeError(result.message)
       return
     }
-    setSelectedOperationCategory(operationName)
+    setSelectedOperationCategory(addTypeOperationCategory)
     setSelectedOperationType(typeName)
-    setAddModalCategory(operationName)
+    setAddModalCategory(addTypeOperationCategory)
     setAddModalType(typeName)
     setAddTypeOperationCategory('')
     setNewOperationTypeName('')
@@ -276,29 +365,36 @@ function Members() {
     e.preventDefault()
     setCommitteeError('')
     if (!selectedOperationCategory) {
-      setCommitteeError('Select operation name to update.')
+      setCommitteeError('Select category name to update.')
       return
     }
     const nextCategory = editedOperationCategory.trim()
     if (!nextCategory) {
-      setCommitteeError('New operation name is required.')
+      setCommitteeError('New category name is required.')
       return
     }
+
+    const nextKey = canonicalizeCategoryKey(normalizeCategoryKey(nextCategory))
+    if (!nextKey) {
+      setCommitteeError('New category name is required.')
+      return
+    }
+
     if (
-      selectedOperationCategory.toLowerCase() !== nextCategory.toLowerCase() &&
-      operationCategories.some(category => category.toLowerCase() === nextCategory.toLowerCase())
+      selectedOperationCategory !== nextKey &&
+      operationCategories.includes(nextKey)
     ) {
-      setCommitteeError('Operation name already exists.')
+      setCommitteeError('Category name already exists.')
       return
     }
+
     const entriesToRename = memberCommittees.filter(entry => {
       const { category } = splitCategoryAndType(entry)
-      return category === selectedOperationCategory
+      const key = canonicalizeCategoryKey(normalizeCategoryKey(category))
+      return key === selectedOperationCategory
     })
-    if (entriesToRename.length === 0) {
-      setCommitteeError('No operation entries found to update.')
-      return
-    }
+
+    // Update saved category entries (if any).
     for (const source of entriesToRename) {
       const { type } = splitCategoryAndType(source)
       const target = `${nextCategory} - ${type || 'General'}`
@@ -308,38 +404,53 @@ function Members() {
         return
       }
     }
-    setSelectedOperationCategory(nextCategory)
+
+    // Update events using the old category key to the new key.
+    updateEventsCategoryKey(selectedOperationCategory, nextKey)
+
+    // If this category only existed in events (no saved entries), persist it as a managed category.
+    if (entriesToRename.length === 0) {
+      addCommittee(`${nextCategory} - General`)
+    }
+
+    setSelectedOperationCategory(nextKey)
     setEditedOperationCategory(nextCategory)
   }
 
   const handleDeleteOperation = () => {
     setCommitteeError('')
     if (!deleteOperationCategory) {
-      setCommitteeError('Select operation name first.')
+      setCommitteeError('Select category name first.')
       return
     }
+
     const entriesForOperation = memberCommittees.filter(entry => {
       const { category } = splitCategoryAndType(entry)
-      return category === deleteOperationCategory
+      const key = canonicalizeCategoryKey(normalizeCategoryKey(category))
+      return key === deleteOperationCategory
     })
-    if (entriesForOperation.length === 0) {
-      setCommitteeError('No operation entries found for selected operation.')
-      return
-    }
-    if (memberCommittees.length - entriesForOperation.length < 1) {
-      setCommitteeError('At least one operation entry must remain.')
-      return
-    }
-    for (const entry of entriesForOperation) {
-      const result = deleteCommittee(entry)
-      if (!result.success) {
-        setCommitteeError(result.message)
+
+    // Delete saved category entries (if any).
+    if (entriesForOperation.length > 0) {
+      if (memberCommittees.length - entriesForOperation.length < 1) {
+        setCommitteeError('At least one category entry must remain.')
         return
       }
-      if (categoryFilter === entry) {
-        setCategoryFilter('all')
+      for (const entry of entriesForOperation) {
+        const result = deleteCommittee(entry)
+        if (!result.success) {
+          setCommitteeError(result.message)
+          return
+        }
+        if (categoryFilter === entry) {
+          setCategoryFilter('all')
+        }
       }
     }
+
+    // Remove category from events by clearing it.
+    updateEventsCategoryKey(deleteOperationCategory, '')
+
     if (selectedOperationCategory === deleteOperationCategory) {
       setSelectedOperationCategory('')
       setSelectedOperationType('')
@@ -351,11 +462,11 @@ function Members() {
   }
 
   const selectedOperationKey = selectedOperationCategory && selectedOperationType
-    ? (operationEntryByCategoryType[`${selectedOperationCategory}|||${selectedOperationType}`] || `${selectedOperationCategory} - ${selectedOperationType}`)
+    ? (operationEntryByCategoryType[`${selectedOperationCategory}|||${selectedOperationType}`] || `${categoryLabelByKey[selectedOperationCategory] || titleCaseFromKey(selectedOperationCategory)} - ${selectedOperationType}`)
     : ''
   const selectedOperationUtilities = selectedOperationKey ? (utilitiesByCommittee[selectedOperationKey] || []) : []
   const operationNameExists = operationCategories.some(
-    category => category.toLowerCase() === committeeName.trim().toLowerCase()
+    categoryKey => (categoryLabelByKey[categoryKey] || '').toLowerCase() === committeeName.trim().toLowerCase()
   )
 
   const handleCreateMember = e => {
@@ -439,13 +550,13 @@ function Members() {
       {isAdmin && (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
           <div className="bg-white dark:bg-zinc-900 border border-red-600 rounded-2xl shadow-md p-5">
-            <h3 className="font-semibold text-gray-800 dark:text-zinc-100 mb-3">Operation Management</h3>
+            <h3 className="font-semibold text-gray-800 dark:text-zinc-100 mb-3">Category Management</h3>
             <button
               type="button"
               onClick={() => setShowOperationManagementPanel(prev => !prev)}
               className="w-full px-3 py-2 mb-3 bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-100 rounded-lg hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors text-sm"
             >
-              {showOperationManagementPanel ? 'Hide Operation Actions' : 'Show Operation Actions'}
+              {showOperationManagementPanel ? 'Hide Category Actions' : 'Show Category Actions'}
             </button>
             {showOperationManagementPanel && (
               <div className="space-y-4 mb-3">
@@ -488,7 +599,7 @@ function Members() {
 
               {selectedOperationUtilities.length > 0 && (
                 <div className="rounded-lg border border-gray-200 p-3 bg-white">
-                  <p className="text-xs text-gray-500 mb-2">Saved Utilities for Selected Operation</p>
+                  <p className="text-xs text-gray-500 mb-2">Saved Utilities for Selected Category</p>
                   <div className="space-y-1">
                     {selectedOperationUtilities.map(item => (
                       <p key={item} className="text-sm text-gray-700">{item}</p>
@@ -597,7 +708,7 @@ function Members() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs text-gray-500 mb-1">Operation</label>
+                <label className="block text-xs text-gray-500 mb-1">Category</label>
                 <select
                   value={newMember.committee}
                   onChange={e => setNewMember({ ...newMember, committee: e.target.value, category: e.target.value })}
@@ -626,7 +737,7 @@ function Members() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="w-full max-w-2xl bg-white rounded-xl shadow-2xl p-5 space-y-4 animate-fade-in-up">
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-gray-800">Add Operation</h3>
+              <h3 className="font-semibold text-gray-800">Add Category</h3>
               <button
                 type="button"
                 onClick={() => {
@@ -640,7 +751,7 @@ function Members() {
 
             <form onSubmit={handleCommitteeAdd} className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm text-gray-600 mb-1">Operation name</label>
+                <label className="block text-sm text-gray-600 mb-1">Category name</label>
                 <input
                   type="text"
                   value={committeeName}
@@ -650,7 +761,7 @@ function Members() {
                 />
                 {operationNameExists && (
                   <p className="text-xs text-amber-600 mt-1">
-                    Operation name already exists. Add a new type only.
+                    Category name already exists. Add a new type only.
                   </p>
                 )}
               </div>
@@ -662,25 +773,25 @@ function Members() {
               </button>
 
 	              <div className="md:col-span-2 rounded-lg border border-gray-200 bg-gray-50 p-3 space-y-2">
-	                <p className="text-sm text-gray-600">Saved Operation names</p>
+	                <p className="text-sm text-gray-600">Saved Category names</p>
 	                <div className="grid grid-cols-1 gap-2">
-	                  <select
-	                    value={addModalCategory}
-	                    onChange={e => {
-	                      const value = e.target.value
-	                      setAddModalCategory(value)
-	                    }}
-	                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-	                  >
-                    <option value="">Select operation name</option>
-                    {operationCategories.map(category => (
-                      <option key={category} value={category}>
-                        {category}
-	                      </option>
-	                    ))}
-	                  </select>
-	                </div>
-	              </div>
+		                  <select
+		                    value={addModalCategory}
+		                    onChange={e => {
+		                      const value = e.target.value
+		                      setAddModalCategory(value)
+		                    }}
+		                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+		                  >
+		                    <option value="">Select category name</option>
+	                    {operationCategories.map(categoryKey => (
+	                      <option key={categoryKey} value={categoryKey}>
+	                        {categoryLabelByKey[categoryKey] || titleCaseFromKey(categoryKey)}
+		                      </option>
+		                    ))}
+		                  </select>
+		                </div>
+		              </div>
 	            </form>
 
           </div>
@@ -691,7 +802,7 @@ function Members() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="w-full max-w-xl bg-white rounded-xl shadow-2xl p-5 space-y-4 animate-fade-in-up">
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-gray-800">Edit Operation</h3>
+              <h3 className="font-semibold text-gray-800">Edit Category</h3>
               <button
                 type="button"
                 onClick={() => setShowEditOperationForm(false)}
@@ -702,28 +813,28 @@ function Members() {
             </div>
             {committeeError && <p className="text-sm text-red-600">{committeeError}</p>}
             <form onSubmit={handleCommitteeRename} className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              <select
-                value={selectedOperationCategory}
-                onChange={e => {
-                  const value = e.target.value
-                  setSelectedOperationCategory(value)
-                  setEditedOperationCategory(value)
-                }}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                required
-              >
-                <option value="">Select operation name</option>
-                {operationCategories.map(category => (
-                  <option key={category} value={category}>
-                    {category}
-                  </option>
-                ))}
-              </select>
+	              <select
+	                value={selectedOperationCategory}
+	                onChange={e => {
+	                  const value = e.target.value
+	                  setSelectedOperationCategory(value)
+	                  setEditedOperationCategory(categoryLabelByKey[value] || titleCaseFromKey(value))
+	                }}
+	                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+	                required
+	              >
+		                <option value="">Select category name</option>
+	                {operationCategories.map(categoryKey => (
+	                  <option key={categoryKey} value={categoryKey}>
+	                    {categoryLabelByKey[categoryKey] || titleCaseFromKey(categoryKey)}
+	                  </option>
+	                ))}
+	              </select>
               <input
                 type="text"
                 value={editedOperationCategory}
                 onChange={e => setEditedOperationCategory(e.target.value)}
-                placeholder="New operation name"
+	                placeholder="New category name"
                 className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                 required
               />
@@ -742,7 +853,7 @@ function Members() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="w-full max-w-xl bg-white rounded-xl shadow-2xl p-5 space-y-4 animate-fade-in-up">
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-gray-800">Delete Operation</h3>
+              <h3 className="font-semibold text-gray-800">Delete Category</h3>
               <button
                 type="button"
                 onClick={() => setShowDeleteOperationForm(false)}
@@ -754,26 +865,26 @@ function Members() {
             {committeeError && <p className="text-sm text-red-600">{committeeError}</p>}
             <div className="rounded-lg border border-red-200 bg-red-50 p-3 space-y-3">
               <div className="grid grid-cols-1 gap-2">
-                <select
-                  value={deleteOperationCategory}
-                  onChange={e => {
-                    const value = e.target.value
-                    setDeleteOperationCategory(value)
-                  }}
-                  className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                >
-                  <option value="">Select operation name</option>
-                  {operationCategories.map(category => (
-                    <option key={category} value={category}>
-                      {category}
-                    </option>
-                  ))}
-                </select>
+	                <select
+	                  value={deleteOperationCategory}
+	                  onChange={e => {
+	                    const value = e.target.value
+	                    setDeleteOperationCategory(value)
+	                  }}
+	                  className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+	                >
+		                  <option value="">Select category name</option>
+	                  {operationCategories.map(categoryKey => (
+	                    <option key={categoryKey} value={categoryKey}>
+	                      {categoryLabelByKey[categoryKey] || titleCaseFromKey(categoryKey)}
+	                    </option>
+	                  ))}
+	                </select>
               </div>
 
               {deleteOperationCategory && (
                 <p className="text-sm text-red-700">
-                  Warning: all entries under this Operation will be deleted.
+                  Warning: all entries under this Category will be deleted.
                 </p>
               )}
 
@@ -1027,7 +1138,7 @@ function Members() {
 
                 <div className="mt-4 flex flex-wrap gap-2">
                   <span className="px-2 py-1 rounded bg-red-50 text-red-700 text-xs border border-red-200">
-                    Committee: {member.committee || memberOperations[0]}
+                    Category: {member.committee || memberOperations[0]}
                   </span>
                   <span className="px-2 py-1 rounded bg-blue-50 text-blue-700 text-xs border border-blue-200">
                     Role: {member.role === 'admin' ? 'Admin' : 'Member'}
