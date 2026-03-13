@@ -18,6 +18,8 @@ const DEFAULT_UTILITIES_BY_COMMITTEE = {
 }
 const APP_LANGUAGE_STORAGE_KEY = 'kusgan_app_language'
 const SUPPORTED_APP_LANGUAGES = ['English', 'Filipino', 'Bisaya']
+const COMMITTEES_STORAGE_KEY = 'kusgan_committees'
+const COMMITTEES_UPDATED_EVENT = 'kusgan-committees-updated'
 
 const parseStoredJson = (value, fallback) => {
   if (!value) return fallback
@@ -26,6 +28,60 @@ const parseStoredJson = (value, fallback) => {
   } catch {
     return fallback
   }
+}
+
+const splitCategoryAndType = (value = '') => {
+  const raw = String(value || '').trim()
+  if (!raw) return { category: '', type: '' }
+  const parts = raw.split(' - ')
+  if (parts.length === 1) return { category: parts[0], type: 'General' }
+  const category = parts.shift()?.trim() || ''
+  const type = parts.join(' - ').trim() || 'General'
+  return { category, type }
+}
+
+const coerceCommitteesToStringArray = (parsed) => {
+  if (!parsed) return []
+
+  if (Array.isArray(parsed)) {
+    const output = []
+    parsed.forEach(item => {
+      if (typeof item === 'string') output.push(item)
+      else if (item && typeof item === 'object') {
+        if (typeof item.name === 'string') output.push(item.name)
+        else if (typeof item.committee === 'string') output.push(item.committee)
+        else if (typeof item.category === 'string' && typeof item.type === 'string') output.push(`${item.category} - ${item.type}`)
+        else if (typeof item.category === 'string') output.push(item.category)
+      }
+    })
+    return output
+  }
+
+  if (parsed && typeof parsed === 'object') {
+    if (Array.isArray(parsed.committees)) return coerceCommitteesToStringArray(parsed.committees)
+    if (Array.isArray(parsed.operations)) return coerceCommitteesToStringArray(parsed.operations)
+
+    // Legacy shape: { "Environmental": ["General", "Type A"], "Relief Operations": ["General"] }
+    const output = []
+    Object.entries(parsed).forEach(([category, types]) => {
+      if (!category) return
+      if (Array.isArray(types)) {
+        if (types.length === 0) output.push(category)
+        types.forEach(type => {
+          if (typeof type === 'string' && type.trim()) output.push(`${category} - ${type}`)
+        })
+        return
+      }
+      if (typeof types === 'string' && types.trim()) {
+        output.push(`${category} - ${types}`)
+        return
+      }
+      output.push(category)
+    })
+    return output
+  }
+
+  return []
 }
 
 const omitPassword = (account = {}) => {
@@ -150,13 +206,29 @@ const getStoredUsers = () => {
 }
 
 const getStoredCommittees = () => {
-  const parsed = parseStoredJson(localStorage.getItem('kusgan_committees'), null)
-  if (!Array.isArray(parsed)) return DEFAULT_COMMITTEES
-  const sanitized = parsed
+  const parsed = parseStoredJson(localStorage.getItem(COMMITTEES_STORAGE_KEY), null)
+  const rawList = coerceCommitteesToStringArray(parsed)
+  if (rawList.length === 0) return DEFAULT_COMMITTEES
+
+  const sanitized = rawList
     .map(name => (typeof name === 'string' ? name.trim() : ''))
     .filter(Boolean)
-    .filter(name => !LEGACY_COMMITTEE_BLOCKLIST.includes(name.toLowerCase()))
-  return sanitized.length > 0 ? sanitized : DEFAULT_COMMITTEES
+    .filter(name => {
+      const { category } = splitCategoryAndType(name)
+      if (!category) return false
+      return !LEGACY_COMMITTEE_BLOCKLIST.includes(category.toLowerCase())
+    })
+
+  const deduped = []
+  const seen = new Set()
+  sanitized.forEach(entry => {
+    const key = entry.toLowerCase()
+    if (seen.has(key)) return
+    seen.add(key)
+    deduped.push(entry)
+  })
+
+  return deduped.length > 0 ? deduped : DEFAULT_COMMITTEES
 }
 
 const sanitizeUtilitiesByCommittee = (rawMap, committeeList) => {
@@ -252,8 +324,8 @@ export function AuthProvider({ children }) {
     if (!localStorage.getItem('kusgan_users')) {
       localStorage.setItem('kusgan_users', JSON.stringify(getStoredUsers()))
     }
-    if (!localStorage.getItem('kusgan_committees')) {
-      localStorage.setItem('kusgan_committees', JSON.stringify(getStoredCommittees()))
+    if (!localStorage.getItem(COMMITTEES_STORAGE_KEY)) {
+      localStorage.setItem(COMMITTEES_STORAGE_KEY, JSON.stringify(getStoredCommittees()))
     }
     if (!localStorage.getItem(UTILITIES_STORAGE_KEY)) {
       localStorage.setItem(UTILITIES_STORAGE_KEY, JSON.stringify(getStoredUtilitiesByCommittee(getStoredCommittees())))
@@ -262,6 +334,24 @@ export function AuthProvider({ children }) {
       localStorage.setItem(RECRUITMENT_STORAGE_KEY, JSON.stringify(getStoredRecruitments()))
     }
     setLoading(false)
+  }, [])
+
+  useEffect(() => {
+    const handleStorage = event => {
+      if (!event) return
+      if (event.key === COMMITTEES_STORAGE_KEY) {
+        const nextCommittees = getStoredCommittees()
+        setCommittees(nextCommittees)
+        setUtilitiesByCommittee(getStoredUtilitiesByCommittee(nextCommittees))
+        window.dispatchEvent(new Event(COMMITTEES_UPDATED_EVENT))
+      }
+      if (event.key === UTILITIES_STORAGE_KEY) {
+        setUtilitiesByCommittee(getStoredUtilitiesByCommittee(getStoredCommittees()))
+      }
+    }
+
+    window.addEventListener('storage', handleStorage)
+    return () => window.removeEventListener('storage', handleStorage)
   }, [])
 
   useEffect(() => {
@@ -277,7 +367,8 @@ export function AuthProvider({ children }) {
   }, [users])
 
   useEffect(() => {
-    localStorage.setItem('kusgan_committees', JSON.stringify(committees))
+    localStorage.setItem(COMMITTEES_STORAGE_KEY, JSON.stringify(committees))
+    window.dispatchEvent(new Event(COMMITTEES_UPDATED_EVENT))
   }, [committees])
 
   useEffect(() => {
@@ -738,17 +829,17 @@ export function AuthProvider({ children }) {
   const addCommittee = (committeeName) => {
     const normalizedName = committeeName?.trim()
     if (!normalizedName) {
-      return { success: false, message: 'Committee name is required.' }
+      return { success: false, message: 'Category name is required.' }
     }
     if (LEGACY_COMMITTEE_BLOCKLIST.includes(normalizedName.toLowerCase())) {
-      return { success: false, message: 'This committee name is not allowed.' }
+      return { success: false, message: 'This category name is not allowed.' }
     }
 
     const exists = committees.some(
       committee => committee.toLowerCase() === normalizedName.toLowerCase()
     )
     if (exists) {
-      return { success: false, message: 'Committee already exists.' }
+      return { success: false, message: 'Category already exists.' }
     }
 
     setCommittees(prev => [...prev, normalizedName])
@@ -764,22 +855,22 @@ export function AuthProvider({ children }) {
     const target = newName?.trim()
 
     if (!source || !target) {
-      return { success: false, message: 'Both current and new committee names are required.' }
+      return { success: false, message: 'Both current and new category names are required.' }
     }
 
     if (!committees.includes(source)) {
-      return { success: false, message: 'Committee not found.' }
+      return { success: false, message: 'Category not found.' }
     }
 
     if (LEGACY_COMMITTEE_BLOCKLIST.includes(target.toLowerCase())) {
-      return { success: false, message: 'This committee name is not allowed.' }
+      return { success: false, message: 'This category name is not allowed.' }
     }
 
     const duplicate = committees.some(
       committee => committee.toLowerCase() === target.toLowerCase() && committee !== source
     )
     if (duplicate) {
-      return { success: false, message: 'Committee already exists.' }
+      return { success: false, message: 'Category already exists.' }
     }
 
     if (source === target) {
@@ -806,7 +897,7 @@ export function AuthProvider({ children }) {
 
   const deleteCommittee = (committeeName) => {
     if (committees.length <= 1) {
-      return { success: false, message: 'At least one committee must remain.' }
+      return { success: false, message: 'At least one category must remain.' }
     }
 
     const fallbackCommittee = committees.find(committee => committee !== committeeName) || DEFAULT_COMMITTEES[0]
