@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   Activity,
+  Droplets,
   Leaf,
   Flame,
   FileText,
@@ -18,12 +19,59 @@ const getStoredEvents = () => {
   return stored ? JSON.parse(stored) : []
 }
 
-const EVENT_CATEGORIES = [
-  { key: 'environmental', label: 'Environmental', icon: Leaf },
-  { key: 'relief operation', label: 'Relief Operation', icon: Activity },
-  { key: 'fire response', label: 'Fire Response', icon: Flame },
-  { key: 'notes', label: 'Notes', icon: FileText },
-  { key: 'medical', label: 'Medical', icon: HeartPulse },
+const splitCategoryAndType = (value = '') => {
+  const raw = String(value || '').trim()
+  if (!raw) return { category: '', type: '' }
+  const parts = raw.split(' - ')
+  if (parts.length === 1) return { category: parts[0], type: 'General' }
+  const category = parts.shift()?.trim() || ''
+  const type = parts.join(' - ').trim() || 'General'
+  return { category, type }
+}
+
+const normalizeCategoryKey = value =>
+  String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '_')
+
+const OPERATION_KEY_ALIASES = {
+  relief_operations: 'relief_operation',
+  fire_responses: 'fire_response',
+  water_distributions: 'water_distribution',
+  blood_lettings: 'blood_letting',
+}
+
+const canonicalizeOperationKey = key => OPERATION_KEY_ALIASES[key] || key
+
+const titleCaseFromKey = key =>
+  String(key || '')
+    .trim()
+    .replace(/_/g, ' ')
+    .replace(/\w\S*/g, word => word.charAt(0).toUpperCase() + word.slice(1))
+
+const OPERATION_META = {
+  tuli: { label: 'Tuli', icon: HeartPulse },
+  blood_letting: { label: 'Blood Letting', icon: Activity },
+  donations: { label: 'Donations', icon: FileText },
+  environmental: { label: 'Environmental', icon: Leaf },
+  relief_operation: { label: 'Relief Operation', icon: Activity },
+  fire_response: { label: 'Fire Response', icon: Flame },
+  water_distribution: { label: 'Water Distribution', icon: Droplets },
+  notes: { label: 'Notes', icon: FileText },
+  medical: { label: 'Medical', icon: HeartPulse },
+}
+
+const DEFAULT_OPERATION_ORDER = [
+  'tuli',
+  'blood_letting',
+  'donations',
+  'environmental',
+  'relief_operation',
+  'fire_response',
+  'water_distribution',
+  'notes',
+  'medical',
 ]
 
 const resolveEventDate = event => event.dateTime || event.date || null
@@ -50,25 +98,45 @@ const getStoredLoginActivity = () => {
 
 const getIconThemeClass = categoryKey => {
   if (categoryKey === 'environmental') return 'icon-theme-environmental'
-  if (categoryKey === 'relief operation') return 'icon-theme-relief'
-  if (categoryKey === 'fire response') return 'icon-theme-fire'
+  if (categoryKey === 'relief_operation') return 'icon-theme-relief'
+  if (categoryKey === 'fire_response') return 'icon-theme-fire'
   if (categoryKey === 'notes') return 'icon-theme-notes'
   if (categoryKey === 'medical') return 'icon-theme-medical'
   return ''
 }
 
 function Dashboard() {
-  const { user } = useAuth()
+  const { user, committees } = useAuth()
   const { t } = useI18n()
   const navigate = useNavigate()
   const isAdmin = user?.role === 'admin'
   const [animatedStats, setAnimatedStats] = useState(false)
-  const [events] = useState(getStoredEvents)
+  const [events, setEvents] = useState(getStoredEvents)
   const [recentLogins] = useState(getStoredLoginActivity)
 
   useEffect(() => {
     const timer = setTimeout(() => setAnimatedStats(true), 100)
     return () => clearTimeout(timer)
+  }, [])
+
+  useEffect(() => {
+    const reloadEvents = () => setEvents(getStoredEvents())
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') reloadEvents()
+    }
+
+    reloadEvents()
+    window.addEventListener('storage', reloadEvents)
+    window.addEventListener('focus', reloadEvents)
+    window.addEventListener('kusgan-events-updated', reloadEvents)
+    document.addEventListener('visibilitychange', onVisibilityChange)
+
+    return () => {
+      window.removeEventListener('storage', reloadEvents)
+      window.removeEventListener('focus', reloadEvents)
+      window.removeEventListener('kusgan-events-updated', reloadEvents)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+    }
   }, [])
 
   const recentEvents = useMemo(() => {
@@ -78,11 +146,46 @@ function Dashboard() {
       .slice(0, RECENT_ACTIVITY_LIMIT)
   }, [events])
 
+  const operations = useMemo(() => {
+    const committeeEntries = Array.isArray(committees) ? committees : []
+    const labelByKey = {}
+    committeeEntries.forEach(entry => {
+      const { category } = splitCategoryAndType(entry)
+      const key = canonicalizeOperationKey(normalizeCategoryKey(category))
+      if (!key) return
+      if (!labelByKey[key]) labelByKey[key] = category.trim()
+    })
+
+    const keysFromCommittees = Object.keys(labelByKey)
+    const keysFromEvents = events
+      .map(event => canonicalizeOperationKey(normalizeCategoryKey(event.category)))
+      .filter(Boolean)
+
+    const keySet = new Set([...DEFAULT_OPERATION_ORDER, ...keysFromCommittees, ...keysFromEvents])
+    const keys = Array.from(keySet)
+    const unknownKeys = keys
+      .filter(key => !DEFAULT_OPERATION_ORDER.includes(key))
+      .sort((a, b) => titleCaseFromKey(a).localeCompare(titleCaseFromKey(b)))
+    const orderedKeys = [
+      ...DEFAULT_OPERATION_ORDER.filter(key => keySet.has(key)),
+      ...unknownKeys,
+    ]
+
+    return orderedKeys.map(key => ({
+      key,
+      label: OPERATION_META[key]?.label || labelByKey[key] || titleCaseFromKey(key) || 'Uncategorized',
+      icon: OPERATION_META[key]?.icon || FileText,
+    }))
+  }, [events, committees])
+
   const categoryCounts = useMemo(() => {
-    return EVENT_CATEGORIES.reduce((acc, category) => {
-      acc[category.key] = events.filter(event => (event.category || '').toLowerCase() === category.key).length
-      return acc
-    }, {})
+    const counts = {}
+    events.forEach(event => {
+      const key = canonicalizeOperationKey(normalizeCategoryKey(event.category))
+      if (!key) return
+      counts[key] = (counts[key] || 0) + 1
+    })
+    return counts
   }, [events])
 
   const volunteerBars = useMemo(() => {
@@ -159,7 +262,7 @@ function Dashboard() {
         <div className="col-span-12">
           <h2 className="mb-3 text-[24px] font-semibold text-black dark:text-zinc-100">{t('Events by Category')}</h2>
           <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
-            {EVENT_CATEGORIES.map((category, index) => (
+            {operations.map((category, index) => (
               <button
                 key={category.key}
                 type="button"
