@@ -33,9 +33,13 @@ const SPONSOR_LOGOS = [
   'Armunds.jpg',
   'BFP.png',
   'BJMP.png',
+  'Bohol-mpc.png',
   'CityMall.png',
+  'CLIFSA.png',
   'Climbs.jpg',
   'COCPO.webp',
+  'Golden Dream.png',
+  'JNT.png',
   'Knorr.png',
   'Natco.jpeg',
   'Nature.webp',
@@ -43,15 +47,18 @@ const SPONSOR_LOGOS = [
   'NGO.jpg',
   'NO.png',
   'OIC.webp',
+  'Oro.png',
   'PNP.png',
   'PNVCA.jpg',
   'Pop-Com.png',
   'Remys.jpg',
   'Strong.jpg',
+  'VENUS.png',
 ]
 
-const SPONSOR_LOGOS_ROW_1 = SPONSOR_LOGOS.slice(0, Math.ceil(SPONSOR_LOGOS.length / 2))
-const SPONSOR_LOGOS_ROW_2 = SPONSOR_LOGOS.slice(Math.ceil(SPONSOR_LOGOS.length / 2))
+const SPONSOR_MARQUEE_REPEAT = 4
+const SPONSOR_MARQUEE_SHIFT = `-${100 / SPONSOR_MARQUEE_REPEAT}%`
+const SPONSOR_LOGOS_LOOP = Array.from({ length: SPONSOR_MARQUEE_REPEAT }, () => SPONSOR_LOGOS).flat()
 
 const STATS = [
   { label: 'Volunteers', value: '500+', icon: Users },
@@ -843,17 +850,17 @@ function Landing() {
             <div className="sponsor-marquee">
               <div
                 className="sponsor-marquee-track sponsor-marquee-track--ltr"
-                style={{ '--sponsor-marquee-duration': '26s' }}
+                style={{ '--sponsor-marquee-duration': '70s', '--sponsor-marquee-shift': SPONSOR_MARQUEE_SHIFT }}
               >
-                {[...SPONSOR_LOGOS_ROW_1, ...SPONSOR_LOGOS_ROW_1].map((filename, index) => (
+                {SPONSOR_LOGOS_LOOP.map((filename, index) => (
                   <div
                     key={`${filename}-${index}`}
                     data-sponsor-logo
-                    className="sponsor-marquee-item h-12 w-12 sm:h-14 sm:w-14 shrink-0 rounded-full bg-white p-1 shadow-lg overflow-hidden"
+                    className="sponsor-marquee-item h-16 w-16 sm:h-20 sm:w-20 shrink-0 rounded-full bg-white p-1 shadow-lg overflow-hidden"
                     title={filename.replace(/\.(png|jpe?g|webp)$/i, '')}
                   >
                     <img
-                      src={`/${filename}`}
+                      src={`/${encodeURIComponent(filename)}`}
                       alt={filename.replace(/\.(png|jpe?g|webp)$/i, '').replace(/[-_]/g, ' ')}
                       className="h-full w-full object-contain"
                       loading="lazy"
@@ -867,29 +874,7 @@ function Landing() {
               </div>
             </div>
 
-            <div className="sponsor-marquee">
-              <div className="sponsor-marquee-track" style={{ '--sponsor-marquee-duration': '30s' }}>
-                {[...SPONSOR_LOGOS_ROW_2, ...SPONSOR_LOGOS_ROW_2].map((filename, index) => (
-                  <div
-                    key={`${filename}-${index}`}
-                    data-sponsor-logo
-                    className="sponsor-marquee-item h-12 w-12 sm:h-14 sm:w-14 shrink-0 rounded-full bg-white p-1 shadow-lg overflow-hidden"
-                    title={filename.replace(/\.(png|jpe?g|webp)$/i, '')}
-                  >
-                    <img
-                      src={`/${filename}`}
-                      alt={filename.replace(/\.(png|jpe?g|webp)$/i, '').replace(/[-_]/g, ' ')}
-                      className="h-full w-full object-contain"
-                      loading="lazy"
-                      onError={e => {
-                        const wrapper = e.currentTarget.closest('[data-sponsor-logo]')
-                        if (wrapper) wrapper.style.display = 'none'
-                      }}
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
+            
           </div>
         </div>
       </div>

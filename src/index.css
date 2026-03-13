@@ -411,7 +411,7 @@ body {
 
 @keyframes sponsor-marquee {
   from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
+  to { transform: translateX(var(--sponsor-marquee-shift, -50%)); }
 }
 
 /* Animation Classes */
