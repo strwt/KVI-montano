@@ -256,6 +256,8 @@ const ALL_MONTHS = [
 ]
 
 const CALENDAR_FILTERS_KEY = 'kusgan_calendar_filters'
+const NOTIFICATIONS_STORAGE_KEY = 'kusgan_notifications'
+const NOTIFICATIONS_UPDATED_EVENT = 'kusgan-notifications-updated'
 
 const getStoredCalendarFilters = () => {
   const stored = localStorage.getItem(CALENDAR_FILTERS_KEY)
@@ -269,6 +271,22 @@ const getStoredCalendarFilters = () => {
   } catch {
     return { searchQuery: '', selectedCategory: 'All' }
   }
+}
+
+const getStoredNotifications = () => {
+  const stored = localStorage.getItem(NOTIFICATIONS_STORAGE_KEY)
+  if (!stored) return []
+  try {
+    const parsed = JSON.parse(stored)
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+const saveNotifications = (items) => {
+  localStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify(items))
+  window.dispatchEvent(new Event(NOTIFICATIONS_UPDATED_EVENT))
 }
 
 const getCategoryKeyFromLabel = label => {
@@ -447,6 +465,21 @@ const getEventMatchKey = event => {
   const category = event?.category || ''
   return `fallback:${dateValue}|${title}|${category}`
 }
+
+const buildAssignmentNotification = (memberId, event, actorName) => ({
+  id: `${Date.now()}-${memberId}-${Math.floor(Math.random() * 1000)}`,
+  type: 'assignment',
+  userId: memberId,
+  eventId: event?.id ?? null,
+  eventKey: getEventMatchKey(event),
+  title: event?.title || 'Untitled Event',
+  category: event?.category || 'notes',
+  dateTime: event?.dateTime || event?.date || '',
+  details: [event?.content, event?.address].filter(Boolean).join(' • '),
+  assignedBy: actorName || 'Admin',
+  createdAt: dayjs().toISOString(),
+  readAt: null,
+})
 
 function EventLocationPicker({ address, location, onAddressInput, onLocationSelect }) {
   const [suggestions, setSuggestions] = useState([])
@@ -1283,6 +1316,32 @@ function Calendar({ listOnly = false }) {
   const markDoneCategoryMeta = markDoneEvent ? CATEGORY_META[markDoneEvent.category] : null
   const MarkDoneIcon = markDoneCategoryMeta?.icon || FileText
 
+  const normalizeAssignedIds = ids =>
+    Array.isArray(ids) ? ids.map(id => String(id)).filter(Boolean) : []
+
+  const notifyAssignedMembers = (event, previousAssignedIds = []) => {
+    if (!canManageEvents || !event) return
+    const nextAssigned = normalizeAssignedIds(event.assignedMemberIds)
+    if (nextAssigned.length === 0) return
+
+    const previous = new Set(normalizeAssignedIds(previousAssignedIds))
+    const newlyAssigned = nextAssigned.filter(id => !previous.has(id))
+    if (newlyAssigned.length === 0) return
+
+    const stored = getStoredNotifications()
+    const additions = newlyAssigned.map(memberId =>
+      buildAssignmentNotification(memberId, event, user?.name || 'Admin')
+    )
+    saveNotifications([...additions, ...stored])
+  }
+
+  const currentUserId = String(user?.id || '')
+  const isAssignedToCurrentUser = item => {
+    if (!currentUserId) return false
+    const assigned = Array.isArray(item?.assignedMemberIds) ? item.assignedMemberIds.map(id => String(id)) : []
+    return assigned.includes(currentUserId)
+  }
+
   const handleDoneFieldChange = (categoryKey, fieldKey, value) => {
     setDoneFields(prev => ({
       ...prev,
@@ -1374,6 +1433,7 @@ function Calendar({ listOnly = false }) {
         completedAt: null,
       }
       setEvents(prev => [newEvent, ...prev])
+      notifyAssignedMembers(newEvent, [])
       resetForm()
       setShowEventForm(false)
     }
@@ -1583,6 +1643,13 @@ function Calendar({ listOnly = false }) {
 
     if (pendingConfirmation.type === 'update') {
       const { eventId, payload } = pendingConfirmation
+      const existingEvent = events.find(event => event.id === eventId) || null
+      const updatedEvent = {
+        ...(existingEvent || {}),
+        ...payload,
+        id: eventId,
+        updatedAt: dayjs().format('YYYY-MM-DD HH:mm'),
+      }
       setEvents(prev =>
         prev.map(event =>
           event.id === eventId
@@ -1594,6 +1661,7 @@ function Calendar({ listOnly = false }) {
             : event
         )
       )
+      notifyAssignedMembers(updatedEvent, existingEvent?.assignedMemberIds || [])
       resetForm()
       setShowEventForm(false)
     }
@@ -1891,6 +1959,16 @@ function Calendar({ listOnly = false }) {
                           <span className={`ml-2 inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold border ${item.status === 'done' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-red-100 text-red-700 border-red-200'}`}>
                             {item.status === 'done' ? 'Done' : 'On-going'}
                           </span>
+                          {isAssignedToCurrentUser(item) && (
+                            <span className="ml-2 inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
+                              Assigned to you
+                            </span>
+                          )}
+                          {isAssignedToCurrentUser(item) && (
+                            <span className="ml-2 inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
+                              Assigned to you
+                            </span>
+                          )}
                           <h4 className="font-semibold text-gray-800 mt-1 truncate">{item.title}</h4>
                           <p className="text-sm text-gray-500 mt-1">{dayjs(item.dateTime).format('MMMM D, YYYY h:mm A')}</p>
                         </div>
@@ -2139,13 +2217,20 @@ function Calendar({ listOnly = false }) {
                           </p>
                           <div className="flex items-center justify-between gap-2">
                             <p className="text-xs text-gray-700 truncate">{item.title || 'Untitled Event'}</p>
-                            <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold border ${
-                              item.status === 'done'
-                                ? 'bg-green-100 text-green-700 border-green-200'
-                                : 'bg-red-100 text-red-700 border-red-200'
-                            }`}>
-                              {item.status === 'done' ? 'Done' : 'On-going'}
-                            </span>
+                            <div className="flex items-center gap-1">
+                              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold border ${
+                                item.status === 'done'
+                                  ? 'bg-green-100 text-green-700 border-green-200'
+                                  : 'bg-red-100 text-red-700 border-red-200'
+                              }`}>
+                                {item.status === 'done' ? 'Done' : 'On-going'}
+                              </span>
+                              {isAssignedToCurrentUser(item) && (
+                                <span className="rounded-full border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700">
+                                  Assigned
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       )
