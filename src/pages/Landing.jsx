@@ -29,13 +29,17 @@ const NAV_LINKS = [
   { label: 'About', href: '#about' },
 ]
 
-const FOOTER_LOGOS = [
+const SPONSOR_LOGOS = [
   'Armunds.jpg',
   'BFP.png',
   'BJMP.png',
+  'Bohol-mpc.png',
   'CityMall.png',
+  'CLIFSA.png',
   'Climbs.jpg',
   'COCPO.webp',
+  'Golden Dream.png',
+  'JNT.png',
   'Knorr.png',
   'Natco.jpeg',
   'Nature.webp',
@@ -43,12 +47,18 @@ const FOOTER_LOGOS = [
   'NGO.jpg',
   'NO.png',
   'OIC.webp',
+  'Oro.png',
   'PNP.png',
   'PNVCA.jpg',
   'Pop-Com.png',
   'Remys.jpg',
   'Strong.jpg',
+  'VENUS.png',
 ]
+
+const SPONSOR_MARQUEE_REPEAT = 4
+const SPONSOR_MARQUEE_SHIFT = `-${100 / SPONSOR_MARQUEE_REPEAT}%`
+const SPONSOR_LOGOS_LOOP = Array.from({ length: SPONSOR_MARQUEE_REPEAT }, () => SPONSOR_LOGOS).flat()
 
 const STATS = [
   { label: 'Volunteers', value: '100+', icon: Users },
@@ -820,7 +830,6 @@ function Landing() {
 
         {/* Scroll indicator */}
         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2" style={{ color: '#374151' }}>
-          <span className="text-[10px] tracking-[0.2em] uppercase">Scroll</span>
           <div className="w-px h-8" style={{ background: 'linear-gradient(to bottom, #374151, transparent)' }} />
         </div>
       </section>
@@ -836,32 +845,36 @@ function Landing() {
         }}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
-            {STATS.map((stat, i) => {
-              const Icon = stat.icon
-              return (
-                <div
-                  key={stat.label}
-                  className={`text-center ${i < STATS.length - 1 ? 'lg:border-r' : ''}`}
-                  style={{ borderColor: 'rgba(185,28,28,0.2)' }}
-                >
-                  <div className="flex justify-center mb-3">
-                    <div
-                      className="w-11 h-11 rounded-2xl flex items-center justify-center"
-                      style={{
-                        background: 'rgba(220,38,38,0.15)',
-                        border: '1px solid rgba(220,38,38,0.25)',
-                        color: '#f87171',
+          <p className="text-center text-[10px] tracking-[0.2em] uppercase text-gray-500 mb-4">Sponsored by</p>
+          <div className="space-y-3">
+            <div className="sponsor-marquee">
+              <div
+                className="sponsor-marquee-track sponsor-marquee-track--ltr"
+                style={{ '--sponsor-marquee-duration': '70s', '--sponsor-marquee-shift': SPONSOR_MARQUEE_SHIFT }}
+              >
+                {SPONSOR_LOGOS_LOOP.map((filename, index) => (
+                  <div
+                    key={`${filename}-${index}`}
+                    data-sponsor-logo
+                    className="sponsor-marquee-item h-16 w-16 sm:h-20 sm:w-20 shrink-0 rounded-full bg-white p-1 shadow-lg overflow-hidden"
+                    title={filename.replace(/\.(png|jpe?g|webp)$/i, '')}
+                  >
+                    <img
+                      src={`/${encodeURIComponent(filename)}`}
+                      alt={filename.replace(/\.(png|jpe?g|webp)$/i, '').replace(/[-_]/g, ' ')}
+                      className="h-full w-full object-contain"
+                      loading="lazy"
+                      onError={e => {
+                        const wrapper = e.currentTarget.closest('[data-sponsor-logo]')
+                        if (wrapper) wrapper.style.display = 'none'
                       }}
-                    >
-                      <Icon size={19} />
-                    </div>
+                    />
                   </div>
-                  <p className="text-3xl sm:text-4xl font-bold text-white font-heading">{stat.value}</p>
-                  <p className="text-sm text-gray-500 mt-1">{stat.label}</p>
-                </div>
-              )
-            })}
+                ))}
+              </div>
+            </div>
+
+            
           </div>
         </div>
       </div>
@@ -1258,56 +1271,113 @@ function Landing() {
               </p>
             </div>
 
-            {/* Get Involved */}
-            <div>
-              <h4 className="text-xs font-bold text-gray-400 font-heading mb-5 tracking-widest uppercase">
-                Get Involved
+            {/* Contact */}
+            <div className="flex flex-col items-start text-left">
+              <h4 className="text-xs font-bold text-gray-400 font-heading mb-3 tracking-widest uppercase">
+                CONTACT
               </h4>
-              <p className="text-sm text-gray-600 mb-5 leading-relaxed">
-                Become a volunteer and make a difference in your community today.
-              </p>
-              <button
-                type="button"
-                onClick={() => navigate('/recruitment')}
-                className="inline-flex items-center gap-2 text-sm px-5 py-2.5 rounded-xl text-white font-semibold transition-all duration-200 hover:-translate-y-0.5"
-                style={{
-                  background: '#dc2626',
-                  boxShadow: '0 8px 24px rgba(185,28,28,0.4)',
-                }}
-                onMouseEnter={e => { e.currentTarget.style.background = '#ef4444' }}
-                onMouseLeave={e => { e.currentTarget.style.background = '#dc2626' }}
-              >
-                Join KUSGAN
-                <ArrowRight size={14} />
-              </button>
+              <div className="space-y-5 text-sm text-gray-400 max-w-sm">
+                <p className="leading-relaxed flex flex-wrap items-baseline justify-start gap-x-2">
+                  <span className="text-gray-500 shrink-0">Address:</span>
+                  <span className="min-w-0">Zone 5 Bulua, Cagayan de Oro City</span>
+                </p>
+                <p className="leading-relaxed flex flex-wrap items-baseline justify-start gap-x-2">
+                  <span className="text-gray-500 shrink-0">Contact number:</span>
+                  <a href="tel:09676651777" className="hover:text-gray-300 transition-colors tabular-nums">
+                    09676651777
+                  </a>
+                </p>
+                <p className="leading-relaxed flex flex-wrap items-baseline justify-start gap-x-2">
+                  <span className="text-gray-500 shrink-0">Facebook:</span>
+                  <a
+                    href="https://www.facebook.com/KusganVolunteersINC"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="hover:text-gray-300 transition-colors break-all min-w-0"
+                  >
+                    https://www.facebook.com/KusganVolunteersINC
+                  </a>
+                </p>
+                <p className="leading-relaxed flex flex-wrap items-baseline justify-start gap-x-2">
+                  <span className="text-gray-500 shrink-0">Email:</span>
+                  <a
+                    href="mailto:kusganvolunteersincorporated@gmail.com"
+                    className="hover:text-gray-300 transition-colors break-all min-w-0"
+                  >
+                    kusganvolunteersincorporated@gmail.com
+                  </a>
+                </p>
+              </div>
             </div>
           </div>
 
+          {/* Sponsored logos moved to the stats strip */}
+          {/*
           <div className="mt-10 pt-8" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
             <div className="flex flex-nowrap items-center gap-2 overflow-x-auto pb-2">
-              {FOOTER_LOGOS.map(filename => (
-                <div
-                  key={filename}
-                  className="h-10 w-10 shrink-0 rounded-full bg-white p-1 shadow-lg"
-                  title={filename.replace(/\.(png|jpe?g|webp)$/i, '')}
-                >
-                  <img
-                    src={`/${filename}`}
-                    alt={filename.replace(/\.(png|jpe?g|webp)$/i, '').replace(/[-_]/g, ' ')}
-                    className="h-full w-full object-contain"
-                    loading="lazy"
-                    onError={e => {
-                      const wrapper = e.currentTarget.parentElement
-                      if (wrapper) wrapper.style.display = 'none'
-                    }}
-                  />
-                </div>
-              ))}
+              {FOOTER_LOGOS.map((filename, index) => {
+                const logoTitle = filename.replace(/\.(png|jpe?g|webp)$/i, '')
+                const logoAlt = logoTitle.replace(/[-_]/g, ' ')
+                const isFlippingLogo = index < FOOTER_FLIP_LOGO_COUNT
+
+                return (
+                  <div
+                    key={filename}
+                    data-footer-logo
+                    className="h-10 w-10 shrink-0 rounded-full bg-white p-1 shadow-lg overflow-hidden"
+                    title={logoTitle}
+                  >
+                    {isFlippingLogo ? (
+                      <div className="footer-logo-flip">
+                        <div className="footer-logo-flip-inner" style={{ animationDelay: `${index * 0.6}s` }}>
+                          <img
+                            src={`/${filename}`}
+                            alt={logoAlt}
+                            className="footer-logo-flip-face footer-logo-flip-front"
+                            loading="lazy"
+                            onError={e => {
+                              const wrapper = e.currentTarget.closest('[data-footer-logo]')
+                              if (wrapper) wrapper.style.display = 'none'
+                            }}
+                          />
+                          <img
+                            src={`/${filename}`}
+                            alt=""
+                            aria-hidden="true"
+                            className="footer-logo-flip-face footer-logo-flip-back"
+                            loading="lazy"
+                            onError={e => {
+                              const wrapper = e.currentTarget.closest('[data-footer-logo]')
+                              if (wrapper) wrapper.style.display = 'none'
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <img
+                        src={`/${filename}`}
+                        alt={logoAlt}
+                        className="h-full w-full object-contain"
+                        loading="lazy"
+                        onError={e => {
+                          const wrapper = e.currentTarget.closest('[data-footer-logo]')
+                          if (wrapper) wrapper.style.display = 'none'
+                        }}
+                      />
+                    )}
+                  </div>
+                )
+              })}
             </div>
           </div>
 
+          */}
+
           {/* Copyright */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
+          <div
+            className="mt-10 pt-8 flex flex-col sm:flex-row items-center justify-between gap-2"
+            style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
+          >
             <p className="text-xs" style={{ color: '#374151' }}>
               © {new Date().getFullYear()} KUSGAN Volunteer Inc. All rights reserved.
             </p>
