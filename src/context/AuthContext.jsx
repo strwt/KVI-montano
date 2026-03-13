@@ -616,13 +616,16 @@ export function AuthProvider({ children }) {
   const submitRecruitmentApplication = (applicationData = {}) => {
     const fullName = applicationData.fullName?.trim()
     const email = applicationData.email?.trim().toLowerCase()
-    const idNumber = applicationData.idNumber?.trim()
+    const idNumber = applicationData.idNumber?.trim() || ''
     const contactNumber = applicationData.contactNumber?.trim()
     const address = applicationData.address?.trim()
     const bloodType = applicationData.bloodType?.trim().toUpperCase()
+    const insuranceStatus = applicationData.insuranceStatus === 'Insured' ? 'Insured' : 'N/A'
+    const insuranceYearRaw = String(applicationData.insuranceYear || '').trim()
+    const insuranceYear = insuranceStatus === 'Insured' ? insuranceYearRaw : ''
     const validBloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
 
-    if (!fullName || !email || !idNumber || !contactNumber || !address || !bloodType) {
+    if (!fullName || !email || !contactNumber || !address || !bloodType) {
       return { success: false, message: 'All fields are required.' }
     }
 
@@ -630,7 +633,7 @@ export function AuthProvider({ children }) {
       return { success: false, message: 'Please enter a valid email address.' }
     }
 
-    if (!/^[a-zA-Z0-9]+$/.test(idNumber)) {
+    if (idNumber && !/^[a-zA-Z0-9]+$/.test(idNumber)) {
       return { success: false, message: 'ID Number must be alphanumeric.' }
     }
 
@@ -642,11 +645,18 @@ export function AuthProvider({ children }) {
       return { success: false, message: 'Please select a valid blood type.' }
     }
 
-    const existingUserId = users.some(
-      member => (member.idNumber || '').toLowerCase() === idNumber.toLowerCase()
-    )
-    if (existingUserId) {
-      return { success: false, message: 'ID Number already exists in member records.' }
+    if (insuranceStatus === 'Insured') {
+      if (!insuranceYear) {
+        return { success: false, message: 'Insurance year is required when insured.' }
+      }
+      if (!/^\d{4}$/.test(insuranceYear)) {
+        return { success: false, message: 'Insurance year must be a 4-digit year.' }
+      }
+      const yearNumber = Number(insuranceYear)
+      const maxYear = dayjs().year() + 1
+      if (Number.isNaN(yearNumber) || yearNumber < 1900 || yearNumber > maxYear) {
+        return { success: false, message: `Insurance year must be between 1900 and ${maxYear}.` }
+      }
     }
 
     const existingUserEmail = users.some(
@@ -656,14 +666,10 @@ export function AuthProvider({ children }) {
       return { success: false, message: 'Email already exists in member records.' }
     }
 
-    const existingRecruitment = recruitments.some(
-      item =>
-        (item.idNumber || '').toLowerCase() === idNumber.toLowerCase() ||
-        (item.email || '').toLowerCase() === email
-    )
+    const existingRecruitment = recruitments.some(item => (item.email || '').toLowerCase() === email)
 
     if (existingRecruitment) {
-      return { success: false, message: 'This Email or ID Number already has a recruitment entry.' }
+      return { success: false, message: 'This email already has a recruitment entry.' }
     }
 
     const newRecruitment = {
@@ -674,6 +680,8 @@ export function AuthProvider({ children }) {
       contactNumber,
       address,
       bloodType,
+      insuranceStatus,
+      insuranceYear,
       status: 'pending',
       submittedAt: dayjs().toISOString(),
       reviewedAt: null,

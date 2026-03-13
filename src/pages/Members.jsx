@@ -15,6 +15,7 @@ import {
   Phone,
   MapPin,
   Droplets,
+  Shield,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
@@ -398,7 +399,7 @@ function Members() {
     setNewMember({
       name: recruitment.fullName,
       email: recruitment.email,
-      idNumber: recruitment.idNumber,
+      idNumber: recruitment.idNumber || '',
       password: '',
       address: recruitment.address || '',
       contactNumber: recruitment.contactNumber || '',
@@ -830,7 +831,7 @@ function Members() {
                         <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 mt-1">
                           <span>{entry.email}</span>
                           <span className="text-gray-300">|</span>
-                          <span>{entry.idNumber}</span>
+                          <span>{entry.idNumber || 'N/A'}</span>
                           <span className="text-gray-300">|</span>
                           <span>{dayjs(entry.submittedAt).format('MMM D, YYYY h:mm A')}</span>
                         </div>
@@ -857,7 +858,7 @@ function Members() {
                         </div>
                         <div className="rounded-lg bg-white border border-gray-200 p-3">
                           <p className="text-xs text-gray-500 mb-1 flex items-center gap-1"><Hash size={12} /> ID Number</p>
-                          <p className="text-sm font-medium text-gray-800">{entry.idNumber}</p>
+                          <p className="text-sm font-medium text-gray-800">{entry.idNumber || 'N/A'}</p>
                         </div>
                         <div className="rounded-lg bg-white border border-gray-200 p-3">
                           <p className="text-xs text-gray-500 mb-1 flex items-center gap-1"><Phone size={12} /> Contact Number</p>
@@ -870,6 +871,14 @@ function Members() {
                         <div className="rounded-lg bg-white border border-gray-200 p-3">
                           <p className="text-xs text-gray-500 mb-1 flex items-center gap-1"><Droplets size={12} /> Blood Type</p>
                           <p className="text-sm font-medium text-gray-800">{entry.bloodType || 'N/A'}</p>
+                        </div>
+                        <div className="rounded-lg bg-white border border-gray-200 p-3">
+                          <p className="text-xs text-gray-500 mb-1 flex items-center gap-1"><Shield size={12} /> Insurance</p>
+                          <p className="text-sm font-medium text-gray-800">{entry.insuranceStatus || 'N/A'}</p>
+                        </div>
+                        <div className="rounded-lg bg-white border border-gray-200 p-3">
+                          <p className="text-xs text-gray-500 mb-1 flex items-center gap-1"><Calendar size={12} /> Insurance Year</p>
+                          <p className="text-sm font-medium text-gray-800">{entry.insuranceYear || 'N/A'}</p>
                         </div>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
@@ -910,7 +919,7 @@ function Members() {
                       </span>
                     </div>
                     <p className="text-xs text-gray-500 mt-1">
-                      {entry.email} | {entry.idNumber} | {entry.contactNumber || 'N/A'} | {entry.bloodType || 'N/A'} | Submitted {dayjs(entry.submittedAt).format('MMM D, YYYY')}
+                      {entry.email} | {entry.idNumber || 'N/A'} | {entry.contactNumber || 'N/A'} | {entry.bloodType || 'N/A'} | Submitted {dayjs(entry.submittedAt).format('MMM D, YYYY')}
                     </p>
                   </div>
                 ))}

@@ -29,6 +29,27 @@ const NAV_LINKS = [
   { label: 'About', href: '#about' },
 ]
 
+const FOOTER_LOGOS = [
+  'Armunds.jpg',
+  'BFP.png',
+  'BJMP.png',
+  'CityMall.png',
+  'Climbs.jpg',
+  'COCPO.webp',
+  'Knorr.png',
+  'Natco.jpeg',
+  'Nature.webp',
+  'NCSC.jpg',
+  'NGO.jpg',
+  'NO.png',
+  'OIC.webp',
+  'PNP.png',
+  'PNVCA.jpg',
+  'Pop-Com.png',
+  'Remys.jpg',
+  'Strong.jpg',
+]
+
 const STATS = [
   { label: 'Volunteers', value: '500+', icon: Users },
   { label: 'Projects', value: '50+', icon: FolderCheck },
@@ -1218,7 +1239,7 @@ function Landing() {
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div
-            className="grid grid-cols-1 md:grid-cols-3 gap-10 mb-10 pb-10"
+            className="grid grid-cols-1 md:grid-cols-2 gap-10 mb-10 pb-10"
             style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
           >
             {/* Brand */}
@@ -1235,37 +1256,6 @@ function Landing() {
               <p className="text-sm text-gray-600 leading-relaxed max-w-xs">
                 Mobilizing communities through compassion, service, and unity for a better tomorrow.
               </p>
-            </div>
-
-            {/* Quick Links */}
-            <div>
-              <h4 className="text-xs font-bold text-gray-400 font-heading mb-5 tracking-widest uppercase">
-                Quick Links
-              </h4>
-              <ul className="space-y-3">
-                {[
-                  { label: 'Home', href: '#home' },
-                  { label: 'Our Services', href: '#services' },
-                  { label: 'Org. Structure', href: '#organizational-structure' },
-                  { label: 'About Us', href: '#about' },
-                ].map(item => (
-                  <li key={item.label}>
-                    <a
-                      href={item.href}
-                      className="text-sm flex items-center gap-2 transition-colors duration-200 group"
-                      style={{ color: '#4b5563' }}
-                      onMouseEnter={e => { e.currentTarget.style.color = '#f87171' }}
-                      onMouseLeave={e => { e.currentTarget.style.color = '#4b5563' }}
-                    >
-                      <span
-                        className="w-1 h-1 rounded-full shrink-0 transition-colors duration-200 group-hover:bg-red-400"
-                        style={{ background: '#374151' }}
-                      />
-                      {item.label}
-                    </a>
-                  </li>
-                ))}
-              </ul>
             </div>
 
             {/* Get Involved */}
@@ -1293,13 +1283,33 @@ function Landing() {
             </div>
           </div>
 
+          <div className="mt-10 pt-8" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+            <div className="flex flex-nowrap items-center gap-2 overflow-x-auto pb-2">
+              {FOOTER_LOGOS.map(filename => (
+                <div
+                  key={filename}
+                  className="h-10 w-10 shrink-0 rounded-full bg-white p-1 shadow-lg"
+                  title={filename.replace(/\.(png|jpe?g|webp)$/i, '')}
+                >
+                  <img
+                    src={`/${filename}`}
+                    alt={filename.replace(/\.(png|jpe?g|webp)$/i, '').replace(/[-_]/g, ' ')}
+                    className="h-full w-full object-contain"
+                    loading="lazy"
+                    onError={e => {
+                      const wrapper = e.currentTarget.parentElement
+                      if (wrapper) wrapper.style.display = 'none'
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* Copyright */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
             <p className="text-xs" style={{ color: '#374151' }}>
               © {new Date().getFullYear()} KUSGAN Volunteer Inc. All rights reserved.
-            </p>
-            <p className="text-xs" style={{ color: '#1f2937' }}>
-              Built with ❤️ for communities
             </p>
           </div>
         </div>
