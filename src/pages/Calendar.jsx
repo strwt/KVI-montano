@@ -244,8 +244,9 @@ const loadLeaflet = () => {
 }
 
 const geocodeAddress = async (query, signal) => {
+  const PHILIPPINES_VIEWBOX = '116.8,21.3,126.6,4.5'
   const response = await fetch(
-    `https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=6&q=${encodeURIComponent(query)}`,
+    `https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=6&countrycodes=ph&bounded=1&viewbox=${PHILIPPINES_VIEWBOX}&q=${encodeURIComponent(query)}`,
     { signal }
   )
   if (!response.ok) throw new Error('Address search failed')
@@ -351,13 +352,13 @@ function EventLocationPicker({ address, location, onAddressInput, onLocationSele
       try {
         const L = await loadLeaflet()
         if (!active || !L || !mapContainerRef.current || mapRef.current) return
-        leafletRef.current = L
-
-        const defaultCenter = location || { lat: 14.5995, lng: 120.9842 }
-        const map = L.map(mapContainerRef.current, {
-          center: [defaultCenter.lat, defaultCenter.lng],
-          zoom: location ? 15 : 12,
-        })
+	        leafletRef.current = L
+	
+	        const defaultCenter = location || { lat: 12.8797, lng: 121.774 }
+	        const map = L.map(mapContainerRef.current, {
+	          center: [defaultCenter.lat, defaultCenter.lng],
+	          zoom: location ? 15 : 6,
+	        })
 
         map.getContainer().style.zIndex = '0'
 
@@ -802,6 +803,8 @@ function Calendar({ listOnly = false }) {
   const [doneFields, setDoneFields] = useState(getDefaultDynamicFields())
   const [donePartners, setDonePartners] = useState([''])
   const [doneBloodTokens, setDoneBloodTokens] = useState([''])
+  const [doneContributorMemberIds, setDoneContributorMemberIds] = useState([])
+  const [doneContributorSearch, setDoneContributorSearch] = useState('')
   const eventRefs = useRef({})
   const handledRedirectRef = useRef(false)
   const routeCategory = searchParams.get('category') || ''
@@ -820,6 +823,48 @@ function Calendar({ listOnly = false }) {
     })
     setFormError('')
   }
+
+  useEffect(() => {
+    const reloadEvents = () => {
+      const raw = localStorage.getItem('kusgan_events')
+      if (!raw) {
+        setEvents(prev => (prev.length ? [] : prev))
+        return
+      }
+      try {
+        const parsed = JSON.parse(raw)
+        if (!Array.isArray(parsed)) return
+        setEvents(prev => {
+          try {
+            return JSON.stringify(prev) === raw ? prev : parsed
+          } catch {
+            return parsed
+          }
+        })
+      } catch {
+        // ignore malformed storage
+      }
+    }
+
+    const handleStorage = event => {
+      if (event?.key === 'kusgan_events') reloadEvents()
+    }
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') reloadEvents()
+    }
+
+    window.addEventListener('storage', handleStorage)
+    window.addEventListener('focus', reloadEvents)
+    window.addEventListener('kusgan-events-updated', reloadEvents)
+    document.addEventListener('visibilitychange', onVisibilityChange)
+
+    return () => {
+      window.removeEventListener('storage', handleStorage)
+      window.removeEventListener('focus', reloadEvents)
+      window.removeEventListener('kusgan-events-updated', reloadEvents)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+    }
+  }, [])
 
   useEffect(() => {
     localStorage.setItem('kusgan_events', JSON.stringify(events))
@@ -849,21 +894,15 @@ function Calendar({ listOnly = false }) {
       map[key] = CATEGORY_CONFIG[key]?.label || titleCaseFromKey(key)
     })
     Object.entries(dynamicCategoryLabels).forEach(([key, label]) => {
-      if (!map[key]) map[key] = label
+      map[key] = label
     })
     return map
   }, [dynamicCategoryLabels])
 
   const additionalCategoryKeys = useMemo(() => {
-    const set = new Set()
-    Object.keys(dynamicCategoryLabels).forEach(key => set.add(key))
-    events.forEach(event => {
-      const key = canonicalizeOperationKey(normalizeCategoryKey(event.category))
-      if (key && !CATEGORY_CONFIG[key]) set.add(key)
-    })
-    const keys = Array.from(set).filter(key => !CATEGORY_CONFIG[key])
+    const keys = Object.keys(dynamicCategoryLabels).filter(key => !CATEGORY_CONFIG[key])
     return keys.sort((a, b) => (categoryLabelByKey[a] || titleCaseFromKey(a)).localeCompare(categoryLabelByKey[b] || titleCaseFromKey(b)))
-  }, [dynamicCategoryLabels, events, categoryLabelByKey])
+  }, [dynamicCategoryLabels, categoryLabelByKey])
 
   const memberNameById = useMemo(() => {
     const map = {}
@@ -872,6 +911,40 @@ function Calendar({ listOnly = false }) {
     })
     return map
   }, [assignableMembers])
+
+  const memberById = useMemo(() => {
+    const map = {}
+    assignableMembers.forEach(member => {
+      map[String(member.id)] = member
+    })
+    return map
+  }, [assignableMembers])
+
+  const contributorMembers = useMemo(() => {
+    const query = String(doneContributorSearch || '').trim().toLowerCase()
+    if (!query) return assignableMembers
+    return assignableMembers.filter(member => {
+      const haystack = [
+        member?.name,
+        member?.email,
+        member?.idNumber,
+        member?.committee,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+      return haystack.includes(query)
+    })
+  }, [assignableMembers, doneContributorSearch])
+
+  const toggleContributorMember = memberId => {
+    const id = String(memberId)
+    setDoneContributorMemberIds(prev => {
+      const list = Array.isArray(prev) ? prev : []
+      if (list.includes(id)) return list.filter(x => x !== id)
+      return [...list, id]
+    })
+  }
 
   useEffect(() => {
     localStorage.setItem(
@@ -1224,6 +1297,13 @@ function Calendar({ listOnly = false }) {
         .concat([''])
         .slice(0, 20)
     )
+    const existingContributorIds = Array.isArray(event.categoryData?.contributorMemberIds)
+      ? event.categoryData.contributorMemberIds.map(x => String(x))
+      : Array.isArray(event.assignedMemberIds)
+        ? event.assignedMemberIds.map(x => String(x))
+        : []
+    setDoneContributorMemberIds(Array.from(new Set(existingContributorIds)).filter(Boolean))
+    setDoneContributorSearch('')
     setDoneFormError('')
     setMarkDoneEventId(event.id)
     setShowDoneForm(true)
@@ -1267,6 +1347,17 @@ function Calendar({ listOnly = false }) {
     const bloodTokensValue = Array.isArray(doneBloodTokens)
       ? doneBloodTokens.map(item => String(item || '').trim()).filter(Boolean).join('|')
       : ''
+    const contributorMemberIdsValue = Array.isArray(doneContributorMemberIds)
+      ? Array.from(new Set(doneContributorMemberIds.map(x => String(x)).filter(Boolean)))
+      : []
+    const contributorCommittees = Array.from(
+      new Set(
+        contributorMemberIdsValue
+          .map(id => String(memberById[id]?.committee || '').trim())
+          .filter(Boolean)
+      )
+    )
+    const contributorCommitteeValue = contributorCommittees.length === 1 ? contributorCommittees[0] : ''
     setEvents(prev =>
       prev.map(item =>
         item.id === markDoneEvent.id
@@ -1277,6 +1368,8 @@ function Calendar({ listOnly = false }) {
                 ...(item.categoryData && typeof item.categoryData === 'object' ? item.categoryData : {}),
                 ...nextCategoryData,
                 partners: partnersValue,
+                contributorCommittee: contributorCommitteeValue,
+                contributorMemberIds: contributorMemberIdsValue,
                 ...(markDoneEvent.category === 'blood_letting' ? { blood_token: bloodTokensValue } : {}),
               },
               // Preserve the original completion time when updating done details.
@@ -1348,10 +1441,17 @@ function Calendar({ listOnly = false }) {
     if (item.status !== 'done') return null
     const partners = splitPipe(item.categoryData?.partners)
     const tokens = item.category === 'blood_letting' ? splitPipe(item.categoryData?.blood_token) : []
+    const contributorMemberIds = Array.isArray(item.categoryData?.contributorMemberIds)
+      ? item.categoryData.contributorMemberIds.map(x => String(x)).filter(Boolean)
+      : []
+    const contributorNames = contributorMemberIds
+      .map(id => memberNameById[Number(id)] || memberNameById[id] || '')
+      .filter(Boolean)
     const configFields = CATEGORY_CONFIG[item.category]?.fields || []
     const showAny =
       partners.length > 0 ||
       tokens.length > 0 ||
+      contributorNames.length > 0 ||
       configFields.some(field => field.key !== 'blood_token' && item.categoryData?.[field.key] !== undefined && String(item.categoryData?.[field.key] ?? '').trim() !== '')
 
     if (!showAny) return null
@@ -1367,6 +1467,19 @@ function Calendar({ listOnly = false }) {
               {partners.map(partner => (
                 <span key={partner} className="px-2 py-1 bg-white border border-green-200 rounded-full text-xs text-green-800">
                   {partner}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {contributorNames.length > 0 && (
+          <div className="space-y-1">
+            <p className="text-xs font-semibold text-gray-600">Contributors</p>
+            <div className="flex flex-wrap gap-2">
+              {contributorNames.map(name => (
+                <span key={name} className="px-2 py-1 bg-white border border-green-200 rounded-full text-xs text-green-800">
+                  {name}
                 </span>
               ))}
             </div>
@@ -2250,13 +2363,58 @@ function Calendar({ listOnly = false }) {
               </button>
             </div>
 
-	            <form onSubmit={handleMarkDone} className="p-4 sm:p-6 space-y-5">
-	              {doneFormError && <p className="text-sm text-red-600">{doneFormError}</p>}
+		            <form onSubmit={handleMarkDone} className="p-4 sm:p-6 space-y-5">
+		              {doneFormError && <p className="text-sm text-red-600">{doneFormError}</p>}
 
-	              <div className="space-y-2">
-	                <div className="flex items-center justify-between gap-2">
-	                  <Label>Partners</Label>
-	                  <Button
+		              <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3">
+		                <div className="flex items-center justify-between gap-2">
+		                  <p className="text-sm font-semibold text-gray-800">Committee Contributors</p>
+		                  <span className="text-xs text-gray-500">
+		                    {Array.isArray(doneContributorMemberIds) ? doneContributorMemberIds.length : 0} selected
+		                  </span>
+		                </div>
+		                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+		                  <div>
+		                    <label className="block text-sm font-medium text-gray-700 mb-2">Search member</label>
+		                    <Input
+		                      value={doneContributorSearch}
+		                      onChange={e => setDoneContributorSearch(e.target.value)}
+		                      placeholder="Search by name, email, ID number, or committee..."
+		                    />
+		                  </div>
+		                  <div className="md:col-span-2">
+		                    <p className="text-xs text-gray-500 mb-2">Select members who contributed to this event.</p>
+		                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
+		                      {contributorMembers.map(member => {
+		                        const id = String(member.id)
+		                        const checked = Array.isArray(doneContributorMemberIds) && doneContributorMemberIds.includes(id)
+		                        return (
+		                          <label
+		                            key={id}
+		                            className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700"
+		                          >
+		                            <input
+		                              type="checkbox"
+		                              checked={checked}
+		                              onChange={() => toggleContributorMember(member.id)}
+		                              className="h-4 w-4"
+		                            />
+		                            <span className="min-w-0 truncate">{member.name}</span>
+		                          </label>
+		                        )
+		                      })}
+		                      {contributorMembers.length === 0 && (
+		                        <p className="text-sm text-gray-500">No matching members found.</p>
+		                      )}
+		                    </div>
+		                  </div>
+		                </div>
+		              </div>
+
+		              <div className="space-y-2">
+		                <div className="flex items-center justify-between gap-2">
+		                  <Label>Partners</Label>
+		                  <Button
 	                    type="button"
 	                    size="sm"
 	                    variant="secondary"
