@@ -1217,68 +1217,6 @@ function Landing() {
             </div>
           </div>
 
-          {/* Sponsored logos moved to the stats strip */}
-          {/*
-          <div className="mt-10 pt-8" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-            <div className="flex flex-nowrap items-center gap-2 overflow-x-auto pb-2">
-              {FOOTER_LOGOS.map((filename, index) => {
-                const logoTitle = filename.replace(/\.(png|jpe?g|webp)$/i, '')
-                const logoAlt = logoTitle.replace(/[-_]/g, ' ')
-                const isFlippingLogo = index < FOOTER_FLIP_LOGO_COUNT
-
-                return (
-                  <div
-                    key={filename}
-                    data-footer-logo
-                    className="h-10 w-10 shrink-0 rounded-full bg-white p-1 shadow-lg overflow-hidden"
-                    title={logoTitle}
-                  >
-                    {isFlippingLogo ? (
-                      <div className="footer-logo-flip">
-                        <div className="footer-logo-flip-inner" style={{ animationDelay: `${index * 0.6}s` }}>
-                          <img
-                            src={`/${filename}`}
-                            alt={logoAlt}
-                            className="footer-logo-flip-face footer-logo-flip-front"
-                            loading="lazy"
-                            onError={e => {
-                              const wrapper = e.currentTarget.closest('[data-footer-logo]')
-                              if (wrapper) wrapper.style.display = 'none'
-                            }}
-                          />
-                          <img
-                            src={`/${filename}`}
-                            alt=""
-                            aria-hidden="true"
-                            className="footer-logo-flip-face footer-logo-flip-back"
-                            loading="lazy"
-                            onError={e => {
-                              const wrapper = e.currentTarget.closest('[data-footer-logo]')
-                              if (wrapper) wrapper.style.display = 'none'
-                            }}
-                          />
-                        </div>
-                      </div>
-                    ) : (
-                      <img
-                        src={`/${filename}`}
-                        alt={logoAlt}
-                        className="h-full w-full object-contain"
-                        loading="lazy"
-                        onError={e => {
-                          const wrapper = e.currentTarget.closest('[data-footer-logo]')
-                          if (wrapper) wrapper.style.display = 'none'
-                        }}
-                      />
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-
-          */}
-
           {/* Copyright */}
             <p className="text-xs" style={{ color: '#374151' }}>
               © {new Date().getFullYear()} KUSGAN Volunteer Inc. All rights reserved.
