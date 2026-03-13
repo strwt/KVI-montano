@@ -79,6 +79,7 @@ const getEventsCategoryRoute = categoryKey => `/events?category=${encodeURICompo
 const RECENT_ACTIVITY_LIMIT = 5
 const LOGIN_ACTIVITY_LIMIT = 8
 
+
 const getStoredLoginActivity = () => {
   const stored = localStorage.getItem('kusgan_login_activity')
   if (!stored) return []
@@ -282,6 +283,7 @@ function Dashboard() {
           </div>
           </div> 
 	      </section>
+
 
       {isAdmin && (
         <section className="grid grid-cols-12 gap-4">
