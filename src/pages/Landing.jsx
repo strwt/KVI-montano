@@ -1271,28 +1271,43 @@ function Landing() {
               </p>
             </div>
 
-            {/* Get Involved */}
-            <div>
-              <h4 className="text-xs font-bold text-gray-400 font-heading mb-5 tracking-widest uppercase">
-                Get Involved
+            {/* Contact */}
+            <div className="flex flex-col items-start text-left">
+              <h4 className="text-xs font-bold text-gray-400 font-heading mb-3 tracking-widest uppercase">
+                CONTACT
               </h4>
-              <p className="text-sm text-gray-600 mb-5 leading-relaxed">
-                Become a volunteer and make a difference in your community today.
-              </p>
-              <button
-                type="button"
-                onClick={() => navigate('/recruitment')}
-                className="inline-flex items-center gap-2 text-sm px-5 py-2.5 rounded-xl text-white font-semibold transition-all duration-200 hover:-translate-y-0.5"
-                style={{
-                  background: '#dc2626',
-                  boxShadow: '0 8px 24px rgba(185,28,28,0.4)',
-                }}
-                onMouseEnter={e => { e.currentTarget.style.background = '#ef4444' }}
-                onMouseLeave={e => { e.currentTarget.style.background = '#dc2626' }}
-              >
-                Join KUSGAN
-                <ArrowRight size={14} />
-              </button>
+              <div className="space-y-5 text-sm text-gray-400 max-w-sm">
+                <p className="leading-relaxed flex flex-wrap items-baseline justify-start gap-x-2">
+                  <span className="text-gray-500 shrink-0">Address:</span>
+                  <span className="min-w-0">Zone 5 Bulua, Cagayan de Oro City</span>
+                </p>
+                <p className="leading-relaxed flex flex-wrap items-baseline justify-start gap-x-2">
+                  <span className="text-gray-500 shrink-0">Contact number:</span>
+                  <a href="tel:09676651777" className="hover:text-gray-300 transition-colors tabular-nums">
+                    09676651777
+                  </a>
+                </p>
+                <p className="leading-relaxed flex flex-wrap items-baseline justify-start gap-x-2">
+                  <span className="text-gray-500 shrink-0">Facebook:</span>
+                  <a
+                    href="https://www.facebook.com/KusganVolunteersINC"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="hover:text-gray-300 transition-colors break-all min-w-0"
+                  >
+                    https://www.facebook.com/KusganVolunteersINC
+                  </a>
+                </p>
+                <p className="leading-relaxed flex flex-wrap items-baseline justify-start gap-x-2">
+                  <span className="text-gray-500 shrink-0">Email:</span>
+                  <a
+                    href="mailto:kusganvolunteersincorporated@gmail.com"
+                    className="hover:text-gray-300 transition-colors break-all min-w-0"
+                  >
+                    kusganvolunteersincorporated@gmail.com
+                  </a>
+                </p>
+              </div>
             </div>
           </div>
 
