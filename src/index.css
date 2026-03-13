@@ -409,6 +409,11 @@ body {
   50% { transform: translateY(-6px) rotate(1deg); }
 }
 
+@keyframes sponsor-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
 /* Animation Classes */
 .animate-fade-in {
   animation: fade-in 0.3s ease-out forwards;
@@ -528,6 +533,30 @@ body {
   animation: floating-3 5s ease-in-out infinite 1.2s;
 }
 
+.sponsor-marquee {
+  width: 100%;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
+}
+
+.sponsor-marquee-track {
+  display: flex;
+  align-items: center;
+  width: max-content;
+  animation: sponsor-marquee var(--sponsor-marquee-duration, 30s) linear infinite;
+  will-change: transform;
+}
+
+.sponsor-marquee-track--ltr {
+  animation-direction: reverse;
+}
+
+.sponsor-marquee-item {
+  flex: 0 0 auto;
+  margin-right: 0.5rem;
+}
+
 .reveal-on-scroll {
   opacity: 0;
   transform: translateY(26px);
@@ -549,7 +578,8 @@ body {
   .hero-float,
   .floating-card-1,
   .floating-card-2,
-  .floating-card-3 {
+  .floating-card-3,
+  .sponsor-marquee-track {
     animation: none !important;
   }
 

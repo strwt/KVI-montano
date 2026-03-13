@@ -29,7 +29,7 @@ const NAV_LINKS = [
   { label: 'About', href: '#about' },
 ]
 
-const FOOTER_LOGOS = [
+const SPONSOR_LOGOS = [
   'Armunds.jpg',
   'BFP.png',
   'BJMP.png',
@@ -49,6 +49,9 @@ const FOOTER_LOGOS = [
   'Remys.jpg',
   'Strong.jpg',
 ]
+
+const SPONSOR_LOGOS_ROW_1 = SPONSOR_LOGOS.slice(0, Math.ceil(SPONSOR_LOGOS.length / 2))
+const SPONSOR_LOGOS_ROW_2 = SPONSOR_LOGOS.slice(Math.ceil(SPONSOR_LOGOS.length / 2))
 
 const STATS = [
   { label: 'Volunteers', value: '500+', icon: Users },
@@ -820,7 +823,6 @@ function Landing() {
 
         {/* Scroll indicator */}
         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2" style={{ color: '#374151' }}>
-          <span className="text-[10px] tracking-[0.2em] uppercase">Scroll</span>
           <div className="w-px h-8" style={{ background: 'linear-gradient(to bottom, #374151, transparent)' }} />
         </div>
       </section>
@@ -836,32 +838,58 @@ function Landing() {
         }}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
-            {STATS.map((stat, i) => {
-              const Icon = stat.icon
-              return (
-                <div
-                  key={stat.label}
-                  className={`text-center ${i < STATS.length - 1 ? 'lg:border-r' : ''}`}
-                  style={{ borderColor: 'rgba(185,28,28,0.2)' }}
-                >
-                  <div className="flex justify-center mb-3">
-                    <div
-                      className="w-11 h-11 rounded-2xl flex items-center justify-center"
-                      style={{
-                        background: 'rgba(220,38,38,0.15)',
-                        border: '1px solid rgba(220,38,38,0.25)',
-                        color: '#f87171',
+          <p className="text-center text-[10px] tracking-[0.2em] uppercase text-gray-500 mb-4">Sponsored by</p>
+          <div className="space-y-3">
+            <div className="sponsor-marquee">
+              <div
+                className="sponsor-marquee-track sponsor-marquee-track--ltr"
+                style={{ '--sponsor-marquee-duration': '26s' }}
+              >
+                {[...SPONSOR_LOGOS_ROW_1, ...SPONSOR_LOGOS_ROW_1].map((filename, index) => (
+                  <div
+                    key={`${filename}-${index}`}
+                    data-sponsor-logo
+                    className="sponsor-marquee-item h-12 w-12 sm:h-14 sm:w-14 shrink-0 rounded-full bg-white p-1 shadow-lg overflow-hidden"
+                    title={filename.replace(/\.(png|jpe?g|webp)$/i, '')}
+                  >
+                    <img
+                      src={`/${filename}`}
+                      alt={filename.replace(/\.(png|jpe?g|webp)$/i, '').replace(/[-_]/g, ' ')}
+                      className="h-full w-full object-contain"
+                      loading="lazy"
+                      onError={e => {
+                        const wrapper = e.currentTarget.closest('[data-sponsor-logo]')
+                        if (wrapper) wrapper.style.display = 'none'
                       }}
-                    >
-                      <Icon size={19} />
-                    </div>
+                    />
                   </div>
-                  <p className="text-3xl sm:text-4xl font-bold text-white font-heading">{stat.value}</p>
-                  <p className="text-sm text-gray-500 mt-1">{stat.label}</p>
-                </div>
-              )
-            })}
+                ))}
+              </div>
+            </div>
+
+            <div className="sponsor-marquee">
+              <div className="sponsor-marquee-track" style={{ '--sponsor-marquee-duration': '30s' }}>
+                {[...SPONSOR_LOGOS_ROW_2, ...SPONSOR_LOGOS_ROW_2].map((filename, index) => (
+                  <div
+                    key={`${filename}-${index}`}
+                    data-sponsor-logo
+                    className="sponsor-marquee-item h-12 w-12 sm:h-14 sm:w-14 shrink-0 rounded-full bg-white p-1 shadow-lg overflow-hidden"
+                    title={filename.replace(/\.(png|jpe?g|webp)$/i, '')}
+                  >
+                    <img
+                      src={`/${filename}`}
+                      alt={filename.replace(/\.(png|jpe?g|webp)$/i, '').replace(/[-_]/g, ' ')}
+                      className="h-full w-full object-contain"
+                      loading="lazy"
+                      onError={e => {
+                        const wrapper = e.currentTarget.closest('[data-sponsor-logo]')
+                        if (wrapper) wrapper.style.display = 'none'
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1283,31 +1311,73 @@ function Landing() {
             </div>
           </div>
 
+          {/* Sponsored logos moved to the stats strip */}
+          {/*
           <div className="mt-10 pt-8" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
             <div className="flex flex-nowrap items-center gap-2 overflow-x-auto pb-2">
-              {FOOTER_LOGOS.map(filename => (
-                <div
-                  key={filename}
-                  className="h-10 w-10 shrink-0 rounded-full bg-white p-1 shadow-lg"
-                  title={filename.replace(/\.(png|jpe?g|webp)$/i, '')}
-                >
-                  <img
-                    src={`/${filename}`}
-                    alt={filename.replace(/\.(png|jpe?g|webp)$/i, '').replace(/[-_]/g, ' ')}
-                    className="h-full w-full object-contain"
-                    loading="lazy"
-                    onError={e => {
-                      const wrapper = e.currentTarget.parentElement
-                      if (wrapper) wrapper.style.display = 'none'
-                    }}
-                  />
-                </div>
-              ))}
+              {FOOTER_LOGOS.map((filename, index) => {
+                const logoTitle = filename.replace(/\.(png|jpe?g|webp)$/i, '')
+                const logoAlt = logoTitle.replace(/[-_]/g, ' ')
+                const isFlippingLogo = index < FOOTER_FLIP_LOGO_COUNT
+
+                return (
+                  <div
+                    key={filename}
+                    data-footer-logo
+                    className="h-10 w-10 shrink-0 rounded-full bg-white p-1 shadow-lg overflow-hidden"
+                    title={logoTitle}
+                  >
+                    {isFlippingLogo ? (
+                      <div className="footer-logo-flip">
+                        <div className="footer-logo-flip-inner" style={{ animationDelay: `${index * 0.6}s` }}>
+                          <img
+                            src={`/${filename}`}
+                            alt={logoAlt}
+                            className="footer-logo-flip-face footer-logo-flip-front"
+                            loading="lazy"
+                            onError={e => {
+                              const wrapper = e.currentTarget.closest('[data-footer-logo]')
+                              if (wrapper) wrapper.style.display = 'none'
+                            }}
+                          />
+                          <img
+                            src={`/${filename}`}
+                            alt=""
+                            aria-hidden="true"
+                            className="footer-logo-flip-face footer-logo-flip-back"
+                            loading="lazy"
+                            onError={e => {
+                              const wrapper = e.currentTarget.closest('[data-footer-logo]')
+                              if (wrapper) wrapper.style.display = 'none'
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <img
+                        src={`/${filename}`}
+                        alt={logoAlt}
+                        className="h-full w-full object-contain"
+                        loading="lazy"
+                        onError={e => {
+                          const wrapper = e.currentTarget.closest('[data-footer-logo]')
+                          if (wrapper) wrapper.style.display = 'none'
+                        }}
+                      />
+                    )}
+                  </div>
+                )
+              })}
             </div>
           </div>
 
+          */}
+
           {/* Copyright */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
+          <div
+            className="mt-10 pt-8 flex flex-col sm:flex-row items-center justify-between gap-2"
+            style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
+          >
             <p className="text-xs" style={{ color: '#374151' }}>
               © {new Date().getFullYear()} KUSGAN Volunteer Inc. All rights reserved.
             </p>
