@@ -33,7 +33,13 @@ const CATEGORY_CONFIG = {
     label: 'Tuli',
     fields: [
       { key: 'tuli_children_count', label: 'Tuli children count', type: 'number', min: 0, step: 1 },
-      { key: 'tuli_residing_doctors', label: 'Residing doctors', type: 'text' },
+      { key: 'tuli_residing_doctors', label: 'Residing doctors', type: 'list_text' },
+      {
+        key: 'tuli_token',
+        label: 'Token',
+        type: 'list_select',
+        options: ['Rice', 'Tshirt', 'Umbrella', 'Food', 'Snack'],
+      },
     ],
   },
   blood_letting: {
@@ -41,7 +47,12 @@ const CATEGORY_CONFIG = {
     fields: [
       { key: 'blood_bags_count', label: 'Blood bags count', type: 'number', min: 0, step: 1 },
       { key: 'blood_successful_donors', label: 'Successful donors', type: 'number', min: 0, step: 1 },
-      { key: 'blood_token', label: 'Blood token (use | to separate)', type: 'text' },
+      {
+        key: 'blood_token',
+        label: 'Token',
+        type: 'list_select',
+        options: ['Rice', 'Tshirt', 'Umbrella', 'Food', 'Snack'],
+      },
     ],
   },
   donations: {
@@ -50,27 +61,126 @@ const CATEGORY_CONFIG = {
   },
   environmental: {
     label: 'Environmental',
-    fields: [{ key: 'env_trees_planted', label: 'Trees planted', type: 'number', min: 0, step: 1 }],
+    fields: [
+      {
+        key: 'env_type',
+        label: 'Type',
+        type: 'select',
+        options: ['tree_planting', 'clean_up_drive'],
+      },
+      {
+        key: 'env_trees_planted',
+        label: 'Seedlings count',
+        type: 'number',
+        min: 0,
+        step: 1,
+        showWhen: { key: 'env_type', equals: 'tree_planting' },
+      },
+      {
+        key: 'env_sacks_tons',
+        label: 'Sacks and tons',
+        type: 'text',
+        showWhen: { key: 'env_type', equals: 'clean_up_drive' },
+      },
+    ],
   },
   relief_operation: {
     label: 'Relief Operation',
     fields: [
       { key: 'relief_families_count', label: 'Families count', type: 'number', min: 0, step: 1 },
-      { key: 'relief_items', label: 'Relief items', type: 'select', options: ['grocery', 'hygiene_kit', 'both'] },
+      {
+        key: 'relief_type',
+        label: 'Type',
+        type: 'select',
+        options: ['grocery', 'hygiene_kit', 'water'],
+      },
+      {
+        key: 'relief_water_liters',
+        label: 'Liters',
+        type: 'number',
+        min: 0,
+        step: 0.01,
+        showWhen: { key: 'relief_type', equals: 'water' },
+      },
     ],
   },
   fire_response: {
     label: 'Fire Response',
     fields: [
       {
+        key: 'fire_type',
+        label: 'Type',
+        type: 'select',
+        options: ['fire_response', 'water_distribution', 'flashing'],
+      },
+      {
         key: 'fire_alarm_status',
         label: 'Alarm status',
         type: 'select',
         options: ['1st_alarm', '2nd_alarm', '3rd_alarm', '4th_alarm_city_director', 'alpha'],
+        showWhen: { key: 'fire_type', equals: 'fire_response' },
       },
-      { key: 'fire_affected_families', label: 'Affected families', type: 'number', min: 0, step: 1 },
-      { key: 'fire_estimated_cost', label: 'Estimated cost', type: 'number', min: 0, step: 0.01 },
-      { key: 'fire_liters', label: 'Liters used', type: 'number', min: 0, step: 0.01 },
+      {
+        key: 'fire_affected_families',
+        label: 'Affected families',
+        type: 'number',
+        min: 0,
+        step: 1,
+        showWhen: { key: 'fire_type', equals: 'fire_response' },
+      },
+      {
+        key: 'fire_estimated_cost',
+        label: 'Estimated cost',
+        type: 'number',
+        min: 0,
+        step: 0.01,
+        showWhen: { key: 'fire_type', equals: 'fire_response' },
+      },
+      {
+        key: 'fire_liters',
+        label: 'Liters used',
+        type: 'number',
+        min: 0,
+        step: 0.01,
+        showWhen: { key: 'fire_type', equals: 'fire_response' },
+      },
+      {
+        key: 'fire_water_liters',
+        label: 'Liters',
+        type: 'number',
+        min: 0,
+        step: 0.01,
+        showWhen: { key: 'fire_type', equals: 'water_distribution' },
+      },
+      {
+        key: 'fire_water_households',
+        label: 'Households',
+        type: 'number',
+        min: 0,
+        step: 1,
+        showWhen: { key: 'fire_type', equals: 'water_distribution' },
+      },
+      {
+        key: 'fire_water_employees',
+        label: 'Employees',
+        type: 'text',
+        showWhen: { key: 'fire_type', equals: 'water_distribution' },
+      },
+      {
+        key: 'fire_water_engine',
+        label: 'Engine',
+        type: 'select',
+        options: ['engine_1', 'engine_2'],
+        showWhen: { key: 'fire_type', equals: 'water_distribution' },
+      },
+      {
+        key: 'flashing_liters',
+        label: 'Liters',
+        type: 'number',
+        min: 0,
+        step: 0.01,
+        showWhen: { key: 'fire_type', equals: 'flashing' },
+      },
     ],
   },
   water_distribution: {
@@ -121,7 +231,12 @@ const CATEGORY_META = {
 const getDefaultDynamicFields = () =>
   CATEGORY_KEYS.reduce((acc, categoryKey) => {
     const fields = CATEGORY_CONFIG[categoryKey].fields
-    acc[categoryKey] = fields.reduce((fieldAcc, field) => ({ ...fieldAcc, [field.key]: '' }), {})
+    acc[categoryKey] = fields.reduce((fieldAcc, field) => {
+      if (field.type === 'list_text' || field.type === 'list_select') {
+        return { ...fieldAcc, [field.key]: [''] }
+      }
+      return { ...fieldAcc, [field.key]: '' }
+    }, {})
     return acc
   }, {})
 
@@ -1156,6 +1271,30 @@ function Calendar({ listOnly = false }) {
     }))
   }
 
+  const isDoneFieldVisible = (categoryKey, field) => {
+    if (!field?.showWhen) return true
+    const values = doneFields[categoryKey] || {}
+    const dependencyKey = field.showWhen.key
+    const expected = field.showWhen.equals
+    const actual = values[dependencyKey]
+    return String(actual ?? '') === String(expected ?? '')
+  }
+
+  const updateDoneListField = (categoryKey, fieldKey, updater) => {
+    setDoneFields(prev => {
+      const categoryValues = prev[categoryKey] || {}
+      const current = Array.isArray(categoryValues[fieldKey]) ? categoryValues[fieldKey] : ['']
+      const next = updater(current)
+      return {
+        ...prev,
+        [categoryKey]: {
+          ...categoryValues,
+          [fieldKey]: next.length ? next : [''],
+        },
+      }
+    })
+  }
+
   const handleAddEvent = e => {
     e.preventDefault()
     setFormError('')
@@ -1258,6 +1397,26 @@ function Calendar({ listOnly = false }) {
         ...(event.categoryData || {}),
       }
     }
+    if (event.category && CATEGORY_CONFIG[event.category]) {
+      const configFields = CATEGORY_CONFIG[event.category].fields || []
+      const merged = defaults[event.category] || {}
+      configFields.forEach(field => {
+        if (field.type === 'list_text' || field.type === 'list_select') {
+          const raw = merged[field.key]
+          if (Array.isArray(raw)) return
+          const rows = splitPipe(raw)
+          merged[field.key] = rows.concat(['']).slice(0, 50)
+          return
+        }
+        if (field.type === 'select') {
+          const current = String(merged[field.key] || '').trim()
+          if (!current && Array.isArray(field.options) && field.options.length > 0) {
+            merged[field.key] = field.options[0]
+          }
+        }
+      })
+      defaults[event.category] = merged
+    }
     setDoneFields(defaults)
     setDonePartners(
       String(event.categoryData?.partners || '')
@@ -1287,38 +1446,64 @@ function Calendar({ listOnly = false }) {
     setShowDoneForm(true)
   }
 
-  const handleMarkDone = e => {
-    e.preventDefault()
-    if (!markDoneEvent || !markDoneCategoryConfig) return
-    const values = doneFields[markDoneEvent.category] || {}
-    for (const field of markDoneCategoryConfig.fields) {
-      if (field.key === 'blood_token') {
-        const tokenValue = Array.isArray(doneBloodTokens)
-          ? doneBloodTokens.map(item => String(item || '').trim()).filter(Boolean).join('|')
-          : ''
-        if (!tokenValue) {
-          setDoneFormError(`${field.label} is required.`)
-          return
-        }
-        continue
-      }
-      const value = values[field.key]
-      if (String(value).trim() === '') {
-        setDoneFormError(`${field.label} is required.`)
-        return
-      }
-      if (field.type === 'number' && Number.isNaN(Number(value))) {
-        setDoneFormError(`${field.label} must be a valid number.`)
-        return
-      }
-    }
-    const nextCategoryData = markDoneCategoryConfig.fields.reduce((acc, field) => {
-      if (field.key === 'blood_token') return acc
-      const raw = values[field.key]
-      if (field.type === 'number') acc[field.key] = Number(raw)
-      else acc[field.key] = raw
-      return acc
-    }, {})
+	const handleMarkDone = e => {
+	  e.preventDefault()
+	  if (!markDoneEvent || !markDoneCategoryConfig) return
+	  const values = doneFields[markDoneEvent.category] || {}
+
+	  const isFieldVisible = field => {
+	    if (!field?.showWhen) return true
+	    const dependencyKey = field.showWhen.key
+	    const expected = field.showWhen.equals
+	    const actual = values[dependencyKey]
+	    return String(actual ?? '') === String(expected ?? '')
+	  }
+
+	  for (const field of markDoneCategoryConfig.fields) {
+	    if (!isFieldVisible(field)) continue
+	    const value = values[field.key]
+	    if (field.type === 'list_text' || field.type === 'list_select') {
+	      const rows = Array.isArray(value) ? value : []
+	      const normalized = rows.map(item => String(item || '').trim()).filter(Boolean)
+	      if (normalized.length === 0) {
+	        setDoneFormError(`${field.label} is required.`)
+	        return
+	      }
+	      continue
+	    }
+	    if (field.key === 'blood_token') {
+	      // Backwards-compatible validation for older events; new UI stores `blood_token` in `doneFields`.
+	      const tokenValue = Array.isArray(doneBloodTokens)
+	        ? doneBloodTokens.map(item => String(item || '').trim()).filter(Boolean).join('|')
+	        : ''
+	      const nextValue = Array.isArray(value) ? value.map(item => String(item || '').trim()).filter(Boolean).join('|') : ''
+	      if (!tokenValue && !nextValue) {
+	        setDoneFormError(`${field.label} is required.`)
+	        return
+	      }
+	      continue
+	    }
+	    if (String(value).trim() === '') {
+	      setDoneFormError(`${field.label} is required.`)
+	      return
+	    }
+	    if (field.type === 'number' && Number.isNaN(Number(value))) {
+	      setDoneFormError(`${field.label} must be a valid number.`)
+	      return
+	    }
+	  }
+	  const nextCategoryData = markDoneCategoryConfig.fields.reduce((acc, field) => {
+	    if (!isFieldVisible(field)) return acc
+	    const raw = values[field.key]
+	    if (field.type === 'list_text' || field.type === 'list_select') {
+	      const rows = Array.isArray(raw) ? raw : []
+	      acc[field.key] = rows.map(item => String(item || '').trim()).filter(Boolean).join('|')
+	      return acc
+	    }
+	    if (field.type === 'number') acc[field.key] = Number(raw)
+	    else acc[field.key] = raw
+	    return acc
+	  }, {})
     const partnersValue = Array.isArray(donePartners)
       ? donePartners.map(item => String(item || '').trim()).filter(Boolean).join('|')
       : ''
@@ -1335,26 +1520,28 @@ function Calendar({ listOnly = false }) {
           .filter(Boolean)
       )
     )
-    const contributorCommitteeValue = contributorCommittees.length === 1 ? contributorCommittees[0] : ''
-    setEvents(prev =>
-      prev.map(item =>
-        item.id === markDoneEvent.id
-          ? {
-              ...item,
-              status: 'done',
-              categoryData: {
-                ...(item.categoryData && typeof item.categoryData === 'object' ? item.categoryData : {}),
-                ...nextCategoryData,
-                partners: partnersValue,
-                contributorCommittee: contributorCommitteeValue,
-                contributorMemberIds: contributorMemberIdsValue,
-                ...(markDoneEvent.category === 'blood_letting' ? { blood_token: bloodTokensValue } : {}),
-              },
-              // Preserve the original completion time when updating done details.
-              completedAt: item.completedAt || dayjs().toISOString(),
-            }
-          : item
-      )
+	    const contributorCommitteeValue = contributorCommittees.length === 1 ? contributorCommittees[0] : ''
+	    setEvents(prev =>
+	      prev.map(item =>
+	        item.id === markDoneEvent.id
+	          ? {
+	              ...item,
+	              status: 'done',
+	              categoryData: {
+	                ...(item.categoryData && typeof item.categoryData === 'object' ? item.categoryData : {}),
+	                ...nextCategoryData,
+	                partners: partnersValue,
+	                contributorCommittee: contributorCommitteeValue,
+	                contributorMemberIds: contributorMemberIdsValue,
+	                ...(markDoneEvent.category === 'blood_letting' && !nextCategoryData.blood_token && bloodTokensValue
+	                  ? { blood_token: bloodTokensValue }
+	                  : {}),
+	              },
+	              // Preserve the original completion time when updating done details.
+	              completedAt: item.completedAt || dayjs().toISOString(),
+	            }
+	          : item
+	      )
     )
     setShowDoneForm(false)
     setMarkDoneEventId(null)
@@ -2258,18 +2445,16 @@ function Calendar({ listOnly = false }) {
                       />
                     </div>
                   </div>
-                  {formData.category === 'notes' && (
-                    <AssignMembersPicker
-                      allMembers={assignableMembers}
-                      selectedIds={formData.assignedMemberIds}
-                      onChange={nextIds => setFormData({ ...formData, assignedMemberIds: nextIds })}
-                      label="Members Involve"
-                      placeholder="Search and select members to involve..."
-                    />
-                  )}
+	                  <AssignMembersPicker
+	                    allMembers={assignableMembers}
+	                    selectedIds={formData.assignedMemberIds}
+	                    onChange={nextIds => setFormData({ ...formData, assignedMemberIds: nextIds })}
+	                    label="Committee member (Assigned)"
+	                    placeholder="Search and select members to assign/notify..."
+	                  />
 
-                </div>
-              </div>
+	                </div>
+	              </div>
 
               <div className="layout-glow relative isolate z-0 rounded-2xl p-4 sm:p-5 bg-white">
                 <h4 className="text-sm font-semibold text-gray-800 uppercase tracking-wide mb-3">Location</h4>
@@ -2344,9 +2529,17 @@ function Calendar({ listOnly = false }) {
 		            <form onSubmit={handleMarkDone} className="p-4 sm:p-6 space-y-5">
 		              {doneFormError && <p className="text-sm text-red-600">{doneFormError}</p>}
 
+		              <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-2">
+		                <p className="text-sm font-semibold text-gray-800">Location</p>
+		                <p className="text-sm text-gray-700">{markDoneEvent.address || 'No address provided'}</p>
+		                {markDoneEvent.location ? (
+		                  <ReadOnlyEventMap address={markDoneEvent.address} location={markDoneEvent.location} />
+		                ) : null}
+		              </div>
+
 		              <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3">
 		                <div className="flex items-center justify-between gap-2">
-		                  <p className="text-sm font-semibold text-gray-800">Committee Contributors</p>
+		                  <p className="text-sm font-semibold text-gray-800">Committee member</p>
 		                  <span className="text-xs text-gray-500">
 		                    {Array.isArray(doneContributorMemberIds) ? doneContributorMemberIds.length : 0} selected
 		                  </span>
@@ -2431,90 +2624,154 @@ function Calendar({ listOnly = false }) {
 	                <p className="text-xs text-gray-500">Saved as pipe-separated values.</p>
 	              </div>
 
-	              {markDoneCategoryConfig && markDoneCategoryConfig.fields.length > 0 ? (
-	                <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3">
-	                  <p className="text-sm font-semibold text-gray-800">Activity Fields</p>
-	                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-	                    {markDoneCategoryConfig.fields.map(field => (
-	                      <div key={field.key} className={field.type === 'text' ? 'md:col-span-2' : ''}>
-	                        <label className="block text-sm font-medium text-gray-700 mb-2">{field.label}</label>
-	                        {field.key === 'blood_token' ? (
-	                          <div className="space-y-2 md:col-span-2">
-	                            <div className="flex items-center justify-between gap-2">
-	                              <span className="text-xs text-gray-500">Add multiple tokens</span>
-	                              <Button
-	                                type="button"
-	                                size="sm"
-	                                variant="secondary"
-	                                onClick={() => setDoneBloodTokens(prev => [...(Array.isArray(prev) ? prev : []), ''])}
-	                              >
-	                                + Add row
-	                              </Button>
-	                            </div>
-	                            <div className="space-y-2">
-	                              {(Array.isArray(doneBloodTokens) ? doneBloodTokens : ['']).map((value, index) => (
-	                                <div key={`done-token-${index}`} className="flex items-center gap-2">
-	                                  <Input
-	                                    value={value}
-	                                    onChange={e => {
-	                                      const next = [...doneBloodTokens]
-	                                      next[index] = e.target.value
-	                                      setDoneBloodTokens(next)
-	                                    }}
-	                                    placeholder={`Token ${index + 1}`}
-	                                  />
-	                                  <Button
-	                                    type="button"
-	                                    size="icon"
-	                                    variant="outline"
-	                                    onClick={() => {
-	                                      const next = doneBloodTokens.filter((_, i) => i !== index)
-	                                      setDoneBloodTokens(next.length ? next : [''])
-	                                    }}
-	                                    aria-label="Remove token"
-	                                  >
-	                                    <X size={16} />
-	                                  </Button>
-	                                </div>
-	                              ))}
-	                            </div>
-	                            <p className="text-xs text-gray-500">Saved as pipe-separated values.</p>
-	                          </div>
-	                        ) : field.type === 'select' ? (
-	                          <select
-	                            value={doneFields[markDoneEvent.category]?.[field.key] ?? ''}
-	                            onChange={e => handleDoneFieldChange(markDoneEvent.category, field.key, e.target.value)}
-	                            className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-red-500"
-	                            required
-	                          >
-	                            <option value="">Select</option>
-	                            {(field.options || []).map(optionValue => (
-	                              <option key={optionValue} value={optionValue}>
-	                                {optionValue}
-	                              </option>
-	                            ))}
-	                          </select>
-	                        ) : field.type === 'number' ? (
-	                          <Input
-	                            type="number"
-	                            min={field.min}
-	                            step={field.step}
-	                            value={doneFields[markDoneEvent.category]?.[field.key] ?? ''}
-	                            onChange={e => handleDoneFieldChange(markDoneEvent.category, field.key, e.target.value)}
-	                            required
-	                          />
-	                        ) : (
-	                          <Input
-	                            value={doneFields[markDoneEvent.category]?.[field.key] ?? ''}
-	                            onChange={e => handleDoneFieldChange(markDoneEvent.category, field.key, e.target.value)}
-	                            required
-	                          />
-	                        )}
-	                      </div>
-	                    ))}
-	                  </div>
-	                </div>
-	              ) : null}
+		              {markDoneCategoryConfig && markDoneCategoryConfig.fields.length > 0 ? (
+		                <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3">
+		                  <p className="text-sm font-semibold text-gray-800">Activity Fields</p>
+		                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+		                    {markDoneCategoryConfig.fields.map(field => {
+		                      if (!isDoneFieldVisible(markDoneEvent.category, field)) return null
+		                      const fieldValue = doneFields[markDoneEvent.category]?.[field.key]
+		                      const colSpan = field.type === 'text' || field.type === 'list_text' ? 'md:col-span-2' : ''
+		                      return (
+		                      <div key={field.key} className={colSpan}>
+		                        <label className="block text-sm font-medium text-gray-700 mb-2">{field.label}</label>
+		                        {field.type === 'list_text' ? (
+		                          <div className="space-y-2">
+		                            <div className="flex items-center justify-between gap-2">
+		                              <span className="text-xs text-gray-500">Add multiple entries</span>
+		                              <Button
+		                                type="button"
+		                                size="sm"
+		                                variant="secondary"
+		                                onClick={() =>
+		                                  updateDoneListField(markDoneEvent.category, field.key, prev => [...prev, ''])
+		                                }
+		                              >
+		                                + Add row
+		                              </Button>
+		                            </div>
+		                            <div className="space-y-2">
+		                              {(Array.isArray(fieldValue) ? fieldValue : ['']).map((value, index) => (
+		                                <div key={`done-${field.key}-${index}`} className="flex items-center gap-2">
+		                                  <Input
+		                                    value={value}
+		                                    onChange={e =>
+		                                      updateDoneListField(markDoneEvent.category, field.key, prev => {
+		                                        const next = [...prev]
+		                                        next[index] = e.target.value
+		                                        return next
+		                                      })
+		                                    }
+		                                    placeholder={`${field.label} ${index + 1}`}
+		                                  />
+		                                  <Button
+		                                    type="button"
+		                                    size="icon"
+		                                    variant="outline"
+		                                    onClick={() =>
+		                                      updateDoneListField(markDoneEvent.category, field.key, prev =>
+		                                        prev.filter((_, i) => i !== index)
+		                                      )
+		                                    }
+		                                    aria-label="Remove row"
+		                                  >
+		                                    <X size={16} />
+		                                  </Button>
+		                                </div>
+		                              ))}
+		                            </div>
+		                            <p className="text-xs text-gray-500">Saved as pipe-separated values.</p>
+		                          </div>
+		                        ) : field.type === 'list_select' ? (
+		                          <div className="space-y-2">
+		                            <div className="flex items-center justify-between gap-2">
+		                              <span className="text-xs text-gray-500">Add multiple entries</span>
+		                              <Button
+		                                type="button"
+		                                size="sm"
+		                                variant="secondary"
+		                                onClick={() =>
+		                                  updateDoneListField(markDoneEvent.category, field.key, prev => [...prev, ''])
+		                                }
+		                              >
+		                                + Add row
+		                              </Button>
+		                            </div>
+		                            <div className="space-y-2">
+		                              {(Array.isArray(fieldValue) ? fieldValue : ['']).map((value, index) => (
+		                                <div key={`done-${field.key}-${index}`} className="flex items-center gap-2">
+		                                  <select
+		                                    value={value}
+		                                    onChange={e =>
+		                                      updateDoneListField(markDoneEvent.category, field.key, prev => {
+		                                        const next = [...prev]
+		                                        next[index] = e.target.value
+		                                        return next
+		                                      })
+		                                    }
+		                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-red-500"
+		                                  >
+		                                    <option value="">Select</option>
+		                                    {(field.options || []).map(optionValue => (
+		                                      <option key={optionValue} value={optionValue}>
+		                                        {optionValue}
+		                                      </option>
+		                                    ))}
+		                                  </select>
+		                                  <Button
+		                                    type="button"
+		                                    size="icon"
+		                                    variant="outline"
+		                                    onClick={() =>
+		                                      updateDoneListField(markDoneEvent.category, field.key, prev =>
+		                                        prev.filter((_, i) => i !== index)
+		                                      )
+		                                    }
+		                                    aria-label="Remove row"
+		                                  >
+		                                    <X size={16} />
+		                                  </Button>
+		                                </div>
+		                              ))}
+		                            </div>
+		                            <p className="text-xs text-gray-500">Saved as pipe-separated values.</p>
+		                          </div>
+		                        ) : field.type === 'select' ? (
+		                          <select
+		                            value={doneFields[markDoneEvent.category]?.[field.key] ?? ''}
+		                            onChange={e => handleDoneFieldChange(markDoneEvent.category, field.key, e.target.value)}
+		                            className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-red-500"
+		                            required
+		                          >
+		                            <option value="">Select</option>
+		                            {(field.options || []).map(optionValue => (
+		                              <option key={optionValue} value={optionValue}>
+		                                {optionValue}
+		                              </option>
+		                            ))}
+		                          </select>
+		                        ) : field.type === 'number' ? (
+		                          <Input
+		                            type="number"
+		                            min={field.min}
+		                            step={field.step}
+		                            value={doneFields[markDoneEvent.category]?.[field.key] ?? ''}
+		                            onChange={e => handleDoneFieldChange(markDoneEvent.category, field.key, e.target.value)}
+		                            required
+		                          />
+		                        ) : (
+		                          <Input
+		                            value={doneFields[markDoneEvent.category]?.[field.key] ?? ''}
+		                            onChange={e => handleDoneFieldChange(markDoneEvent.category, field.key, e.target.value)}
+		                            required
+		                          />
+		                        )}
+		                      </div>
+		                      )
+		                    })}
+		                  </div>
+		                </div>
+		              ) : null}
 
               <div className="flex items-center justify-end gap-2 pt-2">
                 <button
