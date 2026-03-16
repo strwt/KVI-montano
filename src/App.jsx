@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Layout from './layout/Layout'
 import Dashboard from './pages/Dashboard'
 import Calendar from './pages/Calendar'
+import Attendance from './pages/Attendance'
 import Profile from './pages/Profile'
 import ChangePassword from './pages/ChangePassword'
 import EditAccount from './pages/EditAccount'
@@ -88,6 +89,7 @@ function AppRoutes() {
       <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route index element={<Dashboard />} />
         <Route path="calendar" element={<Calendar />} />
+        <Route path="attendance" element={<Attendance />} />
         <Route path="events" element={<Calendar listOnly />} />
         <Route path="report" element={<AdminRoute><Report /></AdminRoute>} />
         <Route path="profile" element={<Profile />} />
