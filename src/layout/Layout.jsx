@@ -12,8 +12,13 @@ const getStoredDarkMode = () => {
   }
 }
 
+const getInitialSidebarOpen = () => {
+  if (typeof window === 'undefined') return true
+  return window.innerWidth >= 768
+}
+
 function Layout() {
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(getInitialSidebarOpen)
   const [darkMode, setDarkMode] = useState(getStoredDarkMode)
 
   useEffect(() => {
@@ -29,8 +34,25 @@ function Layout() {
     document.body.setAttribute('data-theme', darkMode ? 'dark' : 'light')
   }, [darkMode])
 
+  useEffect(() => {
+    const media = window.matchMedia('(min-width: 768px)')
+    const handleChange = event => {
+      if (!event.matches) setSidebarOpen(false)
+    }
+
+    if (!media.matches) setSidebarOpen(false)
+
+    if (media.addEventListener) {
+      media.addEventListener('change', handleChange)
+      return () => media.removeEventListener('change', handleChange)
+    }
+
+    media.addListener(handleChange)
+    return () => media.removeListener(handleChange)
+  }, [])
+
   const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen)
+    setSidebarOpen(prev => !prev)
   }
 
   return (

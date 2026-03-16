@@ -14,6 +14,7 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
   const handleLogout = () => {
     logout()
     navigate('/login')
+    if (window.innerWidth < 768 && isOpen) toggleSidebar()
   }
 
   const isAdmin = user?.role === 'admin'
@@ -54,14 +55,14 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
       )}
 
       <aside
-        className={`fixed left-0 top-0 h-full shadow-2xl z-40 transition-all duration-300 ${shellTone} ${
-          isOpen ? 'w-64' : 'w-20'
+        className={`fixed left-0 top-0 h-full shadow-2xl z-40 w-64 transition-transform md:transition-all md:translate-x-0 duration-300 ${shellTone} ${
+          isOpen ? 'translate-x-0 md:w-64' : '-translate-x-full md:w-20'
         }`}
       >
         {/* Toggle Button */}
         <button
           onClick={toggleSidebar}
-          className="absolute -right-3 top-20 bg-red-600 text-white rounded-full p-1 shadow-lg hover:bg-red-700 transition-all z-50"
+          className="hidden md:flex absolute -right-3 top-20 bg-red-600 text-white rounded-full p-1 shadow-lg hover:bg-red-700 transition-all z-50"
         >
           {isOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
         </button>
@@ -102,6 +103,9 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
             <NavLink
               key={item.to}
               to={item.to}
+              onClick={() => {
+                if (window.innerWidth < 768 && isOpen) toggleSidebar()
+              }}
               className={({ isActive }) =>
                 `group relative flex items-center gap-3 rounded-lg px-4 py-3 transition-all duration-200 hover:scale-[1.02] ${navTone} ${
                   isActive ? navActiveTone : 'border-l-2 border-transparent'
@@ -117,7 +121,10 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
           {/* Members Section - Admin Only - Now navigates to /members page */}
           {isAdmin && (
             <button
-              onClick={() => navigate('/members')}
+              onClick={() => {
+                navigate('/members')
+                if (window.innerWidth < 768 && isOpen) toggleSidebar()
+              }}
               className={`group relative flex w-full items-center gap-3 rounded-lg border-l-2 border-transparent px-4 py-3 transition-all duration-200 hover:scale-[1.02] ${navTone} ${
                 !isOpen && 'justify-center px-3'
               }`}
@@ -189,6 +196,7 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
                     onClick={() => {
                       setIsUserMenuOpen(false)
                       navigate('/profile')
+                      if (window.innerWidth < 768 && isOpen) toggleSidebar()
                     }}
                     className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg transition-all ${utilityBtnTone}`}
                   >
@@ -200,6 +208,7 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
                     onClick={() => {
                       setIsUserMenuOpen(false)
                       navigate('/settings')
+                      if (window.innerWidth < 768 && isOpen) toggleSidebar()
                     }}
                     className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg transition-all ${utilityBtnTone}`}
                   >

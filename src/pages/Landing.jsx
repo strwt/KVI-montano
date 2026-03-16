@@ -738,7 +738,10 @@ function Landing() {
         </div>
 
         {/* Scroll indicator */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2" style={{ color: '#374151' }}>
+        <div
+          className="hidden lg:flex absolute bottom-8 left-1/2 -translate-x-1/2 flex-col items-center gap-2"
+          style={{ color: '#374151' }}
+        >
           <div className="w-px h-8" style={{ background: 'linear-gradient(to bottom, #374151, transparent)' }} />
         </div>
       </section>
@@ -849,9 +852,9 @@ function Landing() {
             subtitle={activeStructure.subtitle}
           />
 
-          <div className="flex flex-wrap items-center gap-3 mb-8">
+          <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-3 mb-8">
             <div
-              className="inline-flex rounded-full p-1 border"
+              className="flex flex-col sm:inline-flex sm:flex-row w-full sm:w-auto rounded-2xl sm:rounded-full p-1 border gap-1"
               style={{
                 background: 'rgba(12,12,12,0.7)',
                 borderColor: 'rgba(255,255,255,0.12)',
@@ -865,7 +868,7 @@ function Landing() {
                     key={view.key}
                     type="button"
                     onClick={() => setStructureKey(view.key)}
-                    className="px-4 sm:px-5 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all duration-200"
+                    className="w-full sm:w-auto px-4 sm:px-5 py-2 rounded-xl sm:rounded-full text-xs sm:text-sm font-semibold transition-all duration-200 text-center leading-snug"
                     style={{
                       background: isActive ? 'rgba(220,38,38,0.2)' : 'transparent',
                       color: isActive ? '#fee2e2' : '#9ca3af',
