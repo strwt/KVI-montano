@@ -4,6 +4,14 @@ import { getSupabaseConfigError, isSupabaseConfigured, supabase } from '../lib/s
 
 const AuthContext = createContext(null)
 
+let authQueue = Promise.resolve()
+
+const queueAuthOperation = (operation) => {
+  const next = authQueue.then(operation, operation)
+  authQueue = next.catch(() => {})
+  return next
+}
+
 const DEFAULT_PROFILE_IMAGE = '/image-removebg-preview.png'
 const DEFAULT_MEMBER_CATEGORY = 'General Member'
 
@@ -124,6 +132,32 @@ export function AuthProvider({ children }) {
   const [committees, setCommittees] = useState([])
   const [utilitiesByCommittee, setUtilitiesByCommittee] = useState({})
   const [recruitments, setRecruitments] = useState([])
+
+  const isAuthLockError = (error) => {
+    if (!error) return false
+    if (error.name === 'AbortError') return true
+    return /lock/i.test(error.message || '')
+  }
+
+  const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms))
+
+  const runAuthOperationWithRetry = (operation, attempts = 2) =>
+    queueAuthOperation(async () => {
+      let lastError
+      for (let attempt = 0; attempt < attempts; attempt += 1) {
+        try {
+          return await operation()
+        } catch (error) {
+          lastError = error
+          if (attempt < attempts - 1 && isAuthLockError(error)) {
+            await wait(300)
+            continue
+          }
+          throw error
+        }
+      }
+      throw lastError
+    })
   const [appLanguage, setAppLanguageState] = useState('English')
   const [darkMode, setDarkModeState] = useState(false)
   const [settings, setSettingsState] = useState({})
@@ -264,7 +298,7 @@ export function AuthProvider({ children }) {
 
     const bootstrap = async () => {
       try {
-        const { data } = await supabase.auth.getSession()
+        const { data } = await runAuthOperationWithRetry(() => supabase.auth.getSession())
         if (!active) return
         const authUser = data?.session?.user || null
         const currentUser = await reloadProfile(authUser)
@@ -280,27 +314,37 @@ export function AuthProvider({ children }) {
           setUtilitiesByCommittee({})
           setRecruitments([])
         }
+      } catch (error) {
+        if (active) {
+          setUser(null)
+          setUsers([])
+          setCommittees([])
+          setUtilitiesByCommittee({})
+          setRecruitments([])
+        }
       } finally {
         if (active) setLoading(false)
       }
     }
 
-    const { data: authSub } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (!active) return
-      const authUser = session?.user || null
-      const currentUser = await reloadProfile(authUser)
-      if (authUser?.id) await recordDailyPresenceSupabase(authUser.id)
-      if (authUser) {
-        await reloadMembers()
-        const committeeList = await reloadCommittees()
-        await reloadUtilities(committeeList)
-        await reloadRecruitments(currentUser?.role === 'admin')
-      } else {
-        setUsers([])
-        setCommittees([])
-        setUtilitiesByCommittee({})
-        setRecruitments([])
-      }
+    const { data: authSub } = supabase.auth.onAuthStateChange((_event, session) => {
+      queueAuthOperation(async () => {
+        if (!active) return
+        const authUser = session?.user || null
+        const currentUser = await reloadProfile(authUser)
+        if (authUser?.id) await recordDailyPresenceSupabase(authUser.id)
+        if (authUser) {
+          await reloadMembers()
+          const committeeList = await reloadCommittees()
+          await reloadUtilities(committeeList)
+          await reloadRecruitments(currentUser?.role === 'admin')
+        } else {
+          setUsers([])
+          setCommittees([])
+          setUtilitiesByCommittee({})
+          setRecruitments([])
+        }
+      }).catch(() => {})
     })
 
     bootstrap()
@@ -347,10 +391,12 @@ export function AuthProvider({ children }) {
       return { success: false, message: 'Email and password are required.' }
     }
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: normalizedEmail,
-      password: trimmedPassword,
-    })
+    const { data, error } = await runAuthOperationWithRetry(() =>
+      supabase.auth.signInWithPassword({
+        email: normalizedEmail,
+        password: trimmedPassword,
+      })
+    )
     if (error) return { success: false, message: error.message || 'Login failed.' }
 
     const authUser = data?.user || data?.session?.user || null
@@ -360,7 +406,7 @@ export function AuthProvider({ children }) {
   }
 
   const logout = async () => {
-    await supabase.auth.signOut()
+    await runAuthOperationWithRetry(() => supabase.auth.signOut())
     setUser(null)
     setUsers([])
     setCommittees([])
@@ -378,16 +424,18 @@ export function AuthProvider({ children }) {
       return { success: false, message: 'Full Name, Email, and Password are required.' }
     }
 
-    const { data, error } = await supabase.auth.signUp({
-      email: normalizedEmail,
-      password: trimmedPassword,
-      options: {
-        data: {
-          name: normalizedName,
-          id_number: normalizedIdNumber,
+    const { data, error } = await runAuthOperationWithRetry(() =>
+      supabase.auth.signUp({
+        email: normalizedEmail,
+        password: trimmedPassword,
+        options: {
+          data: {
+            name: normalizedName,
+            id_number: normalizedIdNumber,
+          },
         },
-      },
-    })
+      })
+    )
 
     if (error) return { success: false, message: error.message || 'Registration failed.' }
 
@@ -419,9 +467,13 @@ export function AuthProvider({ children }) {
       : (user.profileImage || DEFAULT_PROFILE_IMAGE)
 
     if (email !== (user.email || '').trim().toLowerCase()) {
-      const { error: emailError } = await supabase.auth.updateUser({ email })
-      if (emailError) {
-        return { success: false, message: emailError.message || 'Unable to update email.' }
+      try {
+        const { error: emailError } = await runAuthOperationWithRetry(() => supabase.auth.updateUser({ email }))
+        if (emailError) {
+          return { success: false, message: emailError.message || 'Unable to update email.' }
+        }
+      } catch (error) {
+        return { success: false, message: error.message || 'Unable to update email.' }
       }
     }
 
@@ -440,6 +492,14 @@ export function AuthProvider({ children }) {
     if (error) return { success: false, message: error.message || 'Unable to update profile.' }
 
     setUser(prev => (prev ? { ...prev, name, email, address, contactNumber, bloodType, profileImage } : prev))
+    setUsers(prev =>
+      prev.map(member =>
+        member?.id === user.id
+          ? { ...member, name, email, address, contactNumber, bloodType, profileImage }
+          : member
+      )
+    )
+    await reloadProfile({ id: user.id, user_metadata: { name }, email })
     return { success: true }
   }
 
@@ -451,14 +511,20 @@ export function AuthProvider({ children }) {
     if (!trimmedCurrent || !trimmedNew) return { success: false, message: 'Current and new password are required.' }
     if (trimmedNew.length < 6) return { success: false, message: 'New password must be at least 6 characters.' }
 
-    const { error: authError } = await supabase.auth.signInWithPassword({
-      email: user.email,
-      password: trimmedCurrent,
-    })
+    const { error: authError } = await runAuthOperationWithRetry(() =>
+      supabase.auth.signInWithPassword({
+        email: user.email,
+        password: trimmedCurrent,
+      })
+    )
     if (authError) return { success: false, message: 'Current password is incorrect.' }
 
-    const { error: updateError } = await supabase.auth.updateUser({ password: trimmedNew })
-    if (updateError) return { success: false, message: updateError.message || 'Unable to update password.' }
+    try {
+      const { error: updateError } = await runAuthOperationWithRetry(() => supabase.auth.updateUser({ password: trimmedNew }))
+      if (updateError) return { success: false, message: updateError.message || 'Unable to update password.' }
+    } catch (error) {
+      return { success: false, message: error.message || 'Unable to update password.' }
+    }
     return { success: true }
   }
 
