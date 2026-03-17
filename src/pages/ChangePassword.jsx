@@ -33,6 +33,10 @@ function ChangePassword() {
 
     const result = await changeCurrentUserPassword(passwordForm.currentPassword, passwordForm.newPassword)
     if (!result.success) {
+      if (result.message === 'Session expired. Please log in again.') {
+        navigate('/login', { replace: true, state: { message: result.message } })
+        return
+      }
       setPasswordError(result.message)
       return
     }
