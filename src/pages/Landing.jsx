@@ -508,7 +508,7 @@ function OrgPersonCard({ person, large = false }) {
 function CommitteeCard({ committee }) {
   return (
     <article
-      className="h-full rounded-2xl p-4 sm:p-5 transition-all duration-300 hover:-translate-y-1"
+      className="h-full rounded-2xl p-4 sm:p-5"
       style={{
         background: 'rgba(14,14,14,0.85)',
         border: '1px solid rgba(255,255,255,0.1)',
@@ -542,7 +542,7 @@ function CommitteeCard({ committee }) {
       <div className="flex justify-center">
         <ul className="grid grid-cols-3 gap-2 w-full">
           {committee.members.map(member => (
-            <li key={`${committee.name}-${member.name}`} className="hover:-translate-y-0.5 transition-transform">
+            <li key={`${committee.name}-${member.name}`}>
               <OrgPersonCard person={member} />
             </li>
           ))}
