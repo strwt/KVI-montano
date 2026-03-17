@@ -14,6 +14,12 @@ const queueAuthOperation = (operation) => {
 
 const DEFAULT_PROFILE_IMAGE = '/image-removebg-preview.png'
 const DEFAULT_MEMBER_CATEGORY = 'General Member'
+const SESSION_EXPIRED_MESSAGE = 'Session expired. Please log in again.'
+
+const isRefreshTokenError = (error) => {
+  const message = error?.message ? String(error.message) : ''
+  return /refresh token/i.test(message)
+}
 
 const enrichUserWithProfileImage = (user = {}) => ({
   ...user,
@@ -298,8 +304,21 @@ export function AuthProvider({ children }) {
 
     const bootstrap = async () => {
       try {
-        const { data } = await runAuthOperationWithRetry(() => supabase.auth.getSession())
+        const { data, error } = await supabase.auth.getSession()
         if (!active) return
+
+        if (error) {
+          if (isRefreshTokenError(error)) {
+            await supabase.auth.signOut()
+          }
+          await reloadProfile(null)
+          setUsers([])
+          setCommittees([])
+          setUtilitiesByCommittee({})
+          setRecruitments([])
+          return
+        }
+
         const authUser = data?.session?.user || null
         const currentUser = await reloadProfile(authUser)
         if (authUser?.id) await recordDailyPresenceSupabase(authUser.id)
@@ -327,24 +346,33 @@ export function AuthProvider({ children }) {
       }
     }
 
-    const { data: authSub } = supabase.auth.onAuthStateChange((_event, session) => {
-      queueAuthOperation(async () => {
-        if (!active) return
-        const authUser = session?.user || null
-        const currentUser = await reloadProfile(authUser)
-        if (authUser?.id) await recordDailyPresenceSupabase(authUser.id)
-        if (authUser) {
-          await reloadMembers()
-          const committeeList = await reloadCommittees()
-          await reloadUtilities(committeeList)
-          await reloadRecruitments(currentUser?.role === 'admin')
-        } else {
-          setUsers([])
-          setCommittees([])
-          setUtilitiesByCommittee({})
-          setRecruitments([])
-        }
-      }).catch(() => {})
+    const { data: authSub } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!active) return
+
+      if (event === 'TOKEN_REFRESH_FAILED') {
+        await supabase.auth.signOut()
+        await reloadProfile(null)
+        setUsers([])
+        setCommittees([])
+        setUtilitiesByCommittee({})
+        setRecruitments([])
+        return
+      }
+
+      const authUser = session?.user || null
+      const currentUser = await reloadProfile(authUser)
+      if (authUser?.id) await recordDailyPresenceSupabase(authUser.id)
+      if (authUser) {
+        await reloadMembers()
+        const committeeList = await reloadCommittees()
+        await reloadUtilities(committeeList)
+        await reloadRecruitments(currentUser?.role === 'admin')
+      } else {
+        setUsers([])
+        setCommittees([])
+        setUtilitiesByCommittee({})
+        setRecruitments([])
+      }
     })
 
     bootstrap()
@@ -511,19 +539,37 @@ export function AuthProvider({ children }) {
     if (!trimmedCurrent || !trimmedNew) return { success: false, message: 'Current and new password are required.' }
     if (trimmedNew.length < 6) return { success: false, message: 'New password must be at least 6 characters.' }
 
-    const { error: authError } = await runAuthOperationWithRetry(() =>
-      supabase.auth.signInWithPassword({
-        email: user.email,
-        password: trimmedCurrent,
-      })
-    )
-    if (authError) return { success: false, message: 'Current password is incorrect.' }
+    const email = user.email?.trim().toLowerCase()
+    if (!email) return { success: false, message: 'User not found' }
 
-    try {
-      const { error: updateError } = await runAuthOperationWithRetry(() => supabase.auth.updateUser({ password: trimmedNew }))
-      if (updateError) return { success: false, message: updateError.message || 'Unable to update password.' }
-    } catch (error) {
-      return { success: false, message: error.message || 'Unable to update password.' }
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+    if (sessionError || !sessionData?.session) {
+      if (isRefreshTokenError(sessionError)) {
+        await supabase.auth.signOut()
+      }
+      return { success: false, message: SESSION_EXPIRED_MESSAGE }
+    }
+
+    const { error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password: trimmedCurrent,
+    })
+
+    if (authError) {
+      if (isRefreshTokenError(authError)) {
+        await supabase.auth.signOut()
+        return { success: false, message: SESSION_EXPIRED_MESSAGE }
+      }
+      return { success: false, message: 'Current password is incorrect.' }
+    }
+
+    const { error: updateError } = await supabase.auth.updateUser({ password: trimmedNew })
+    if (updateError) {
+      if (isRefreshTokenError(updateError)) {
+        await supabase.auth.signOut()
+        return { success: false, message: SESSION_EXPIRED_MESSAGE }
+      }
+      return { success: false, message: updateError.message || 'Unable to update password.' }
     }
     return { success: true }
   }

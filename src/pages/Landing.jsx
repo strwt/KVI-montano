@@ -285,6 +285,7 @@ const BOARD_STRUCTURE = {
   viceChairperson: {
     name: 'Rafael Garcia',
     position: 'Vice Chairperson',
+    
     committee: 'Executive Board',
     image: 'https://i.pravatar.cc/520?img=20',
     icon: ShieldCheck,
