@@ -2,65 +2,94 @@ import { useEffect, useMemo, useState } from 'react'
 import { CalendarCheck, ClipboardList, Clock, Users } from 'lucide-react'
 import dayjs from 'dayjs'
 import { useAuth } from '../context/AuthContext'
-
-const LOGIN_ACTIVITY_KEY = 'kusgan_login_activity'
-const EVENTS_KEY = 'kusgan_events'
-const LOGIN_ACTIVITY_UPDATED_EVENT = 'kusgan-login-activity-updated'
-
-const getStoredLoginActivity = () => {
-  const stored = localStorage.getItem(LOGIN_ACTIVITY_KEY)
-  if (!stored) return []
-  try {
-    const parsed = JSON.parse(stored)
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
-  }
-}
-
-const getStoredEvents = () => {
-  const stored = localStorage.getItem(EVENTS_KEY)
-  if (!stored) return []
-  try {
-    const parsed = JSON.parse(stored)
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
-  }
-}
+import { supabase } from '../lib/supabaseClient'
+import { isSupabaseEnabled, mapEventRowToEvent } from '../lib/supabaseEvents'
 
 function Attendance() {
   const { user } = useAuth()
-  const [loginActivity, setLoginActivity] = useState(getStoredLoginActivity)
-  const [events, setEvents] = useState(getStoredEvents)
+  const supabaseEnabled = isSupabaseEnabled()
+  const [loginActivity, setLoginActivity] = useState([])
+  const [events, setEvents] = useState([])
 
   useEffect(() => {
-    const refreshLogin = () => setLoginActivity(getStoredLoginActivity())
-    const onStorage = event => {
-      if (event?.key === LOGIN_ACTIVITY_KEY) refreshLogin()
+    if (!supabaseEnabled) return
+    if (!user?.id) {
+      setLoginActivity([])
+      return
     }
-    refreshLogin()
-    window.addEventListener('storage', onStorage)
-    window.addEventListener(LOGIN_ACTIVITY_UPDATED_EVENT, refreshLogin)
+
+    let active = true
+
+    const load = async () => {
+      const { data } = await supabase
+        .from('login_activity')
+        .select('date,last_login_at,is_online,last_status_at')
+        .eq('user_id', user.id)
+        .order('date', { ascending: true })
+
+      if (!active) return
+      const mapped = Array.isArray(data)
+        ? data.map(row => ({
+            date: row.date,
+            userId: user.id,
+            lastLoginAt: row.last_login_at,
+            lastStatusAt: row.last_status_at || null,
+            isOnline: Boolean(row.is_online),
+          }))
+        : []
+      setLoginActivity(mapped)
+    }
+
+    load()
+
+    const channel = supabase
+      .channel('kusgan-login-activity-self')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'login_activity', filter: `user_id=eq.${user.id}` },
+        () => load()
+      )
+      .subscribe()
+
     return () => {
-      window.removeEventListener('storage', onStorage)
-      window.removeEventListener(LOGIN_ACTIVITY_UPDATED_EVENT, refreshLogin)
+      active = false
+      supabase.removeChannel(channel)
     }
-  }, [])
+  }, [supabaseEnabled, user?.id])
 
   useEffect(() => {
-    const refreshEvents = () => setEvents(getStoredEvents())
-    const onStorage = event => {
-      if (event?.key === EVENTS_KEY) refreshEvents()
+    if (!supabaseEnabled) return
+    if (!user?.id) {
+      setEvents([])
+      return
     }
-    refreshEvents()
-    window.addEventListener('storage', onStorage)
-    window.addEventListener('kusgan-events-updated', refreshEvents)
+
+    let active = true
+
+    const load = async () => {
+      const { data } = await supabase
+        .from('events')
+        .select('*')
+        .contains('assigned_member_ids', [user.id])
+        .order('date_time', { ascending: false })
+
+      if (!active) return
+      const mapped = Array.isArray(data) ? data.map(mapEventRowToEvent).filter(Boolean) : []
+      setEvents(mapped)
+    }
+
+    load()
+
+    const channel = supabase
+      .channel('kusgan-events-assigned')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => load())
+      .subscribe()
+
     return () => {
-      window.removeEventListener('storage', onStorage)
-      window.removeEventListener('kusgan-events-updated', refreshEvents)
+      active = false
+      supabase.removeChannel(channel)
     }
-  }, [])
+  }, [supabaseEnabled, user?.id])
 
   const userId = String(user?.id || '')
 
@@ -139,8 +168,22 @@ function Attendance() {
       activity.push(payload)
     }
 
-    localStorage.setItem(LOGIN_ACTIVITY_KEY, JSON.stringify(activity))
-    window.dispatchEvent(new Event(LOGIN_ACTIVITY_UPDATED_EVENT))
+    if (supabaseEnabled) {
+      supabase
+        .from('login_activity')
+        .upsert(
+          {
+            user_id: user.id,
+            date: todayKey,
+            last_login_at: nextIsOnline ? nowIso : (todayEntry?.lastLoginAt || nowIso),
+            is_online: nextIsOnline,
+            last_status_at: nowIso,
+          },
+          { onConflict: 'user_id,date' }
+        )
+      setLoginActivity(activity)
+      return
+    }
     setLoginActivity(activity)
   }
 

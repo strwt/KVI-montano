@@ -21,7 +21,7 @@ function ChangePassword() {
     }
   }, [user, navigate])
 
-  const handlePasswordChange = (e) => {
+  const handlePasswordChange = async (e) => {
     e.preventDefault()
     setPasswordError('')
     setPasswordSuccess('')
@@ -31,7 +31,7 @@ function ChangePassword() {
       return
     }
 
-    const result = changeCurrentUserPassword(passwordForm.currentPassword, passwordForm.newPassword)
+    const result = await changeCurrentUserPassword(passwordForm.currentPassword, passwordForm.newPassword)
     if (!result.success) {
       setPasswordError(result.message)
       return

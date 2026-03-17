@@ -15,6 +15,7 @@ function MemberDetail() {
   const [loading, setLoading] = useState(true)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showUpdateModal, setShowUpdateModal] = useState(false)
+  const [actionError, setActionError] = useState('')
   const [editForm, setEditForm] = useState({
     idNumber: '',
     name: '',
@@ -53,14 +54,20 @@ function MemberDetail() {
 
   const isAdmin = user?.role === 'admin'
 
-  const handleDeleteMember = () => {
-    deleteMembers([member.id])
+  const handleDeleteMember = async () => {
+    setActionError('')
+    const result = await deleteMembers([member.id])
+    if (!result.success) {
+      setActionError(result.message || 'Unable to delete member.')
+      return
+    }
     navigate('/members')
   }
 
-  const handleUpdateMember = (e) => {
+  const handleUpdateMember = async (e) => {
     e.preventDefault()
-    updateMember(member.id, {
+    setActionError('')
+    const result = await updateMember(member.id, {
       idNumber: editForm.idNumber,
       name: editForm.name,
       email: editForm.email,
@@ -70,6 +77,10 @@ function MemberDetail() {
       status: editForm.status,
       memberSince: editForm.memberSince,
     })
+    if (!result.success) {
+      setActionError(result.message || 'Unable to update member.')
+      return
+    }
     setMember(prev => ({
       ...prev,
       ...editForm,
@@ -122,6 +133,12 @@ function MemberDetail() {
           </button>
         )}
       </div>
+
+      {actionError && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 dark:bg-red-500/20 dark:border-red-500/50 dark:text-red-200 text-sm">
+          {actionError}
+        </div>
+      )}
 
       <div className="space-y-6">
         <div className="bg-white dark:bg-zinc-900 border border-red-600 rounded-xl shadow-md p-6">

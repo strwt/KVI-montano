@@ -1,22 +1,32 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { User, Lock, Eye, EyeOff, ArrowLeft, UserPlus } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
 function Login() {
-  const [idNumber, setIdNumber] = useState('')
+  const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
+  const [info, setInfo] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const { login } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+
+  useEffect(() => {
+    const message = location.state?.message
+    if (typeof message === 'string' && message.trim()) {
+      setInfo(message.trim())
+    }
+  }, [])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+    setInfo('')
 
-    if (!idNumber.trim() || !password.trim()) {
+    if (!identifier.trim() || !password.trim()) {
       setError('All fields are required.')
       return
     }
@@ -26,7 +36,7 @@ function Login() {
     // Simulate network delay for animation
     await new Promise(resolve => setTimeout(resolve, 500))
 
-    const result = login(idNumber, password)
+    const result = await login(identifier, password)
     if (result.success) {
       navigate('/')
     } else {
@@ -87,18 +97,24 @@ function Login() {
             </div>
           )}
 
+          {info && (
+            <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-700 dark:bg-emerald-500/20 dark:border-emerald-500/50 dark:text-emerald-200 text-sm">
+              {info}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* ID Number Input */}
+            {/* Email / ID Input */}
             <div className="relative">
-              <label className="block text-gray-700 dark:text-gray-300 text-sm font-medium mb-2">Enter your ID Number</label>
+              <label className="block text-gray-700 dark:text-gray-300 text-sm font-medium mb-2">Email Address</label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-400" size={18} />
                 <input
                   type="text"
-                  value={idNumber}
-                  onChange={(e) => setIdNumber(e.target.value)}
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 bg-white dark:bg-gray-900/50 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
-                  placeholder="Enter your ID Number"
+                  placeholder="Enter your email"
                   required
                 />
               </div>

@@ -1,9 +1,7 @@
-  import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { CheckCircle2, Shield, Bell, SlidersHorizontal, Lock } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useI18n } from '../i18n/useI18n'
-
-const SETTINGS_STORAGE_KEY = 'kusgan_dashboard_settings'
 
 const createDefaultSettings = (name = '') => ({
   profile: {
@@ -31,26 +29,6 @@ const createDefaultSettings = (name = '') => ({
   },
 })
 
-const getStoredSettings = (name = '') => {
-  const stored = localStorage.getItem(SETTINGS_STORAGE_KEY)
-  if (!stored) return createDefaultSettings(name)
-
-  try {
-    const parsed = JSON.parse(stored)
-    const defaults = createDefaultSettings(name)
-    return {
-      ...defaults,
-      ...parsed,
-      profile: { ...defaults.profile, ...(parsed.profile || {}) },
-      security: { ...defaults.security, ...(parsed.security || {}) },
-      notifications: { ...defaults.notifications, ...(parsed.notifications || {}) },
-      preferences: { ...defaults.preferences, ...(parsed.preferences || {}) },
-      privacy: { ...defaults.privacy, ...(parsed.privacy || {}) },
-    }
-  } catch {
-    return createDefaultSettings(name)
-  }
-}
 
 function ToggleSwitch({ checked, onChange, label, description }) {
   return (
@@ -79,12 +57,26 @@ function ToggleSwitch({ checked, onChange, label, description }) {
 }
 
 function Settings() {
-  const { user, appLanguage, setAppLanguage } = useAuth()
+  const { user, appLanguage, setAppLanguage, settings: savedSettings, saveSettings } = useAuth()
   const { t } = useI18n()
-  const [settings, setSettings] = useState(() => getStoredSettings(user?.name || ''))
+  const [settings, setSettings] = useState(() => createDefaultSettings(user?.name || ''))
   const [saveState, setSaveState] = useState('idle')
 
-  const handleSave = () => {
+  useEffect(() => {
+    const defaults = createDefaultSettings(user?.name || '')
+    const source = savedSettings && typeof savedSettings === 'object' ? savedSettings : {}
+    setSettings({
+      ...defaults,
+      ...source,
+      profile: { ...defaults.profile, ...(source.profile || {}) },
+      security: { ...defaults.security, ...(source.security || {}) },
+      notifications: { ...defaults.notifications, ...(source.notifications || {}) },
+      preferences: { ...defaults.preferences, ...(source.preferences || {}) },
+      privacy: { ...defaults.privacy, ...(source.privacy || {}) },
+    })
+  }, [savedSettings, user?.name])
+
+  const handleSave = async () => {
     setSaveState('saving')
     const payload = {
       ...settings,
@@ -93,11 +85,15 @@ function Settings() {
         language: appLanguage,
       },
     }
-    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(payload))
-    window.setTimeout(() => {
-      setSaveState('success')
-      window.setTimeout(() => setSaveState('idle'), 1800)
-    }, 300)
+
+    const result = await saveSettings(payload)
+    if (!result.success) {
+      setSaveState('idle')
+      return
+    }
+
+    setSaveState('success')
+    window.setTimeout(() => setSaveState('idle'), 1800)
   }
 
   const saveButtonLabel = useMemo(() => {

@@ -15,11 +15,9 @@ import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import dayjs from 'dayjs'
 import { useI18n } from '../i18n/useI18n'
-
-const getStoredEvents = () => {
-  const stored = localStorage.getItem('kusgan_events')
-  return stored ? JSON.parse(stored) : []
-}
+import { supabase } from '../lib/supabaseClient'
+import { fetchSupabaseEvents, isSupabaseEnabled } from '../lib/supabaseEvents'
+import { fetchMyNotifications } from '../lib/supabaseNotifications'
 
 const splitCategoryAndType = (value = '') => {
   const raw = String(value || '').trim()
@@ -80,8 +78,6 @@ const resolveEventDate = event => event.dateTime || event.date || null
 const getEventsCategoryRoute = categoryKey => `/events?category=${encodeURIComponent(categoryKey)}`
 const RECENT_ACTIVITY_LIMIT = 5
 const LOGIN_ACTIVITY_LIMIT = 8
-const NOTIFICATIONS_STORAGE_KEY = 'kusgan_notifications'
-const NOTIFICATIONS_UPDATED_EVENT = 'kusgan-notifications-updated'
 const LOGIN_ACTIVITY_UPDATED_EVENT = 'kusgan-login-activity-updated'
 
 const getEventMatchKey = event => {
@@ -91,39 +87,6 @@ const getEventMatchKey = event => {
   const title = event?.title || ''
   const category = event?.category || ''
   return `fallback:${dateValue}|${title}|${category}`
-}
-
-const getStoredLoginActivity = () => {
-  const stored = localStorage.getItem('kusgan_login_activity')
-  if (!stored) return []
-
-  try {
-    const parsed = JSON.parse(stored)
-    if (!Array.isArray(parsed)) return []
-
-    return parsed
-      .filter(entry => entry?.lastLoginAt && dayjs(entry.lastLoginAt).isValid())
-      .sort((a, b) => dayjs(b.lastLoginAt).valueOf() - dayjs(a.lastLoginAt).valueOf())
-      .slice(0, LOGIN_ACTIVITY_LIMIT)
-	  } catch {
-    return []
-  }
-}
-
-const getStoredNotifications = () => {
-  const stored = localStorage.getItem(NOTIFICATIONS_STORAGE_KEY)
-  if (!stored) return []
-  try {
-    const parsed = JSON.parse(stored)
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
-  }
-}
-
-const saveNotifications = items => {
-  localStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify(items))
-  window.dispatchEvent(new Event(NOTIFICATIONS_UPDATED_EVENT))
 }
 
 const getIconThemeClass = categoryKey => {
@@ -140,10 +103,11 @@ function Dashboard() {
   const { t } = useI18n()
   const navigate = useNavigate()
   const isAdmin = user?.role === 'admin'
+  const supabaseEnabled = isSupabaseEnabled()
   const [animatedStats, setAnimatedStats] = useState(false)
-  const [events, setEvents] = useState(getStoredEvents)
-  const [recentLogins, setRecentLogins] = useState(getStoredLoginActivity)
-  const [notifications, setNotifications] = useState(getStoredNotifications)
+  const [events, setEvents] = useState([])
+  const [recentLogins, setRecentLogins] = useState([])
+  const [notifications, setNotifications] = useState([])
   const [notificationsOpen, setNotificationsOpen] = useState(false)
 
   useEffect(() => {
@@ -152,40 +116,76 @@ function Dashboard() {
   }, [])
 
   useEffect(() => {
-    const reloadEvents = () => setEvents(getStoredEvents())
-    const onVisibilityChange = () => {
-      if (document.visibilityState === 'visible') reloadEvents()
+    if (!user?.id) {
+      setEvents([])
+      return
     }
 
-    reloadEvents()
-    window.addEventListener('storage', reloadEvents)
-    window.addEventListener('focus', reloadEvents)
-    window.addEventListener('kusgan-events-updated', reloadEvents)
-    document.addEventListener('visibilitychange', onVisibilityChange)
+    let active = true
+
+    const load = async () => {
+      const { data } = await fetchSupabaseEvents()
+      if (!active) return
+      setEvents(data)
+    }
+
+    load()
+
+    const channel = supabase
+      .channel('kusgan-events-dashboard')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => load())
+      .subscribe()
 
     return () => {
-      window.removeEventListener('storage', reloadEvents)
-      window.removeEventListener('focus', reloadEvents)
-      window.removeEventListener('kusgan-events-updated', reloadEvents)
-      document.removeEventListener('visibilitychange', onVisibilityChange)
+      active = false
+      supabase.removeChannel(channel)
     }
-  }, [])
+  }, [supabaseEnabled, user?.id])
 
   useEffect(() => {
-    const refreshLogins = () => setRecentLogins(getStoredLoginActivity())
-    const onStorage = event => {
-      if (event?.key === 'kusgan_login_activity') refreshLogins()
+    if (!user?.id || !isAdmin) {
+      setRecentLogins([])
+      return
     }
 
-    refreshLogins()
-    window.addEventListener('storage', onStorage)
-    window.addEventListener(LOGIN_ACTIVITY_UPDATED_EVENT, refreshLogins)
+    let active = true
+
+      const load = async () => {
+      const { data } = await supabase
+        .from('login_activity')
+        .select('date,last_login_at,is_online,last_status_at,user_id,profiles(name,email,role,profile_image)')
+        .order('last_login_at', { ascending: false })
+        .limit(LOGIN_ACTIVITY_LIMIT)
+
+      if (!active) return
+      const mapped = Array.isArray(data)
+        ? data.map(row => ({
+            date: row.date,
+            userId: row.user_id,
+            name: row.profiles?.name || '',
+            email: row.profiles?.email || '',
+            role: row.profiles?.role || 'member',
+            profileImage: row.profiles?.profile_image || '',
+            lastLoginAt: row.last_login_at,
+            isOnline: Boolean(row.is_online),
+            lastStatusAt: row.last_status_at || null,
+          }))
+        : []
+      setRecentLogins(mapped)
+    }
+
+    load()
+
+    const channel = supabase
+      .channel('kusgan-login-activity')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'login_activity' }, () => load())
+      .subscribe()
 
     return () => {
-      window.removeEventListener('storage', onStorage)
-      window.removeEventListener(LOGIN_ACTIVITY_UPDATED_EVENT, refreshLogins)
+      active = false
+      supabase.removeChannel(channel)
     }
-  }, [])
+  }, [supabaseEnabled, user?.id, isAdmin])
 
   useEffect(() => {
     if (!notificationsOpen) return
@@ -200,20 +200,49 @@ function Dashboard() {
   }, [notificationsOpen])
 
   useEffect(() => {
-    const refreshNotifications = () => setNotifications(getStoredNotifications())
-    const onStorage = event => {
-      if (event?.key === NOTIFICATIONS_STORAGE_KEY) refreshNotifications()
+    if (!supabaseEnabled) return
+    if (!user?.id) {
+      setNotifications([])
+      return
     }
 
-    refreshNotifications()
-    window.addEventListener('storage', onStorage)
-    window.addEventListener(NOTIFICATIONS_UPDATED_EVENT, refreshNotifications)
+    let active = true
+
+    const load = async () => {
+      const { data } = await fetchMyNotifications(80)
+      if (!active) return
+      const mapped = data.map(row => ({
+        id: row.id,
+        type: row.type,
+        userId: row.user_id,
+        eventId: row.event_id,
+        title: row.title,
+        category: row.category,
+        dateTime: row.date_time,
+        details: row.details || '',
+        assignedBy: row.assigned_by || 'Admin',
+        createdAt: row.created_at,
+        readAt: row.read_at,
+      }))
+      setNotifications(mapped)
+    }
+
+    load()
+
+    const channel = supabase
+      .channel('kusgan-notifications')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
+        () => load()
+      )
+      .subscribe()
 
     return () => {
-      window.removeEventListener('storage', onStorage)
-      window.removeEventListener(NOTIFICATIONS_UPDATED_EVENT, refreshNotifications)
+      active = false
+      supabase.removeChannel(channel)
     }
-  }, [])
+  }, [supabaseEnabled, user?.id])
 
   const recentEvents = useMemo(() => {
     return [...events]
@@ -315,7 +344,7 @@ function Dashboard() {
     })
   }
 
-  const markNotificationRead = notificationId => {
+  const markNotificationRead = async (notificationId) => {
     if (!notificationId) return
     const updated = notifications.map(item =>
       item.id === notificationId && !item.readAt
@@ -323,7 +352,7 @@ function Dashboard() {
         : item
     )
     setNotifications(updated)
-    saveNotifications(updated)
+    await supabase.from('notifications').update({ read_at: new Date().toISOString() }).eq('id', notificationId)
   }
 
   const handleOpenNotification = notification => {
@@ -332,18 +361,17 @@ function Dashboard() {
     navigate('/calendar', {
       state: {
         focusEventId: notification.eventId,
-        focusEventKey: notification.eventKey,
         forceFocusEvent: true,
         scrollToEvent: true,
       },
     })
   }
 
-  const dismissNotification = notificationId => {
+  const dismissNotification = async (notificationId) => {
     if (!notificationId) return
     const updated = notifications.filter(item => item.id !== notificationId)
     setNotifications(updated)
-    saveNotifications(updated)
+    await supabase.from('notifications').delete().eq('id', notificationId)
   }
 
   return (
