@@ -2,15 +2,7 @@ import { useEffect, useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import { Menu, X } from 'lucide-react'
-
-const getStoredDarkMode = () => {
-  try {
-    const stored = localStorage.getItem('kusgan_dark_mode')
-    return stored ? Boolean(JSON.parse(stored)) : false
-  } catch {
-    return false
-  }
-}
+import { useAuth } from '../context/AuthContext'
 
 const getInitialSidebarOpen = () => {
   if (typeof window === 'undefined') return true
@@ -18,11 +10,10 @@ const getInitialSidebarOpen = () => {
 }
 
 function Layout() {
+  const { darkMode, setDarkMode } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(getInitialSidebarOpen)
-  const [darkMode, setDarkMode] = useState(getStoredDarkMode)
 
   useEffect(() => {
-    localStorage.setItem('kusgan_dark_mode', JSON.stringify(darkMode))
     // Deterministic theme application avoids stale dark class state.
     document.documentElement.classList.remove('dark')
     document.body.classList.remove('dark')
@@ -69,7 +60,7 @@ function Layout() {
         isOpen={sidebarOpen}
         toggleSidebar={toggleSidebar}
         darkMode={darkMode}
-        onToggleDarkMode={() => setDarkMode((prev) => !prev)}
+        onToggleDarkMode={() => setDarkMode(!darkMode)}
       />
       
       <main 

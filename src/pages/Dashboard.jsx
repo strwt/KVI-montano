@@ -15,11 +15,9 @@ import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import dayjs from 'dayjs'
 import { useI18n } from '../i18n/useI18n'
-
-const getStoredEvents = () => {
-  const stored = localStorage.getItem('kusgan_events')
-  return stored ? JSON.parse(stored) : []
-}
+import { supabase } from '../lib/supabaseClient'
+import { fetchSupabaseEvents, isSupabaseEnabled } from '../lib/supabaseEvents'
+import { fetchMyNotifications } from '../lib/supabaseNotifications'
 
 const splitCategoryAndType = (value = '') => {
   const raw = String(value || '').trim()
@@ -80,8 +78,7 @@ const resolveEventDate = event => event.dateTime || event.date || null
 const getEventsCategoryRoute = categoryKey => `/events?category=${encodeURIComponent(categoryKey)}`
 const RECENT_ACTIVITY_LIMIT = 5
 const LOGIN_ACTIVITY_LIMIT = 8
-const NOTIFICATIONS_STORAGE_KEY = 'kusgan_notifications'
-const NOTIFICATIONS_UPDATED_EVENT = 'kusgan-notifications-updated'
+const LOGIN_ACTIVITY_UPDATED_EVENT = 'kusgan-login-activity-updated'
 
 const getEventMatchKey = event => {
   const baseId = event?.id
@@ -90,39 +87,6 @@ const getEventMatchKey = event => {
   const title = event?.title || ''
   const category = event?.category || ''
   return `fallback:${dateValue}|${title}|${category}`
-}
-
-const getStoredLoginActivity = () => {
-  const stored = localStorage.getItem('kusgan_login_activity')
-  if (!stored) return []
-
-  try {
-    const parsed = JSON.parse(stored)
-    if (!Array.isArray(parsed)) return []
-
-    return parsed
-      .filter(entry => entry?.lastLoginAt && dayjs(entry.lastLoginAt).isValid())
-      .sort((a, b) => dayjs(b.lastLoginAt).valueOf() - dayjs(a.lastLoginAt).valueOf())
-      .slice(0, LOGIN_ACTIVITY_LIMIT)
-	  } catch {
-    return []
-  }
-}
-
-const getStoredNotifications = () => {
-  const stored = localStorage.getItem(NOTIFICATIONS_STORAGE_KEY)
-  if (!stored) return []
-  try {
-    const parsed = JSON.parse(stored)
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
-  }
-}
-
-const saveNotifications = items => {
-  localStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify(items))
-  window.dispatchEvent(new Event(NOTIFICATIONS_UPDATED_EVENT))
 }
 
 const getIconThemeClass = categoryKey => {
@@ -139,10 +103,11 @@ function Dashboard() {
   const { t } = useI18n()
   const navigate = useNavigate()
   const isAdmin = user?.role === 'admin'
+  const supabaseEnabled = isSupabaseEnabled()
   const [animatedStats, setAnimatedStats] = useState(false)
-  const [events, setEvents] = useState(getStoredEvents)
-  const [recentLogins] = useState(getStoredLoginActivity)
-  const [notifications, setNotifications] = useState(getStoredNotifications)
+  const [events, setEvents] = useState([])
+  const [recentLogins, setRecentLogins] = useState([])
+  const [notifications, setNotifications] = useState([])
   const [notificationsOpen, setNotificationsOpen] = useState(false)
 
   useEffect(() => {
@@ -151,24 +116,76 @@ function Dashboard() {
   }, [])
 
   useEffect(() => {
-    const reloadEvents = () => setEvents(getStoredEvents())
-    const onVisibilityChange = () => {
-      if (document.visibilityState === 'visible') reloadEvents()
+    if (!user?.id) {
+      setEvents([])
+      return
     }
 
-    reloadEvents()
-    window.addEventListener('storage', reloadEvents)
-    window.addEventListener('focus', reloadEvents)
-    window.addEventListener('kusgan-events-updated', reloadEvents)
-    document.addEventListener('visibilitychange', onVisibilityChange)
+    let active = true
+
+    const load = async () => {
+      const { data } = await fetchSupabaseEvents()
+      if (!active) return
+      setEvents(data)
+    }
+
+    load()
+
+    const channel = supabase
+      .channel('kusgan-events-dashboard')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => load())
+      .subscribe()
 
     return () => {
-      window.removeEventListener('storage', reloadEvents)
-      window.removeEventListener('focus', reloadEvents)
-      window.removeEventListener('kusgan-events-updated', reloadEvents)
-      document.removeEventListener('visibilitychange', onVisibilityChange)
+      active = false
+      supabase.removeChannel(channel)
     }
-  }, [])
+  }, [supabaseEnabled, user?.id])
+
+  useEffect(() => {
+    if (!user?.id || !isAdmin) {
+      setRecentLogins([])
+      return
+    }
+
+    let active = true
+
+      const load = async () => {
+      const { data } = await supabase
+        .from('login_activity')
+        .select('date,last_login_at,is_online,last_status_at,user_id,profiles(name,email,role,profile_image)')
+        .order('last_login_at', { ascending: false })
+        .limit(LOGIN_ACTIVITY_LIMIT)
+
+      if (!active) return
+      const mapped = Array.isArray(data)
+        ? data.map(row => ({
+            date: row.date,
+            userId: row.user_id,
+            name: row.profiles?.name || '',
+            email: row.profiles?.email || '',
+            role: row.profiles?.role || 'member',
+            profileImage: row.profiles?.profile_image || '',
+            lastLoginAt: row.last_login_at,
+            isOnline: Boolean(row.is_online),
+            lastStatusAt: row.last_status_at || null,
+          }))
+        : []
+      setRecentLogins(mapped)
+    }
+
+    load()
+
+    const channel = supabase
+      .channel('kusgan-login-activity')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'login_activity' }, () => load())
+      .subscribe()
+
+    return () => {
+      active = false
+      supabase.removeChannel(channel)
+    }
+  }, [supabaseEnabled, user?.id, isAdmin])
 
   useEffect(() => {
     if (!notificationsOpen) return
@@ -183,20 +200,49 @@ function Dashboard() {
   }, [notificationsOpen])
 
   useEffect(() => {
-    const refreshNotifications = () => setNotifications(getStoredNotifications())
-    const onStorage = event => {
-      if (event?.key === NOTIFICATIONS_STORAGE_KEY) refreshNotifications()
+    if (!supabaseEnabled) return
+    if (!user?.id) {
+      setNotifications([])
+      return
     }
 
-    refreshNotifications()
-    window.addEventListener('storage', onStorage)
-    window.addEventListener(NOTIFICATIONS_UPDATED_EVENT, refreshNotifications)
+    let active = true
+
+    const load = async () => {
+      const { data } = await fetchMyNotifications(80)
+      if (!active) return
+      const mapped = data.map(row => ({
+        id: row.id,
+        type: row.type,
+        userId: row.user_id,
+        eventId: row.event_id,
+        title: row.title,
+        category: row.category,
+        dateTime: row.date_time,
+        details: row.details || '',
+        assignedBy: row.assigned_by || 'Admin',
+        createdAt: row.created_at,
+        readAt: row.read_at,
+      }))
+      setNotifications(mapped)
+    }
+
+    load()
+
+    const channel = supabase
+      .channel('kusgan-notifications')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
+        () => load()
+      )
+      .subscribe()
 
     return () => {
-      window.removeEventListener('storage', onStorage)
-      window.removeEventListener(NOTIFICATIONS_UPDATED_EVENT, refreshNotifications)
+      active = false
+      supabase.removeChannel(channel)
     }
-  }, [])
+  }, [supabaseEnabled, user?.id])
 
   const recentEvents = useMemo(() => {
     return [...events]
@@ -298,7 +344,7 @@ function Dashboard() {
     })
   }
 
-  const markNotificationRead = notificationId => {
+  const markNotificationRead = async (notificationId) => {
     if (!notificationId) return
     const updated = notifications.map(item =>
       item.id === notificationId && !item.readAt
@@ -306,7 +352,7 @@ function Dashboard() {
         : item
     )
     setNotifications(updated)
-    saveNotifications(updated)
+    await supabase.from('notifications').update({ read_at: new Date().toISOString() }).eq('id', notificationId)
   }
 
   const handleOpenNotification = notification => {
@@ -315,25 +361,22 @@ function Dashboard() {
     navigate('/calendar', {
       state: {
         focusEventId: notification.eventId,
-        focusEventKey: notification.eventKey,
         forceFocusEvent: true,
         scrollToEvent: true,
       },
     })
   }
 
-  const dismissNotification = notificationId => {
+  const dismissNotification = async (notificationId) => {
     if (!notificationId) return
     const updated = notifications.filter(item => item.id !== notificationId)
     setNotifications(updated)
-    saveNotifications(updated)
+    await supabase.from('notifications').delete().eq('id', notificationId)
   }
-
-  const onlineUserId = String(user?.id || '')
 
   return (
     <div className="animate-fade-in space-y-6">
-      <section className="relative overflow-hidden rounded-2xl border border-red-600 bg-gradient-to-br from-white to-neutral-100 p-6 text-neutral-900 shadow-[0_12px_30px_rgba(0,0,0,0.08)] transition-colors dark:from-black dark:to-neutral-900 dark:text-zinc-100 dark:shadow-[0_12px_30px_rgba(0,0,0,0.35)]">
+      <section className="relative rounded-2xl border border-red-600 bg-gradient-to-br from-white to-neutral-100 p-6 text-neutral-900 shadow-[0_12px_30px_rgba(0,0,0,0.08)] transition-colors dark:from-black dark:to-neutral-900 dark:text-zinc-100 dark:shadow-[0_12px_30px_rgba(0,0,0,0.35)]">
         <div className="absolute -right-16 -top-16 h-44 w-44 rounded-full bg-red-600/15 blur-3xl dark:bg-red-600/25" />
         <div className="relative z-10 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="space-y-2">
@@ -349,102 +392,106 @@ function Dashboard() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                setNotificationsOpen(prev => !prev)
-              }}
-              data-notification-button
-              className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl border border-red-600 bg-white text-red-600 transition-all duration-200 hover:scale-[1.02] hover:bg-red-50 dark:border-red-600 dark:bg-zinc-900 dark:text-red-300 dark:hover:bg-red-950/30"
-              aria-label={t('Notifications')}
-              title={t('Notifications')}
-            >
-              <Bell size={18} />
-              {unreadCount > 0 && (
-                <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-red-600 ring-2 ring-white dark:ring-zinc-900" />
-              )}
-            </button>
-            {notificationsOpen && (
-              <div
-                data-notification-panel
-                className="absolute right-0 top-12 z-20 w-[320px] overflow-hidden rounded-2xl border border-red-600 bg-white shadow-[0_16px_30px_rgba(0,0,0,0.12)] dark:border-red-600 dark:bg-zinc-950"
-              >
-                <div className="flex items-center justify-between border-b border-red-100 px-4 py-3 dark:border-red-900/40">
-                  <h3 className="text-sm font-semibold text-neutral-900 dark:text-zinc-100">
-                    {t('Notifications')}
-                  </h3>
-                  <div className="flex items-center gap-2">
-                    <span className="rounded-full border border-red-600 bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-700 dark:bg-red-950/30 dark:text-red-300">
-                      {unreadCount} {t('unread')}
-                    </span>
-                    {unreadCount === 0 && (
-                      <button
-                        type="button"
-                        onClick={() => setNotificationsOpen(false)}
-                        className="inline-flex h-7 w-7 items-center justify-center rounded-full text-neutral-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40"
-                        aria-label={t('Close notifications')}
-                        title={t('Close notifications')}
-                      >
-                        <X size={14} />
-                      </button>
-                    )}
-                  </div>
-                </div>
-                <div className="max-h-[320px] overflow-y-auto">
-                  {visibleNotifications.map((notification, index) => {
-                    const hasValidDate = notification.dateTime && dayjs(notification.dateTime).isValid()
-                    return (
-                      <button
-                        type="button"
-                        key={`${notification.id || 'note'}-${index}`}
-                        onClick={() => {
-                          handleOpenNotification(notification)
-                          setNotificationsOpen(false)
-                        }}
-                        className={`flex w-full items-start gap-3 border-b border-red-100 px-4 py-3 text-left transition-colors hover:bg-red-50 dark:border-red-900/40 dark:hover:bg-red-950/40 ${
-                          notification.readAt ? '' : 'bg-red-50/50 dark:bg-red-950/30'
-                        }`}
-                      >
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-[13px] font-semibold text-neutral-900 dark:text-zinc-100">
-                            {notification.title || t('Untitled Event')}
-                          </p>
-                          <p className="mt-1 text-[12px] text-neutral-500 dark:text-zinc-400">
-                            {hasValidDate ? dayjs(notification.dateTime).format('MMM D, YYYY h:mm A') : t('Date TBA')}
-                          </p>
-                          {notification.details && (
-                            <p className="mt-1 line-clamp-2 text-[12px] text-neutral-600 dark:text-zinc-300">
-                              {notification.details}
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {!notification.readAt && (
-                            <span className="mt-1 h-2 w-2 rounded-full bg-red-600" />
-                          )}
+            {!isAdmin && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNotificationsOpen(prev => !prev)
+                  }}
+                  data-notification-button
+                  className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl border border-red-600 bg-white text-red-600 transition-all duration-200 hover:scale-[1.02] hover:bg-red-50 dark:border-red-600 dark:bg-zinc-900 dark:text-red-300 dark:hover:bg-red-950/30"
+                  aria-label={t('Notifications')}
+                  title={t('Notifications')}
+                >
+                  <Bell size={18} />
+                  {unreadCount > 0 && (
+                    <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-red-600 ring-2 ring-white dark:ring-zinc-900" />
+                  )}
+                </button>
+                {notificationsOpen && (
+                  <div
+                    data-notification-panel
+                    className="absolute right-0 top-12 z-20 w-[320px] rounded-2xl border border-red-600 bg-white shadow-[0_16px_30px_rgba(0,0,0,0.12)] dark:border-red-600 dark:bg-zinc-950"
+                  >
+                    <div className="flex items-center justify-between border-b border-red-100 px-4 py-3 dark:border-red-900/40">
+                      <h3 className="text-sm font-semibold text-neutral-900 dark:text-zinc-100">
+                        {t('Notifications')}
+                      </h3>
+                      <div className="flex items-center gap-2">
+                        <span className="rounded-full border border-red-600 bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-700 dark:bg-red-950/30 dark:text-red-300">
+                          {unreadCount} {t('unread')}
+                        </span>
+                        {unreadCount === 0 && (
                           <button
                             type="button"
-                            onClick={event => {
-                              event.stopPropagation()
-                              dismissNotification(notification.id)
-                            }}
-                            className="inline-flex h-6 w-6 items-center justify-center rounded-full text-neutral-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40"
-                            aria-label={t('Remove notification')}
-                            title={t('Remove notification')}
+                            onClick={() => setNotificationsOpen(false)}
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-full text-neutral-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40"
+                            aria-label={t('Close notifications')}
+                            title={t('Close notifications')}
                           >
                             <X size={14} />
                           </button>
-                        </div>
-                      </button>
-                    )
-                  })}
-                  {visibleNotifications.length === 0 && (
-                    <p className="px-4 py-6 text-center text-[13px] text-neutral-500 dark:text-zinc-400">
-                      {t('No notifications yet.')}
-                    </p>
-                  )}
-                </div>
-              </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="overflow-visible">
+                      {visibleNotifications.map((notification, index) => {
+                        const hasValidDate = notification.dateTime && dayjs(notification.dateTime).isValid()
+                        return (
+                          <button
+                            type="button"
+                            key={`${notification.id || 'note'}-${index}`}
+                            onClick={() => {
+                              handleOpenNotification(notification)
+                              setNotificationsOpen(false)
+                            }}
+                            className={`flex w-full items-start gap-3 border-b border-red-100 px-4 py-3 text-left transition-colors hover:bg-red-50 dark:border-red-900/40 dark:hover:bg-red-950/40 ${
+                              notification.readAt ? '' : 'bg-red-50/50 dark:bg-red-950/30'
+                            }`}
+                          >
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-[13px] font-semibold text-neutral-900 dark:text-zinc-100">
+                                {notification.title || t('Untitled Event')}
+                              </p>
+                              <p className="mt-1 text-[12px] text-neutral-500 dark:text-zinc-400">
+                                {hasValidDate ? dayjs(notification.dateTime).format('MMM D, YYYY h:mm A') : t('Date TBA')}
+                              </p>
+                              {notification.details && (
+                                <p className="mt-1 line-clamp-2 text-[12px] text-neutral-600 dark:text-zinc-300">
+                                  {notification.details}
+                                </p>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {!notification.readAt && (
+                                <span className="mt-1 h-2 w-2 rounded-full bg-red-600" />
+                              )}
+                              <button
+                                type="button"
+                                onClick={event => {
+                                  event.stopPropagation()
+                                  dismissNotification(notification.id)
+                                }}
+                                className="inline-flex h-6 w-6 items-center justify-center rounded-full text-neutral-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40"
+                                aria-label={t('Remove notification')}
+                                title={t('Remove notification')}
+                              >
+                                <X size={14} />
+                              </button>
+                            </div>
+                          </button>
+                        )
+                      })}
+                      {visibleNotifications.length === 0 && (
+                        <p className="px-4 py-6 text-center text-[13px] text-neutral-500 dark:text-zinc-400">
+                          {t('No notifications yet.')}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </>
             )}
             {isAdmin && (
               <button
@@ -503,7 +550,7 @@ function Dashboard() {
               {recentLogins
                 .filter(entry => entry.role === 'member')
                 .map((entry, index) => {
-                  const isOnline = String(entry.userId) === onlineUserId
+                  const isOnline = entry.isOnline === true
                   return (
                     <div
                       key={`${entry.userId}-${entry.lastLoginAt}-${index}`}

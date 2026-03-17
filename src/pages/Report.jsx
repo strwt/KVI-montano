@@ -15,6 +15,8 @@ import {
   Loader2,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { supabase } from '../lib/supabaseClient'
+import { fetchSupabaseEvents, isSupabaseEnabled } from '../lib/supabaseEvents'
 
 const CATEGORY_META = {
   tuli: { label: 'Tuli', icon: HeartPulse, light: 'bg-red-50', text: 'text-red-700' },
@@ -75,17 +77,6 @@ const CURRENCY = new Intl.NumberFormat('en-US', {
   currency: 'PHP',
   maximumFractionDigits: 2,
 })
-
-const getStoredEvents = () => {
-  const stored = localStorage.getItem('kusgan_events')
-  if (!stored) return []
-  try {
-    const parsed = JSON.parse(stored)
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
-  }
-}
 
 const normalizeCategory = category =>
   String(category || '')
@@ -223,7 +214,8 @@ const loadJsPdf = () => {
 
 function Report() {
   const { user, committees } = useAuth()
-  const [events, setEvents] = useState(getStoredEvents)
+  const supabaseEnabled = isSupabaseEnabled()
+  const [events, setEvents] = useState([])
   const [datePreset, setDatePreset] = useState('monthly')
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [showExportMenu, setShowExportMenu] = useState(false)
@@ -233,24 +225,31 @@ function Report() {
   const { start, end } = getDateWindow(datePreset)
 
   useEffect(() => {
-    const reloadEvents = () => setEvents(getStoredEvents())
-    const onVisibilityChange = () => {
-      if (document.visibilityState === 'visible') reloadEvents()
+    if (!user?.id) {
+      setEvents([])
+      return
     }
 
-    reloadEvents()
-    window.addEventListener('storage', reloadEvents)
-    window.addEventListener('focus', reloadEvents)
-    window.addEventListener('kusgan-events-updated', reloadEvents)
-    document.addEventListener('visibilitychange', onVisibilityChange)
+    let active = true
+
+    const load = async () => {
+      const { data } = await fetchSupabaseEvents()
+      if (!active) return
+      setEvents(data)
+    }
+
+    load()
+
+    const channel = supabase
+      .channel('kusgan-events-report')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => load())
+      .subscribe()
 
     return () => {
-      window.removeEventListener('storage', reloadEvents)
-      window.removeEventListener('focus', reloadEvents)
-      window.removeEventListener('kusgan-events-updated', reloadEvents)
-      document.removeEventListener('visibilitychange', onVisibilityChange)
+      active = false
+      supabase.removeChannel(channel)
     }
-  }, [])
+  }, [supabaseEnabled, user?.id])
 
   const baseEvents = useMemo(() => {
     return events

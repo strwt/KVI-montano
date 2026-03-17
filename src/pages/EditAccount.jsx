@@ -60,7 +60,7 @@ function EditAccount() {
     reader.readAsDataURL(file)
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setError('')
     setSuccess('')
 
@@ -87,7 +87,7 @@ function EditAccount() {
       profileImage: uploadedImageData || form.profileImage,
     }
 
-    const res = updateCurrentUser(payload)
+    const res = await updateCurrentUser(payload)
     if (!res.success) {
       setError(res.message)
       return

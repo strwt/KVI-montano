@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, Calendar, User, LogOut, ChevronLeft, ChevronRight, Users, FileText, Sun, Moon, Settings, ChevronDown, ChevronUp, SlidersHorizontal } from 'lucide-react'
+import { LayoutDashboard, Calendar, User, LogOut, ChevronLeft, ChevronRight, Users, FileText, Sun, Moon, Settings, ChevronDown, ChevronUp, SlidersHorizontal, ClipboardCheck } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useI18n } from '../i18n/useI18n'
 
@@ -41,6 +41,7 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
   const navItems = [
     { to: '/', icon: LayoutDashboard, label: t('Dashboard') },
     { to: '/calendar', icon: Calendar, label: t('Calendar') },
+    ...(!isAdmin ? [{ to: '/attendance', icon: ClipboardCheck, label: 'Attendance' }] : []),
     ...(isAdmin ? [{ to: '/report', icon: FileText, label: t('Report') }] : []),
   ]
 

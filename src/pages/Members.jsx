@@ -20,6 +20,7 @@ import {
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import dayjs from 'dayjs'
+import { supabase } from '../lib/supabaseClient'
 
 const ROLE_OPTIONS = [
   { value: 'member', label: 'Member' },
@@ -27,19 +28,6 @@ const ROLE_OPTIONS = [
 ]
 const COMMITTEE_OPTIONS = ['Environmental', 'Relief Operations', 'Fire Response', 'Medical']
 const BLOOD_TYPE_OPTIONS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
-
-const EVENTS_STORAGE_KEY = 'kusgan_events'
-
-const getStoredEvents = () => {
-  const stored = localStorage.getItem(EVENTS_STORAGE_KEY)
-  if (!stored) return []
-  try {
-    const parsed = JSON.parse(stored)
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
-  }
-}
 
 const normalizeCategoryKey = value =>
   String(value || '')
@@ -129,46 +117,6 @@ function Members() {
   const allMembers = getAllMembers()
   const isAdmin = user?.role === 'admin'
   const recruitments = getRecruitments()
-  const [events, setEvents] = useState(getStoredEvents)
-
-  useEffect(() => {
-    const reloadEvents = () => setEvents(getStoredEvents())
-    const handleStorage = event => {
-      if (event?.key === EVENTS_STORAGE_KEY) reloadEvents()
-    }
-    const onVisibilityChange = () => {
-      if (document.visibilityState === 'visible') reloadEvents()
-    }
-
-    reloadEvents()
-    window.addEventListener('storage', handleStorage)
-    window.addEventListener('focus', reloadEvents)
-    window.addEventListener('kusgan-events-updated', reloadEvents)
-    document.addEventListener('visibilitychange', onVisibilityChange)
-
-    return () => {
-      window.removeEventListener('storage', handleStorage)
-      window.removeEventListener('focus', reloadEvents)
-      window.removeEventListener('kusgan-events-updated', reloadEvents)
-      document.removeEventListener('visibilitychange', onVisibilityChange)
-    }
-  }, [])
-
-  const updateEventsCategoryKey = (sourceKey, targetKey) => {
-    const fromKey = canonicalizeCategoryKey(normalizeCategoryKey(sourceKey))
-    const toKey = targetKey ? canonicalizeCategoryKey(normalizeCategoryKey(targetKey)) : ''
-    if (!fromKey) return
-
-    const next = getStoredEvents().map(event => {
-      const eventKey = canonicalizeCategoryKey(normalizeCategoryKey(event?.category))
-      if (!eventKey || eventKey !== fromKey) return event
-      return { ...event, category: toKey }
-    })
-
-    localStorage.setItem(EVENTS_STORAGE_KEY, JSON.stringify(next))
-    window.dispatchEvent(new Event('kusgan-events-updated'))
-    setEvents(next)
-  }
 
   const pendingRecruitments = useMemo(
     () => recruitments.filter(item => item.status === 'pending'),
@@ -301,14 +249,14 @@ function Members() {
     navigate(`/members/${memberId}`)
   }
 
-  const handleCommitteeAdd = e => {
-    e.preventDefault()
-    setCommitteeError('')
-    const normalizedCategory = committeeName.trim()
-	    if (!normalizedCategory) {
-	      setCommitteeError('Category name is required.')
-	      return
-	    }
+  const handleCommitteeAdd = async (e) => {
+	    e.preventDefault()
+	    setCommitteeError('')
+	    const normalizedCategory = committeeName.trim()
+		    if (!normalizedCategory) {
+		      setCommitteeError('Category name is required.')
+		      return
+		    }
 	    const normalizedLower = normalizedCategory.toLowerCase()
 	    const operationExists = operationCategories.some(categoryKey => {
 	      const label = categoryLabelByKey[categoryKey] || titleCaseFromKey(categoryKey)
@@ -318,11 +266,11 @@ function Members() {
 	      setCommitteeError('Category name already exists.')
 	      return
 	    }
-    const result = addCommittee(`${normalizedCategory} - General`)
-    if (!result.success) {
-      setCommitteeError(result.message)
-      return
-    }
+	    const result = await addCommittee(`${normalizedCategory} - General`)
+	    if (!result.success) {
+	      setCommitteeError(result.message)
+	      return
+	    }
     setSelectedOperationCategory(canonicalizeCategoryKey(normalizeCategoryKey(normalizedCategory)))
     setSelectedOperationType('General')
     setCommitteeName('')
@@ -332,11 +280,11 @@ function Members() {
     setShowAddOperationTypeInline(false)
   }
 
-  const handleAddOperationType = e => {
-    e.preventDefault()
-    setCommitteeError('')
-    const operationName = (categoryLabelByKey[addTypeOperationCategory] || '').trim()
-    const typeName = newOperationTypeName.trim()
+	  const handleAddOperationType = async (e) => {
+	    e.preventDefault()
+	    setCommitteeError('')
+	    const operationName = (categoryLabelByKey[addTypeOperationCategory] || '').trim()
+	    const typeName = newOperationTypeName.trim()
     if (!operationName || !typeName) {
       setCommitteeError('Category name and new type are required.')
       return
@@ -347,11 +295,11 @@ function Members() {
       setCommitteeError('Type already exists under this category.')
       return
     }
-    const result = addCommittee(`${operationName} - ${typeName}`)
-    if (!result.success) {
-      setCommitteeError(result.message)
-      return
-    }
+	    const result = await addCommittee(`${operationName} - ${typeName}`)
+	    if (!result.success) {
+	      setCommitteeError(result.message)
+	      return
+	    }
     setSelectedOperationCategory(addTypeOperationCategory)
     setSelectedOperationType(typeName)
     setAddModalCategory(addTypeOperationCategory)
@@ -361,9 +309,9 @@ function Members() {
     setShowAddOperationTypeInline(false)
   }
 
-  const handleCommitteeRename = e => {
-    e.preventDefault()
-    setCommitteeError('')
+	  const handleCommitteeRename = async (e) => {
+	    e.preventDefault()
+	    setCommitteeError('')
     if (!selectedOperationCategory) {
       setCommitteeError('Select category name to update.')
       return
@@ -394,33 +342,34 @@ function Members() {
       return key === selectedOperationCategory
     })
 
-    // Update saved category entries (if any).
-    for (const source of entriesToRename) {
-      const { type } = splitCategoryAndType(source)
-      const target = `${nextCategory} - ${type || 'General'}`
-      const result = editCommittee(source, target)
-      if (!result.success) {
-        setCommitteeError(result.message)
-        return
-      }
-    }
-
-    // Update events using the old category key to the new key.
-    updateEventsCategoryKey(selectedOperationCategory, nextKey)
+	    // Update saved category entries (if any).
+	    for (const source of entriesToRename) {
+	      const { type } = splitCategoryAndType(source)
+	      const target = `${nextCategory} - ${type || 'General'}`
+	      const result = await editCommittee(source, target)
+	      if (!result.success) {
+	        setCommitteeError(result.message)
+	        return
+	      }
+	    }
 
     // If this category only existed in events (no saved entries), persist it as a managed category.
     if (entriesToRename.length === 0) {
-      addCommittee(`${nextCategory} - General`)
-    }
+      const result = await addCommittee(`${nextCategory} - General`)
+      if (!result.success) {
+	        setCommitteeError(result.message)
+	        return
+	      }
+	    }
 
     setSelectedOperationCategory(nextKey)
     setEditedOperationCategory(nextCategory)
   }
 
-  const handleDeleteOperation = () => {
-    setCommitteeError('')
-    if (!deleteOperationCategory) {
-      setCommitteeError('Select category name first.')
+	  const handleDeleteOperation = async () => {
+	    setCommitteeError('')
+	    if (!deleteOperationCategory) {
+	      setCommitteeError('Select category name first.')
       return
     }
 
@@ -430,26 +379,29 @@ function Members() {
       return key === deleteOperationCategory
     })
 
-    // Delete saved category entries (if any).
-    if (entriesForOperation.length > 0) {
-      if (memberCommittees.length - entriesForOperation.length < 1) {
-        setCommitteeError('At least one category entry must remain.')
-        return
-      }
-      for (const entry of entriesForOperation) {
-        const result = deleteCommittee(entry)
-        if (!result.success) {
-          setCommitteeError(result.message)
-          return
-        }
+	    // Delete saved category entries (if any).
+	    if (entriesForOperation.length > 0) {
+	      if (memberCommittees.length - entriesForOperation.length < 1) {
+	        setCommitteeError('At least one category entry must remain.')
+	        return
+	      }
+	      const fallbackCommittee = memberCommittees.find(entry => !entriesForOperation.includes(entry)) || ''
+		      for (const entry of entriesForOperation) {
+		        const result = await deleteCommittee(entry, fallbackCommittee)
+		        if (!result.success) {
+		          setCommitteeError(result.message)
+		          return
+		        }
         if (categoryFilter === entry) {
           setCategoryFilter('all')
         }
       }
     }
 
-    // Remove category from events by clearing it.
-    updateEventsCategoryKey(deleteOperationCategory, '')
+    // If this category key only existed in events (no saved entries), clear it.
+    if (entriesForOperation.length === 0 && deleteOperationCategory) {
+      await supabase.from('events').update({ category: 'notes' }).eq('category', deleteOperationCategory)
+    }
 
     if (selectedOperationCategory === deleteOperationCategory) {
       setSelectedOperationCategory('')
@@ -469,14 +421,14 @@ function Members() {
     categoryKey => (categoryLabelByKey[categoryKey] || '').toLowerCase() === committeeName.trim().toLowerCase()
   )
 
-  const handleCreateMember = e => {
-    e.preventDefault()
-    setFormError('')
-    const result = createMember({
-      ...newMember,
-      category: newMember.committee,
-      recruitmentId: pendingApprovalRecruitmentId || undefined,
-    })
+	  const handleCreateMember = async (e) => {
+	    e.preventDefault()
+	    setFormError('')
+	    const result = await createMember({
+	      ...newMember,
+	      category: newMember.committee,
+	      recruitmentId: pendingApprovalRecruitmentId || undefined,
+	    })
     if (!result.success) {
       setFormError(result.message)
       return
@@ -526,13 +478,13 @@ function Members() {
     }
   }
 
-  const handleRejectRecruitment = (recruitmentId) => {
-    setRecruitmentActionError('')
-    const result = rejectRecruitment(recruitmentId)
-    if (!result.success) {
-      setRecruitmentActionError(result.message)
-      return
-    }
+	  const handleRejectRecruitment = async (recruitmentId) => {
+	    setRecruitmentActionError('')
+	    const result = await rejectRecruitment(recruitmentId)
+	    if (!result.success) {
+	      setRecruitmentActionError(result.message)
+	      return
+	    }
     if (pendingApprovalRecruitmentId === recruitmentId) {
       setPendingApprovalRecruitmentId(null)
     }

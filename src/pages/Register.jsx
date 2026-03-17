@@ -1,4 +1,4 @@
-  import { useState } from 'react'
+import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Mail, Hash, Lock, User, Eye, EyeOff, UserPlus } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
@@ -44,9 +44,13 @@ function Register() {
     // Simulate network delay for animation
     await new Promise(resolve => setTimeout(resolve, 500))
 
-    const result = register(name, email, idNumber, password)
+    const result = await register(name, email, idNumber, password)
     if (result.success) {
-      navigate('/')
+      if (result.user) {
+        navigate('/')
+      } else {
+        navigate('/login', { state: { message: result.message || 'Registration successful. Please check your email to confirm your account.' } })
+      }
     } else {
       setError(result.message)
     }

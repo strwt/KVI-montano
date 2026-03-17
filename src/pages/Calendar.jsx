@@ -27,6 +27,16 @@ import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
+import { supabase } from '../lib/supabaseClient'
+import {
+  deleteSupabaseEvent,
+  fetchSupabaseEvents,
+  insertSupabaseEvent,
+  isSupabaseEnabled,
+  markSupabaseEventDone,
+  updateSupabaseEvent,
+} from '../lib/supabaseEvents'
+import { insertAssignmentNotifications } from '../lib/supabaseNotifications'
 
 const CATEGORY_CONFIG = {
   tuli: {
@@ -255,40 +265,6 @@ const ALL_MONTHS = [
   { key: '12', label: 'December' },
 ]
 
-const CALENDAR_FILTERS_KEY = 'kusgan_calendar_filters'
-const NOTIFICATIONS_STORAGE_KEY = 'kusgan_notifications'
-const NOTIFICATIONS_UPDATED_EVENT = 'kusgan-notifications-updated'
-
-const getStoredCalendarFilters = () => {
-  const stored = localStorage.getItem(CALENDAR_FILTERS_KEY)
-  if (!stored) return { searchQuery: '', selectedCategory: 'All' }
-  try {
-    const parsed = JSON.parse(stored)
-    return {
-      searchQuery: parsed?.searchQuery || '',
-      selectedCategory: parsed?.selectedCategory || 'All',
-    }
-  } catch {
-    return { searchQuery: '', selectedCategory: 'All' }
-  }
-}
-
-const getStoredNotifications = () => {
-  const stored = localStorage.getItem(NOTIFICATIONS_STORAGE_KEY)
-  if (!stored) return []
-  try {
-    const parsed = JSON.parse(stored)
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
-  }
-}
-
-const saveNotifications = (items) => {
-  localStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify(items))
-  window.dispatchEvent(new Event(NOTIFICATIONS_UPDATED_EVENT))
-}
-
 const getCategoryKeyFromLabel = label => {
   const normalized = String(label || '').trim().toLowerCase()
   if (CATEGORY_CONFIG[normalized]) return normalized
@@ -418,43 +394,6 @@ const resolveStoredLocation = event => {
     return { lat: event.latitude, lng: event.longitude }
   }
   return null
-}
-
-const getStoredEvents = () => {
-  const stored = localStorage.getItem('kusgan_events')
-  if (!stored) return []
-
-  try {
-    const parsed = JSON.parse(stored)
-    if (!Array.isArray(parsed)) return []
-
-    return parsed.map(event => {
-      const fallbackDateTime = event.date
-        ? dayjs(`${event.date} ${event.startTime || '00:00'}`).format('YYYY-MM-DDTHH:mm')
-        : ''
-
-      return {
-        ...event,
-        content: event.content || event.description || '',
-        dateTime: event.dateTime || fallbackDateTime,
-        address: event.address || '',
-        branch: event.branch || '',
-        membersInvolve: event.membersInvolve || '',
-        assignedMemberIds: Array.isArray(event.assignedMemberIds) ? event.assignedMemberIds : [],
-        viewedBy: Array.isArray(event.viewedBy) ? event.viewedBy : [],
-        location: resolveStoredLocation(event),
-        category: String(event.category || 'notes')
-          .toLowerCase()
-          .replace(/\s+/g, '_'),
-        categoryData: event.categoryData || {},
-        status: event.status === 'done' ? 'done' : 'ongoing',
-        completedAt: event.completedAt || null,
-      }
-    })
-  } catch {
-    localStorage.removeItem('kusgan_events')
-    return []
-  }
 }
 
 const getEventMatchKey = event => {
@@ -918,11 +857,11 @@ function AssignMembersPicker({ allMembers, selectedIds, onChange, label = 'Assig
 function Calendar({ listOnly = false }) {
   const { user, getAllMembers, committees } = useAuth()
   const canManageEvents = user?.role === 'admin'
+  const supabaseEnabled = isSupabaseEnabled()
   const routerLocation = useLocation()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const storedFilters = getStoredCalendarFilters()
-  const [events, setEvents] = useState(getStoredEvents)
+  const [events, setEvents] = useState([])
   const [selectedMonthKey, setSelectedMonthKey] = useState(null)
   const [showAllMonths, setShowAllMonths] = useState(false)
   const [editingEventId, setEditingEventId] = useState(null)
@@ -945,8 +884,8 @@ function Calendar({ listOnly = false }) {
     branch: '',
     assignedMemberIds: [],
   })
-  const [searchQuery, setSearchQuery] = useState(storedFilters.searchQuery)
-  const [selectedCategory, setSelectedCategory] = useState(storedFilters.selectedCategory)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState('All')
   const [selectedDateFilter, setSelectedDateFilter] = useState('')
   const [doneFields, setDoneFields] = useState(getDefaultDynamicFields())
   const [donePartners, setDonePartners] = useState([''])
@@ -973,51 +912,32 @@ function Calendar({ listOnly = false }) {
   }
 
   useEffect(() => {
-    const reloadEvents = () => {
-      const raw = localStorage.getItem('kusgan_events')
-      if (!raw) {
-        setEvents(prev => (prev.length ? [] : prev))
-        return
-      }
-      try {
-        const parsed = JSON.parse(raw)
-        if (!Array.isArray(parsed)) return
-        setEvents(prev => {
-          try {
-            return JSON.stringify(prev) === raw ? prev : parsed
-          } catch {
-            return parsed
-          }
-        })
-      } catch {
-        // ignore malformed storage
-      }
+    if (!supabaseEnabled) return
+    if (!user?.id) {
+      setEvents([])
+      return
     }
 
-    const handleStorage = event => {
-      if (event?.key === 'kusgan_events') reloadEvents()
-    }
-    const onVisibilityChange = () => {
-      if (document.visibilityState === 'visible') reloadEvents()
+    let active = true
+
+    const load = async () => {
+      const { data } = await fetchSupabaseEvents()
+      if (!active) return
+      setEvents(data)
     }
 
-    window.addEventListener('storage', handleStorage)
-    window.addEventListener('focus', reloadEvents)
-    window.addEventListener('kusgan-events-updated', reloadEvents)
-    document.addEventListener('visibilitychange', onVisibilityChange)
+    load()
+
+    const channel = supabase
+      .channel('kusgan-events')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => load())
+      .subscribe()
 
     return () => {
-      window.removeEventListener('storage', handleStorage)
-      window.removeEventListener('focus', reloadEvents)
-      window.removeEventListener('kusgan-events-updated', reloadEvents)
-      document.removeEventListener('visibilitychange', onVisibilityChange)
+      active = false
+      supabase.removeChannel(channel)
     }
-  }, [])
-
-  useEffect(() => {
-    localStorage.setItem('kusgan_events', JSON.stringify(events))
-    window.dispatchEvent(new Event('kusgan-events-updated'))
-  }, [events])
+  }, [supabaseEnabled, user?.id])
 
   const assignableMembers = useMemo(
     () => getAllMembers().filter(member => member.role === 'member'),
@@ -1095,16 +1015,6 @@ function Calendar({ listOnly = false }) {
   }
 
   useEffect(() => {
-    localStorage.setItem(
-      CALENDAR_FILTERS_KEY,
-      JSON.stringify({
-        searchQuery,
-        selectedCategory,
-      })
-    )
-  }, [searchQuery, selectedCategory])
-
-  useEffect(() => {
     if (!listOnly) return
     const nextCategory = getCategoryLabelFromQuery(routeCategory)
     setSelectedCategory(prev => (prev === nextCategory ? prev : nextCategory))
@@ -1130,12 +1040,7 @@ function Calendar({ listOnly = false }) {
 
     let didConsumeState = false
 
-    if (state.preserveFilters) {
-      const saved = getStoredCalendarFilters()
-      setSearchQuery(saved.searchQuery)
-      setSelectedCategory(saved.selectedCategory)
-      didConsumeState = true
-    }
+    if (state.preserveFilters) didConsumeState = true
 
     if (typeof state.presetCategory === 'string' && state.presetCategory.trim()) {
       setSelectedCategory(state.presetCategory.trim())
@@ -1319,7 +1224,7 @@ function Calendar({ listOnly = false }) {
   const normalizeAssignedIds = ids =>
     Array.isArray(ids) ? ids.map(id => String(id)).filter(Boolean) : []
 
-  const notifyAssignedMembers = (event, previousAssignedIds = []) => {
+  const notifyAssignedMembers = async (event, previousAssignedIds = []) => {
     if (!canManageEvents || !event) return
     const nextAssigned = normalizeAssignedIds(event.assignedMemberIds)
     if (nextAssigned.length === 0) return
@@ -1328,11 +1233,13 @@ function Calendar({ listOnly = false }) {
     const newlyAssigned = nextAssigned.filter(id => !previous.has(id))
     if (newlyAssigned.length === 0) return
 
-    const stored = getStoredNotifications()
-    const additions = newlyAssigned.map(memberId =>
-      buildAssignmentNotification(memberId, event, user?.name || 'Admin')
-    )
-    saveNotifications([...additions, ...stored])
+    if (!supabaseEnabled) return
+
+    await insertAssignmentNotifications({
+      memberIds: newlyAssigned,
+      event,
+      assignedBy: user?.name || 'Admin',
+    })
   }
 
   const currentUserId = String(user?.id || '')
@@ -1376,7 +1283,7 @@ function Calendar({ listOnly = false }) {
     })
   }
 
-  const handleAddEvent = e => {
+  const handleAddEvent = async (e) => {
     e.preventDefault()
     setFormError('')
     if (!canManageEvents) {
@@ -1432,8 +1339,15 @@ function Calendar({ listOnly = false }) {
         status: 'ongoing',
         completedAt: null,
       }
+      if (supabaseEnabled) {
+        const { error } = await insertSupabaseEvent(newEvent, user)
+        if (error) {
+          setFormError(error.message || 'Unable to save event.')
+          return
+        }
+      }
       setEvents(prev => [newEvent, ...prev])
-      notifyAssignedMembers(newEvent, [])
+      await notifyAssignedMembers(newEvent, [])
       resetForm()
       setShowEventForm(false)
     }
@@ -1457,8 +1371,15 @@ function Calendar({ listOnly = false }) {
     setShowEventForm(true)
   }
 
-  const deleteEvent = eventId => {
+  const deleteEvent = async (eventId) => {
     if (!canManageEvents) return
+    if (supabaseEnabled) {
+      const { error } = await deleteSupabaseEvent(eventId)
+      if (error) {
+        setFormError(error.message || 'Unable to delete event.')
+        return
+      }
+    }
     setEvents(prev => prev.filter(event => event.id !== eventId))
   }
 
@@ -1528,10 +1449,10 @@ function Calendar({ listOnly = false }) {
     setShowDoneForm(true)
   }
 
-	const handleMarkDone = e => {
-	  e.preventDefault()
-	  if (!markDoneEvent || !markDoneCategoryConfig) return
-	  const values = doneFields[markDoneEvent.category] || {}
+		const handleMarkDone = async (e) => {
+		  e.preventDefault()
+		  if (!markDoneEvent || !markDoneCategoryConfig) return
+		  const values = doneFields[markDoneEvent.category] || {}
 
 	  const isFieldVisible = field => {
 	    if (!field?.showWhen) return true
@@ -1602,39 +1523,52 @@ function Calendar({ listOnly = false }) {
           .filter(Boolean)
       )
     )
-	    const contributorCommitteeValue = contributorCommittees.length === 1 ? contributorCommittees[0] : ''
-	    setEvents(prev =>
-	      prev.map(item =>
-	        item.id === markDoneEvent.id
-	          ? {
-	              ...item,
-	              status: 'done',
-	              categoryData: {
-	                ...(item.categoryData && typeof item.categoryData === 'object' ? item.categoryData : {}),
-	                ...nextCategoryData,
-	                partners: partnersValue,
-	                contributorCommittee: contributorCommitteeValue,
-	                contributorMemberIds: contributorMemberIdsValue,
-	                ...(markDoneEvent.category === 'blood_letting' && !nextCategoryData.blood_token && bloodTokensValue
-	                  ? { blood_token: bloodTokensValue }
-	                  : {}),
-	              },
-	              // Preserve the original completion time when updating done details.
-	              completedAt: item.completedAt || dayjs().toISOString(),
-	            }
-	          : item
-	      )
-    )
-    setShowDoneForm(false)
-    setMarkDoneEventId(null)
-    setDoneFormError('')
-  }
+		    const contributorCommitteeValue = contributorCommittees.length === 1 ? contributorCommittees[0] : ''
+		    const nextCompletedAt = markDoneEvent.completedAt || dayjs().toISOString()
+		    const nextCategoryDataCombined = {
+		      ...(markDoneEvent.categoryData && typeof markDoneEvent.categoryData === 'object' ? markDoneEvent.categoryData : {}),
+		      ...nextCategoryData,
+		      partners: partnersValue,
+		      contributorCommittee: contributorCommitteeValue,
+		      contributorMemberIds: contributorMemberIdsValue,
+		      ...(markDoneEvent.category === 'blood_letting' && !nextCategoryData.blood_token && bloodTokensValue
+		        ? { blood_token: bloodTokensValue }
+		        : {}),
+		    }
 
-  const handleConfirmAction = () => {
+		    if (supabaseEnabled) {
+		      const { error } = await markSupabaseEventDone(markDoneEvent.id, {
+		        categoryData: nextCategoryDataCombined,
+		        completedAt: nextCompletedAt,
+		      })
+		      if (error) {
+		        setDoneFormError(error.message || 'Unable to mark event as done.')
+		        return
+		      }
+		    }
+
+		    setEvents(prev =>
+		      prev.map(item =>
+		        item.id === markDoneEvent.id
+		          ? {
+		              ...item,
+		              status: 'done',
+		              categoryData: nextCategoryDataCombined,
+		              completedAt: nextCompletedAt,
+		            }
+		          : item
+		      )
+	    )
+	    setShowDoneForm(false)
+	    setMarkDoneEventId(null)
+	    setDoneFormError('')
+	  }
+
+  const handleConfirmAction = async () => {
     if (!pendingConfirmation || !canManageEvents) return
 
     if (pendingConfirmation.type === 'delete') {
-      deleteEvent(pendingConfirmation.eventId)
+      await deleteEvent(pendingConfirmation.eventId)
       if (editingEventId && pendingConfirmation.eventId === editingEventId) {
         resetForm()
         setShowEventForm(false)
@@ -1650,6 +1584,15 @@ function Calendar({ listOnly = false }) {
         id: eventId,
         updatedAt: dayjs().format('YYYY-MM-DD HH:mm'),
       }
+
+      if (supabaseEnabled) {
+        const { error } = await updateSupabaseEvent(eventId, updatedEvent)
+        if (error) {
+          setFormError(error.message || 'Unable to update event.')
+          setPendingConfirmation(null)
+          return
+        }
+      }
       setEvents(prev =>
         prev.map(event =>
           event.id === eventId
@@ -1661,7 +1604,7 @@ function Calendar({ listOnly = false }) {
             : event
         )
       )
-      notifyAssignedMembers(updatedEvent, existingEvent?.assignedMemberIds || [])
+      await notifyAssignedMembers(updatedEvent, existingEvent?.assignedMemberIds || [])
       resetForm()
       setShowEventForm(false)
     }
@@ -1669,8 +1612,11 @@ function Calendar({ listOnly = false }) {
     setPendingConfirmation(null)
   }
 
-  const markEventSeen = eventId => {
+  const markEventSeen = async (eventId) => {
     if (!user?.id) return
+    if (supabaseEnabled) {
+      await supabase.from('event_views').insert({ event_id: eventId, user_id: user.id })
+    }
     setEvents(prev =>
       prev.map(event => {
         if (event.id !== eventId) return event

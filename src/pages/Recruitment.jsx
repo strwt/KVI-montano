@@ -25,7 +25,7 @@ function Recruitment() {
     setSuccess('')
     setIsSubmitting(true)
 
-    const result = submitRecruitmentApplication(formData)
+    const result = await submitRecruitmentApplication(formData)
     if (!result.success) {
       setError(result.message)
       setIsSubmitting(false)
