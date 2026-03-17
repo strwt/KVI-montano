@@ -4,13 +4,7 @@
 begin;
 
 -- Create bucket (id must match bucket_id used in `event_files`)
--- Note: `storage.create_bucket(...)` signature differs across Supabase versions.
--- This insert/upsert works reliably in SQL Editor.
-insert into storage.buckets (id, name, public)
-values ('event-attachments', 'event-attachments', false)
-on conflict (id) do update
-set name = excluded.name,
-    public = excluded.public;
+select storage.create_bucket('event-attachments', public := false);
 
 -- Storage RLS policies live on `storage.objects`
 -- Note: Supabase enables RLS on storage.objects by default.
@@ -43,3 +37,4 @@ using (
 );
 
 commit;
+
