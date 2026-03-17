@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Save, Image as ImageIcon, Phone, MapPin, Droplets, User, Mail, Shield } from 'lucide-react'
+import { Save, Image as ImageIcon, Phone, MapPin, Droplets, User, Mail, Shield, Trash2 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 
@@ -9,8 +9,10 @@ function EditAccount() {
 
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
   const [form, setForm] = useState({ name: '', email: '', address: '', contactNumber: '', bloodType: '', profileImage: '' })
   const [uploadedImageData, setUploadedImageData] = useState('')
+  const [selectedFileName, setSelectedFileName] = useState('')
 
   useEffect(() => {
     if (!user) {
@@ -36,13 +38,14 @@ function EditAccount() {
     const file = e.target.files && e.target.files[0]
     if (!file) {
       setUploadedImageData('')
+      setSelectedFileName('')
       return
     }
     if (!file.type.startsWith('image/')) {
       setError('Please select a valid image file (JPEG, PNG, etc.).')
       return
     }
-    const maxBytes = 2 * 1024 * 1024 // 2MB
+    const maxBytes = 25 * 1024 * 1024 // 25MB
     if (file.size > maxBytes) {
       setError('Image must be 2MB or smaller.')
       return
@@ -52,6 +55,7 @@ function EditAccount() {
     reader.onload = () => {
       if (typeof reader.result === 'string') {
         setUploadedImageData(reader.result)
+        setSelectedFileName(file.name)
       }
     }
     reader.onerror = () => {
@@ -61,13 +65,16 @@ function EditAccount() {
   }
 
   const handleSave = async () => {
+    if (isSaving) return
     setError('')
     setSuccess('')
+    setIsSaving(true)
 
     // Basic validations
     const phone = form.contactNumber.trim()
     if (phone && !/^\+?[0-9\-\s]{7,15}$/.test(phone)) {
       setError('Please enter a valid contact number (7-15 digits, optional +, - or spaces).')
+      setIsSaving(false)
       return
     }
 
@@ -75,6 +82,7 @@ function EditAccount() {
     const validBlood = ['', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
     if (!validBlood.includes(blood)) {
       setError('Blood type must be one of: A+, A-, B+, B-, AB+, AB-, O+, O-.')
+      setIsSaving(false)
       return
     }
 
@@ -87,18 +95,23 @@ function EditAccount() {
       profileImage: uploadedImageData || form.profileImage,
     }
 
-    const res = await updateCurrentUser(payload)
-    if (!res.success) {
-      setError(res.message)
-      return
+    try {
+      const res = await updateCurrentUser(payload)
+      if (!res.success) {
+        setError(res.message)
+        return
+      }
+      setSuccess('Account information updated successfully.')
+      setTimeout(() => navigate('/profile'), 350)
+    } finally {
+      setIsSaving(false)
     }
-    setSuccess('Account information updated successfully.')
-    setTimeout(() => navigate('/profile'), 350)
   }
 
   const handleRemovePhoto = () => {
     setUploadedImageData('')
     setForm(prev => ({ ...prev, profileImage: '' }))
+    setSelectedFileName('')
     setError('')
     setSuccess('')
   }
@@ -136,9 +149,9 @@ function EditAccount() {
                   Avatar / Profile Image
                 </label>
 
-                <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-4 lg:gap-5">
+                <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4 lg:gap-5">
                   <div className="rounded-2xl border border-red-100 bg-white p-4 shadow-md shadow-red-900/10">
-                    <div className="mx-auto w-28 h-28 rounded-2xl overflow-hidden border-2 border-zinc-200 bg-zinc-100 flex items-center justify-center">
+                    <div className="mx-auto w-44 h-44 rounded-2xl overflow-hidden border-2 border-zinc-200 bg-zinc-100 flex items-center justify-center">
                       <img
                         src={uploadedImageData || form.profileImage || '/image-removebg-preview.png'}
                         alt="Avatar Preview"
@@ -146,41 +159,52 @@ function EditAccount() {
                       />
                     </div>
                     <p className="text-center text-xs font-medium text-zinc-600 mt-3">Live Preview</p>
-                    <p className="text-center text-[11px] text-zinc-500 mt-1">JPG, PNG up to 2MB</p>
+                    <p className="text-center text-[11px] text-zinc-500 mt-1">JPG, PNG up to 25MB</p>
                   </div>
 
                   <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-                    <div className="grid grid-cols-1 gap-3">
+                    <div className="grid grid-cols-1 gap-4">
                       <input
+                        id="profile-image-upload"
                         type="file"
                         accept="image/*"
                         onChange={handleFileChange}
-                        className="block w-full text-sm text-zinc-700 file:mr-3 file:py-2.5 file:px-3.5 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-black file:text-white hover:file:bg-zinc-900"
+                        className="sr-only"
                       />
-                      <div>
-                        <label className="block text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500 mb-1.5">
-                          Or use image URL
-                        </label>
-                        <input
-                          type="url"
-                          placeholder="https://example.com/avatar.jpg"
-                          value={form.profileImage}
-                          onChange={(e) => {
-                            setUploadedImageData('')
-                            setForm({ ...form, profileImage: e.target.value })
-                          }}
-                          className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500"
-                        />
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2 pt-1">
-                        <button
-                          type="button"
-                          onClick={handleRemovePhoto}
-                          className="px-3 py-2 text-sm font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors"
+                      <div className="flex flex-wrap items-center gap-3">
+                        <label
+                          htmlFor="profile-image-upload"
+                          className="inline-flex items-center gap-2 rounded-lg bg-black px-3.5 py-2.5 text-sm font-semibold text-white hover:bg-zinc-900 cursor-pointer"
                         >
-                          Remove Photo
-                        </button>
-                        <p className="text-xs text-zinc-500">Avatar updates are reflected across the system.</p>
+                          Choose file
+                        </label>
+                        <div className="flex items-center gap-2 text-xs text-zinc-500">
+                          <span className="max-w-[220px] truncate">
+                            {selectedFileName || 'No file chosen'}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={handleRemovePhoto}
+                            disabled={!selectedFileName && !(uploadedImageData || form.profileImage)}
+                            className="inline-flex items-center justify-center rounded-full border border-zinc-200 bg-white p-1 text-zinc-500 hover:text-red-600 hover:border-red-200 disabled:opacity-40 disabled:cursor-not-allowed"
+                            aria-label="Remove selected image"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
+                          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">Recommended</p>
+                          <p className="text-sm text-zinc-700 mt-1">Square image, centered face, good lighting.</p>
+                        </div>
+                        <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
+                          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">Allowed</p>
+                          <p className="text-sm text-zinc-700 mt-1">JPG or PNG, up to 25MB total size.</p>
+                        </div>
+                      </div>
+                      <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3">
+                        <p className="text-sm text-emerald-700 font-medium">Avatar updates are reflected across the system.</p>
                       </div>
                     </div>
                   </div>
@@ -273,10 +297,11 @@ function EditAccount() {
               </button>
               <button
                 onClick={handleSave}
-                className="px-4 py-2.5 bg-black text-white border border-red-600/80 rounded-lg hover:bg-zinc-900 transition-colors flex items-center gap-1.5 font-medium shadow-md shadow-red-900/25"
+                disabled={isSaving}
+                className="px-4 py-2.5 bg-black text-white border border-red-600/80 rounded-lg hover:bg-zinc-900 transition-colors flex items-center gap-1.5 font-medium shadow-md shadow-red-900/25 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 <Save size={16} />
-                Save Changes
+                {isSaving ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </div>
