@@ -62,13 +62,16 @@ export default async function handler(req, res) {
 
   const { error: profileError } = await supabaseAdmin
     .from('profiles')
-    .update({
-      role: 'admin',
-      name: name || '',
-      id_number: idNumber,
-      email,
-    })
-    .eq('id', newUserId)
+    .upsert(
+      {
+        id: newUserId,
+        role: 'admin',
+        name: name || '',
+        id_number: idNumber,
+        email,
+      },
+      { onConflict: 'id' }
+    )
 
   if (profileError) {
     return res.status(500).json({ message: profileError.message || 'Bootstrap admin created but profile update failed.' })
@@ -76,4 +79,3 @@ export default async function handler(req, res) {
 
   return res.status(200).json({ success: true, userId: newUserId, idNumber })
 }
-

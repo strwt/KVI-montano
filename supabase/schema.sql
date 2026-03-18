@@ -9,20 +9,6 @@ begin;
 -- Extensions (safe if already enabled)
 create extension if not exists pgcrypto;
 
--- Helpers
-create or replace function public.is_admin()
-returns boolean
-language sql
-stable
-as $$
-  select exists (
-    select 1
-    from public.profiles p
-    where p.id = auth.uid()
-      and p.role = 'admin'
-  );
-$$;
-
 -- Timestamp helper
 create or replace function public.set_updated_at()
 returns trigger
@@ -61,6 +47,20 @@ drop trigger if exists profiles_set_updated_at on public.profiles;
 create trigger profiles_set_updated_at
 before update on public.profiles
 for each row execute function public.set_updated_at();
+
+-- Helpers (depends on public.profiles existing)
+create or replace function public.is_admin()
+returns boolean
+language sql
+stable
+as $$
+  select exists (
+    select 1
+    from public.profiles p
+    where p.id = auth.uid()
+      and p.role = 'admin'
+  );
+$$;
 
 -- Auto-create profile on signup
 create or replace function public.handle_new_user()
@@ -106,6 +106,32 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
 after insert on auth.users
 for each row execute function public.handle_new_user();
+
+-- Backfill helper: create missing profiles for existing auth.users
+create or replace function public.backfill_profiles()
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  inserted_count integer := 0;
+begin
+  insert into public.profiles (id, email, name, id_number)
+  select
+    u.id,
+    u.email,
+    coalesce(u.raw_user_meta_data->>'name', ''),
+    nullif(u.raw_user_meta_data->>'id_number', '')
+  from auth.users u
+  left join public.profiles p on p.id = u.id
+  where p.id is null
+  on conflict (id) do nothing;
+
+  get diagnostics inserted_count = row_count;
+  return inserted_count;
+end;
+$$;
 
 -- Categories/Committees (kept as "name" strings to match current app)
 create table if not exists public.committees (
@@ -466,7 +492,16 @@ begin;
 do $$
 begin
   if not exists (select 1 from storage.buckets where id = 'event-attachments') then
-    perform storage.create_bucket('event-attachments', public := false);
+    begin
+      insert into storage.buckets (id, name, "public")
+      values ('event-attachments', 'event-attachments', false)
+      on conflict (id) do nothing;
+    exception
+      when undefined_column then
+        insert into storage.buckets (id, name)
+        values ('event-attachments', 'event-attachments')
+        on conflict (id) do nothing;
+    end;
   end if;
 end $$;
 

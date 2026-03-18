@@ -8,10 +8,16 @@ Run:
 
 1. `supabase/schema.sql`
 
+To wipe everything and start over first, run:
+
+1. `supabase/reset.sql` (DANGER: drops all app tables/functions/policies + storage bucket)
+2. `supabase/schema.sql`
+
 This single script now includes:
 - Full schema + RLS
 - Storage bucket (`event-attachments`) + policies
 - ID-number login helper `public.get_email_for_id_number(p_id_number text)`
+- A backfill helper `public.backfill_profiles()` for cases where Auth users exist but `profiles` rows are missing
 
 If you see a `400 Bad Request` on `login_activity?on_conflict=user_id,date`, ensure `login_activity` has a UNIQUE constraint on `(user_id, date)`.
 
@@ -40,6 +46,12 @@ Option B: create admin in Supabase Dashboard (email + password required by Supab
 
 1. Create a user in Supabase Dashboard -> Authentication -> Users (set an email + password).
 2. In Supabase Table Editor -> `profiles`, set `role = 'admin'` and set an `id_number` for that user.
+
+If you created Auth users but `public.profiles` stayed empty, run this once:
+
+```sql
+select public.backfill_profiles();
+```
 
 SQL example:
 

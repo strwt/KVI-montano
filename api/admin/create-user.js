@@ -89,7 +89,15 @@ export default async function handler(req, res) {
     member_since: body.memberSince ? String(body.memberSince).trim() : null,
   }
 
-  const { error: profileError } = await supabaseAdmin.from('profiles').update(profilePatch).eq('id', newUserId)
+  const { error: profileError } = await supabaseAdmin
+    .from('profiles')
+    .upsert(
+      {
+        id: newUserId,
+        ...profilePatch,
+      },
+      { onConflict: 'id' }
+    )
   if (profileError) {
     return res.status(500).json({ message: profileError.message || 'User created but profile update failed.' })
   }
