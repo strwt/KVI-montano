@@ -369,6 +369,8 @@ export function AuthProvider({ children }) {
 		    let active = true
 		    let refreshInterval
 
+      setLoading(true)
+
 	    const safelyStartAutoRefresh = () => {
 	      try {
 	        supabase.auth.startAutoRefresh?.()
@@ -434,8 +436,9 @@ export function AuthProvider({ children }) {
 		    }
 
 	    const bootstrap = async () => {
+        if (active) setLoading(true)
 	      try {
-	        const { data, error } = await supabase.auth.getSession()
+	        const { data, error } = await runAuthOperationWithRetry(() => supabase.auth.getSession(), 2, 20_000)
 	        if (!active) return
 
         if (error) {
@@ -481,6 +484,7 @@ export function AuthProvider({ children }) {
     const { data: authSub } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!active) return
 
+      setLoading(true)
       if (event === 'TOKEN_REFRESH_FAILED') {
         await supabase.auth.signOut()
         await reloadProfile(null)
@@ -488,6 +492,7 @@ export function AuthProvider({ children }) {
         setCommittees([])
         setUtilitiesByCommittee({})
         setRecruitments([])
+        if (active) setLoading(false)
         return
       }
 
@@ -505,6 +510,8 @@ export function AuthProvider({ children }) {
         setUtilitiesByCommittee({})
         setRecruitments([])
       }
+
+      if (active) setLoading(false)
     })
 
 		    safelyStartAutoRefresh()
