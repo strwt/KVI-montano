@@ -574,25 +574,27 @@ export function AuthProvider({ children }) {
 		    const looksLikeEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)
 
 		    if (!normalizedIdentifier || !trimmedPassword) {
-		      return { success: false, message: 'ID number (or email) and password are required.' }
+		      return { success: false, message: 'ID number and password are required.' }
 		    }
 
 		    let emailForAuth = normalizedEmail
-		    if (!looksLikeEmail) {
-		      const idNumber = normalizedIdentifier
-		      try {
-		        const { data, error } = await supabase.rpc('get_email_for_id_number', { p_id_number: idNumber })
-		        if (error) {
-		          console.warn('Failed to resolve email for ID number.', error)
-		          return { success: false, message: 'Unable to sign in with ID number right now. Please try again.' }
-		        }
-		        if (!data) return { success: false, message: 'Invalid ID number or password.' }
-		        emailForAuth = String(data || '').trim().toLowerCase()
-		        if (!emailForAuth) return { success: false, message: 'Invalid ID number or password.' }
-		      } catch (error) {
+		    if (looksLikeEmail) {
+		      return { success: false, message: 'Email sign-in is disabled. Please use your ID number.' }
+		    }
+
+		    const idNumber = normalizedIdentifier
+		    try {
+		      const { data, error } = await supabase.rpc('get_email_for_id_number', { p_id_number: idNumber })
+		      if (error) {
 		        console.warn('Failed to resolve email for ID number.', error)
 		        return { success: false, message: 'Unable to sign in with ID number right now. Please try again.' }
 		      }
+		      if (!data) return { success: false, message: 'Invalid ID number or password.' }
+		      emailForAuth = String(data || '').trim().toLowerCase()
+		      if (!emailForAuth) return { success: false, message: 'Invalid ID number or password.' }
+		    } catch (error) {
+		      console.warn('Failed to resolve email for ID number.', error)
+		      return { success: false, message: 'Unable to sign in with ID number right now. Please try again.' }
 		    }
 
 	    let data

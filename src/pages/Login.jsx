@@ -4,7 +4,7 @@ import { User, Lock, Eye, EyeOff, ArrowLeft, UserPlus } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
 function Login() {
-  const [identifier, setIdentifier] = useState('')
+  const [idNumber, setIdNumber] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
@@ -49,8 +49,14 @@ function Login() {
       return
     }
 
-    if (!identifier.trim() || !password.trim()) {
+    if (!idNumber.trim() || !password.trim()) {
       setError('All fields are required.')
+      return
+    }
+
+    const normalizedIdNumber = idNumber.trim()
+    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedIdNumber.toLowerCase())) {
+      setError('Please enter your ID number (email sign-in is disabled).')
       return
     }
 
@@ -64,7 +70,7 @@ function Login() {
         setTimeout(() => resolve({ success: false, message: 'Login timed out. Please try again.' }), 15_000)
       )
 
-      const result = await Promise.race([login(identifier, password), timeout])
+      const result = await Promise.race([login(normalizedIdNumber, password), timeout])
       if (result.success) {
         setInfo('Signed in. Redirecting...')
         setPendingRedirect(true)
@@ -140,15 +146,15 @@ function Login() {
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Email / ID Input */}
             <div className="relative">
-              <label className="block text-gray-700 dark:text-gray-300 text-sm font-medium mb-2">Email or ID Number</label>
+              <label className="block text-gray-700 dark:text-gray-300 text-sm font-medium mb-2">ID Number</label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-400" size={18} />
                 <input
                   type="text"
-                  value={identifier}
-                  onChange={(e) => setIdentifier(e.target.value)}
+                  value={idNumber}
+                  onChange={(e) => setIdNumber(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 bg-white dark:bg-gray-900/50 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
-                  placeholder="Enter your email or ID number"
+                  placeholder="Enter your ID number"
                   required
                 />
               </div>
