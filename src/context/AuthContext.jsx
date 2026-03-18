@@ -132,7 +132,7 @@ export function AuthProvider({ children }) {
   const supabaseEnabled = Boolean(isSupabaseConfigured && supabase)
   const supabaseConfigError = getSupabaseConfigError()
 
-  const [loading, setLoading] = useState(supabaseEnabled)
+	  const [loading, setLoading] = useState(false)
   const [user, setUser] = useState(null)
   const [users, setUsers] = useState([])
   const [committees, setCommittees] = useState([])
@@ -323,8 +323,9 @@ export function AuthProvider({ children }) {
 	      return
 	    }
 
-	    let active = true
-	    let refreshInterval
+		    let active = true
+		    let refreshInterval
+		    let bootstrapTimeout
 
 	    const safelyStartAutoRefresh = () => {
 	      try {
@@ -384,16 +385,26 @@ export function AuthProvider({ children }) {
 	      safelyStopAutoRefresh()
 	    }
 
-	    const handleOnline = () => {
-	      if (!active) return
-	      safelyStartAutoRefresh()
-	      refreshSessionIfNeeded().catch(() => {})
-	    }
+		    const handleOnline = () => {
+		      if (!active) return
+		      safelyStartAutoRefresh()
+		      refreshSessionIfNeeded().catch(() => {})
+		    }
 
-    const bootstrap = async () => {
-      try {
-        const { data, error } = await supabase.auth.getSession()
-        if (!active) return
+		    const startBootstrapTimeout = () => {
+		      if (bootstrapTimeout) window.clearTimeout(bootstrapTimeout)
+		      bootstrapTimeout = window.setTimeout(() => {
+		        if (!active) return
+		        console.warn('Auth bootstrap timed out; continuing without blocking render.')
+		        setLoading(false)
+		      }, 12 * 1000)
+		    }
+
+	    const bootstrap = async () => {
+	      startBootstrapTimeout()
+	      try {
+	        const { data, error } = await supabase.auth.getSession()
+	        if (!active) return
 
         if (error) {
           if (isRefreshTokenError(error)) {
@@ -421,18 +432,20 @@ export function AuthProvider({ children }) {
           setUtilitiesByCommittee({})
           setRecruitments([])
         }
-      } catch (error) {
-        if (active) {
-          setUser(null)
-          setUsers([])
-          setCommittees([])
+	      } catch (error) {
+	        void error
+	        if (active) {
+	          setUser(null)
+	          setUsers([])
+	          setCommittees([])
           setUtilitiesByCommittee({})
           setRecruitments([])
         }
-      } finally {
-        if (active) setLoading(false)
-      }
-    }
+	      } finally {
+	        if (bootstrapTimeout) window.clearTimeout(bootstrapTimeout)
+	        if (active) setLoading(false)
+	      }
+	    }
 
     const { data: authSub } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!active) return
@@ -463,7 +476,18 @@ export function AuthProvider({ children }) {
       }
     })
 
-	    bootstrap()
+		    safelyStartAutoRefresh()
+		    refreshSessionIfNeeded().catch(() => {})
+		    refreshInterval = window.setInterval(() => {
+		      refreshSessionIfNeeded().catch(() => {})
+		    }, 60 * 1000)
+
+		    window.addEventListener('focus', handleFocus)
+		    window.addEventListener('blur', handleBlur)
+		    window.addEventListener('online', handleOnline)
+		    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+		    bootstrap()
 
 	    const committeesChannel = supabase
 	      .channel('kusgan-committees')
@@ -490,14 +514,15 @@ export function AuthProvider({ children }) {
 	      )
 	      .subscribe()
 
-	    return () => {
-	      active = false
-	      safelyStopAutoRefresh()
-	      if (refreshInterval) window.clearInterval(refreshInterval)
-	      window.removeEventListener('focus', handleFocus)
-	      window.removeEventListener('blur', handleBlur)
-	      window.removeEventListener('online', handleOnline)
-	      document.removeEventListener('visibilitychange', handleVisibilityChange)
+		    return () => {
+		      active = false
+		      safelyStopAutoRefresh()
+		      if (refreshInterval) window.clearInterval(refreshInterval)
+		      if (bootstrapTimeout) window.clearTimeout(bootstrapTimeout)
+		      window.removeEventListener('focus', handleFocus)
+		      window.removeEventListener('blur', handleBlur)
+		      window.removeEventListener('online', handleOnline)
+		      document.removeEventListener('visibilitychange', handleVisibilityChange)
 	      authSub?.subscription?.unsubscribe?.()
 	      supabase.removeChannel(committeesChannel)
 	      supabase.removeChannel(utilitiesChannel)
