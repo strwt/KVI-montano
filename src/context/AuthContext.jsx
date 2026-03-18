@@ -10,26 +10,23 @@ const logSupabase = (...args) => {
   console.info('[supabase]', ...args)
 }
 
-let authQueue = Promise.resolve()
-
-const queueAuthOperation = (operation) => {
-  const next = authQueue.then(operation, operation)
-  authQueue = next.catch(() => {})
-  return next
-}
-
 const DEFAULT_PROFILE_IMAGE = '/image-removebg-preview.png'
 const DEFAULT_MEMBER_CATEGORY = 'General Member'
 const SESSION_EXPIRED_MESSAGE = 'Session expired. Please log in again.'
 const LOADING_FALLBACK_MS = 3_000
+const PROFILE_CACHE_TTL_MS = 30_000
+const PROFILE_NEGATIVE_CACHE_TTL_MS = 2_000
+
+const profileCache = new Map()
+const profileInflight = new Map()
+const clearProfileCache = () => {
+  profileCache.clear()
+  profileInflight.clear()
+}
 
 const normalizeRole = (value) => {
   const normalized = String(value || '').trim().toLowerCase()
   return normalized === 'admin' || normalized === 'member' ? normalized : null
-}
-
-const resolveAuthRole = (authUser) => {
-  return normalizeRole(authUser?.app_metadata?.role) || normalizeRole(authUser?.user_metadata?.role)
 }
 
 const isRefreshTokenError = (error) => {
@@ -75,21 +72,15 @@ const buildCategoryKeyFromCommitteeEntry = (committeeEntry) => {
   return canonicalizeCategoryKey(normalizeCategoryKey(category))
 }
 
-const normalizeIdentifier = (value) =>
-  String(value || '')
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, '')
-
 const mapProfileToUser = (profile, authUser) => {
-  if (!profile && !authUser) return null
+  if (!authUser) return null
 
-  const id = authUser?.id || profile?.id || null
+  const id = authUser.id || profile?.id || null
   if (!id) return null
 
   const name = profile?.name || authUser?.user_metadata?.name || ''
   const email = profile?.email || authUser?.email || ''
-  const role = normalizeRole(profile?.role) || resolveAuthRole(authUser)
+  const role = normalizeRole(profile?.role)
 
   return enrichUserWithProfileImage({
     id,
@@ -113,7 +104,7 @@ const mapProfileToUser = (profile, authUser) => {
   })
 }
 
-  const applyMappedUserState = (mappedUser, setters) => {
+const applyMappedUserState = (mappedUser, setters) => {
   const { setUser, setAppLanguageState, setDarkModeState, setSettingsState } = setters
   setUser(mappedUser)
   setAppLanguageState(mappedUser?.appLanguage || 'English')
@@ -173,6 +164,8 @@ export function AuthProvider({ children }) {
   const [committees, setCommittees] = useState([])
   const [utilitiesByCommittee, setUtilitiesByCommittee] = useState({})
   const [recruitments, setRecruitments] = useState([])
+  const authEpochRef = useRef(0)
+  const initialSessionHandledRef = useRef(false)
 
   const isAuthLockError = (error) => {
     if (!error) return false
@@ -217,7 +210,7 @@ export function AuthProvider({ children }) {
       throw lastError
     }
 
-    return queued ? queueAuthOperation(runner) : runner()
+    return runner()
   }
   const [appLanguage, setAppLanguageState] = useState('English')
   const [darkMode, setDarkModeState] = useState(false)
@@ -267,59 +260,81 @@ export function AuthProvider({ children }) {
   }
 
   const fetchProfileForAuthUser = async (authUser) => {
-    if (!supabaseEnabled || !authUser?.id) return null
+    if (!supabaseEnabled || !authUser?.id) return { profile: null, error: null }
+
+    const now = Date.now()
+    const cached = profileCache.get(authUser.id)
+    if (cached) {
+      const ttl = cached.profile ? PROFILE_CACHE_TTL_MS : PROFILE_NEGATIVE_CACHE_TTL_MS
+      if (now - cached.at < ttl) {
+        return { profile: cached.profile, error: cached.error || null }
+      }
+      profileCache.delete(authUser.id)
+    }
+
+    const inflight = profileInflight.get(authUser.id)
+    if (inflight) return inflight
 
     const normalizedEmail = String(authUser.email || '').trim().toLowerCase()
     const normalizedIdNumber = String(authUser?.user_metadata?.id_number || '').trim()
 
-    const [exactResult, emailResult, idNumberResult] = await Promise.all([
-      runSupabaseQuery('Failed to load profile by auth user id.', () =>
-        supabase.from('profiles').select('*').eq('id', authUser.id).maybeSingle()
-      ),
-      normalizedEmail
-        ? runSupabaseQuery('Failed to load profile by email.', () =>
-            supabase.from('profiles').select('*').eq('email', normalizedEmail).limit(1).maybeSingle()
-          )
-        : Promise.resolve({ data: null, error: null }),
-      normalizedIdNumber
-        ? runSupabaseQuery('Failed to load profile by id_number.', () =>
-            supabase.from('profiles').select('*').eq('id_number', normalizedIdNumber).limit(1).maybeSingle()
-          )
-        : Promise.resolve({ data: null, error: null }),
-    ])
+    const promise = (async () => {
+      const [exactResult, emailResult, idNumberResult] = await Promise.all([
+        runSupabaseQuery('Failed to load profile by auth user id.', () =>
+          supabase.from('profiles').select('*').eq('id', authUser.id).maybeSingle()
+        ),
+        normalizedEmail
+          ? runSupabaseQuery('Failed to load profile by email.', () =>
+              supabase.from('profiles').select('*').eq('email', normalizedEmail).limit(1).maybeSingle()
+            )
+          : Promise.resolve({ data: null, error: null }),
+        normalizedIdNumber
+          ? runSupabaseQuery('Failed to load profile by id_number.', () =>
+              supabase.from('profiles').select('*').eq('id_number', normalizedIdNumber).limit(1).maybeSingle()
+            )
+          : Promise.resolve({ data: null, error: null }),
+      ])
 
-    const exactProfile = exactResult?.data || null
-    const emailProfile = emailResult?.data || null
-    const idNumberProfile = idNumberResult?.data || null
+      const exactProfile = exactResult?.data || null
+      const emailProfile = emailResult?.data || null
+      const idNumberProfile = idNumberResult?.data || null
+      const lookupError = exactResult?.error || emailResult?.error || idNumberResult?.error || null
 
-    const profile = exactProfile || emailProfile || idNumberProfile || null
-    const matchedBy = exactProfile
-      ? 'id'
-      : emailProfile
-        ? 'email'
-        : idNumberProfile
-          ? 'id_number'
-          : null
+      const profile = exactProfile || emailProfile || idNumberProfile || null
+      const matchedBy = exactProfile
+        ? 'id'
+        : emailProfile
+          ? 'email'
+          : idNumberProfile
+            ? 'id_number'
+            : null
 
-    if (profile && profile.id !== authUser.id) {
-      console.warn('Auth/profile ID mismatch detected.', {
+      if (profile && profile.id !== authUser.id) {
+        console.warn('Auth/profile ID mismatch detected.', {
+          authUserId: authUser.id,
+          profileId: profile.id,
+          matchedBy,
+          profileRole: profile.role || null,
+        })
+      }
+
+      logSupabase('profile lookup result', {
         authUserId: authUser.id,
-        profileId: profile.id,
         matchedBy,
-        profileRole: profile.role || null,
+        profileId: profile?.id || null,
+        profileRole: profile?.role || null,
+        email: normalizedEmail || null,
+        idNumber: normalizedIdNumber || null,
       })
-    }
 
-    logSupabase('profile lookup result', {
-      authUserId: authUser.id,
-      matchedBy,
-      profileId: profile?.id || null,
-      profileRole: profile?.role || null,
-      email: normalizedEmail || null,
-      idNumber: normalizedIdNumber || null,
+      profileCache.set(authUser.id, { profile, error: lookupError || null, at: Date.now() })
+      return { profile, error: lookupError || null }
+    })().finally(() => {
+      profileInflight.delete(authUser.id)
     })
 
-    return profile
+    profileInflight.set(authUser.id, promise)
+    return promise
   }
 
 	  const recordDailyPresenceSupabase = async (userId) => {
@@ -362,23 +377,22 @@ export function AuthProvider({ children }) {
 	    }
 	  }
 
-	  const reloadProfile = async (authUser) => {
-	    if (!supabaseEnabled) return null
-	    if (!authUser?.id) {
-	      setUser(null)
-	      return null
-	    }
+  const hydrateProfile = async (authUser, epoch) => {
+    if (!supabaseEnabled || !authUser?.id) return null
 
-      const profile = await fetchProfileForAuthUser(authUser)
+    const { profile, error } = await fetchProfileForAuthUser(authUser)
+    if (error) console.warn('Failed to load profile from Supabase.', error)
 
-	    const mapped = mapProfileToUser(profile, authUser)
-      logSupabase('profile resolved', {
-        authUserId: authUser.id,
-        profileId: profile?.id || null,
-        fetchedRole: profile?.role || null,
-        appliedRole: mapped?.role || null,
-      })
-	    applyMappedUserState(mapped, { setUser, setAppLanguageState, setDarkModeState, setSettingsState })
+    const mapped = mapProfileToUser(profile, authUser)
+    logSupabase('profile resolved', {
+      authUserId: authUser.id,
+      profileId: profile?.id || null,
+      fetchedRole: profile?.role || null,
+      appliedRole: mapped?.role || null,
+    })
+
+    if (epoch && epoch !== authEpochRef.current) return null
+    applyMappedUserState(mapped, { setUser, setAppLanguageState, setDarkModeState, setSettingsState })
     return mapped
   }
 
@@ -495,142 +509,88 @@ export function AuthProvider({ children }) {
     setRecruitments(mapped)
   }
 
-	  useEffect(() => {
-	    if (!supabaseEnabled) {
-	      setLoading(false)
-        setAuthResolved(true)
-	      return
-	    }
+  useEffect(() => {
+    if (!supabaseEnabled) {
+      setLoading(false)
+      setAuthResolved(true)
+      return undefined
+    }
 
-		    let active = true
-        let loadQueue = Promise.resolve()
+    let disposed = false
 
-        const queueDataLoad = (operation) => {
-          const next = loadQueue.then(operation, operation)
-          loadQueue = next.catch(() => {})
-          return next
-        }
+    const applySignedOut = () => {
+      authEpochRef.current += 1
+      clearProfileCache()
+      setUser(null)
+      setUsers([])
+      setCommittees([])
+      setUtilitiesByCommittee({})
+      setRecruitments([])
+      setAuthResolved(true)
+      setLoading(false)
+    }
 
-        const clearSupabaseData = async () => {
-          await reloadProfile(null)
-          setUsers([])
-          setCommittees([])
-          setUtilitiesByCommittee({})
-          setRecruitments([])
-        }
-
-        const loadSupabaseDataForUser = async (authUser) => {
-          // Set a fast, minimal user state from the auth session so routing doesn't bounce back to /login
-          // while the profile/data queries are still loading.
-          if (authUser?.id) {
-            const mappedFromAuth = mapProfileToUser(null, authUser)
-            applyMappedUserState(mappedFromAuth, { setUser, setAppLanguageState, setDarkModeState, setSettingsState })
-          }
-
-          const currentUser = await reloadProfile(authUser)
-          if (authUser?.id) void recordDailyPresenceSupabase(authUser.id)
-          if (authUser) {
-            const committeeListPromise = reloadCommittees()
-            await Promise.all([
-              reloadMembers(),
-              committeeListPromise.then(list => reloadUtilities(list)),
-              reloadRecruitments(currentUser?.role === 'admin'),
-            ])
-          } else {
-            setUsers([])
-            setCommittees([])
-            setUtilitiesByCommittee({})
-            setRecruitments([])
-          }
-        }
-
+    const hydrateForUser = async (authUser, epoch) => {
       setLoading(true)
+      try {
+        const profileUser = await hydrateProfile(authUser, epoch)
+        if (epoch !== authEpochRef.current || disposed) return
 
-	    const bootstrap = async () => {
-        await queueDataLoad(async () => {
-          if (!active) return
-          setLoading(true)
-          try {
-            logSupabase('bootstrap getSession() start')
-            const { data, error } = await runAuthOperationWithRetry(() => supabase.auth.getSession(), {
-              attempts: 2,
-              timeoutMs: LOADING_FALLBACK_MS,
-              queued: false,
-            })
-            if (!active) return
+        const isAdmin = profileUser?.role === 'admin'
 
-            if (error) {
-              if (isRefreshTokenError(error)) {
-                await runAuthOperationWithRetry(() => supabase.auth.signOut(), { attempts: 1, timeoutMs: 20_000, queued: false })
-              }
-              logSupabase('bootstrap getSession() error', error)
-              await clearSupabaseData()
-              if (active) setAuthResolved(true)
-              return
-            }
+        const committeeListPromise = reloadCommittees()
+        await Promise.all([
+          reloadMembers(),
+          committeeListPromise.then(list => reloadUtilities(list)),
+          reloadRecruitments(Boolean(isAdmin)),
+          recordDailyPresenceSupabase(authUser.id),
+        ])
+      } finally {
+        if (!disposed && epoch === authEpochRef.current) setLoading(false)
+      }
+    }
 
-            const authUser = data?.session?.user || null
-            logSupabase('bootstrap session user?', Boolean(authUser?.id))
-            if (active) setAuthResolved(true)
-            await loadSupabaseDataForUser(authUser)
-          } catch (error) {
-            void error
-            if (active) {
-              await clearSupabaseData()
-              setAuthResolved(true)
-            }
-          } finally {
-            if (active) setLoading(false)
-          }
-        })
-	    }
-
-    const { data: authSub } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!active) return
-
-      logSupabase('auth state change', event)
-
-      // bootstrap() already handles initial load; avoid duplicate parallel loads in dev/StrictMode.
-      if (event === 'INITIAL_SESSION') return
+    const handleAuthChange = (event, session) => {
+      if (disposed) return
       if (isSigningOutRef.current && event !== 'SIGNED_OUT' && event !== 'TOKEN_REFRESH_FAILED') return
+      if (event === 'INITIAL_SESSION') {
+        if (initialSessionHandledRef.current) return
+        initialSessionHandledRef.current = true
+      }
 
-      await queueDataLoad(async () => {
-        if (!active) return
-        setLoading(true)
-        try {
-          if (event === 'TOKEN_REFRESH_FAILED') {
-            await runAuthOperationWithRetry(() => supabase.auth.signOut(), { attempts: 1, timeoutMs: 20_000, queued: false })
-            await clearSupabaseData()
-            return
-          }
+      if (debugSupabase) logSupabase('auth event', event)
 
-          const authUser = session?.user || null
-          if (authUser?.id) {
-            const mappedFromAuth = mapProfileToUser(null, authUser)
-            applyMappedUserState(mappedFromAuth, { setUser, setAppLanguageState, setDarkModeState, setSettingsState })
-          }
-          if (active) setAuthResolved(true)
-          await loadSupabaseDataForUser(authUser)
-        } catch (error) {
-          void error
-          if (active) {
-            await clearSupabaseData()
-            setAuthResolved(true)
-          }
-        } finally {
-          if (active) setLoading(false)
-        }
-      })
+      const authUser = session?.user || null
+      if (!authUser?.id) {
+        applySignedOut()
+        return
+      }
+
+      // Make the UI react instantly: session exists, auth is resolved, stop auth-loading immediately.
+      authEpochRef.current += 1
+      clearProfileCache()
+      const epoch = authEpochRef.current
+      setAuthResolved(true)
+      setLoading(false)
+      setUser(mapProfileToUser(null, authUser))
+
+      void hydrateForUser(authUser, epoch)
+    }
+
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      handleAuthChange(event, session)
     })
 
-      bootstrap()
+    void supabase.auth
+      .getSession()
+      .then(({ data }) => handleAuthChange('INITIAL_SESSION', data?.session || null))
+      .catch(() => setAuthResolved(true))
 
-      return () => {
-        active = false
-        authSub?.subscription?.unsubscribe?.()
-      }
-	    // eslint-disable-next-line react-hooks/exhaustive-deps
-	  }, [supabaseEnabled])
+    return () => {
+      disposed = true
+      sub?.subscription?.unsubscribe?.()
+    }
+  }, [supabaseEnabled])
 
   useEffect(() => {
     if (!supabaseEnabled || !user?.id) return undefined
@@ -777,78 +737,30 @@ export function AuthProvider({ children }) {
 		      return { success: false, message: 'Unable to sign in with ID number right now. Please try again.' }
 		    }
 
-	    let error
 		    try {
-		      const waitForSignedIn = () =>
-		        new Promise((resolve) => {
-		          let timeoutId
-		          const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
-		            if (event !== 'SIGNED_IN') return
-		            if (!session?.user?.id) return
-		            if (timeoutId) window.clearTimeout(timeoutId)
-		            sub?.subscription?.unsubscribe?.()
-		            resolve({ event, session })
-		          })
-		          timeoutId = window.setTimeout(() => {
-		            sub?.subscription?.unsubscribe?.()
-		            resolve(null)
-		          }, 10_000)
-		        })
-
-      const signInPromise = runAuthOperationWithRetry(
-        () =>
-          supabase.auth.signInWithPassword({
+          const { error } = await supabase.auth.signInWithPassword({
             email: emailForAuth,
             password: trimmedPassword,
-          }),
-        { attempts: 1, timeoutMs: 20_000, queued: false }
-      )
+          })
+          if (error) {
+            const msg = String(error.message || '')
+            logSupabase('login signInWithPassword error', msg)
+            if (/email not confirmed/i.test(msg)) {
+              return { success: false, message: 'Email not confirmed yet. Please confirm your email and try again.' }
+            }
+            if (/invalid login credentials/i.test(msg)) {
+              return { success: false, message: 'Invalid ID number or password.' }
+            }
+            return { success: false, message: msg || 'Login failed.' }
+          }
 
-		      // If Supabase fires SIGNED_IN but the signIn promise is slow/hung (auth lock contention),
-		      // proceed as success and let the global auth handler hydrate app state.
-		      const first = await Promise.race([signInPromise, waitForSignedIn()])
-		      if (first && first.session?.user?.id) {
-            const hydratedUser = await reloadProfile(first.session.user)
-            logSupabase('login hydrated role', {
-              userId: first.session.user.id,
-              profileId: hydratedUser?.profileId || null,
-              role: hydratedUser?.role || null,
-            })
-		        return { success: true }
-		      }
-
-      const res = await signInPromise
-      const signedInUser = res?.data?.session?.user || res?.data?.user || null
-      if (signedInUser?.id) {
-        const hydratedUser = await reloadProfile(signedInUser)
-        logSupabase('login hydrated role', {
-          userId: signedInUser.id,
-          profileId: hydratedUser?.profileId || null,
-          role: hydratedUser?.role || null,
-        })
-      }
-      error = res?.error
+          // UI hydration happens via onAuthStateChange.
+          return { success: true }
 		    } catch (err) {
 		      const message = err?.message ? String(err.message) : ''
 		      if (isAbortError(err)) return { success: false, message: 'Login request timed out. Please try again.' }
 		      return { success: false, message: message || 'Login failed.' }
 		    }
-
-		    if (error) {
-		      const msg = String(error.message || '')
-		      logSupabase('login signInWithPassword error', msg)
-		      if (/email not confirmed/i.test(msg)) {
-		        return { success: false, message: 'Email not confirmed yet. Please confirm your email and try again.' }
-		      }
-		      if (/invalid login credentials/i.test(msg)) {
-		        return { success: false, message: 'Invalid ID number or password.' }
-		      }
-		      return { success: false, message: msg || 'Login failed.' }
-		    }
-
-		    // App state will be hydrated by the onAuthStateChange(SIGNED_IN) handler.
-		    // Avoid firing multiple parallel Supabase requests right after sign-in (which can trigger auth-token lock contention).
-		    return { success: true }
         }
 
         const request = runLogin().finally(() => {
@@ -863,6 +775,7 @@ export function AuthProvider({ children }) {
 
     isSigningOutRef.current = true
     loginRequestRef.current = null
+    clearProfileCache()
     clearClientState()
 
     if (!supabaseEnabled) {
@@ -914,7 +827,11 @@ export function AuthProvider({ children }) {
 
     const activeUser = data?.session?.user || data?.user || null
     if (activeUser?.id) {
-      await reloadProfile(activeUser)
+      authEpochRef.current += 1
+      const epoch = authEpochRef.current
+      setAuthResolved(true)
+      setUser(mapProfileToUser(null, activeUser))
+      await hydrateProfile(activeUser, epoch)
       await recordDailyPresenceSupabase(activeUser.id)
       return { success: true, user: activeUser }
     }
@@ -972,7 +889,15 @@ export function AuthProvider({ children }) {
           : member
       )
     )
-    await reloadProfile({ id: user.id, user_metadata: { name }, email })
+    authEpochRef.current += 1
+    await hydrateProfile(
+      {
+        id: user.id,
+        email,
+        user_metadata: { name, id_number: user.idNumber || '' },
+      },
+      authEpochRef.current
+    )
     return { success: true }
   }
 
@@ -1035,10 +960,35 @@ export function AuthProvider({ children }) {
     if (!user?.id) return { success: false, message: 'User not found.' }
     if (user.role !== 'admin') return { success: false, message: 'Only admins can update members.' }
 
-    const isSelf = String(memberId) === String(user.id)
     const hasIdentityEdits = Object.prototype.hasOwnProperty.call(updates, 'email') || Object.prototype.hasOwnProperty.call(updates, 'idNumber')
-    if (!isSelf && hasIdentityEdits) {
-      return { success: false, message: 'Updating email/ID Number for other users requires an Admin server route (Service Role).' }
+
+    if (hasIdentityEdits) {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+      const token = sessionData?.session?.access_token
+      if (sessionError || !token) return { success: false, message: SESSION_EXPIRED_MESSAGE }
+
+      let response
+      try {
+        response = await fetch('/api/admin/update-user', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ userId: memberId, updates }),
+        })
+      } catch (error) {
+        console.warn('Failed to reach admin update-user endpoint.', error)
+        return { success: false, message: 'Unable to reach the server. Please try again.' }
+      }
+
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        return { success: false, message: payload?.message || `Unable to update member (HTTP ${response.status}).` }
+      }
+
+      await reloadMembers()
+      return { success: true }
     }
 
     const payload = {
@@ -1050,11 +1000,6 @@ export function AuthProvider({ children }) {
       blood_type: (updates.bloodType ?? '').toString().trim().toUpperCase() || null,
       account_status: (updates.accountStatus ?? 'Active').toString().trim() || 'Active',
       status: (updates.status ?? 'active').toString().trim() || 'active',
-    }
-
-    if (isSelf) {
-      if (Object.prototype.hasOwnProperty.call(updates, 'email')) payload.email = String(updates.email || '').trim().toLowerCase()
-      if (Object.prototype.hasOwnProperty.call(updates, 'idNumber')) payload.id_number = String(updates.idNumber || '').trim()
     }
 
     const { error } = await supabase.from('profiles').update(payload).eq('id', memberId)
@@ -1362,6 +1307,8 @@ export function AuthProvider({ children }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
+
+
 // eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   const context = useContext(AuthContext)
@@ -1370,4 +1317,3 @@ export function useAuth() {
   }
   return context
 }
-

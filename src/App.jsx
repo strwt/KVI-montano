@@ -54,6 +54,7 @@ function ProtectedRoute({ children }) {
   const { user, authResolved } = useAuth()
 
   if (!authResolved && !user) return <AuthPendingState />
+  if (user && !user.role) return <AuthPendingState title="Loading account access..." />
 
   if (!user) {
     return <Navigate to="/login" replace />

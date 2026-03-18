@@ -1,8 +1,9 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import bootstrapHandler from './api/admin/bootstrap.js'
 import createUserHandler from './api/admin/create-user.js'
+import updateUserHandler from './api/admin/update-user.js'
 import healthHandler from './api/health.js'
 
 const collectRawBody = async (req) => {
@@ -39,6 +40,7 @@ const devApiPlugin = () => {
     ['/api/health', healthHandler],
     ['/api/admin/bootstrap', bootstrapHandler],
     ['/api/admin/create-user', createUserHandler],
+    ['/api/admin/update-user', updateUserHandler],
   ])
 
   return {
@@ -71,6 +73,17 @@ const devApiPlugin = () => {
 }
 
 // https://vite.dev/config/
-export default defineConfig({
-  plugins: [react(), tailwindcss(), devApiPlugin()],
+export default defineConfig(({ mode }) => {
+  // Vite loads `.env*` into `import.meta.env` for the browser bundle, but our dev API handlers
+  // run in the Node dev server and expect `process.env.*` like Vercel serverless.
+  const env = loadEnv(mode, process.cwd(), '')
+
+  process.env.SUPABASE_URL = process.env.SUPABASE_URL || env.SUPABASE_URL || env.VITE_SUPABASE_URL || ''
+  process.env.SUPABASE_SERVICE_ROLE_KEY =
+    process.env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_ROLE_KEY || ''
+  process.env.BOOTSTRAP_SECRET = process.env.BOOTSTRAP_SECRET || env.BOOTSTRAP_SECRET || ''
+
+  return {
+    plugins: [react(), tailwindcss(), devApiPlugin()],
+  }
 })
