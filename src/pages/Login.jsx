@@ -10,7 +10,6 @@ function Login() {
   const [error, setError] = useState('')
   const [info, setInfo] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [pendingRedirect, setPendingRedirect] = useState(false)
   const { login, supabaseEnabled, supabaseConfigError, user } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -24,25 +23,15 @@ function Login() {
   }, [])
 
   useEffect(() => {
-    if (!pendingRedirect) return
-    if (user) {
-      navigate('/', { replace: true })
-      return
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      setPendingRedirect(false)
-      setError('Signed in but the app did not load your session. Please refresh and try again.')
-    }, 5000)
-
-    return () => window.clearTimeout(timeoutId)
-  }, [navigate, pendingRedirect, user])
+    if (!user) return
+    // If a user session is already present, go straight to the app.
+    navigate('/', { replace: true })
+  }, [navigate, user])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
     setInfo('')
-    setPendingRedirect(false)
 
     if (!supabaseEnabled) {
       setError(supabaseConfigError || 'Supabase is not configured.')
@@ -63,17 +52,20 @@ function Login() {
     setIsLoading(true)
 
     try {
-      // Simulate network delay for animation
-      await new Promise(resolve => setTimeout(resolve, 500))
+      let didTimeout = false
+      const timeoutId = window.setTimeout(() => {
+        didTimeout = true
+        setIsLoading(false)
+        setError('Login is taking too long. Check your Supabase env vars (.env locally / Vercel in production), then try again.')
+      }, 20_000)
 
-      const timeout = new Promise(resolve =>
-        setTimeout(() => resolve({ success: false, message: 'Login timed out. Please try again.' }), 15_000)
-      )
+      const result = await login(normalizedIdNumber, password)
+      window.clearTimeout(timeoutId)
+      if (didTimeout) return
 
-      const result = await Promise.race([login(normalizedIdNumber, password), timeout])
       if (result.success) {
         setInfo('Signed in. Redirecting...')
-        setPendingRedirect(true)
+        navigate('/', { replace: true })
       } else {
         setError(result.message || 'Login failed.')
       }
@@ -146,15 +138,23 @@ function Login() {
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Email / ID Input */}
             <div className="relative">
-              <label className="block text-gray-700 dark:text-gray-300 text-sm font-medium mb-2">ID Number</label>
+              <label
+                htmlFor="login-id-number"
+                className="block text-gray-700 dark:text-gray-300 text-sm font-medium mb-2"
+              >
+                ID Number
+              </label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-400" size={18} />
                 <input
+                  id="login-id-number"
+                  name="idNumber"
                   type="text"
                   value={idNumber}
                   onChange={(e) => setIdNumber(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 bg-white dark:bg-gray-900/50 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
                   placeholder="Enter your ID number"
+                  autoComplete="username"
                   required
                 />
               </div>
@@ -162,20 +162,29 @@ function Login() {
 
             {/* Password Input */}
             <div className="relative">
-              <label className="block text-gray-700 dark:text-gray-300 text-sm font-medium mb-2">Password</label>
+              <label
+                htmlFor="login-password"
+                className="block text-gray-700 dark:text-gray-300 text-sm font-medium mb-2"
+              >
+                Password
+              </label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                 <input
+                  id="login-password"
+                  name="password"
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full pl-10 pr-12 py-3 bg-white dark:bg-gray-900/50 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
                   placeholder="Enter your password"
+                  autoComplete="current-password"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}

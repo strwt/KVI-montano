@@ -24,9 +24,9 @@ function Profile() {
   const [showEditOptions, setShowEditOptions] = useState(false)
   const menuRef = useRef(null)
 
-  const handleLogout = () => {
-    logout()
-    navigate('/login')
+  const handleLogout = async () => {
+    await logout()
+    navigate('/login', { replace: true })
   }
 
   useEffect(() => {

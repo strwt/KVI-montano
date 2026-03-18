@@ -8,17 +8,50 @@ Run:
 
 1. `supabase/schema.sql`
 
+To wipe everything and start over first, run:
+
+1. `supabase/reset.sql` (DANGER: drops all app tables/functions/policies + storage bucket)
+2. `supabase/schema.sql`
+
 This single script now includes:
 - Full schema + RLS
 - Storage bucket (`event-attachments`) + policies
 - ID-number login helper `public.get_email_for_id_number(p_id_number text)`
+- A backfill helper `public.backfill_profiles()` for cases where Auth users exist but `profiles` rows are missing
 
 If you see a `400 Bad Request` on `login_activity?on_conflict=user_id,date`, ensure `login_activity` has a UNIQUE constraint on `(user_id, date)`.
 
 ## 2) Create your admin user
 
+Option A (recommended): bootstrap admin via Vercel (ID-number only)
+
+1. In Vercel env vars, add:
+   - `SUPABASE_URL`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+   - `BOOTSTRAP_SECRET` (any long random string; delete it after bootstrapping)
+2. Redeploy.
+3. Call the bootstrap endpoint once:
+
+```bash
+curl -X POST "$YOUR_APP_URL/api/admin/bootstrap" \
+  -H "Content-Type: application/json" \
+  -H "X-Bootstrap-Secret: $BOOTSTRAP_SECRET" \
+  -d "{\"name\":\"Admin\",\"idNumber\":\"ADMIN001\",\"password\":\"ChangeMe123!\"}"
+```
+
+4. Log in using `ADMIN001` + `ChangeMe123!`.
+5. Remove `BOOTSTRAP_SECRET` from Vercel env vars and redeploy again.
+
+Option B: create admin in Supabase Dashboard (email + password required by Supabase Auth)
+
 1. Create a user in Supabase Dashboard -> Authentication -> Users (set an email + password).
 2. In Supabase Table Editor -> `profiles`, set `role = 'admin'` and set an `id_number` for that user.
+
+If you created Auth users but `public.profiles` stayed empty, run this once:
+
+```sql
+select public.backfill_profiles();
+```
 
 SQL example:
 
@@ -35,6 +68,20 @@ Local `.env` (see `.env.example`):
 
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
+
+If you want `/api/admin/*` routes to work locally (Create Member / Bootstrap), you must also set:
+
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- (optional) `BOOTSTRAP_SECRET`
+
+To run locally with the API routes, use Vercel CLI:
+
+```bash
+npm run dev:vercel
+```
+
+If you run `npm run dev` (Vite only), `/api/*` routes will not exist.
 
 Vercel:
 - Project -> Settings -> Environment Variables -> add the same keys.
