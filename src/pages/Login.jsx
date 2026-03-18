@@ -10,7 +10,8 @@ function Login() {
   const [error, setError] = useState('')
   const [info, setInfo] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const { login, supabaseEnabled, supabaseConfigError } = useAuth()
+  const [pendingRedirect, setPendingRedirect] = useState(false)
+  const { login, supabaseEnabled, supabaseConfigError, user } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -22,10 +23,26 @@ function Login() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  useEffect(() => {
+    if (!pendingRedirect) return
+    if (user) {
+      navigate('/', { replace: true })
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setPendingRedirect(false)
+      setError('Signed in but the app did not load your session. Please refresh and try again.')
+    }, 5000)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [navigate, pendingRedirect, user])
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
     setInfo('')
+    setPendingRedirect(false)
 
     if (!supabaseEnabled) {
       setError(supabaseConfigError || 'Supabase is not configured.')
@@ -55,7 +72,8 @@ function Login() {
 
       const result = await Promise.race([login(identifier, password), timeout])
       if (result.success) {
-        navigate('/')
+        setInfo('Signed in. Redirecting...')
+        setPendingRedirect(true)
       } else {
         setError(result.message || 'Login failed.')
       }

@@ -607,11 +607,24 @@ export function AuthProvider({ children }) {
 		      return { success: false, message: msg || 'Login failed.' }
 		    }
 
-	    const authUser = data?.user || data?.session?.user || null
-	    await reloadProfile(authUser)
-	    if (authUser?.id) await recordDailyPresenceSupabase(authUser.id)
-	    return { success: true }
-	  }
+		    const sessionUser = data?.session?.user || null
+		    if (!sessionUser?.id) {
+		      try {
+		        const sessionRes = await supabase.auth.getSession()
+		        if (!sessionRes?.data?.session?.user?.id) {
+		          return { success: false, message: 'Signed in, but session was not created. Please try again.' }
+		        }
+		      } catch (error) {
+		        console.warn('Unable to verify Supabase session after login.', error)
+		        return { success: false, message: 'Signed in, but session could not be verified. Please try again.' }
+		      }
+		    }
+
+		    const authUser = data?.user || data?.session?.user || null
+		    await reloadProfile(authUser)
+		    if (authUser?.id) await recordDailyPresenceSupabase(authUser.id)
+		    return { success: true }
+		  }
 
   const logout = async () => {
     await runAuthOperationWithRetry(() => supabase.auth.signOut())
