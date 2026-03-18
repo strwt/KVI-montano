@@ -1,8 +1,14 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import dayjs from 'dayjs'
-import { getSupabaseConfigError, isSupabaseConfigured, supabase } from '../lib/supabaseClient'
+import { getSupabaseConfigError, isSupabaseConfigured, supabase, supabaseAnonKey, supabaseUrl } from '../lib/supabaseClient'
 
 const AuthContext = createContext(null)
+
+const debugSupabase = String(import.meta.env.VITE_DEBUG_SUPABASE || '').trim().toLowerCase() === 'true'
+const logSupabase = (...args) => {
+  if (!debugSupabase) return
+  console.info('[supabase]', ...args)
+}
 
 let authQueue = Promise.resolve()
 
@@ -88,6 +94,14 @@ const mapProfileToUser = (profile, authUser) => {
   })
 }
 
+const applyMappedUserState = (mappedUser, setters) => {
+  const { setUser, setAppLanguageState, setDarkModeState, setSettingsState } = setters
+  setUser(mappedUser)
+  setAppLanguageState(mappedUser?.appLanguage || 'English')
+  setDarkModeState(Boolean(mappedUser?.darkMode))
+  setSettingsState(mappedUser?.settings && typeof mappedUser.settings === 'object' ? mappedUser.settings : {})
+}
+
 const emptyContext = (configError) => ({
   supabaseEnabled: false,
   supabaseConfigError: configError,
@@ -147,20 +161,29 @@ export function AuthProvider({ children }) {
 
   const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 
-  const runAuthOperationWithRetry = (operation, attempts = 2, timeoutMs = 20_000) =>
-    queueAuthOperation(async () => {
+  const runAuthOperationWithRetry = (operation, options = {}) => {
+    const attempts = Number.isFinite(options.attempts) ? options.attempts : 2
+    const timeoutMs = Number.isFinite(options.timeoutMs) ? options.timeoutMs : 20_000
+    const queued = options.queued !== false
+
+    const runner = async () => {
       let lastError
       for (let attempt = 0; attempt < attempts; attempt += 1) {
         try {
+          let timerId
           const timeoutPromise = new Promise((_, reject) => {
-            const timerId = setTimeout(() => {
-              clearTimeout(timerId)
+            timerId = window.setTimeout(() => {
               const err = new Error('Auth request timed out.')
               err.name = 'AbortError'
               reject(err)
             }, timeoutMs)
           })
-          return await Promise.race([operation(), timeoutPromise])
+
+          try {
+            return await Promise.race([operation(), timeoutPromise])
+          } finally {
+            if (timerId) window.clearTimeout(timerId)
+          }
         } catch (error) {
           lastError = error
           if (attempt < attempts - 1 && isAuthLockError(error)) {
@@ -171,7 +194,10 @@ export function AuthProvider({ children }) {
         }
       }
       throw lastError
-    })
+    }
+
+    return queued ? queueAuthOperation(runner) : runner()
+  }
   const [appLanguage, setAppLanguageState] = useState('English')
   const [darkMode, setDarkModeState] = useState(false)
   const [settings, setSettingsState] = useState({})
@@ -241,10 +267,7 @@ export function AuthProvider({ children }) {
 	    }
 
 	    const mapped = mapProfileToUser(profile, authUser)
-	    setUser(mapped)
-	    setAppLanguageState(mapped?.appLanguage || 'English')
-	    setDarkModeState(Boolean(mapped?.darkMode))
-    setSettingsState(mapped?.settings && typeof mapped.settings === 'object' ? mapped.settings : {})
+	    applyMappedUserState(mapped, { setUser, setAppLanguageState, setDarkModeState, setSettingsState })
     return mapped
   }
 
@@ -367,163 +390,113 @@ export function AuthProvider({ children }) {
 	    }
 
 		    let active = true
-		    let refreshInterval
+        let loadQueue = Promise.resolve()
 
-      setLoading(true)
+        const queueDataLoad = (operation) => {
+          const next = loadQueue.then(operation, operation)
+          loadQueue = next.catch(() => {})
+          return next
+        }
 
-	    const safelyStartAutoRefresh = () => {
-	      try {
-	        supabase.auth.startAutoRefresh?.()
-	      } catch {
-	        // Ignore; not all supabase-js builds expose these helpers.
-	      }
-	    }
-
-	    const safelyStopAutoRefresh = () => {
-	      try {
-	        supabase.auth.stopAutoRefresh?.()
-	      } catch {
-	        // Ignore.
-	      }
-	    }
-
-	    const refreshSessionIfNeeded = async () => {
-	      try {
-	        const { data, error } = await runAuthOperationWithRetry(() => supabase.auth.getSession())
-	        if (error) return
-	        const session = data?.session
-	        if (!session?.user) return
-
-	        const expiresAtSeconds = Number(session.expires_at || 0)
-	        if (!expiresAtSeconds) return
-
-	        const expiresAtMs = expiresAtSeconds * 1000
-	        const msRemaining = expiresAtMs - Date.now()
-
-	        if (msRemaining > 2 * 60 * 1000) return
-
-	        await runAuthOperationWithRetry(() => supabase.auth.refreshSession())
-	      } catch {
-	        // Best-effort: autoRefreshToken handles most cases; this is a safety net.
-	      }
-	    }
-
-	    const handleVisibilityChange = () => {
-	      if (!active) return
-	      if (document.visibilityState === 'visible') {
-	        safelyStartAutoRefresh()
-	        refreshSessionIfNeeded().catch(() => {})
-	      } else {
-	        safelyStopAutoRefresh()
-	      }
-	    }
-
-	    const handleFocus = () => {
-	      if (!active) return
-	      safelyStartAutoRefresh()
-	      refreshSessionIfNeeded().catch(() => {})
-	    }
-
-	    const handleBlur = () => {
-	      if (!active) return
-	      safelyStopAutoRefresh()
-	    }
-
-		    const handleOnline = () => {
-		      if (!active) return
-		      safelyStartAutoRefresh()
-		      refreshSessionIfNeeded().catch(() => {})
-		    }
-
-	    const bootstrap = async () => {
-        if (active) setLoading(true)
-	      try {
-	        const { data, error } = await runAuthOperationWithRetry(() => supabase.auth.getSession(), 2, 20_000)
-	        if (!active) return
-
-        if (error) {
-          if (isRefreshTokenError(error)) {
-            await supabase.auth.signOut()
-          }
+        const clearSupabaseData = async () => {
           await reloadProfile(null)
           setUsers([])
           setCommittees([])
           setUtilitiesByCommittee({})
           setRecruitments([])
-          return
         }
 
-        const authUser = data?.session?.user || null
-        const currentUser = await reloadProfile(authUser)
-        if (authUser?.id) await recordDailyPresenceSupabase(authUser.id)
-        if (authUser) {
-          await reloadMembers()
-          const committeeList = await reloadCommittees()
-          await reloadUtilities(committeeList)
-          await reloadRecruitments(currentUser?.role === 'admin')
-        } else {
-          setUsers([])
-          setCommittees([])
-          setUtilitiesByCommittee({})
-          setRecruitments([])
+        const loadSupabaseDataForUser = async (authUser) => {
+          // Set a fast, minimal user state from the auth session so routing doesn't bounce back to /login
+          // while the profile/data queries are still loading.
+          if (authUser?.id) {
+            const mappedFromAuth = mapProfileToUser(null, authUser)
+            applyMappedUserState(mappedFromAuth, { setUser, setAppLanguageState, setDarkModeState, setSettingsState })
+          }
+
+          const currentUser = await reloadProfile(authUser)
+          if (authUser?.id) await recordDailyPresenceSupabase(authUser.id)
+          if (authUser) {
+            await reloadMembers()
+            const committeeList = await reloadCommittees()
+            await reloadUtilities(committeeList)
+            await reloadRecruitments(currentUser?.role === 'admin')
+          } else {
+            setUsers([])
+            setCommittees([])
+            setUtilitiesByCommittee({})
+            setRecruitments([])
+          }
         }
-	      } catch (error) {
-	        void error
-	        if (active) {
-	          setUser(null)
-	          setUsers([])
-	          setCommittees([])
-          setUtilitiesByCommittee({})
-          setRecruitments([])
-        }
-	      } finally {
-	        if (active) setLoading(false)
-	      }
+
+      setLoading(true)
+
+	    const bootstrap = async () => {
+        await queueDataLoad(async () => {
+          if (!active) return
+          setLoading(true)
+          try {
+            logSupabase('bootstrap getSession() start')
+            const { data, error } = await runAuthOperationWithRetry(() => supabase.auth.getSession(), {
+              attempts: 2,
+              timeoutMs: 20_000,
+              queued: false,
+            })
+            if (!active) return
+
+            if (error) {
+              if (isRefreshTokenError(error)) {
+                await runAuthOperationWithRetry(() => supabase.auth.signOut(), { attempts: 1, timeoutMs: 20_000, queued: false })
+              }
+              logSupabase('bootstrap getSession() error', error)
+              await clearSupabaseData()
+              return
+            }
+
+            const authUser = data?.session?.user || null
+            logSupabase('bootstrap session user?', Boolean(authUser?.id))
+            await loadSupabaseDataForUser(authUser)
+          } catch (error) {
+            void error
+            if (active) await clearSupabaseData()
+          } finally {
+            if (active) setLoading(false)
+          }
+        })
 	    }
 
     const { data: authSub } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!active) return
 
-      setLoading(true)
-      if (event === 'TOKEN_REFRESH_FAILED') {
-        await supabase.auth.signOut()
-        await reloadProfile(null)
-        setUsers([])
-        setCommittees([])
-        setUtilitiesByCommittee({})
-        setRecruitments([])
-        if (active) setLoading(false)
-        return
-      }
+      logSupabase('auth state change', event)
 
-      const authUser = session?.user || null
-      const currentUser = await reloadProfile(authUser)
-      if (authUser?.id) await recordDailyPresenceSupabase(authUser.id)
-      if (authUser) {
-        await reloadMembers()
-        const committeeList = await reloadCommittees()
-        await reloadUtilities(committeeList)
-        await reloadRecruitments(currentUser?.role === 'admin')
-      } else {
-        setUsers([])
-        setCommittees([])
-        setUtilitiesByCommittee({})
-        setRecruitments([])
-      }
+      // bootstrap() already handles initial load; avoid duplicate parallel loads in dev/StrictMode.
+      if (event === 'INITIAL_SESSION') return
 
-      if (active) setLoading(false)
+      await queueDataLoad(async () => {
+        if (!active) return
+        setLoading(true)
+        try {
+          if (event === 'TOKEN_REFRESH_FAILED') {
+            await runAuthOperationWithRetry(() => supabase.auth.signOut(), { attempts: 1, timeoutMs: 20_000, queued: false })
+            await clearSupabaseData()
+            return
+          }
+
+          const authUser = session?.user || null
+          if (authUser?.id) {
+            const mappedFromAuth = mapProfileToUser(null, authUser)
+            applyMappedUserState(mappedFromAuth, { setUser, setAppLanguageState, setDarkModeState, setSettingsState })
+          }
+          await loadSupabaseDataForUser(authUser)
+        } catch (error) {
+          void error
+          if (active) await clearSupabaseData()
+        } finally {
+          if (active) setLoading(false)
+        }
+      })
     })
-
-		    safelyStartAutoRefresh()
-		    refreshSessionIfNeeded().catch(() => {})
-		    refreshInterval = window.setInterval(() => {
-		      refreshSessionIfNeeded().catch(() => {})
-		    }, 60 * 1000)
-
-		    window.addEventListener('focus', handleFocus)
-		    window.addEventListener('blur', handleBlur)
-		    window.addEventListener('online', handleOnline)
-		    document.addEventListener('visibilitychange', handleVisibilityChange)
 
 		    bootstrap()
 
@@ -533,33 +506,27 @@ export function AuthProvider({ children }) {
 	        const committeeList = await reloadCommittees()
 	        await reloadUtilities(committeeList)
 	      })
-	      .subscribe()
+	      .subscribe((status) => logSupabase('realtime committees', status))
 
 	    const utilitiesChannel = supabase
 	      .channel('kusgan-committee-utilities')
 	      .on('postgres_changes', { event: '*', schema: 'public', table: 'committee_utilities' }, () => reloadUtilities())
-	      .subscribe()
+	      .subscribe((status) => logSupabase('realtime committee_utilities', status))
 
 	    const profilesChannel = supabase
 	      .channel('kusgan-profiles')
 	      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => reloadMembers())
-	      .subscribe()
+	      .subscribe((status) => logSupabase('realtime profiles', status))
 
 	    const recruitmentsChannel = supabase
 	      .channel('kusgan-recruitments')
 	      .on('postgres_changes', { event: '*', schema: 'public', table: 'recruitments' }, () =>
 	        reloadRecruitments(user?.role === 'admin')
 	      )
-	      .subscribe()
+	      .subscribe((status) => logSupabase('realtime recruitments', status))
 
 		    return () => {
 		      active = false
-		      safelyStopAutoRefresh()
-		      if (refreshInterval) window.clearInterval(refreshInterval)
-		      window.removeEventListener('focus', handleFocus)
-		      window.removeEventListener('blur', handleBlur)
-		      window.removeEventListener('online', handleOnline)
-		      document.removeEventListener('visibilitychange', handleVisibilityChange)
 	      authSub?.subscription?.unsubscribe?.()
 	      supabase.removeChannel(committeesChannel)
 	      supabase.removeChannel(utilitiesChannel)
@@ -586,7 +553,33 @@ export function AuthProvider({ children }) {
 
 		    const idNumber = normalizedIdentifier
 		    try {
-		      const { data, error } = await supabase.rpc('get_email_for_id_number', { p_id_number: idNumber })
+		      logSupabase('login start', { idNumber })
+		      if (!supabaseUrl || !supabaseAnonKey) {
+		        return { success: false, message: 'Supabase is not configured. Missing URL or anon key.' }
+		      }
+
+		      // Bypass supabase-js auth token lock by calling the RPC directly with the anon key.
+		      const controller = new AbortController()
+		      const timeoutId = window.setTimeout(() => controller.abort(), 15_000)
+		      const response = await fetch(`${supabaseUrl}/rest/v1/rpc/get_email_for_id_number`, {
+		        method: 'POST',
+		        headers: {
+		          apikey: supabaseAnonKey,
+		          Authorization: `Bearer ${supabaseAnonKey}`,
+		          'Content-Type': 'application/json',
+		        },
+		        body: JSON.stringify({ p_id_number: idNumber }),
+		        signal: controller.signal,
+		      }).finally(() => window.clearTimeout(timeoutId))
+
+		      let data
+		      let error
+		      if (!response.ok) {
+		        const payload = await response.json().catch(() => ({}))
+		        error = payload || { message: `RPC failed (HTTP ${response.status}).` }
+		      } else {
+		        data = await response.json().catch(() => null)
+		      }
 		      if (error) {
 		        const msg = String(error.message || '')
 		        const hint = String(error.hint || '')
@@ -623,6 +616,12 @@ export function AuthProvider({ children }) {
 		        }
 		      }
 		      emailForAuth = String(data || '').trim().toLowerCase()
+		      if (emailForAuth) {
+		        const masked = emailForAuth.includes('@')
+		          ? `***@${emailForAuth.split('@').slice(1).join('@')}`
+		          : '***'
+		        logSupabase('login resolved idNumber', idNumber, '->', masked)
+		      }
 		      if (!emailForAuth) {
 		        return {
 		          success: false,
@@ -631,21 +630,50 @@ export function AuthProvider({ children }) {
 		        }
 		      }
 		    } catch (error) {
+		      if (error?.name === 'AbortError') {
+		        logSupabase('login id lookup timeout')
+		        return { success: false, message: 'ID number lookup timed out. Check Supabase URL/Anon key, then try again.' }
+		      }
 		      console.warn('Failed to resolve email for ID number.', error)
 		      return { success: false, message: 'Unable to sign in with ID number right now. Please try again.' }
 		    }
 
-	    let data
 	    let error
 		    try {
-		      const res = await runAuthOperationWithRetry(() =>
-		        supabase.auth.signInWithPassword({
-		          email: emailForAuth,
-		          password: trimmedPassword,
+		      const waitForSignedIn = () =>
+		        new Promise((resolve) => {
+		          let timeoutId
+		          const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+		            if (event !== 'SIGNED_IN') return
+		            if (!session?.user?.id) return
+		            if (timeoutId) window.clearTimeout(timeoutId)
+		            sub?.subscription?.unsubscribe?.()
+		            resolve({ event, session })
+		          })
+		          timeoutId = window.setTimeout(() => {
+		            sub?.subscription?.unsubscribe?.()
+		            resolve(null)
+		          }, 10_000)
 		        })
+
+		      const signInPromise = runAuthOperationWithRetry(
+		        () =>
+		          supabase.auth.signInWithPassword({
+		            email: emailForAuth,
+		            password: trimmedPassword,
+		          }),
+		        { attempts: 1, timeoutMs: 20_000, queued: false }
 		      )
-	      data = res?.data
-	      error = res?.error
+
+		      // If Supabase fires SIGNED_IN but the signIn promise is slow/hung (auth lock contention),
+		      // proceed as success and let the global auth handler hydrate app state.
+		      const first = await Promise.race([signInPromise, waitForSignedIn()])
+		      if (first && first.session?.user?.id) {
+		        return { success: true }
+		      }
+
+		      const res = await signInPromise
+		      error = res?.error
 		    } catch (err) {
 		      const message = err?.message ? String(err.message) : ''
 		      if (err?.name === 'AbortError') return { success: false, message: 'Login request timed out. Please try again.' }
@@ -654,6 +682,7 @@ export function AuthProvider({ children }) {
 
 		    if (error) {
 		      const msg = String(error.message || '')
+		      logSupabase('login signInWithPassword error', msg)
 		      if (/email not confirmed/i.test(msg)) {
 		        return { success: false, message: 'Email not confirmed yet. Please confirm your email and try again.' }
 		      }
@@ -663,32 +692,26 @@ export function AuthProvider({ children }) {
 		      return { success: false, message: msg || 'Login failed.' }
 		    }
 
-		    const sessionUser = data?.session?.user || null
-		    if (!sessionUser?.id) {
-		      try {
-		        const sessionRes = await supabase.auth.getSession()
-		        if (!sessionRes?.data?.session?.user?.id) {
-		          return { success: false, message: 'Signed in, but session was not created. Please try again.' }
-		        }
-		      } catch (error) {
-		        console.warn('Unable to verify Supabase session after login.', error)
-		        return { success: false, message: 'Signed in, but session could not be verified. Please try again.' }
-		      }
-		    }
-
-		    const authUser = data?.user || data?.session?.user || null
-		    await reloadProfile(authUser)
-		    if (authUser?.id) await recordDailyPresenceSupabase(authUser.id)
+		    // App state will be hydrated by the onAuthStateChange(SIGNED_IN) handler.
+		    // Avoid firing multiple parallel Supabase requests right after sign-in (which can trigger auth-token lock contention).
 		    return { success: true }
 		  }
 
   const logout = async () => {
-    await runAuthOperationWithRetry(() => supabase.auth.signOut())
+    // Clear app state immediately so routing can redirect to /login even if Supabase signOut is slow.
     setUser(null)
     setUsers([])
     setCommittees([])
     setUtilitiesByCommittee({})
     setRecruitments([])
+
+    if (!supabaseEnabled) return
+
+    try {
+      await runAuthOperationWithRetry(() => supabase.auth.signOut(), { attempts: 1, timeoutMs: 20_000, queued: false })
+    } catch (error) {
+      console.warn('Supabase signOut failed (state already cleared).', error)
+    }
   }
 
   const register = async (name, email, idNumber, password) => {
@@ -791,31 +814,43 @@ export function AuthProvider({ children }) {
     const email = user.email?.trim().toLowerCase()
     if (!email) return { success: false, message: 'User not found' }
 
-    const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+    const { data: sessionData, error: sessionError } = await runAuthOperationWithRetry(() => supabase.auth.getSession(), {
+      attempts: 2,
+      timeoutMs: 20_000,
+      queued: false,
+    })
     if (sessionError || !sessionData?.session) {
       if (isRefreshTokenError(sessionError)) {
-        await supabase.auth.signOut()
+        await runAuthOperationWithRetry(() => supabase.auth.signOut(), { attempts: 1, timeoutMs: 20_000, queued: false })
       }
       return { success: false, message: SESSION_EXPIRED_MESSAGE }
     }
 
-    const { error: authError } = await supabase.auth.signInWithPassword({
-      email,
-      password: trimmedCurrent,
-    })
+    const { error: authError } = await runAuthOperationWithRetry(
+      () =>
+        supabase.auth.signInWithPassword({
+          email,
+          password: trimmedCurrent,
+        }),
+      { attempts: 1, timeoutMs: 20_000, queued: false }
+    )
 
     if (authError) {
       if (isRefreshTokenError(authError)) {
-        await supabase.auth.signOut()
+        await runAuthOperationWithRetry(() => supabase.auth.signOut(), { attempts: 1, timeoutMs: 20_000, queued: false })
         return { success: false, message: SESSION_EXPIRED_MESSAGE }
       }
       return { success: false, message: 'Current password is incorrect.' }
     }
 
-    const { error: updateError } = await supabase.auth.updateUser({ password: trimmedNew })
+    const { error: updateError } = await runAuthOperationWithRetry(() => supabase.auth.updateUser({ password: trimmedNew }), {
+      attempts: 1,
+      timeoutMs: 20_000,
+      queued: false,
+    })
     if (updateError) {
       if (isRefreshTokenError(updateError)) {
-        await supabase.auth.signOut()
+        await runAuthOperationWithRetry(() => supabase.auth.signOut(), { attempts: 1, timeoutMs: 20_000, queued: false })
         return { success: false, message: SESSION_EXPIRED_MESSAGE }
       }
       return { success: false, message: updateError.message || 'Unable to update password.' }
@@ -1011,10 +1046,14 @@ export function AuthProvider({ children }) {
 	      return { success: false, message: 'Name, ID number, and password are required.' }
 	    }
 
-	    const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+	    const { data: sessionData, error: sessionError } = await runAuthOperationWithRetry(() => supabase.auth.getSession(), {
+	      attempts: 2,
+	      timeoutMs: 20_000,
+	      queued: false,
+	    })
 	    if (sessionError || !sessionData?.session?.access_token) {
 	      if (isRefreshTokenError(sessionError)) {
-	        await supabase.auth.signOut()
+	        await runAuthOperationWithRetry(() => supabase.auth.signOut(), { attempts: 1, timeoutMs: 20_000, queued: false })
 	      }
 	      return { success: false, message: SESSION_EXPIRED_MESSAGE }
 	    }
@@ -1045,9 +1084,20 @@ export function AuthProvider({ children }) {
 	      return { success: false, message: 'Unable to reach the server. Please try again.' }
 	    }
 
+	    logSupabase('create-user response status', response.status)
+
+	    if (response.status === 404) {
+	      return {
+	        success: false,
+	        message:
+	          'Admin API route not found. If you are running locally, start the app with `npm run dev:vercel` and open the Vercel dev URL (usually http://localhost:3000).',
+	      }
+	    }
+
 	    const payload = await response.json().catch(() => ({}))
 	    if (!response.ok) {
-	      return { success: false, message: payload?.message || 'Unable to create member.' }
+	      const statusHint = response.status ? ` (HTTP ${response.status})` : ''
+	      return { success: false, message: payload?.message || `Unable to create member.${statusHint}` }
 	    }
 
 	    if (memberData.recruitmentId) {

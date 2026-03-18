@@ -1,18 +1,12 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, Calendar, LogOut, ChevronLeft, ChevronRight, Users, FileText, Sun, Moon, Settings, ClipboardCheck } from 'lucide-react'
+import { LayoutDashboard, Calendar, ChevronLeft, ChevronRight, Users, FileText, Sun, Moon, Settings, ClipboardCheck } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useI18n } from '../i18n/useI18n'
 
 function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
-  const { user, logout } = useAuth()
+  const { user } = useAuth()
   const { t } = useI18n()
   const navigate = useNavigate()
-
-  const handleLogout = () => {
-    logout()
-    navigate('/login')
-    if (window.innerWidth < 768 && isOpen) toggleSidebar()
-  }
 
   const isAdmin = user?.role === 'admin'
   const shellTone = darkMode
@@ -24,10 +18,6 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
   const navActiveTone = darkMode
     ? 'text-white bg-gray-800/80 border-l-2 border-red-600'
     : 'text-red-700 bg-red-50 border-l-2 border-red-600'
-  const sectionMutedText = darkMode ? 'text-gray-500' : 'text-gray-600'
-  const panelTone = darkMode
-    ? 'rounded-lg bg-gray-900/60 border border-gray-800'
-    : 'rounded-lg bg-white border border-gray-200'
   const utilityBtnTone = darkMode
     ? 'text-gray-300 hover:bg-red-600/20 hover:text-white'
     : 'text-gray-700 hover:bg-red-50 hover:text-gray-900'

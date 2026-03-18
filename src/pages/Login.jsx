@@ -10,7 +10,6 @@ function Login() {
   const [error, setError] = useState('')
   const [info, setInfo] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [pendingRedirect, setPendingRedirect] = useState(false)
   const { login, supabaseEnabled, supabaseConfigError, user } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -24,25 +23,15 @@ function Login() {
   }, [])
 
   useEffect(() => {
-    if (!pendingRedirect) return
-    if (user) {
-      navigate('/', { replace: true })
-      return
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      setPendingRedirect(false)
-      setError('Signed in but the app did not load your session. Please refresh and try again.')
-    }, 5000)
-
-    return () => window.clearTimeout(timeoutId)
-  }, [navigate, pendingRedirect, user])
+    if (!user) return
+    // If a user session is already present, go straight to the app.
+    navigate('/', { replace: true })
+  }, [navigate, user])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
     setInfo('')
-    setPendingRedirect(false)
 
     if (!supabaseEnabled) {
       setError(supabaseConfigError || 'Supabase is not configured.')
@@ -67,7 +56,7 @@ function Login() {
       const timeoutId = window.setTimeout(() => {
         didTimeout = true
         setIsLoading(false)
-        setError('Login is taking too long. Check your Supabase env vars on Vercel, then try again.')
+        setError('Login is taking too long. Check your Supabase env vars (.env locally / Vercel in production), then try again.')
       }, 20_000)
 
       const result = await login(normalizedIdNumber, password)
@@ -76,7 +65,7 @@ function Login() {
 
       if (result.success) {
         setInfo('Signed in. Redirecting...')
-        setPendingRedirect(true)
+        navigate('/', { replace: true })
       } else {
         setError(result.message || 'Login failed.')
       }

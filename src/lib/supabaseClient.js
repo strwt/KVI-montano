@@ -1,10 +1,12 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = String(import.meta.env.VITE_SUPABASE_URL || '')
+const debugSupabase = String(import.meta.env.VITE_DEBUG_SUPABASE || '').trim().toLowerCase() === 'true'
+
+export const supabaseUrl = String(import.meta.env.VITE_SUPABASE_URL || '')
   .trim()
   .replace(/\/+$/, '')
 
-const supabaseAnonKey = String(import.meta.env.VITE_SUPABASE_ANON_KEY || '')
+export const supabaseAnonKey = String(import.meta.env.VITE_SUPABASE_ANON_KEY || '')
   .trim()
   .replace(/\s+/g, '')
 
@@ -37,6 +39,11 @@ export const supabase = isSupabaseConfigured
       },
     })
   : null
+
+if (debugSupabase) {
+  const urlLabel = supabaseUrl ? supabaseUrl.replace(/^https?:\/\//, '') : '(missing)'
+  console.info('[supabase] configured?', isSupabaseConfigured, 'url:', urlLabel)
+}
 
 export const getSupabaseConfigError = () => {
   if (isSupabaseConfigured) return ''

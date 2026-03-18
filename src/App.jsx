@@ -20,7 +20,7 @@ import './index.css'
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
 
-  if (loading) {
+  if (loading && !user) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-600"></div>
@@ -38,7 +38,7 @@ function ProtectedRoute({ children }) {
 function AdminRoute({ children }) {
   const { user, loading } = useAuth()
 
-  if (loading) {
+  if (loading && !user) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-600"></div>
@@ -61,13 +61,9 @@ function AdminRoute({ children }) {
 function PublicRoute({ children }) {
   const { user, loading } = useAuth()
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-600"></div>
-      </div>
-    )
-  }
+  // Don't block public pages (login/landing/recruitment) while auth bootstraps.
+  // This keeps the login page responsive even if Supabase is slow/unreachable.
+  if (loading && !user) return children
 
   if (user) {
     return <Navigate to="/" replace />

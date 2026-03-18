@@ -588,17 +588,6 @@ function Members() {
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-500 mb-1">Email</label>
-                <input
-                  type="email"
-                  placeholder="Email"
-                  value={newMember.email}
-                  onChange={e => setNewMember({ ...newMember, email: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                  required
-                />
-              </div>
-              <div>
                 <label className="block text-xs text-gray-500 mb-1">ID Number</label>
                 <input
                   type="text"

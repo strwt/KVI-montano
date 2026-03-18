@@ -69,6 +69,20 @@ Local `.env` (see `.env.example`):
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
 
+If you want `/api/admin/*` routes to work locally (Create Member / Bootstrap), you must also set:
+
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- (optional) `BOOTSTRAP_SECRET`
+
+To run locally with the API routes, use Vercel CLI:
+
+```bash
+npm run dev:vercel
+```
+
+If you run `npm run dev` (Vite only), `/api/*` routes will not exist.
+
 Vercel:
 - Project -> Settings -> Environment Variables -> add the same keys.
 
