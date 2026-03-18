@@ -11,17 +11,23 @@ import {
   ChevronRight,
   Sparkles,
   BadgeCheck,
+  LogOut,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import { useI18n } from '../i18n/useI18n'
 
 function Profile() {
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
   const { t } = useI18n()
   const navigate = useNavigate()
   const [showEditOptions, setShowEditOptions] = useState(false)
   const menuRef = useRef(null)
+
+  const handleLogout = () => {
+    logout()
+    navigate('/login')
+  }
 
   useEffect(() => {
     const handleOutsideClick = (event) => {
@@ -89,7 +95,7 @@ function Profile() {
               </div>
             </div>
 
-            <div ref={menuRef} className="relative self-start">
+            <div ref={menuRef} className="relative self-start flex items-center gap-2">
               <button
                 onClick={() => setShowEditOptions((prev) => !prev)}
                 aria-label={t('Profile actions')}
@@ -97,6 +103,14 @@ function Profile() {
               >
                 <Edit2 size={16} />
                 <span className="text-sm font-semibold">{t('Manage')}</span>
+              </button>
+              <button
+                onClick={handleLogout}
+                aria-label={t('Logout')}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-red-600/70 text-red-600 hover:bg-red-50 transition-colors"
+              >
+                <LogOut size={16} />
+                <span className="text-sm font-semibold">{t('Logout')}</span>
               </button>
 
               <div
