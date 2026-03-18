@@ -276,20 +276,20 @@ const KUSGAN_STRUCTURE = {
 
 const BOARD_STRUCTURE = {
   chairperson: {
-    name: 'Isabel Navarro',
-    position: 'Board Chairperson',
+    name: 'Noel "Strong Doy" Danlag Raboy',
+    position: 'Chairman',
     committee: 'Executive Board',
     image: 'https://i.pravatar.cc/520?img=6',
     icon: Crown,
   },
   viceChairperson: {
-    name: 'Rafael Garcia',
+    name: 'Henry "Strong Arrow" Lopez',
     position: 'Vice Chairperson',
     committee: 'Executive Board',
     image: 'https://i.pravatar.cc/520?img=20',
     icon: ShieldCheck,
   },
-  officers: [
+  BoardMembers: [
     { name: 'Camille Reyes', position: 'Board Secretary', committee: 'Executive Board', image: 'https://i.pravatar.cc/420?img=19' },
     { name: 'Julian Cruz', position: 'Board Treasurer', committee: 'Finance Committee', image: 'https://i.pravatar.cc/420?img=30' },
     { name: 'Maya Torres', position: 'Board Auditor', committee: 'Audit Committee', image: 'https://i.pravatar.cc/420?img=15' },
