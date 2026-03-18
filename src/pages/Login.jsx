@@ -63,7 +63,17 @@ function Login() {
     setIsLoading(true)
 
     try {
+      let didTimeout = false
+      const timeoutId = window.setTimeout(() => {
+        didTimeout = true
+        setIsLoading(false)
+        setError('Login is taking too long. Check your Supabase env vars on Vercel, then try again.')
+      }, 20_000)
+
       const result = await login(normalizedIdNumber, password)
+      window.clearTimeout(timeoutId)
+      if (didTimeout) return
+
       if (result.success) {
         setInfo('Signed in. Redirecting...')
         setPendingRedirect(true)

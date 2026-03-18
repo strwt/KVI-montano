@@ -147,12 +147,20 @@ export function AuthProvider({ children }) {
 
   const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 
-  const runAuthOperationWithRetry = (operation, attempts = 2) =>
+  const runAuthOperationWithRetry = (operation, attempts = 2, timeoutMs = 20_000) =>
     queueAuthOperation(async () => {
       let lastError
       for (let attempt = 0; attempt < attempts; attempt += 1) {
         try {
-          return await operation()
+          const timeoutPromise = new Promise((_, reject) => {
+            const timerId = setTimeout(() => {
+              clearTimeout(timerId)
+              const err = new Error('Auth request timed out.')
+              err.name = 'AbortError'
+              reject(err)
+            }, timeoutMs)
+          })
+          return await Promise.race([operation(), timeoutPromise])
         } catch (error) {
           lastError = error
           if (attempt < attempts - 1 && isAuthLockError(error)) {
