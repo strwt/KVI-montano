@@ -90,10 +90,12 @@ language sql
 security definer
 set search_path = public
 as $$
-  select p.email
+  select u.email
   from public.profiles p
+  join auth.users u on u.id = p.id
   where p.id_number is not null
-    and lower(p.id_number) = lower(nullif(trim(p_id_number), ''))
+    and regexp_replace(lower(p.id_number), '[^a-z0-9]', '', 'g')
+      = regexp_replace(lower(nullif(trim(p_id_number), '')), '[^a-z0-9]', '', 'g')
   limit 1;
 $$;
 
@@ -452,5 +454,47 @@ create policy notifications_delete_self_or_admin
 on public.notifications for delete
 to authenticated
 using (user_id = auth.uid() or public.is_admin());
+
+commit;
+
+-- STORAGE (event attachments)
+-- Creates `event-attachments` bucket + policies on `storage.objects`.
+-- Note: Supabase enables RLS on storage.objects by default.
+
+begin;
+
+do $$
+begin
+  if not exists (select 1 from storage.buckets where id = 'event-attachments') then
+    perform storage.create_bucket('event-attachments', public := false);
+  end if;
+end $$;
+
+-- Read: any authenticated user can view attachments
+drop policy if exists "event_attachments_read_auth" on storage.objects;
+create policy "event_attachments_read_auth"
+on storage.objects for select
+to authenticated
+using (bucket_id = 'event-attachments');
+
+-- Upload: admins only
+drop policy if exists "event_attachments_write_admin" on storage.objects;
+create policy "event_attachments_write_admin"
+on storage.objects for insert
+to authenticated
+with check (
+  bucket_id = 'event-attachments'
+  and public.is_admin()
+);
+
+-- Delete: admins only
+drop policy if exists "event_attachments_delete_admin" on storage.objects;
+create policy "event_attachments_delete_admin"
+on storage.objects for delete
+to authenticated
+using (
+  bucket_id = 'event-attachments'
+  and public.is_admin()
+);
 
 commit;

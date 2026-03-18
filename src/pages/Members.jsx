@@ -22,6 +22,8 @@ import { useNavigate } from 'react-router-dom'
 import dayjs from 'dayjs'
 import { supabase } from '../lib/supabaseClient'
 
+/* eslint-disable react-hooks/set-state-in-effect */
+
 const ROLE_OPTIONS = [
   { value: 'member', label: 'Member' },
   { value: 'admin', label: 'Admin' },
@@ -77,36 +79,35 @@ function Members() {
   const [searchQuery, setSearchQuery] = useState('')
   const [committeeFilter, setCommitteeFilter] = useState('all')
   const [categoryFilter, setCategoryFilter] = useState('all')
-  const [currentPage, setCurrentPage] = useState(1)
-  const [committeeName, setCommitteeName] = useState('')
-  const [showAddOperationModal, setShowAddOperationModal] = useState(false)
-  const [showAddOperationTypeInline, setShowAddOperationTypeInline] = useState(false)
-  const [showEditOperationForm, setShowEditOperationForm] = useState(false)
-  const [showDeleteOperationForm, setShowDeleteOperationForm] = useState(false)
-  const [showOperationManagementPanel, setShowOperationManagementPanel] = useState(false)
+	  const [currentPage, setCurrentPage] = useState(1)
+	  const [committeeName, setCommitteeName] = useState('')
+	  const [showAddOperationModal, setShowAddOperationModal] = useState(false)
+	  const [_showAddOperationTypeInline, setShowAddOperationTypeInline] = useState(false)
+	  const [showEditOperationForm, setShowEditOperationForm] = useState(false)
+	  const [showDeleteOperationForm, setShowDeleteOperationForm] = useState(false)
+	  const [showOperationManagementPanel, setShowOperationManagementPanel] = useState(false)
   const [selectedOperationCategory, setSelectedOperationCategory] = useState('')
   const [selectedOperationType, setSelectedOperationType] = useState('')
   const [deleteOperationCategory, setDeleteOperationCategory] = useState('')
-  const [deleteOperationType, setDeleteOperationType] = useState('')
-  const [editedOperationCategory, setEditedOperationCategory] = useState('')
-  const [editedOperationType, setEditedOperationType] = useState('')
-  const [addTypeOperationCategory, setAddTypeOperationCategory] = useState('')
-  const [newOperationTypeName, setNewOperationTypeName] = useState('')
-  const [addModalCategory, setAddModalCategory] = useState('')
-  const [addModalType, setAddModalType] = useState('')
+	  const [deleteOperationType, setDeleteOperationType] = useState('')
+	  const [editedOperationCategory, setEditedOperationCategory] = useState('')
+	  const [_editedOperationType, setEditedOperationType] = useState('')
+	  const [addTypeOperationCategory, setAddTypeOperationCategory] = useState('')
+	  const [newOperationTypeName, setNewOperationTypeName] = useState('')
+	  const [addModalCategory, setAddModalCategory] = useState('')
+	  const [_addModalType, setAddModalType] = useState('')
   const [committeeError, setCommitteeError] = useState('')
   const [formError, setFormError] = useState('')
   const [recruitmentActionError, setRecruitmentActionError] = useState('')
   const [expandedRecruitmentId, setExpandedRecruitmentId] = useState(null)
   const [pendingApprovalRecruitmentId, setPendingApprovalRecruitmentId] = useState(null)
-  const [newMember, setNewMember] = useState({
-    name: '',
-    email: '',
-    idNumber: '',
-    password: '',
-    address: '',
-    contactNumber: '',
-    bloodType: '',
+	  const [newMember, setNewMember] = useState({
+	    name: '',
+	    idNumber: '',
+	    password: '',
+	    address: '',
+	    contactNumber: '',
+	    bloodType: '',
     memberSince: dayjs().format('YYYY-MM-DD'),
     role: ROLE_OPTIONS[0].value,
     committee: splitCategoryAndType(committees[0] || COMMITTEE_OPTIONS[0]).category || COMMITTEE_OPTIONS[0],
@@ -154,14 +155,14 @@ function Members() {
     return map
   }, [memberCommittees])
 
-  useEffect(() => {
-    if (!newMember.committee) {
-      setNewMember(prev => ({ ...prev, committee: memberOperations[0], category: memberOperations[0] }))
-    }
-    if (newMember.committee && !memberOperations.includes(newMember.committee)) {
-      setNewMember(prev => ({ ...prev, committee: memberOperations[0], category: memberOperations[0] }))
-    }
-  }, [memberOperations, newMember.committee])
+	  useEffect(() => {
+	    if (!newMember.committee) {
+	      setNewMember(prev => ({ ...prev, committee: memberOperations[0], category: memberOperations[0] }))
+	    }
+	    if (newMember.committee && !memberOperations.includes(newMember.committee)) {
+	      setNewMember(prev => ({ ...prev, committee: memberOperations[0], category: memberOperations[0] }))
+	    }
+	  }, [memberOperations, newMember.committee])
 
   const operationTypesByCategory = useMemo(() => {
     return memberCommittees.reduce((acc, entry) => {
@@ -197,33 +198,33 @@ function Members() {
     }, {})
   }, [memberCommittees])
 
-  useEffect(() => {
-    if (selectedOperationCategory && !operationCategories.includes(selectedOperationCategory)) {
-      setSelectedOperationCategory('')
-      setSelectedOperationType('')
-      setEditedOperationCategory('')
-      setEditedOperationType('')
-    }
-  }, [operationCategories, selectedOperationCategory])
-
-  useEffect(() => {
-    if (selectedOperationType && !selectedCategoryTypes.includes(selectedOperationType)) {
-      setSelectedOperationType('')
-      setEditedOperationType('')
-    }
-  }, [selectedCategoryTypes, selectedOperationType])
-
-  useEffect(() => {
-    if (deleteOperationType && !deleteCategoryTypes.includes(deleteOperationType)) {
-      setDeleteOperationType('')
-    }
-  }, [deleteCategoryTypes, deleteOperationType])
+	  useEffect(() => {
+	    if (selectedOperationCategory && !operationCategories.includes(selectedOperationCategory)) {
+	      setSelectedOperationCategory('')
+	      setSelectedOperationType('')
+	      setEditedOperationCategory('')
+	      setEditedOperationType('')
+	    }
+	  }, [operationCategories, selectedOperationCategory])
 
 	  useEffect(() => {
-	    if (selectedOperationCategory && !editedOperationCategory) {
-	      setEditedOperationCategory(categoryLabelByKey[selectedOperationCategory] || titleCaseFromKey(selectedOperationCategory))
+	    if (selectedOperationType && !selectedCategoryTypes.includes(selectedOperationType)) {
+	      setSelectedOperationType('')
+	      setEditedOperationType('')
 	    }
-	  }, [selectedOperationCategory, editedOperationCategory, categoryLabelByKey])
+	  }, [selectedCategoryTypes, selectedOperationType])
+
+	  useEffect(() => {
+	    if (deleteOperationType && !deleteCategoryTypes.includes(deleteOperationType)) {
+	      setDeleteOperationType('')
+	    }
+	  }, [deleteCategoryTypes, deleteOperationType])
+
+		  useEffect(() => {
+		    if (selectedOperationCategory && !editedOperationCategory) {
+		      setEditedOperationCategory(categoryLabelByKey[selectedOperationCategory] || titleCaseFromKey(selectedOperationCategory))
+		    }
+		  }, [selectedOperationCategory, editedOperationCategory, categoryLabelByKey])
 
   const filteredMembers = allMembers.filter(member => {
     const matchesSearch =
@@ -280,11 +281,11 @@ function Members() {
     setShowAddOperationTypeInline(false)
   }
 
-	  const handleAddOperationType = async (e) => {
-	    e.preventDefault()
-	    setCommitteeError('')
-	    const operationName = (categoryLabelByKey[addTypeOperationCategory] || '').trim()
-	    const typeName = newOperationTypeName.trim()
+		  const _handleAddOperationType = async (e) => {
+		    e.preventDefault()
+		    setCommitteeError('')
+		    const operationName = (categoryLabelByKey[addTypeOperationCategory] || '').trim()
+		    const typeName = newOperationTypeName.trim()
     if (!operationName || !typeName) {
       setCommitteeError('Category name and new type are required.')
       return
@@ -433,13 +434,12 @@ function Members() {
       setFormError(result.message)
       return
     }
-    setNewMember({
-      name: '',
-      email: '',
-      idNumber: '',
-      password: '',
-      address: '',
-      contactNumber: '',
+	    setNewMember({
+	      name: '',
+	      idNumber: '',
+	      password: '',
+	      address: '',
+	      contactNumber: '',
       bloodType: '',
       memberSince: dayjs().format('YYYY-MM-DD'),
       role: ROLE_OPTIONS[0].value,
@@ -456,16 +456,15 @@ function Members() {
     return 'bg-amber-100 text-amber-700 border-amber-200'
   }
 
-  const handleApproveRecruitment = (recruitment) => {
-    setRecruitmentActionError('')
-    setPendingApprovalRecruitmentId(recruitment.id)
-    setNewMember({
-      name: recruitment.fullName,
-      email: recruitment.email,
-      idNumber: recruitment.idNumber || '',
-      password: '',
-      address: recruitment.address || '',
-      contactNumber: recruitment.contactNumber || '',
+	  const handleApproveRecruitment = (recruitment) => {
+	    setRecruitmentActionError('')
+	    setPendingApprovalRecruitmentId(recruitment.id)
+	    setNewMember({
+	      name: recruitment.fullName,
+	      idNumber: recruitment.idNumber || '',
+	      password: '',
+	      address: recruitment.address || '',
+	      contactNumber: recruitment.contactNumber || '',
       bloodType: recruitment.bloodType || '',
       memberSince: dayjs().format('YYYY-MM-DD'),
       role: ROLE_OPTIONS[0].value,
@@ -573,7 +572,7 @@ function Members() {
               </div>
             )}
             {formError && <p className="text-sm text-red-600 mb-2">{formError}</p>}
-            <form id="create-member-form" onSubmit={handleCreateMember} className="grid grid-cols-1 md:grid-cols-2 gap-3">
+	            <form id="create-member-form" onSubmit={handleCreateMember} className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <input
                 type="text"
                 placeholder="Full name"
@@ -582,17 +581,9 @@ function Members() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                 required
               />
-              <input
-                type="email"
-                placeholder="Email"
-                value={newMember.email}
-                onChange={e => setNewMember({ ...newMember, email: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                required
-              />
-              <input
-                type="text"
-                placeholder="ID Number"
+	              <input
+	                type="text"
+	                placeholder="ID Number"
                 value={newMember.idNumber}
                 onChange={e => setNewMember({ ...newMember, idNumber: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
@@ -1078,7 +1069,12 @@ function Members() {
                   </div>
                   <div className="flex items-center gap-3 text-sm text-gray-600">
                     <Calendar size={16} className="text-gray-400" />
-                    <span>Joined {new Date(member.memberSince || Date.now()).toLocaleDateString()}</span>
+	                    <span>
+	                      Joined{' '}
+	                      {member.memberSince && dayjs(member.memberSince).isValid()
+	                        ? dayjs(member.memberSince).format('MMM D, YYYY')
+	                        : 'N/A'}
+	                    </span>
                   </div>
                   <div className="text-sm text-gray-600">
                     <span>Contact: {member.contactNumber || 'N/A'}</span>

@@ -2,23 +2,32 @@
 
 This app uses Supabase as the source of truth (no `localStorage` persistence).
 
-## 1) Supabase SQL (run these in SQL Editor)
+## 1) Supabase SQL (run this in SQL Editor)
 
-Run in order:
+Run:
 
 1. `supabase/schema.sql`
-2. `supabase/storage.sql` (creates `event-attachments` bucket + policies)
 
-If you already ran an older version of `schema.sql`, run `supabase/migrations/20260317_upgrade.sql` as well.
+This single script now includes:
+- Full schema + RLS
+- Storage bucket (`event-attachments`) + policies
+- ID-number login helper `public.get_email_for_id_number(p_id_number text)`
 
-If you see a `400 Bad Request` on `login_activity?on_conflict=user_id,date`, ensure `login_activity` has a UNIQUE constraint on `(user_id, date)` (the upgrade migration now enforces this).
-
-If you want users to sign in with an ID number (instead of email), `schema.sql` / the upgrade migration creates `public.get_email_for_id_number(p_id_number text)` and grants execute to `anon` so the client can resolve ID -> email securely (without opening `profiles` to anon).
+If you see a `400 Bad Request` on `login_activity?on_conflict=user_id,date`, ensure `login_activity` has a UNIQUE constraint on `(user_id, date)`.
 
 ## 2) Create your admin user
 
-1. Sign up in the app (or Supabase Auth UI).
-2. In Supabase Table Editor -> `profiles`, set `role = 'admin'` for your user.
+1. Create a user in Supabase Dashboard -> Authentication -> Users (set an email + password).
+2. In Supabase Table Editor -> `profiles`, set `role = 'admin'` and set an `id_number` for that user.
+
+SQL example:
+
+```sql
+update public.profiles
+set role = 'admin',
+    id_number = 'ADMIN001'
+where email = 'admin@example.com';
+```
 
 ## 3) Environment variables
 
@@ -29,6 +38,10 @@ Local `.env` (see `.env.example`):
 
 Vercel:
 - Project -> Settings -> Environment Variables -> add the same keys.
+
+If you want admins to create users inside the web app (server-side invite/create flow), also add:
+- `SUPABASE_URL` (same as `VITE_SUPABASE_URL`)
+- `SUPABASE_SERVICE_ROLE_KEY` (Supabase Dashboard -> Project Settings -> API -> Service role key)
 
 ## Notes
 

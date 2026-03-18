@@ -586,12 +586,48 @@ export function AuthProvider({ children }) {
 		    try {
 		      const { data, error } = await supabase.rpc('get_email_for_id_number', { p_id_number: idNumber })
 		      if (error) {
+		        const msg = String(error.message || '')
+		        const hint = String(error.hint || '')
+		        const details = String(error.details || '')
 		        console.warn('Failed to resolve email for ID number.', error)
-		        return { success: false, message: 'Unable to sign in with ID number right now. Please try again.' }
+
+		        if (error.code === 'PGRST202' || /could not find the function/i.test(msg)) {
+		          return {
+		            success: false,
+		            message:
+		              'ID Number Not Found',
+		          }
+		        }
+
+		        if (error.code === '42501' || /permission/i.test(msg)) {
+		          return {
+		            success: false,
+		            message:
+		              'Supabase denied the ID lookup. Ensure get_email_for_id_number is SECURITY DEFINER and EXECUTE is granted to anon/authenticated.',
+		          }
+		        }
+
+		        const extra = [details, hint].filter(Boolean).join(' ')
+		        return {
+		          success: false,
+		          message: `Unable to use ID number login right now. ${msg}${extra ? ` (${extra})` : ''}`.trim(),
+		        }
 		      }
-		      if (!data) return { success: false, message: 'Invalid ID number or password.' }
+		      if (!data) {
+		        return {
+		          success: false,
+		          message:
+		            'No account found for that ID number. Ask an admin to set your ID number in the profiles table, then try again.',
+		        }
+		      }
 		      emailForAuth = String(data || '').trim().toLowerCase()
-		      if (!emailForAuth) return { success: false, message: 'Invalid ID number or password.' }
+		      if (!emailForAuth) {
+		        return {
+		          success: false,
+		          message:
+		            'No account found for that ID number. Ask an admin to set your ID number in the profiles table, then try again.',
+		        }
+		      }
 		    } catch (error) {
 		      console.warn('Failed to resolve email for ID number.', error)
 		      return { success: false, message: 'Unable to sign in with ID number right now. Please try again.' }
@@ -620,7 +656,7 @@ export function AuthProvider({ children }) {
 		        return { success: false, message: 'Email not confirmed yet. Please confirm your email and try again.' }
 		      }
 		      if (/invalid login credentials/i.test(msg)) {
-		        return { success: false, message: 'Invalid email or password.' }
+		        return { success: false, message: 'Invalid ID number or password.' }
 		      }
 		      return { success: false, message: msg || 'Login failed.' }
 		    }
@@ -959,7 +995,69 @@ export function AuthProvider({ children }) {
     return { success: true }
   }
 
-  const getRecruitments = () => [...recruitments]
+	  const getRecruitments = () => [...recruitments]
+
+	  const createMember = async (memberData = {}) => {
+	    if (user?.role !== 'admin') return { success: false, message: 'Only admins can create members.' }
+
+	    const name = String(memberData.name || '').trim()
+	    const idNumber = String(memberData.idNumber || memberData.id_number || '').trim()
+	    const password = String(memberData.password || '').trim()
+	    const role = memberData.role === 'admin' ? 'admin' : 'member'
+
+	    if (!name || !idNumber || !password) {
+	      return { success: false, message: 'Name, ID number, and password are required.' }
+	    }
+
+	    const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+	    if (sessionError || !sessionData?.session?.access_token) {
+	      if (isRefreshTokenError(sessionError)) {
+	        await supabase.auth.signOut()
+	      }
+	      return { success: false, message: SESSION_EXPIRED_MESSAGE }
+	    }
+
+	    let response
+	    try {
+	      response = await fetch('/api/admin/create-user', {
+	        method: 'POST',
+	        headers: {
+	          'Content-Type': 'application/json',
+	          Authorization: `Bearer ${sessionData.session.access_token}`,
+	        },
+	        body: JSON.stringify({
+	          name,
+	          idNumber,
+	          password,
+	          role,
+	          committee: memberData.committee || null,
+	          category: memberData.category || null,
+	          address: memberData.address || null,
+	          contactNumber: memberData.contactNumber || null,
+	          bloodType: memberData.bloodType || null,
+	          memberSince: memberData.memberSince || null,
+	        }),
+	      })
+	    } catch (error) {
+	      console.warn('Failed to reach admin create-user endpoint.', error)
+	      return { success: false, message: 'Unable to reach the server. Please try again.' }
+	    }
+
+	    const payload = await response.json().catch(() => ({}))
+	    if (!response.ok) {
+	      return { success: false, message: payload?.message || 'Unable to create member.' }
+	    }
+
+	    if (memberData.recruitmentId) {
+	      await supabase
+	        .from('recruitments')
+	        .update({ status: 'approved', processed_at: dayjs().toISOString(), processed_by: user?.id || null })
+	        .eq('id', memberData.recruitmentId)
+	    }
+
+	    await reloadMembers()
+	    return { success: true, userId: payload?.userId || null }
+	  }
 
   const setAppLanguage = async (nextLanguage) => {
     const value = String(nextLanguage || '').trim() || 'English'
@@ -993,7 +1091,7 @@ export function AuthProvider({ children }) {
     document.documentElement.setAttribute('lang', appLanguage === 'Filipino' ? 'fil' : appLanguage === 'Bisaya' ? 'ceb' : 'en')
   }, [appLanguage])
 
-  const value = {
+	  const value = {
     supabaseEnabled,
     supabaseConfigError,
     user,
@@ -1011,16 +1109,13 @@ export function AuthProvider({ children }) {
     logout,
     register,
     updateCurrentUser,
-    changeCurrentUserPassword,
-    getAllMembers,
-    createMember: async () => ({
-      success: false,
-      message: 'Members must self-register (or implement an invite flow using a server route with the Service Role key).',
-    }),
-    deleteMembers: async () => ({
-      success: false,
-      message: 'Deleting users requires a server-side Admin/Service Role flow in Supabase (client cannot delete Auth users).',
-    }),
+	    changeCurrentUserPassword,
+	    getAllMembers,
+	    createMember,
+	    deleteMembers: async () => ({
+	      success: false,
+	      message: 'Deleting users requires a server-side Admin/Service Role flow in Supabase (client cannot delete Auth users).',
+	    }),
     updateMember,
     addCommittee,
     editCommittee,
