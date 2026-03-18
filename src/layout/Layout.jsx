@@ -10,7 +10,7 @@ const getInitialSidebarOpen = () => {
 }
 
 function Layout() {
-  const { darkMode, setDarkMode } = useAuth()
+  const { darkMode, setDarkMode, loading } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(getInitialSidebarOpen)
 
   useEffect(() => {
@@ -68,6 +68,12 @@ function Layout() {
           sidebarOpen ? 'md:ml-64' : 'md:ml-20'
         }`}
       >
+        {loading && (
+          <div className="mb-4 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-amber-500" />
+            Syncing the latest data in the background.
+          </div>
+        )}
         <Outlet />
       </main>
     </div>

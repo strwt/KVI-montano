@@ -59,6 +59,19 @@ as $$
     from public.profiles p
     where p.id = auth.uid()
       and p.role = 'admin'
+  )
+  or exists (
+    select 1
+    from public.profiles p
+    where lower(coalesce(p.email, '')) = lower(coalesce(auth.jwt()->>'email', ''))
+      and p.role = 'admin'
+  )
+  or exists (
+    select 1
+    from public.profiles p
+    where regexp_replace(lower(coalesce(p.id_number, '')), '[^a-z0-9]', '', 'g')
+        = regexp_replace(lower(coalesce(auth.jwt()->'user_metadata'->>'id_number', '')), '[^a-z0-9]', '', 'g')
+      and p.role = 'admin'
   );
 $$;
 
@@ -70,15 +83,33 @@ security definer
 set search_path = public
 as $$
 begin
-  insert into public.profiles (id, email, name, id_number)
+  insert into public.profiles (id, email, role, name, id_number)
   values (
     new.id,
     new.email,
+    coalesce(nullif(new.raw_app_meta_data->>'role', ''), 'member'),
     coalesce(new.raw_user_meta_data->>'name', ''),
     nullif(new.raw_user_meta_data->>'id_number', '')
   )
   on conflict (id) do update
-    set email = excluded.email;
+    set email = excluded.email,
+        role = coalesce(nullif(new.raw_app_meta_data->>'role', ''), public.profiles.role);
+  return new;
+end;
+$$;
+
+create or replace function public.sync_auth_user_role()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
+begin
+  update auth.users
+  set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb) || jsonb_build_object('role', new.role)
+  where id = new.id
+    and coalesce(raw_app_meta_data->>'role', '') is distinct from new.role;
+
   return new;
 end;
 $$;
@@ -107,6 +138,11 @@ create trigger on_auth_user_created
 after insert on auth.users
 for each row execute function public.handle_new_user();
 
+drop trigger if exists profiles_sync_auth_user_role on public.profiles;
+create trigger profiles_sync_auth_user_role
+after insert or update of role on public.profiles
+for each row execute function public.sync_auth_user_role();
+
 -- Backfill helper: create missing profiles for existing auth.users
 create or replace function public.backfill_profiles()
 returns integer
@@ -129,6 +165,13 @@ begin
   on conflict (id) do nothing;
 
   get diagnostics inserted_count = row_count;
+
+  update auth.users u
+  set raw_app_meta_data = coalesce(u.raw_app_meta_data, '{}'::jsonb) || jsonb_build_object('role', p.role)
+  from public.profiles p
+  where p.id = u.id
+    and coalesce(u.raw_app_meta_data->>'role', '') is distinct from p.role;
+
   return inserted_count;
 end;
 $$;

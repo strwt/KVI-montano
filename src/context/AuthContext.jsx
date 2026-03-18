@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import dayjs from 'dayjs'
 import { getSupabaseConfigError, isSupabaseConfigured, supabase, supabaseAnonKey, supabaseUrl } from '../lib/supabaseClient'
 
@@ -21,11 +21,23 @@ const queueAuthOperation = (operation) => {
 const DEFAULT_PROFILE_IMAGE = '/image-removebg-preview.png'
 const DEFAULT_MEMBER_CATEGORY = 'General Member'
 const SESSION_EXPIRED_MESSAGE = 'Session expired. Please log in again.'
+const LOADING_FALLBACK_MS = 3_000
+
+const normalizeRole = (value) => {
+  const normalized = String(value || '').trim().toLowerCase()
+  return normalized === 'admin' || normalized === 'member' ? normalized : null
+}
+
+const resolveAuthRole = (authUser) => {
+  return normalizeRole(authUser?.app_metadata?.role) || normalizeRole(authUser?.user_metadata?.role)
+}
 
 const isRefreshTokenError = (error) => {
   const message = error?.message ? String(error.message) : ''
   return /refresh token/i.test(message)
 }
+
+const isAbortError = (error) => error?.name === 'AbortError'
 
 const enrichUserWithProfileImage = (user = {}) => ({
   ...user,
@@ -63,18 +75,25 @@ const buildCategoryKeyFromCommitteeEntry = (committeeEntry) => {
   return canonicalizeCategoryKey(normalizeCategoryKey(category))
 }
 
+const normalizeIdentifier = (value) =>
+  String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '')
+
 const mapProfileToUser = (profile, authUser) => {
   if (!profile && !authUser) return null
 
-  const id = profile?.id || authUser?.id || null
+  const id = authUser?.id || profile?.id || null
   if (!id) return null
 
   const name = profile?.name || authUser?.user_metadata?.name || ''
   const email = profile?.email || authUser?.email || ''
-  const role = profile?.role || 'member'
+  const role = normalizeRole(profile?.role) || resolveAuthRole(authUser)
 
   return enrichUserWithProfileImage({
     id,
+    profileId: profile?.id || authUser?.id || null,
     idNumber: profile?.id_number || authUser?.user_metadata?.id_number || '',
     name,
     email,
@@ -94,7 +113,7 @@ const mapProfileToUser = (profile, authUser) => {
   })
 }
 
-const applyMappedUserState = (mappedUser, setters) => {
+  const applyMappedUserState = (mappedUser, setters) => {
   const { setUser, setAppLanguageState, setDarkModeState, setSettingsState } = setters
   setUser(mappedUser)
   setAppLanguageState(mappedUser?.appLanguage || 'English')
@@ -106,6 +125,7 @@ const emptyContext = (configError) => ({
   supabaseEnabled: false,
   supabaseConfigError: configError,
   user: null,
+  authResolved: true,
   loading: false,
   committees: [],
   utilitiesByCommittee: {},
@@ -146,7 +166,8 @@ export function AuthProvider({ children }) {
   const supabaseEnabled = Boolean(isSupabaseConfigured && supabase)
   const supabaseConfigError = getSupabaseConfigError()
 
-	  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [authResolved, setAuthResolved] = useState(false)
   const [user, setUser] = useState(null)
   const [users, setUsers] = useState([])
   const [committees, setCommittees] = useState([])
@@ -201,10 +222,105 @@ export function AuthProvider({ children }) {
   const [appLanguage, setAppLanguageState] = useState('English')
   const [darkMode, setDarkModeState] = useState(false)
   const [settings, setSettingsState] = useState({})
+  const loginRequestRef = useRef(null)
+  const logoutRequestRef = useRef(null)
+  const isSigningOutRef = useRef(false)
+
+  const clearClientState = () => {
+    setUser(null)
+    setUsers([])
+    setCommittees([])
+    setUtilitiesByCommittee({})
+    setRecruitments([])
+    setLoading(false)
+    setAuthResolved(true)
+  }
+
+  useEffect(() => {
+    if (!loading) return undefined
+    const timeoutId = window.setTimeout(() => setLoading(false), LOADING_FALLBACK_MS)
+    return () => window.clearTimeout(timeoutId)
+  }, [loading])
+
+  useEffect(() => {
+    if (authResolved) return undefined
+    const timeoutId = window.setTimeout(() => setAuthResolved(true), LOADING_FALLBACK_MS)
+    return () => window.clearTimeout(timeoutId)
+  }, [authResolved])
 
   const getAllMembers = useMemo(() => {
     return () => users
   }, [users])
+
+  const runSupabaseQuery = async (label, queryFactory) => {
+    try {
+      const { data, error } = await queryFactory()
+      if (error) {
+        console.warn(label, error)
+        return { data: null, error }
+      }
+      return { data, error: null }
+    } catch (error) {
+      console.warn(label, error)
+      return { data: null, error }
+    }
+  }
+
+  const fetchProfileForAuthUser = async (authUser) => {
+    if (!supabaseEnabled || !authUser?.id) return null
+
+    const normalizedEmail = String(authUser.email || '').trim().toLowerCase()
+    const normalizedIdNumber = String(authUser?.user_metadata?.id_number || '').trim()
+
+    const [exactResult, emailResult, idNumberResult] = await Promise.all([
+      runSupabaseQuery('Failed to load profile by auth user id.', () =>
+        supabase.from('profiles').select('*').eq('id', authUser.id).maybeSingle()
+      ),
+      normalizedEmail
+        ? runSupabaseQuery('Failed to load profile by email.', () =>
+            supabase.from('profiles').select('*').eq('email', normalizedEmail).limit(1).maybeSingle()
+          )
+        : Promise.resolve({ data: null, error: null }),
+      normalizedIdNumber
+        ? runSupabaseQuery('Failed to load profile by id_number.', () =>
+            supabase.from('profiles').select('*').eq('id_number', normalizedIdNumber).limit(1).maybeSingle()
+          )
+        : Promise.resolve({ data: null, error: null }),
+    ])
+
+    const exactProfile = exactResult?.data || null
+    const emailProfile = emailResult?.data || null
+    const idNumberProfile = idNumberResult?.data || null
+
+    const profile = exactProfile || emailProfile || idNumberProfile || null
+    const matchedBy = exactProfile
+      ? 'id'
+      : emailProfile
+        ? 'email'
+        : idNumberProfile
+          ? 'id_number'
+          : null
+
+    if (profile && profile.id !== authUser.id) {
+      console.warn('Auth/profile ID mismatch detected.', {
+        authUserId: authUser.id,
+        profileId: profile.id,
+        matchedBy,
+        profileRole: profile.role || null,
+      })
+    }
+
+    logSupabase('profile lookup result', {
+      authUserId: authUser.id,
+      matchedBy,
+      profileId: profile?.id || null,
+      profileRole: profile?.role || null,
+      email: normalizedEmail || null,
+      idNumber: normalizedIdNumber || null,
+    })
+
+    return profile
+  }
 
 	  const recordDailyPresenceSupabase = async (userId) => {
 	    if (!supabaseEnabled || !userId) return
@@ -253,20 +369,15 @@ export function AuthProvider({ children }) {
 	      return null
 	    }
 
-	    let profile = null
-	    try {
-	      const { data, error } = await supabase
-	        .from('profiles')
-	        .select('*')
-	        .eq('id', authUser.id)
-	        .maybeSingle()
-	      if (error) console.warn('Failed to load profile from Supabase.', error)
-	      profile = data || null
-	    } catch (error) {
-	      console.warn('Failed to load profile from Supabase.', error)
-	    }
+      const profile = await fetchProfileForAuthUser(authUser)
 
 	    const mapped = mapProfileToUser(profile, authUser)
+      logSupabase('profile resolved', {
+        authUserId: authUser.id,
+        profileId: profile?.id || null,
+        fetchedRole: profile?.role || null,
+        appliedRole: mapped?.role || null,
+      })
 	    applyMappedUserState(mapped, { setUser, setAppLanguageState, setDarkModeState, setSettingsState })
     return mapped
   }
@@ -285,12 +396,13 @@ export function AuthProvider({ children }) {
 	      ? data.map(profile =>
 	          enrichUserWithProfileImage({
             id: profile.id,
+            profileId: profile.id,
             idNumber: profile.id_number || '',
             name: profile.name || '',
             email: profile.email || '',
-            role: profile.role || 'member',
+            role: normalizeRole(profile.role),
             committee: profile.committee || '',
-            category: profile.category || (profile.role === 'admin' ? 'Administrator' : DEFAULT_MEMBER_CATEGORY),
+            category: profile.category || (normalizeRole(profile.role) === 'admin' ? 'Administrator' : DEFAULT_MEMBER_CATEGORY),
             contactNumber: profile.contact_number || '',
             address: profile.address || '',
             bloodType: profile.blood_type || '',
@@ -386,6 +498,7 @@ export function AuthProvider({ children }) {
 	  useEffect(() => {
 	    if (!supabaseEnabled) {
 	      setLoading(false)
+        setAuthResolved(true)
 	      return
 	    }
 
@@ -415,12 +528,14 @@ export function AuthProvider({ children }) {
           }
 
           const currentUser = await reloadProfile(authUser)
-          if (authUser?.id) await recordDailyPresenceSupabase(authUser.id)
+          if (authUser?.id) void recordDailyPresenceSupabase(authUser.id)
           if (authUser) {
-            await reloadMembers()
-            const committeeList = await reloadCommittees()
-            await reloadUtilities(committeeList)
-            await reloadRecruitments(currentUser?.role === 'admin')
+            const committeeListPromise = reloadCommittees()
+            await Promise.all([
+              reloadMembers(),
+              committeeListPromise.then(list => reloadUtilities(list)),
+              reloadRecruitments(currentUser?.role === 'admin'),
+            ])
           } else {
             setUsers([])
             setCommittees([])
@@ -439,7 +554,7 @@ export function AuthProvider({ children }) {
             logSupabase('bootstrap getSession() start')
             const { data, error } = await runAuthOperationWithRetry(() => supabase.auth.getSession(), {
               attempts: 2,
-              timeoutMs: 20_000,
+              timeoutMs: LOADING_FALLBACK_MS,
               queued: false,
             })
             if (!active) return
@@ -450,15 +565,20 @@ export function AuthProvider({ children }) {
               }
               logSupabase('bootstrap getSession() error', error)
               await clearSupabaseData()
+              if (active) setAuthResolved(true)
               return
             }
 
             const authUser = data?.session?.user || null
             logSupabase('bootstrap session user?', Boolean(authUser?.id))
+            if (active) setAuthResolved(true)
             await loadSupabaseDataForUser(authUser)
           } catch (error) {
             void error
-            if (active) await clearSupabaseData()
+            if (active) {
+              await clearSupabaseData()
+              setAuthResolved(true)
+            }
           } finally {
             if (active) setLoading(false)
           }
@@ -472,6 +592,7 @@ export function AuthProvider({ children }) {
 
       // bootstrap() already handles initial load; avoid duplicate parallel loads in dev/StrictMode.
       if (event === 'INITIAL_SESSION') return
+      if (isSigningOutRef.current && event !== 'SIGNED_OUT' && event !== 'TOKEN_REFRESH_FAILED') return
 
       await queueDataLoad(async () => {
         if (!active) return
@@ -488,55 +609,73 @@ export function AuthProvider({ children }) {
             const mappedFromAuth = mapProfileToUser(null, authUser)
             applyMappedUserState(mappedFromAuth, { setUser, setAppLanguageState, setDarkModeState, setSettingsState })
           }
+          if (active) setAuthResolved(true)
           await loadSupabaseDataForUser(authUser)
         } catch (error) {
           void error
-          if (active) await clearSupabaseData()
+          if (active) {
+            await clearSupabaseData()
+            setAuthResolved(true)
+          }
         } finally {
           if (active) setLoading(false)
         }
       })
     })
 
-		    bootstrap()
+      bootstrap()
 
-	    const committeesChannel = supabase
-	      .channel('kusgan-committees')
-	      .on('postgres_changes', { event: '*', schema: 'public', table: 'committees' }, async () => {
-	        const committeeList = await reloadCommittees()
-	        await reloadUtilities(committeeList)
-	      })
-	      .subscribe((status) => logSupabase('realtime committees', status))
-
-	    const utilitiesChannel = supabase
-	      .channel('kusgan-committee-utilities')
-	      .on('postgres_changes', { event: '*', schema: 'public', table: 'committee_utilities' }, () => reloadUtilities())
-	      .subscribe((status) => logSupabase('realtime committee_utilities', status))
-
-	    const profilesChannel = supabase
-	      .channel('kusgan-profiles')
-	      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => reloadMembers())
-	      .subscribe((status) => logSupabase('realtime profiles', status))
-
-	    const recruitmentsChannel = supabase
-	      .channel('kusgan-recruitments')
-	      .on('postgres_changes', { event: '*', schema: 'public', table: 'recruitments' }, () =>
-	        reloadRecruitments(user?.role === 'admin')
-	      )
-	      .subscribe((status) => logSupabase('realtime recruitments', status))
-
-		    return () => {
-		      active = false
-	      authSub?.subscription?.unsubscribe?.()
-	      supabase.removeChannel(committeesChannel)
-	      supabase.removeChannel(utilitiesChannel)
-	      supabase.removeChannel(profilesChannel)
-	      supabase.removeChannel(recruitmentsChannel)
-	    }
+      return () => {
+        active = false
+        authSub?.subscription?.unsubscribe?.()
+      }
 	    // eslint-disable-next-line react-hooks/exhaustive-deps
 	  }, [supabaseEnabled])
 
+  useEffect(() => {
+    if (!supabaseEnabled || !user?.id) return undefined
+
+    const committeesChannel = supabase
+      .channel(`kusgan-committees-${user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'committees' }, async () => {
+        const committeeList = await reloadCommittees()
+        await reloadUtilities(committeeList)
+      })
+      .subscribe((status) => logSupabase('realtime committees', status))
+
+    const utilitiesChannel = supabase
+      .channel(`kusgan-committee-utilities-${user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'committee_utilities' }, () => reloadUtilities())
+      .subscribe((status) => logSupabase('realtime committee_utilities', status))
+
+    const profilesChannel = supabase
+      .channel(`kusgan-profiles-${user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => reloadMembers())
+      .subscribe((status) => logSupabase('realtime profiles', status))
+
+    const recruitmentsChannel = user.role === 'admin'
+      ? supabase
+          .channel(`kusgan-recruitments-${user.id}`)
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'recruitments' }, () => reloadRecruitments(true))
+          .subscribe((status) => logSupabase('realtime recruitments', status))
+      : null
+
+    return () => {
+      supabase.removeChannel(committeesChannel)
+      supabase.removeChannel(utilitiesChannel)
+      supabase.removeChannel(profilesChannel)
+      if (recruitmentsChannel) supabase.removeChannel(recruitmentsChannel)
+    }
+  }, [supabaseEnabled, user?.id, user?.role])
+
 		  const login = async (identifier, password) => {
+        if (loginRequestRef.current) return loginRequestRef.current
+
+        const runLogin = async () => {
+          if (logoutRequestRef.current) {
+            await logoutRequestRef.current.catch(() => {})
+          }
+
 		    const normalizedIdentifier = String(identifier || '').trim()
 		    const normalizedEmail = normalizedIdentifier.toLowerCase()
 		    const trimmedPassword = password || ''
@@ -630,7 +769,7 @@ export function AuthProvider({ children }) {
 		        }
 		      }
 		    } catch (error) {
-		      if (error?.name === 'AbortError') {
+		      if (isAbortError(error)) {
 		        logSupabase('login id lookup timeout')
 		        return { success: false, message: 'ID number lookup timed out. Check Supabase URL/Anon key, then try again.' }
 		      }
@@ -656,27 +795,42 @@ export function AuthProvider({ children }) {
 		          }, 10_000)
 		        })
 
-		      const signInPromise = runAuthOperationWithRetry(
-		        () =>
-		          supabase.auth.signInWithPassword({
-		            email: emailForAuth,
-		            password: trimmedPassword,
-		          }),
-		        { attempts: 1, timeoutMs: 20_000, queued: false }
-		      )
+      const signInPromise = runAuthOperationWithRetry(
+        () =>
+          supabase.auth.signInWithPassword({
+            email: emailForAuth,
+            password: trimmedPassword,
+          }),
+        { attempts: 1, timeoutMs: 20_000, queued: false }
+      )
 
 		      // If Supabase fires SIGNED_IN but the signIn promise is slow/hung (auth lock contention),
 		      // proceed as success and let the global auth handler hydrate app state.
 		      const first = await Promise.race([signInPromise, waitForSignedIn()])
 		      if (first && first.session?.user?.id) {
+            const hydratedUser = await reloadProfile(first.session.user)
+            logSupabase('login hydrated role', {
+              userId: first.session.user.id,
+              profileId: hydratedUser?.profileId || null,
+              role: hydratedUser?.role || null,
+            })
 		        return { success: true }
 		      }
 
-		      const res = await signInPromise
-		      error = res?.error
+      const res = await signInPromise
+      const signedInUser = res?.data?.session?.user || res?.data?.user || null
+      if (signedInUser?.id) {
+        const hydratedUser = await reloadProfile(signedInUser)
+        logSupabase('login hydrated role', {
+          userId: signedInUser.id,
+          profileId: hydratedUser?.profileId || null,
+          role: hydratedUser?.role || null,
+        })
+      }
+      error = res?.error
 		    } catch (err) {
 		      const message = err?.message ? String(err.message) : ''
-		      if (err?.name === 'AbortError') return { success: false, message: 'Login request timed out. Please try again.' }
+		      if (isAbortError(err)) return { success: false, message: 'Login request timed out. Please try again.' }
 		      return { success: false, message: message || 'Login failed.' }
 		    }
 
@@ -695,23 +849,42 @@ export function AuthProvider({ children }) {
 		    // App state will be hydrated by the onAuthStateChange(SIGNED_IN) handler.
 		    // Avoid firing multiple parallel Supabase requests right after sign-in (which can trigger auth-token lock contention).
 		    return { success: true }
+        }
+
+        const request = runLogin().finally(() => {
+          if (loginRequestRef.current === request) loginRequestRef.current = null
+        })
+        loginRequestRef.current = request
+        return request
 		  }
 
   const logout = async () => {
-    // Clear app state immediately so routing can redirect to /login even if Supabase signOut is slow.
-    setUser(null)
-    setUsers([])
-    setCommittees([])
-    setUtilitiesByCommittee({})
-    setRecruitments([])
+    if (logoutRequestRef.current) return logoutRequestRef.current
 
-    if (!supabaseEnabled) return
+    isSigningOutRef.current = true
+    loginRequestRef.current = null
+    clearClientState()
 
-    try {
-      await runAuthOperationWithRetry(() => supabase.auth.signOut(), { attempts: 1, timeoutMs: 20_000, queued: false })
-    } catch (error) {
-      console.warn('Supabase signOut failed (state already cleared).', error)
+    if (!supabaseEnabled) {
+      isSigningOutRef.current = false
+      return Promise.resolve()
     }
+
+    const request = (async () => {
+      try {
+        await runAuthOperationWithRetry(() => supabase.auth.signOut(), { attempts: 1, timeoutMs: LOADING_FALLBACK_MS, queued: false })
+      } catch (error) {
+        if (!isAbortError(error)) {
+          console.warn('Supabase signOut failed (state already cleared).', error)
+        }
+      } finally {
+        isSigningOutRef.current = false
+        if (logoutRequestRef.current === request) logoutRequestRef.current = null
+      }
+    })()
+
+    logoutRequestRef.current = request
+    return request
   }
 
   const register = async (name, email, idNumber, password) => {
@@ -1143,10 +1316,11 @@ export function AuthProvider({ children }) {
     document.documentElement.setAttribute('lang', appLanguage === 'Filipino' ? 'fil' : appLanguage === 'Bisaya' ? 'ceb' : 'en')
   }, [appLanguage])
 
-	  const value = {
+  const value = {
     supabaseEnabled,
     supabaseConfigError,
     user,
+    authResolved,
     loading,
     committees,
     utilitiesByCommittee,
