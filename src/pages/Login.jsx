@@ -63,14 +63,7 @@ function Login() {
     setIsLoading(true)
 
     try {
-      // Simulate network delay for animation
-      await new Promise(resolve => setTimeout(resolve, 500))
-
-      const timeout = new Promise(resolve =>
-        setTimeout(() => resolve({ success: false, message: 'Login timed out. Please try again.' }), 15_000)
-      )
-
-      const result = await Promise.race([login(normalizedIdNumber, password), timeout])
+      const result = await login(normalizedIdNumber, password)
       if (result.success) {
         setInfo('Signed in. Redirecting...')
         setPendingRedirect(true)
