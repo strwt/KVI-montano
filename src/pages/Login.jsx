@@ -49,12 +49,6 @@ function Login() {
       return
     }
 
-    const normalizedIdentifier = identifier.trim().toLowerCase()
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedIdentifier)) {
-      setError('Please enter the email address you used to sign up (not your ID number).')
-      return
-    }
-
     if (!identifier.trim() || !password.trim()) {
       setError('All fields are required.')
       return
@@ -146,7 +140,7 @@ function Login() {
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Email / ID Input */}
             <div className="relative">
-              <label className="block text-gray-700 dark:text-gray-300 text-sm font-medium mb-2">Email Address</label>
+              <label className="block text-gray-700 dark:text-gray-300 text-sm font-medium mb-2">Email or ID Number</label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-400" size={18} />
                 <input
@@ -154,7 +148,7 @@ function Login() {
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 bg-white dark:bg-gray-900/50 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
-                  placeholder="Enter your email"
+                  placeholder="Enter your email or ID number"
                   required
                 />
               </div>

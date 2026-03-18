@@ -5,6 +5,23 @@ begin;
 
 create extension if not exists pgcrypto;
 
+-- Helper for ID-number login: resolve email without exposing profiles table to anon
+create or replace function public.get_email_for_id_number(p_id_number text)
+returns text
+language sql
+security definer
+set search_path = public
+as $$
+  select p.email
+  from public.profiles p
+  where p.id_number is not null
+    and lower(p.id_number) = lower(nullif(trim(p_id_number), ''))
+  limit 1;
+$$;
+
+revoke all on function public.get_email_for_id_number(text) from public;
+grant execute on function public.get_email_for_id_number(text) to anon, authenticated;
+
 -- PROFILES additions (preferences)
 alter table public.profiles add column if not exists app_language text not null default 'English';
 alter table public.profiles add column if not exists dark_mode boolean not null default false;

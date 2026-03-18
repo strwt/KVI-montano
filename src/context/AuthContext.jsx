@@ -567,27 +567,43 @@ export function AuthProvider({ children }) {
 	    // eslint-disable-next-line react-hooks/exhaustive-deps
 	  }, [supabaseEnabled])
 
-		  const login = async (email, password) => {
-		    const normalizedEmail = (email || '').trim().toLowerCase()
+		  const login = async (identifier, password) => {
+		    const normalizedIdentifier = String(identifier || '').trim()
+		    const normalizedEmail = normalizedIdentifier.toLowerCase()
 		    const trimmedPassword = password || ''
 		    const looksLikeEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)
 
-		    if (!normalizedEmail || !trimmedPassword) {
-		      return { success: false, message: 'Email and password are required.' }
+		    if (!normalizedIdentifier || !trimmedPassword) {
+		      return { success: false, message: 'ID number (or email) and password are required.' }
 		    }
+
+		    let emailForAuth = normalizedEmail
 		    if (!looksLikeEmail) {
-		      return { success: false, message: 'Please enter your email address (not your ID number).' }
+		      const idNumber = normalizedIdentifier
+		      try {
+		        const { data, error } = await supabase.rpc('get_email_for_id_number', { p_id_number: idNumber })
+		        if (error) {
+		          console.warn('Failed to resolve email for ID number.', error)
+		          return { success: false, message: 'Unable to sign in with ID number right now. Please try again.' }
+		        }
+		        if (!data) return { success: false, message: 'Invalid ID number or password.' }
+		        emailForAuth = String(data || '').trim().toLowerCase()
+		        if (!emailForAuth) return { success: false, message: 'Invalid ID number or password.' }
+		      } catch (error) {
+		        console.warn('Failed to resolve email for ID number.', error)
+		        return { success: false, message: 'Unable to sign in with ID number right now. Please try again.' }
+		      }
 		    }
 
 	    let data
 	    let error
-	    try {
-	      const res = await runAuthOperationWithRetry(() =>
-	        supabase.auth.signInWithPassword({
-	          email: normalizedEmail,
-	          password: trimmedPassword,
-	        })
-	      )
+		    try {
+		      const res = await runAuthOperationWithRetry(() =>
+		        supabase.auth.signInWithPassword({
+		          email: emailForAuth,
+		          password: trimmedPassword,
+		        })
+		      )
 	      data = res?.data
 	      error = res?.error
 		    } catch (err) {
