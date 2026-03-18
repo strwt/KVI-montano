@@ -638,5 +638,10 @@ function Dashboard() {
 	    </div>
 	  )
 	}
+  const channel = supabase.channel('test')
+
+  channel.subscribe((status) => {
+    console.log('STATUS:', status)
+  })
 
 export default Dashboard

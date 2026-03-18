@@ -1,12 +1,22 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+const supabaseUrl = String(import.meta.env.VITE_SUPABASE_URL || '').trim()
+const supabaseAnonKey = String(import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim()
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey)
 
+const fetchWithTimeout = (input, init = {}) => {
+  if (init?.signal) return fetch(input, init)
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 15_000)
+  return fetch(input, { ...init, signal: controller.signal }).finally(() => clearTimeout(timeoutId))
+}
+
 export const supabase = isSupabaseConfigured
   ? createClient(supabaseUrl, supabaseAnonKey, {
+      global: {
+        fetch: fetchWithTimeout,
+      },
       auth: {
         persistSession: true,
         autoRefreshToken: true,
@@ -22,4 +32,3 @@ export const getSupabaseConfigError = () => {
   if (!supabaseAnonKey) return 'Missing VITE_SUPABASE_ANON_KEY.'
   return 'Supabase not configured.'
 }
-

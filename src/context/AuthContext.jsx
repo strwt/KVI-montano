@@ -14,6 +14,12 @@ const queueAuthOperation = (operation) => {
 
 const DEFAULT_PROFILE_IMAGE = '/image-removebg-preview.png'
 const DEFAULT_MEMBER_CATEGORY = 'General Member'
+const SESSION_EXPIRED_MESSAGE = 'Session expired. Please log in again.'
+
+const isRefreshTokenError = (error) => {
+  const message = error?.message ? String(error.message) : ''
+  return /refresh token/i.test(message)
+}
 
 const enrichUserWithProfileImage = (user = {}) => ({
   ...user,
@@ -126,7 +132,7 @@ export function AuthProvider({ children }) {
   const supabaseEnabled = Boolean(isSupabaseConfigured && supabase)
   const supabaseConfigError = getSupabaseConfigError()
 
-  const [loading, setLoading] = useState(supabaseEnabled)
+	  const [loading, setLoading] = useState(false)
   const [user, setUser] = useState(null)
   const [users, setUsers] = useState([])
   const [committees, setCommittees] = useState([])
@@ -166,50 +172,87 @@ export function AuthProvider({ children }) {
     return () => users
   }, [users])
 
-  const recordDailyPresenceSupabase = async (userId) => {
-    if (!supabaseEnabled || !userId) return
-    const todayKey = dayjs().format('YYYY-MM-DD')
-    await supabase
-      .from('login_activity')
-      .upsert(
-        {
-          user_id: userId,
-          date: todayKey,
-          last_login_at: new Date().toISOString(),
-          is_online: true,
-          last_status_at: new Date().toISOString(),
-        },
-        { onConflict: 'user_id,date' }
-      )
-  }
+	  const recordDailyPresenceSupabase = async (userId) => {
+	    if (!supabaseEnabled || !userId) return
+	    const todayKey = dayjs().format('YYYY-MM-DD')
+	    const { error } = await supabase
+	      .from('login_activity')
+	      .upsert(
+	        {
+	          user_id: userId,
+	          date: todayKey,
+	          last_login_at: new Date().toISOString(),
+	          is_online: true,
+	          last_status_at: new Date().toISOString(),
+	        },
+	        { onConflict: 'user_id,date' }
+	      )
 
-  const reloadProfile = async (authUser) => {
-    if (!supabaseEnabled) return null
-    if (!authUser?.id) {
-      setUser(null)
-      return null
-    }
+	    if (!error) return
 
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', authUser.id)
-      .maybeSingle()
+	    const errorMessage = String(error.message || '')
+	    const conflictTargetMissing =
+	      error.code === '42P10' || /no unique|ON CONFLICT/i.test(errorMessage) || /on_conflict/i.test(errorMessage)
 
-    const mapped = mapProfileToUser(profile, authUser)
-    setUser(mapped)
-    setAppLanguageState(mapped?.appLanguage || 'English')
-    setDarkModeState(Boolean(mapped?.darkMode))
+	    if (!conflictTargetMissing) {
+	      console.warn('Failed to record daily presence in login_activity.', error)
+	      return
+	    }
+
+	    const fallback = await supabase.from('login_activity').insert({
+	      user_id: userId,
+	      date: todayKey,
+	      last_login_at: new Date().toISOString(),
+	      is_online: true,
+	      last_status_at: new Date().toISOString(),
+	    })
+
+	    if (fallback.error) {
+	      console.warn('Failed to record daily presence in login_activity (fallback insert).', fallback.error)
+	    }
+	  }
+
+	  const reloadProfile = async (authUser) => {
+	    if (!supabaseEnabled) return null
+	    if (!authUser?.id) {
+	      setUser(null)
+	      return null
+	    }
+
+	    let profile = null
+	    try {
+	      const { data, error } = await supabase
+	        .from('profiles')
+	        .select('*')
+	        .eq('id', authUser.id)
+	        .maybeSingle()
+	      if (error) console.warn('Failed to load profile from Supabase.', error)
+	      profile = data || null
+	    } catch (error) {
+	      console.warn('Failed to load profile from Supabase.', error)
+	    }
+
+	    const mapped = mapProfileToUser(profile, authUser)
+	    setUser(mapped)
+	    setAppLanguageState(mapped?.appLanguage || 'English')
+	    setDarkModeState(Boolean(mapped?.darkMode))
     setSettingsState(mapped?.settings && typeof mapped.settings === 'object' ? mapped.settings : {})
     return mapped
   }
 
-  const reloadMembers = async () => {
-    if (!supabaseEnabled) return
-    const { data } = await supabase.from('profiles').select('*').order('name', { ascending: true })
-    const mapped = Array.isArray(data)
-      ? data.map(profile =>
-          enrichUserWithProfileImage({
+	  const reloadMembers = async () => {
+	    if (!supabaseEnabled) return
+	    let data = []
+	    try {
+	      const res = await supabase.from('profiles').select('*').order('name', { ascending: true })
+	      if (res.error) console.warn('Failed to load members from Supabase.', res.error)
+	      data = res.data
+	    } catch (error) {
+	      console.warn('Failed to load members from Supabase.', error)
+	    }
+	    const mapped = Array.isArray(data)
+	      ? data.map(profile =>
+	          enrichUserWithProfileImage({
             id: profile.id,
             idNumber: profile.id_number || '',
             name: profile.name || '',
@@ -230,24 +273,38 @@ export function AuthProvider({ children }) {
     setUsers(mapped)
   }
 
-  const reloadCommittees = async () => {
-    if (!supabaseEnabled) return []
-    const { data } = await supabase.from('committees').select('name').order('name', { ascending: true })
-    const names = Array.isArray(data) ? data.map(row => row.name).filter(Boolean) : []
-    setCommittees(names)
-    return names
-  }
+	  const reloadCommittees = async () => {
+	    if (!supabaseEnabled) return []
+	    let data = []
+	    try {
+	      const res = await supabase.from('committees').select('name').order('name', { ascending: true })
+	      if (res.error) console.warn('Failed to load committees from Supabase.', res.error)
+	      data = res.data
+	    } catch (error) {
+	      console.warn('Failed to load committees from Supabase.', error)
+	    }
+	    const names = Array.isArray(data) ? data.map(row => row.name).filter(Boolean) : []
+	    setCommittees(names)
+	    return names
+	  }
 
-  const reloadUtilities = async (committeeList = committees) => {
-    if (!supabaseEnabled) return
-    const { data } = await supabase
-      .from('committee_utilities')
-      .select('committee_name,name')
-      .order('committee_name', { ascending: true })
-      .order('name', { ascending: true })
+	  const reloadUtilities = async (committeeList = committees) => {
+	    if (!supabaseEnabled) return
+	    let data = []
+	    try {
+	      const res = await supabase
+	        .from('committee_utilities')
+	        .select('committee_name,name')
+	        .order('committee_name', { ascending: true })
+	        .order('name', { ascending: true })
+	      if (res.error) console.warn('Failed to load committee utilities from Supabase.', res.error)
+	      data = res.data
+	    } catch (error) {
+	      console.warn('Failed to load committee utilities from Supabase.', error)
+	    }
 
-    const map = {}
-    committeeList.forEach(name => {
+	    const map = {}
+	    committeeList.forEach(name => {
       map[name] = []
     })
     if (Array.isArray(data)) {
@@ -260,17 +317,24 @@ export function AuthProvider({ children }) {
     setUtilitiesByCommittee(map)
   }
 
-  const reloadRecruitments = async (asAdmin) => {
-    if (!supabaseEnabled) return
-    if (!asAdmin) {
-      setRecruitments([])
-      return
-    }
-    const { data } = await supabase.from('recruitments').select('*').order('submitted_at', { ascending: false })
-    const mapped = Array.isArray(data)
-      ? data.map(row => ({
-          id: row.id,
-          fullName: row.full_name,
+	  const reloadRecruitments = async (asAdmin) => {
+	    if (!supabaseEnabled) return
+	    if (!asAdmin) {
+	      setRecruitments([])
+	      return
+	    }
+	    let data = []
+	    try {
+	      const res = await supabase.from('recruitments').select('*').order('submitted_at', { ascending: false })
+	      if (res.error) console.warn('Failed to load recruitments from Supabase.', res.error)
+	      data = res.data
+	    } catch (error) {
+	      console.warn('Failed to load recruitments from Supabase.', error)
+	    }
+	    const mapped = Array.isArray(data)
+	      ? data.map(row => ({
+	          id: row.id,
+	          fullName: row.full_name,
           email: row.email,
           idNumber: row.id_number || '',
           contactNumber: row.contact_number,
@@ -288,18 +352,107 @@ export function AuthProvider({ children }) {
     setRecruitments(mapped)
   }
 
-  useEffect(() => {
-    if (!supabaseEnabled) {
-      setLoading(false)
-      return
-    }
+	  useEffect(() => {
+	    if (!supabaseEnabled) {
+	      setLoading(false)
+	      return
+	    }
 
-    let active = true
+		    let active = true
+		    let refreshInterval
+		    let bootstrapTimeout
 
-    const bootstrap = async () => {
-      try {
-        const { data } = await runAuthOperationWithRetry(() => supabase.auth.getSession())
-        if (!active) return
+	    const safelyStartAutoRefresh = () => {
+	      try {
+	        supabase.auth.startAutoRefresh?.()
+	      } catch {
+	        // Ignore; not all supabase-js builds expose these helpers.
+	      }
+	    }
+
+	    const safelyStopAutoRefresh = () => {
+	      try {
+	        supabase.auth.stopAutoRefresh?.()
+	      } catch {
+	        // Ignore.
+	      }
+	    }
+
+	    const refreshSessionIfNeeded = async () => {
+	      try {
+	        const { data, error } = await runAuthOperationWithRetry(() => supabase.auth.getSession())
+	        if (error) return
+	        const session = data?.session
+	        if (!session?.user) return
+
+	        const expiresAtSeconds = Number(session.expires_at || 0)
+	        if (!expiresAtSeconds) return
+
+	        const expiresAtMs = expiresAtSeconds * 1000
+	        const msRemaining = expiresAtMs - Date.now()
+
+	        if (msRemaining > 2 * 60 * 1000) return
+
+	        await runAuthOperationWithRetry(() => supabase.auth.refreshSession())
+	      } catch {
+	        // Best-effort: autoRefreshToken handles most cases; this is a safety net.
+	      }
+	    }
+
+	    const handleVisibilityChange = () => {
+	      if (!active) return
+	      if (document.visibilityState === 'visible') {
+	        safelyStartAutoRefresh()
+	        refreshSessionIfNeeded().catch(() => {})
+	      } else {
+	        safelyStopAutoRefresh()
+	      }
+	    }
+
+	    const handleFocus = () => {
+	      if (!active) return
+	      safelyStartAutoRefresh()
+	      refreshSessionIfNeeded().catch(() => {})
+	    }
+
+	    const handleBlur = () => {
+	      if (!active) return
+	      safelyStopAutoRefresh()
+	    }
+
+		    const handleOnline = () => {
+		      if (!active) return
+		      safelyStartAutoRefresh()
+		      refreshSessionIfNeeded().catch(() => {})
+		    }
+
+		    const startBootstrapTimeout = () => {
+		      if (bootstrapTimeout) window.clearTimeout(bootstrapTimeout)
+		      bootstrapTimeout = window.setTimeout(() => {
+		        if (!active) return
+		        console.warn('Auth bootstrap timed out; continuing without blocking render.')
+		        setLoading(false)
+		      }, 12 * 1000)
+		    }
+
+	    const bootstrap = async () => {
+	      startBootstrapTimeout()
+	      try {
+	        const { data, error } = await supabase.auth.getSession()
+	        if (!active) return
+
+        if (error) {
+          if (isRefreshTokenError(error)) {
+            await supabase.auth.signOut()
+          }
+          await reloadProfile(null)
+          setUsers([])
+          setCommittees([])
+          setUtilitiesByCommittee({})
+          setRecruitments([])
+          return
+        }
+
         const authUser = data?.session?.user || null
         const currentUser = await reloadProfile(authUser)
         if (authUser?.id) await recordDailyPresenceSupabase(authUser.id)
@@ -314,96 +467,218 @@ export function AuthProvider({ children }) {
           setUtilitiesByCommittee({})
           setRecruitments([])
         }
-      } catch (error) {
-        if (active) {
-          setUser(null)
-          setUsers([])
-          setCommittees([])
+	      } catch (error) {
+	        void error
+	        if (active) {
+	          setUser(null)
+	          setUsers([])
+	          setCommittees([])
           setUtilitiesByCommittee({})
           setRecruitments([])
         }
-      } finally {
-        if (active) setLoading(false)
+	      } finally {
+	        if (bootstrapTimeout) window.clearTimeout(bootstrapTimeout)
+	        if (active) setLoading(false)
+	      }
+	    }
+
+    const { data: authSub } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!active) return
+
+      if (event === 'TOKEN_REFRESH_FAILED') {
+        await supabase.auth.signOut()
+        await reloadProfile(null)
+        setUsers([])
+        setCommittees([])
+        setUtilitiesByCommittee({})
+        setRecruitments([])
+        return
       }
-    }
 
-    const { data: authSub } = supabase.auth.onAuthStateChange((_event, session) => {
-      queueAuthOperation(async () => {
-        if (!active) return
-        const authUser = session?.user || null
-        const currentUser = await reloadProfile(authUser)
-        if (authUser?.id) await recordDailyPresenceSupabase(authUser.id)
-        if (authUser) {
-          await reloadMembers()
-          const committeeList = await reloadCommittees()
-          await reloadUtilities(committeeList)
-          await reloadRecruitments(currentUser?.role === 'admin')
-        } else {
-          setUsers([])
-          setCommittees([])
-          setUtilitiesByCommittee({})
-          setRecruitments([])
-        }
-      }).catch(() => {})
-    })
-
-    bootstrap()
-
-    const committeesChannel = supabase
-      .channel('kusgan-committees')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'committees' }, async () => {
+      const authUser = session?.user || null
+      const currentUser = await reloadProfile(authUser)
+      if (authUser?.id) await recordDailyPresenceSupabase(authUser.id)
+      if (authUser) {
+        await reloadMembers()
         const committeeList = await reloadCommittees()
         await reloadUtilities(committeeList)
-      })
-      .subscribe()
+        await reloadRecruitments(currentUser?.role === 'admin')
+      } else {
+        setUsers([])
+        setCommittees([])
+        setUtilitiesByCommittee({})
+        setRecruitments([])
+      }
+    })
 
-    const utilitiesChannel = supabase
-      .channel('kusgan-committee-utilities')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'committee_utilities' }, () => reloadUtilities())
-      .subscribe()
+		    safelyStartAutoRefresh()
+		    refreshSessionIfNeeded().catch(() => {})
+		    refreshInterval = window.setInterval(() => {
+		      refreshSessionIfNeeded().catch(() => {})
+		    }, 60 * 1000)
 
-    const profilesChannel = supabase
-      .channel('kusgan-profiles')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => reloadMembers())
-      .subscribe()
+		    window.addEventListener('focus', handleFocus)
+		    window.addEventListener('blur', handleBlur)
+		    window.addEventListener('online', handleOnline)
+		    document.addEventListener('visibilitychange', handleVisibilityChange)
 
-    const recruitmentsChannel = supabase
-      .channel('kusgan-recruitments')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'recruitments' }, () => reloadRecruitments(user?.role === 'admin'))
-      .subscribe()
+		    bootstrap()
 
-    return () => {
-      active = false
-      authSub?.subscription?.unsubscribe?.()
-      supabase.removeChannel(committeesChannel)
-      supabase.removeChannel(utilitiesChannel)
-      supabase.removeChannel(profilesChannel)
-      supabase.removeChannel(recruitmentsChannel)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [supabaseEnabled])
+	    const committeesChannel = supabase
+	      .channel('kusgan-committees')
+	      .on('postgres_changes', { event: '*', schema: 'public', table: 'committees' }, async () => {
+	        const committeeList = await reloadCommittees()
+	        await reloadUtilities(committeeList)
+	      })
+	      .subscribe()
 
-  const login = async (email, password) => {
-    const normalizedEmail = (email || '').trim().toLowerCase()
-    const trimmedPassword = password || ''
+	    const utilitiesChannel = supabase
+	      .channel('kusgan-committee-utilities')
+	      .on('postgres_changes', { event: '*', schema: 'public', table: 'committee_utilities' }, () => reloadUtilities())
+	      .subscribe()
 
-    if (!normalizedEmail || !trimmedPassword) {
-      return { success: false, message: 'Email and password are required.' }
-    }
+	    const profilesChannel = supabase
+	      .channel('kusgan-profiles')
+	      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => reloadMembers())
+	      .subscribe()
 
-    const { data, error } = await runAuthOperationWithRetry(() =>
-      supabase.auth.signInWithPassword({
-        email: normalizedEmail,
-        password: trimmedPassword,
-      })
-    )
-    if (error) return { success: false, message: error.message || 'Login failed.' }
+	    const recruitmentsChannel = supabase
+	      .channel('kusgan-recruitments')
+	      .on('postgres_changes', { event: '*', schema: 'public', table: 'recruitments' }, () =>
+	        reloadRecruitments(user?.role === 'admin')
+	      )
+	      .subscribe()
 
-    const authUser = data?.user || data?.session?.user || null
-    await reloadProfile(authUser)
-    if (authUser?.id) await recordDailyPresenceSupabase(authUser.id)
-    return { success: true }
-  }
+		    return () => {
+		      active = false
+		      safelyStopAutoRefresh()
+		      if (refreshInterval) window.clearInterval(refreshInterval)
+		      if (bootstrapTimeout) window.clearTimeout(bootstrapTimeout)
+		      window.removeEventListener('focus', handleFocus)
+		      window.removeEventListener('blur', handleBlur)
+		      window.removeEventListener('online', handleOnline)
+		      document.removeEventListener('visibilitychange', handleVisibilityChange)
+	      authSub?.subscription?.unsubscribe?.()
+	      supabase.removeChannel(committeesChannel)
+	      supabase.removeChannel(utilitiesChannel)
+	      supabase.removeChannel(profilesChannel)
+	      supabase.removeChannel(recruitmentsChannel)
+	    }
+	    // eslint-disable-next-line react-hooks/exhaustive-deps
+	  }, [supabaseEnabled])
+
+		  const login = async (identifier, password) => {
+		    const normalizedIdentifier = String(identifier || '').trim()
+		    const normalizedEmail = normalizedIdentifier.toLowerCase()
+		    const trimmedPassword = password || ''
+		    const looksLikeEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)
+
+		    if (!normalizedIdentifier || !trimmedPassword) {
+		      return { success: false, message: 'ID number and password are required.' }
+		    }
+
+		    let emailForAuth = normalizedEmail
+		    if (looksLikeEmail) {
+		      return { success: false, message: 'Email sign-in is disabled. Please use your ID number.' }
+		    }
+
+		    const idNumber = normalizedIdentifier
+		    try {
+		      const { data, error } = await supabase.rpc('get_email_for_id_number', { p_id_number: idNumber })
+		      if (error) {
+		        const msg = String(error.message || '')
+		        const hint = String(error.hint || '')
+		        const details = String(error.details || '')
+		        console.warn('Failed to resolve email for ID number.', error)
+
+		        if (error.code === 'PGRST202' || /could not find the function/i.test(msg)) {
+		          return {
+		            success: false,
+		            message:
+		              'ID Number Not Found',
+		          }
+		        }
+
+		        if (error.code === '42501' || /permission/i.test(msg)) {
+		          return {
+		            success: false,
+		            message:
+		              'Supabase denied the ID lookup. Ensure get_email_for_id_number is SECURITY DEFINER and EXECUTE is granted to anon/authenticated.',
+		          }
+		        }
+
+		        const extra = [details, hint].filter(Boolean).join(' ')
+		        return {
+		          success: false,
+		          message: `Unable to use ID number login right now. ${msg}${extra ? ` (${extra})` : ''}`.trim(),
+		        }
+		      }
+		      if (!data) {
+		        return {
+		          success: false,
+		          message:
+		            'No account found for that ID number. Ask an admin to set your ID number in the profiles table, then try again.',
+		        }
+		      }
+		      emailForAuth = String(data || '').trim().toLowerCase()
+		      if (!emailForAuth) {
+		        return {
+		          success: false,
+		          message:
+		            'No account found for that ID number. Ask an admin to set your ID number in the profiles table, then try again.',
+		        }
+		      }
+		    } catch (error) {
+		      console.warn('Failed to resolve email for ID number.', error)
+		      return { success: false, message: 'Unable to sign in with ID number right now. Please try again.' }
+		    }
+
+	    let data
+	    let error
+		    try {
+		      const res = await runAuthOperationWithRetry(() =>
+		        supabase.auth.signInWithPassword({
+		          email: emailForAuth,
+		          password: trimmedPassword,
+		        })
+		      )
+	      data = res?.data
+	      error = res?.error
+		    } catch (err) {
+		      const message = err?.message ? String(err.message) : ''
+		      if (err?.name === 'AbortError') return { success: false, message: 'Login request timed out. Please try again.' }
+		      return { success: false, message: message || 'Login failed.' }
+		    }
+
+		    if (error) {
+		      const msg = String(error.message || '')
+		      if (/email not confirmed/i.test(msg)) {
+		        return { success: false, message: 'Email not confirmed yet. Please confirm your email and try again.' }
+		      }
+		      if (/invalid login credentials/i.test(msg)) {
+		        return { success: false, message: 'Invalid ID number or password.' }
+		      }
+		      return { success: false, message: msg || 'Login failed.' }
+		    }
+
+		    const sessionUser = data?.session?.user || null
+		    if (!sessionUser?.id) {
+		      try {
+		        const sessionRes = await supabase.auth.getSession()
+		        if (!sessionRes?.data?.session?.user?.id) {
+		          return { success: false, message: 'Signed in, but session was not created. Please try again.' }
+		        }
+		      } catch (error) {
+		        console.warn('Unable to verify Supabase session after login.', error)
+		        return { success: false, message: 'Signed in, but session could not be verified. Please try again.' }
+		      }
+		    }
+
+		    const authUser = data?.user || data?.session?.user || null
+		    await reloadProfile(authUser)
+		    if (authUser?.id) await recordDailyPresenceSupabase(authUser.id)
+		    return { success: true }
+		  }
 
   const logout = async () => {
     await runAuthOperationWithRetry(() => supabase.auth.signOut())
@@ -511,19 +786,37 @@ export function AuthProvider({ children }) {
     if (!trimmedCurrent || !trimmedNew) return { success: false, message: 'Current and new password are required.' }
     if (trimmedNew.length < 6) return { success: false, message: 'New password must be at least 6 characters.' }
 
-    const { error: authError } = await runAuthOperationWithRetry(() =>
-      supabase.auth.signInWithPassword({
-        email: user.email,
-        password: trimmedCurrent,
-      })
-    )
-    if (authError) return { success: false, message: 'Current password is incorrect.' }
+    const email = user.email?.trim().toLowerCase()
+    if (!email) return { success: false, message: 'User not found' }
 
-    try {
-      const { error: updateError } = await runAuthOperationWithRetry(() => supabase.auth.updateUser({ password: trimmedNew }))
-      if (updateError) return { success: false, message: updateError.message || 'Unable to update password.' }
-    } catch (error) {
-      return { success: false, message: error.message || 'Unable to update password.' }
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+    if (sessionError || !sessionData?.session) {
+      if (isRefreshTokenError(sessionError)) {
+        await supabase.auth.signOut()
+      }
+      return { success: false, message: SESSION_EXPIRED_MESSAGE }
+    }
+
+    const { error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password: trimmedCurrent,
+    })
+
+    if (authError) {
+      if (isRefreshTokenError(authError)) {
+        await supabase.auth.signOut()
+        return { success: false, message: SESSION_EXPIRED_MESSAGE }
+      }
+      return { success: false, message: 'Current password is incorrect.' }
+    }
+
+    const { error: updateError } = await supabase.auth.updateUser({ password: trimmedNew })
+    if (updateError) {
+      if (isRefreshTokenError(updateError)) {
+        await supabase.auth.signOut()
+        return { success: false, message: SESSION_EXPIRED_MESSAGE }
+      }
+      return { success: false, message: updateError.message || 'Unable to update password.' }
     }
     return { success: true }
   }
@@ -702,7 +995,69 @@ export function AuthProvider({ children }) {
     return { success: true }
   }
 
-  const getRecruitments = () => [...recruitments]
+	  const getRecruitments = () => [...recruitments]
+
+	  const createMember = async (memberData = {}) => {
+	    if (user?.role !== 'admin') return { success: false, message: 'Only admins can create members.' }
+
+	    const name = String(memberData.name || '').trim()
+	    const idNumber = String(memberData.idNumber || memberData.id_number || '').trim()
+	    const password = String(memberData.password || '').trim()
+	    const role = memberData.role === 'admin' ? 'admin' : 'member'
+
+	    if (!name || !idNumber || !password) {
+	      return { success: false, message: 'Name, ID number, and password are required.' }
+	    }
+
+	    const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+	    if (sessionError || !sessionData?.session?.access_token) {
+	      if (isRefreshTokenError(sessionError)) {
+	        await supabase.auth.signOut()
+	      }
+	      return { success: false, message: SESSION_EXPIRED_MESSAGE }
+	    }
+
+	    let response
+	    try {
+	      response = await fetch('/api/admin/create-user', {
+	        method: 'POST',
+	        headers: {
+	          'Content-Type': 'application/json',
+	          Authorization: `Bearer ${sessionData.session.access_token}`,
+	        },
+	        body: JSON.stringify({
+	          name,
+	          idNumber,
+	          password,
+	          role,
+	          committee: memberData.committee || null,
+	          category: memberData.category || null,
+	          address: memberData.address || null,
+	          contactNumber: memberData.contactNumber || null,
+	          bloodType: memberData.bloodType || null,
+	          memberSince: memberData.memberSince || null,
+	        }),
+	      })
+	    } catch (error) {
+	      console.warn('Failed to reach admin create-user endpoint.', error)
+	      return { success: false, message: 'Unable to reach the server. Please try again.' }
+	    }
+
+	    const payload = await response.json().catch(() => ({}))
+	    if (!response.ok) {
+	      return { success: false, message: payload?.message || 'Unable to create member.' }
+	    }
+
+	    if (memberData.recruitmentId) {
+	      await supabase
+	        .from('recruitments')
+	        .update({ status: 'approved', processed_at: dayjs().toISOString(), processed_by: user?.id || null })
+	        .eq('id', memberData.recruitmentId)
+	    }
+
+	    await reloadMembers()
+	    return { success: true, userId: payload?.userId || null }
+	  }
 
   const setAppLanguage = async (nextLanguage) => {
     const value = String(nextLanguage || '').trim() || 'English'
@@ -736,9 +1091,9 @@ export function AuthProvider({ children }) {
     document.documentElement.setAttribute('lang', appLanguage === 'Filipino' ? 'fil' : appLanguage === 'Bisaya' ? 'ceb' : 'en')
   }, [appLanguage])
 
-  const value = {
+	  const value = {
     supabaseEnabled,
-    supabaseConfigError: '',
+    supabaseConfigError,
     user,
     loading,
     committees,
@@ -754,16 +1109,13 @@ export function AuthProvider({ children }) {
     logout,
     register,
     updateCurrentUser,
-    changeCurrentUserPassword,
-    getAllMembers,
-    createMember: async () => ({
-      success: false,
-      message: 'Members must self-register (or implement an invite flow using a server route with the Service Role key).',
-    }),
-    deleteMembers: async () => ({
-      success: false,
-      message: 'Deleting users requires a server-side Admin/Service Role flow in Supabase (client cannot delete Auth users).',
-    }),
+	    changeCurrentUserPassword,
+	    getAllMembers,
+	    createMember,
+	    deleteMembers: async () => ({
+	      success: false,
+	      message: 'Deleting users requires a server-side Admin/Service Role flow in Supabase (client cannot delete Auth users).',
+	    }),
     updateMember,
     addCommittee,
     editCommittee,
@@ -784,6 +1136,7 @@ export function AuthProvider({ children }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   const context = useContext(AuthContext)
   if (!context) {
