@@ -1,6 +1,5 @@
-import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, Calendar, User, LogOut, ChevronLeft, ChevronRight, Users, FileText, Sun, Moon, Settings, ChevronDown, ChevronUp, SlidersHorizontal, ClipboardCheck } from 'lucide-react'
+import { LayoutDashboard, Calendar, LogOut, ChevronLeft, ChevronRight, Users, FileText, Sun, Moon, Settings, ClipboardCheck } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useI18n } from '../i18n/useI18n'
 
@@ -8,8 +7,6 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
   const { user, logout } = useAuth()
   const { t } = useI18n()
   const navigate = useNavigate()
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
-  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
 
   const handleLogout = () => {
     logout()
@@ -36,7 +33,6 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
     : 'text-gray-700 hover:bg-red-50 hover:text-gray-900'
   const userDividerTone = darkMode ? 'border-t border-gray-800' : 'border-t border-gray-200'
   const userNameTone = darkMode ? 'text-white' : 'text-gray-900'
-  const userMetaTone = darkMode ? 'text-gray-500' : 'text-gray-600'
 
   const navItems = [
     { to: '/', icon: LayoutDashboard, label: t('Dashboard') },
@@ -68,33 +64,50 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
           {isOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
         </button>
 
-        {/* Logo Section */}
+        {/* User Section (Top) */}
         <div className={`p-6 ${!isOpen && 'px-2'}`}>
           {isOpen ? (
             <div className="animate-fade-in">
-              <div className="flex items-center gap-3 mb-1">
-                <div className="w-10 h-10 bg-white logo-no-dark rounded-full flex items-center justify-center overflow-hidden">
+              <button
+                type="button"
+                onClick={() => {
+                  navigate('/profile')
+                  if (window.innerWidth < 768 && isOpen) toggleSidebar()
+                }}
+                className={`w-full flex flex-col items-center gap-2 px-2 py-2 rounded-lg transition-colors ${utilityBtnTone}`}
+              >
+                <div className="w-20 h-20 rounded-full bg-red-600 border border-red-600 flex items-center justify-center overflow-hidden">
                   <img
-                    src="/image-removebg-preview.png"
-                    alt="KUSGAN logo"
-                    className="w-8 h-8 object-contain"
+                    src={user?.profileImage || '/image-removebg-preview.png'}
+                    alt={user?.name || 'User'}
+                    className="w-full h-full object-cover"
                   />
                 </div>
-                <div>
-                  <h1 className={`text-lg font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>KUSGAN</h1>
-                  <p className="text-xs text-red-600">Volunteer Inc.</p>
+                <div className="flex flex-col items-center min-w-0">
+                  <p className={`font-normal truncate ${userNameTone}`}>{user?.name || 'Guest'}</p>
+                  {user?.role === 'admin' && (
+                    <span className="inline-block mt-1 px-2 py-0.5 bg-red-600/20 text-red-600 text-xs rounded">Admin</span>
+                  )}
                 </div>
-              </div>
-              <p className={`text-xs mt-1 ${sectionMutedText}`}>Cares Department</p>
+              </button>
             </div>
           ) : (
-            <div className="w-10 h-10 bg-white logo-no-dark rounded-full flex items-center justify-center mx-auto overflow-hidden">
-              <img
-                src="/image-removebg-preview.png"
-                alt="KUSGAN logo"
-                className="w-8 h-8 object-contain"
-              />
-            </div>
+            <button
+              type="button"
+              onClick={() => {
+                navigate('/profile')
+                if (window.innerWidth < 768 && isOpen) toggleSidebar()
+              }}
+              className={`w-full flex items-center justify-center p-2 rounded-lg transition-colors ${utilityBtnTone}`}
+            >
+              <div className="w-14 h-14 rounded-full bg-red-600 border border-red-600 flex items-center justify-center overflow-hidden">
+                <img
+                  src={user?.profileImage || '/image-removebg-preview.png'}
+                  alt={user?.name || 'User'}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            </button>
           )}
         </div>
 
@@ -134,105 +147,70 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
               {isOpen && <span>{t('Management')}</span>}
             </button>
           )}
+
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={() => {
+                navigate('/settings')
+                if (window.innerWidth < 768 && isOpen) toggleSidebar()
+              }}
+              className={`group relative flex w-full items-center gap-3 rounded-lg border-l-2 border-transparent px-4 py-3 transition-all duration-200 hover:scale-[1.02] ${navTone} ${
+                !isOpen && 'justify-center px-3'
+              }`}
+            >
+              <Settings size={20} className={isOpen ? '' : 'mx-auto'} />
+              {isOpen && <span>{t('Settings')}</span>}
+            </button>
+          )}
         </nav>
 
-        <div className={`px-3 mt-4 ${isOpen ? 'space-y-2' : 'space-y-3'}`}>
-          <button
-            type="button"
-            onClick={() => setIsSettingsOpen(prev => !prev)}
-            className={`w-full flex items-center ${isOpen ? 'gap-3 px-3 justify-start' : 'justify-center'} py-2 rounded-lg transition-all ${utilityBtnTone}`}
-          >
-            <SlidersHorizontal size={18} />
-            {isOpen && (
-              <>
-                <span className="flex-1 text-left">{t('Appearance')}</span>
-                {isSettingsOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-              </>
-            )}
-          </button>
-
-          {isSettingsOpen && (
-            <div className={`${panelTone} ${isOpen ? 'p-2 space-y-1' : 'p-1 space-y-2'}`}>
+        {/* Footer Section */}
+        <div className={`absolute bottom-0 w-full p-4 space-y-3 ${userDividerTone} ${!isOpen && (darkMode ? 'border-l border-gray-800' : 'border-l border-gray-200')}`}>
+          {isOpen ? (
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-white logo-no-dark rounded-full flex items-center justify-center overflow-hidden">
+                  <img
+                    src="/image-removebg-preview.png"
+                    alt="KUSGAN logo"
+                    className="w-8 h-8 object-contain"
+                  />
+                </div>
+                <div>
+                  <h1 className={`text-sm font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>KUSGAN</h1>
+                  <p className="text-xs text-red-600">Volunteer Inc.</p>
+                </div>
+              </div>
               <button
                 type="button"
                 onClick={onToggleDarkMode}
-                className={`w-full flex items-center ${isOpen ? 'gap-3 px-2 justify-start' : 'justify-center'} py-2 rounded-lg transition-all ${utilityBtnTone}`}
+                className={`inline-flex h-9 w-9 items-center justify-center rounded-full border border-red-600/60 transition-all ${utilityBtnTone}`}
+                aria-label={darkMode ? t('Light Mode') : t('Dark Mode')}
+                title={darkMode ? t('Light Mode') : t('Dark Mode')}
               >
                 {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-                {isOpen && <span>{darkMode ? t('Light Mode') : t('Dark Mode')}</span>}
               </button>
             </div>
-          )}
-        </div>
-
-        {/* User Section */}
-        <div className={`absolute bottom-0 w-full p-4 ${userDividerTone} ${!isOpen && (darkMode ? 'border-l border-gray-800' : 'border-l border-gray-200')}`}>
-          {isOpen ? (
-            <>
+          ) : (
+            <div className="flex items-center justify-center gap-2">
+              <div className="w-10 h-10 bg-white logo-no-dark rounded-full flex items-center justify-center overflow-hidden">
+                <img
+                  src="/image-removebg-preview.png"
+                  alt="KUSGAN logo"
+                  className="w-8 h-8 object-contain"
+                />
+              </div>
               <button
                 type="button"
-                onClick={() => setIsUserMenuOpen(prev => !prev)}
-                className={`w-full flex items-center gap-3 mb-2 px-2 py-1 rounded-lg transition-colors ${utilityBtnTone}`}
+                onClick={onToggleDarkMode}
+                className={`inline-flex h-9 w-9 items-center justify-center rounded-full border border-red-600/60 transition-all ${utilityBtnTone}`}
+                aria-label={darkMode ? t('Light Mode') : t('Dark Mode')}
+                title={darkMode ? t('Light Mode') : t('Dark Mode')}
               >
-                <div className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center overflow-hidden">
-                  <img
-                    src={user?.profileImage || '/image-removebg-preview.png'}
-                    alt={user?.name || 'User'}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className={`font-medium truncate ${userNameTone}`}>{user?.name || 'Guest'}</p>
-                  <p className={`text-xs truncate ${userMetaTone}`}>{user?.idNumber || user?.email || 'Guest User'}</p>
-                  {user?.role === 'admin' && (
-                    <span className="inline-block mt-1 px-2 py-0.5 bg-red-600/20 text-red-600 text-xs rounded">Admin</span>
-                  )}
-                </div>
-                {isUserMenuOpen ? <ChevronUp size={16} className={userMetaTone} /> : <ChevronDown size={16} className={userMetaTone} />}
+                {darkMode ? <Sun size={18} /> : <Moon size={18} />}
               </button>
-              {isUserMenuOpen && (
-                <div className={`${panelTone} mb-3 p-2 space-y-1`}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsUserMenuOpen(false)
-                      navigate('/profile')
-                      if (window.innerWidth < 768 && isOpen) toggleSidebar()
-                    }}
-                    className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg transition-all ${utilityBtnTone}`}
-                  >
-                    <User size={16} />
-                    <span>{t('Profile')}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsUserMenuOpen(false)
-                      navigate('/settings')
-                      if (window.innerWidth < 768 && isOpen) toggleSidebar()
-                    }}
-                    className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg transition-all ${utilityBtnTone}`}
-                  >
-                    <Settings size={16} />
-                    <span>{t('Settings')}</span>
-                  </button>
-                </div>
-              )}
-              <button
-                onClick={handleLogout}
-                className={`flex items-center gap-2 w-full px-4 py-2 rounded-lg transition-all ${utilityBtnTone}`}
-              >
-                <LogOut size={18} />
-                <span>{t('Logout')}</span>
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={handleLogout}
-              className={`flex items-center justify-center w-full p-2 rounded-lg transition-all ${utilityBtnTone}`}
-            >
-              <LogOut size={20} />
-            </button>
+            </div>
           )}
         </div>
       </aside>
