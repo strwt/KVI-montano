@@ -10,7 +10,7 @@ function Login() {
   const [error, setError] = useState('')
   const [info, setInfo] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const { login } = useAuth()
+  const { login, supabaseEnabled, supabaseConfigError } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -26,6 +26,17 @@ function Login() {
     e.preventDefault()
     setError('')
     setInfo('')
+
+    if (!supabaseEnabled) {
+      setError(supabaseConfigError || 'Supabase is not configured.')
+      return
+    }
+
+    const normalizedIdentifier = identifier.trim().toLowerCase()
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedIdentifier)) {
+      setError('Please enter the email address you used to sign up (not your ID number).')
+      return
+    }
 
     if (!identifier.trim() || !password.trim()) {
       setError('All fields are required.')

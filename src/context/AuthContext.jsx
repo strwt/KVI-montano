@@ -212,33 +212,47 @@ export function AuthProvider({ children }) {
 	    }
 	  }
 
-  const reloadProfile = async (authUser) => {
-    if (!supabaseEnabled) return null
-    if (!authUser?.id) {
-      setUser(null)
-      return null
-    }
+	  const reloadProfile = async (authUser) => {
+	    if (!supabaseEnabled) return null
+	    if (!authUser?.id) {
+	      setUser(null)
+	      return null
+	    }
 
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', authUser.id)
-      .maybeSingle()
+	    let profile = null
+	    try {
+	      const { data, error } = await supabase
+	        .from('profiles')
+	        .select('*')
+	        .eq('id', authUser.id)
+	        .maybeSingle()
+	      if (error) console.warn('Failed to load profile from Supabase.', error)
+	      profile = data || null
+	    } catch (error) {
+	      console.warn('Failed to load profile from Supabase.', error)
+	    }
 
-    const mapped = mapProfileToUser(profile, authUser)
-    setUser(mapped)
-    setAppLanguageState(mapped?.appLanguage || 'English')
-    setDarkModeState(Boolean(mapped?.darkMode))
+	    const mapped = mapProfileToUser(profile, authUser)
+	    setUser(mapped)
+	    setAppLanguageState(mapped?.appLanguage || 'English')
+	    setDarkModeState(Boolean(mapped?.darkMode))
     setSettingsState(mapped?.settings && typeof mapped.settings === 'object' ? mapped.settings : {})
     return mapped
   }
 
-  const reloadMembers = async () => {
-    if (!supabaseEnabled) return
-    const { data } = await supabase.from('profiles').select('*').order('name', { ascending: true })
-    const mapped = Array.isArray(data)
-      ? data.map(profile =>
-          enrichUserWithProfileImage({
+	  const reloadMembers = async () => {
+	    if (!supabaseEnabled) return
+	    let data = []
+	    try {
+	      const res = await supabase.from('profiles').select('*').order('name', { ascending: true })
+	      if (res.error) console.warn('Failed to load members from Supabase.', res.error)
+	      data = res.data
+	    } catch (error) {
+	      console.warn('Failed to load members from Supabase.', error)
+	    }
+	    const mapped = Array.isArray(data)
+	      ? data.map(profile =>
+	          enrichUserWithProfileImage({
             id: profile.id,
             idNumber: profile.id_number || '',
             name: profile.name || '',
@@ -259,24 +273,38 @@ export function AuthProvider({ children }) {
     setUsers(mapped)
   }
 
-  const reloadCommittees = async () => {
-    if (!supabaseEnabled) return []
-    const { data } = await supabase.from('committees').select('name').order('name', { ascending: true })
-    const names = Array.isArray(data) ? data.map(row => row.name).filter(Boolean) : []
-    setCommittees(names)
-    return names
-  }
+	  const reloadCommittees = async () => {
+	    if (!supabaseEnabled) return []
+	    let data = []
+	    try {
+	      const res = await supabase.from('committees').select('name').order('name', { ascending: true })
+	      if (res.error) console.warn('Failed to load committees from Supabase.', res.error)
+	      data = res.data
+	    } catch (error) {
+	      console.warn('Failed to load committees from Supabase.', error)
+	    }
+	    const names = Array.isArray(data) ? data.map(row => row.name).filter(Boolean) : []
+	    setCommittees(names)
+	    return names
+	  }
 
-  const reloadUtilities = async (committeeList = committees) => {
-    if (!supabaseEnabled) return
-    const { data } = await supabase
-      .from('committee_utilities')
-      .select('committee_name,name')
-      .order('committee_name', { ascending: true })
-      .order('name', { ascending: true })
+	  const reloadUtilities = async (committeeList = committees) => {
+	    if (!supabaseEnabled) return
+	    let data = []
+	    try {
+	      const res = await supabase
+	        .from('committee_utilities')
+	        .select('committee_name,name')
+	        .order('committee_name', { ascending: true })
+	        .order('name', { ascending: true })
+	      if (res.error) console.warn('Failed to load committee utilities from Supabase.', res.error)
+	      data = res.data
+	    } catch (error) {
+	      console.warn('Failed to load committee utilities from Supabase.', error)
+	    }
 
-    const map = {}
-    committeeList.forEach(name => {
+	    const map = {}
+	    committeeList.forEach(name => {
       map[name] = []
     })
     if (Array.isArray(data)) {
@@ -289,17 +317,24 @@ export function AuthProvider({ children }) {
     setUtilitiesByCommittee(map)
   }
 
-  const reloadRecruitments = async (asAdmin) => {
-    if (!supabaseEnabled) return
-    if (!asAdmin) {
-      setRecruitments([])
-      return
-    }
-    const { data } = await supabase.from('recruitments').select('*').order('submitted_at', { ascending: false })
-    const mapped = Array.isArray(data)
-      ? data.map(row => ({
-          id: row.id,
-          fullName: row.full_name,
+	  const reloadRecruitments = async (asAdmin) => {
+	    if (!supabaseEnabled) return
+	    if (!asAdmin) {
+	      setRecruitments([])
+	      return
+	    }
+	    let data = []
+	    try {
+	      const res = await supabase.from('recruitments').select('*').order('submitted_at', { ascending: false })
+	      if (res.error) console.warn('Failed to load recruitments from Supabase.', res.error)
+	      data = res.data
+	    } catch (error) {
+	      console.warn('Failed to load recruitments from Supabase.', error)
+	    }
+	    const mapped = Array.isArray(data)
+	      ? data.map(row => ({
+	          id: row.id,
+	          fullName: row.full_name,
           email: row.email,
           idNumber: row.id_number || '',
           contactNumber: row.contact_number,
@@ -532,13 +567,17 @@ export function AuthProvider({ children }) {
 	    // eslint-disable-next-line react-hooks/exhaustive-deps
 	  }, [supabaseEnabled])
 
-	  const login = async (email, password) => {
-	    const normalizedEmail = (email || '').trim().toLowerCase()
-	    const trimmedPassword = password || ''
+		  const login = async (email, password) => {
+		    const normalizedEmail = (email || '').trim().toLowerCase()
+		    const trimmedPassword = password || ''
+		    const looksLikeEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)
 
-	    if (!normalizedEmail || !trimmedPassword) {
-	      return { success: false, message: 'Email and password are required.' }
-	    }
+		    if (!normalizedEmail || !trimmedPassword) {
+		      return { success: false, message: 'Email and password are required.' }
+		    }
+		    if (!looksLikeEmail) {
+		      return { success: false, message: 'Please enter your email address (not your ID number).' }
+		    }
 
 	    let data
 	    let error
@@ -551,12 +590,22 @@ export function AuthProvider({ children }) {
 	      )
 	      data = res?.data
 	      error = res?.error
-	    } catch (err) {
-	      const message = err?.message ? String(err.message) : ''
-	      return { success: false, message: message || 'Login failed.' }
-	    }
+		    } catch (err) {
+		      const message = err?.message ? String(err.message) : ''
+		      if (err?.name === 'AbortError') return { success: false, message: 'Login request timed out. Please try again.' }
+		      return { success: false, message: message || 'Login failed.' }
+		    }
 
-	    if (error) return { success: false, message: error.message || 'Login failed.' }
+		    if (error) {
+		      const msg = String(error.message || '')
+		      if (/email not confirmed/i.test(msg)) {
+		        return { success: false, message: 'Email not confirmed yet. Please confirm your email and try again.' }
+		      }
+		      if (/invalid login credentials/i.test(msg)) {
+		        return { success: false, message: 'Invalid email or password.' }
+		      }
+		      return { success: false, message: msg || 'Login failed.' }
+		    }
 
 	    const authUser = data?.user || data?.session?.user || null
 	    await reloadProfile(authUser)
@@ -915,7 +964,7 @@ export function AuthProvider({ children }) {
 
   const value = {
     supabaseEnabled,
-    supabaseConfigError: '',
+    supabaseConfigError,
     user,
     loading,
     committees,
