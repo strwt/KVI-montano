@@ -279,7 +279,7 @@ const BOARD_STRUCTURE = {
     name: 'Noel "Strong Doy" Danlag Raboy',
     position: 'Chairman',
     committee: 'Executive Board',
-    image: 'https://i.pravatar.cc/520?img=6',
+    image: '/Board Organizational Structure/Noel Raboy.png',
     icon: Crown,
   },
   viceChairperson: {
@@ -287,20 +287,33 @@ const BOARD_STRUCTURE = {
     position: 'Vice Chairperson',
     
     committee: 'Executive Board',
-    image: 'https://i.pravatar.cc/520?img=20',
+    image: '/Board Organizational Structure/Henry Lopez.png',
     icon: ShieldCheck,
   },
+  executiveDirector: {
+    name: 'Jerson "Strong Jerson 32" Ebal',
+    position: 'Executive Director and President',
+    committee: 'Executive Board',
+    image: '/Board Organizational Structure/Jerson Ebal.png',
+  },
   BoardMembers: [
-    { name: 'Camille Reyes', position: 'Board Secretary', committee: 'Executive Board', image: 'https://i.pravatar.cc/420?img=19' },
-    { name: 'Julian Cruz', position: 'Board Treasurer', committee: 'Finance Committee', image: 'https://i.pravatar.cc/420?img=30' },
-    { name: 'Maya Torres', position: 'Board Auditor', committee: 'Audit Committee', image: 'https://i.pravatar.cc/420?img=15' },
+    { name: 'Love Jhoye "Golden Jhoye" Raboy', position: 'Board Member', committee: 'Board', image: '/Board Organizational Structure/Love Jhoye Raboy.png' },
+    { name: 'Ardex "Strong Ian" Mejares', position: 'Board Member', committee: 'Board', image: '/Board Organizational Structure/KVI.png' },
+    { name: 'Renan Diaz', position: 'Board Member', committee: 'Board', image: '/Board Organizational Structure/Renan P. Diaz.png' },
+    { name: 'Kusgan Joselyn Piñalosa', position: 'Board Member', committee: 'Board', image: '/Board Organizational Structure/KVI.png' },
+    { name: 'Kusgan Niña Dinorog', position: 'Board Member', committee: 'Board', image: '/Board Organizational Structure/KVI.png' },
+    { name: 'Kusgan Joel Marcaida', position: 'Board Member', committee: 'Board', image: '/Board Organizational Structure/KVI.png' },
+    { name: 'Kusgan Lord Ubod', position: 'Board Member', committee: 'Board', image: '/Board Organizational Structure/KVI.png' },
   ],
-  directors: [
-    { name: 'Noah Santos', position: 'Board Director', committee: 'Programs Committee', image: 'https://i.pravatar.cc/420?img=39' },
-    { name: 'Angel Rivera', position: 'Board Director', committee: 'Community Relations', image: 'https://i.pravatar.cc/420?img=34' },
-    { name: 'Selena Lim', position: 'Board Director', committee: 'Operations Committee', image: 'https://i.pravatar.cc/420?img=41' },
-    { name: 'Eric Flores', position: 'Board Director', committee: 'Compliance Committee', image: 'https://i.pravatar.cc/420?img=24' },
-  ],
+  officers: [
+    { name: 'Love Jhoye "Golden Jhoye" Raboy', position: 'Board Member', committee: 'Board', image: '/Board Organizational Structure/Love Jhoye Raboy.png' },
+    { name: 'Ardex "Strong Ian" Mejares', position: 'Board Member', committee: 'Board', image: '/Board Organizational Structure/KVI.png' },
+    { name: 'Renan Diaz', position: 'Board Member', committee: 'Board', image: '/Board Organizational Structure/Renan P. Diaz.png' },
+    { name: 'Kusgan Joselyn Pinalosa', position: 'Board Member', committee: 'Board', image: '/Board Organizational Structure/KVI.png' },
+    { name: 'Kusgan Niña Dinorog', position: 'Board Member', committee: 'Board', image: '/Board Organizational Structure/KVI.png' },
+    { name: 'Kusgan Joel Marcaida', position: 'Board Member', committee: 'Board', image: '/Board Organizational Structure/KVI.png' },
+    { name: 'Kusgan Lord Ubod', position: 'Board Member', committee: 'Board', image: '/Board Organizational Structure/KVI.png' },
+  ]
 }
 
 const ORGANIZATION_VIEWS = [
@@ -463,13 +476,18 @@ function SectionHeader({ eyebrow, title, subtitle, centered = false }) {
   )
 }
 
-function OrgPersonCard({ person, large = false }) {
+function OrgPersonCard({ person, large = false, size = 'normal' }) {
   const Icon = person.icon
   const position = person.position || person.role
+  const sizeClass = large
+    ? 'w-28 sm:w-36'
+    : size === 'board'
+      ? 'w-[6.2rem] h-[6.7rem] sm:w-[7.2rem] sm:h-32'
+      : 'w-16 sm:w-20'
   return (
     <article className="text-center mx-auto">
       <div
-        className={`mx-auto rounded-2xl overflow-hidden ${large ? 'w-28 sm:w-36' : 'w-16 sm:w-20'} aspect-[3/4] bg-gray-900`}
+        className={`mx-auto rounded-2xl overflow-hidden ${sizeClass} ${size === 'board' ? '' : 'aspect-[3/4]'} bg-gray-900`}
         style={{
           border: '1px solid rgba(255,255,255,0.15)',
           boxShadow: large
@@ -886,46 +904,13 @@ function Landing() {
           <div className="flex flex-col items-center">
             {activeStructure.key === 'kusgan' ? (
               <>
-                {/* President */}
-                <div className="w-full max-w-[180px]">
-                  <OrgPersonCard person={activeStructure.data.president} large />
-                </div>
-
-                {/* Connector */}
-                <div className="w-px h-8 my-1" style={{ background: 'linear-gradient(to bottom, rgba(220,38,38,0.55), rgba(220,38,38,0.15))' }} />
-
-                {/* Vice President */}
-                <div className="w-full max-w-[180px]">
-                  <OrgPersonCard person={activeStructure.data.vicePresident} large />
-                </div>
-
-                {/* Connector to committees */}
-                <div className="w-px h-8 my-1" style={{ background: 'linear-gradient(to bottom, rgba(220,38,38,0.55), rgba(220,38,38,0.15))' }} />
-
-                {/* Horizontal divider label */}
-                <div className="w-full flex items-center gap-3 mb-6 max-w-5xl">
-                  <div className="flex-1 h-px" style={{ background: 'linear-gradient(to right, transparent, rgba(220,38,38,0.25))' }} />
-                  <span
-                    className="px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase border shrink-0"
-                    style={{ color: '#fca5a5', background: 'rgba(220,38,38,0.1)', borderColor: 'rgba(220,38,38,0.2)' }}
-                  >
-                    Committees
-                  </span>
-                  <div className="flex-1 h-px" style={{ background: 'linear-gradient(to left, transparent, rgba(220,38,38,0.25))' }} />
-                </div>
-
-                {/* All 8 committees — 4-column grid, 2 rows */}
-                <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {activeStructure.data.committees.map(committee => (
-                    <CommitteeCard key={committee.name} committee={committee} />
-                  ))}
-                </div>
+                <div className="w-full h-8" />
               </>
             ) : (
               <>
                 {/* Board Chairperson */}
                 <div className="w-full max-w-[180px]">
-                  <OrgPersonCard person={activeStructure.data.chairperson} large />
+                  <OrgPersonCard person={activeStructure.data.chairperson} size="board" />
                 </div>
 
                 {/* Connector */}
@@ -933,48 +918,41 @@ function Landing() {
 
                 {/* Vice Chairperson */}
                 <div className="w-full max-w-[180px]">
-                  <OrgPersonCard person={activeStructure.data.viceChairperson} large />
+                  <OrgPersonCard person={activeStructure.data.viceChairperson} size="board" />
                 </div>
 
-                {/* Connector to officers */}
+                {/* Connector to executive director */}
                 <div className="w-px h-8 my-1" style={{ background: 'linear-gradient(to bottom, rgba(220,38,38,0.55), rgba(220,38,38,0.15))' }} />
 
-                {/* Officers label */}
+                {/* Executive Director */}
+                <div className="w-full max-w-[180px]">
+                  <OrgPersonCard person={activeStructure.data.executiveDirector} size="board" />
+                </div>
+
+                {/* Connector to members */}
+                <div className="w-px h-8 my-1" style={{ background: 'linear-gradient(to bottom, rgba(220,38,38,0.55), rgba(220,38,38,0.15))' }} />
+
+                {/* Board members label */}
                 <div className="w-full flex items-center gap-3 mb-6 max-w-4xl">
                   <div className="flex-1 h-px" style={{ background: 'linear-gradient(to right, transparent, rgba(220,38,38,0.25))' }} />
                   <span
                     className="px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase border shrink-0"
                     style={{ color: '#fca5a5', background: 'rgba(220,38,38,0.1)', borderColor: 'rgba(220,38,38,0.2)' }}
                   >
-                    Board Officers
+                    Board Members
                   </span>
                   <div className="flex-1 h-px" style={{ background: 'linear-gradient(to left, transparent, rgba(220,38,38,0.25))' }} />
                 </div>
 
-                <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-4xl">
-                  {activeStructure.data.officers.map(officer => (
-                    <OrgPersonCard key={officer.name} person={officer} />
+                <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-5xl place-items-center">
+                  {activeStructure.data.officers.slice(0, 4).map(officer => (
+                    <OrgPersonCard key={officer.name} person={officer} size="board" />
                   ))}
                 </div>
 
-                {/* Connector to directors */}
-                <div className="w-px h-8 my-6" style={{ background: 'linear-gradient(to bottom, rgba(220,38,38,0.55), rgba(220,38,38,0.15))' }} />
-
-                {/* Directors label */}
-                <div className="w-full flex items-center gap-3 mb-6 max-w-5xl">
-                  <div className="flex-1 h-px" style={{ background: 'linear-gradient(to right, transparent, rgba(220,38,38,0.25))' }} />
-                  <span
-                    className="px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase border shrink-0"
-                    style={{ color: '#fca5a5', background: 'rgba(220,38,38,0.1)', borderColor: 'rgba(220,38,38,0.2)' }}
-                  >
-                    Board Directors
-                  </span>
-                  <div className="flex-1 h-px" style={{ background: 'linear-gradient(to left, transparent, rgba(220,38,38,0.25))' }} />
-                </div>
-
-                <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {activeStructure.data.directors.map(director => (
-                    <OrgPersonCard key={director.name} person={director} />
+                <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-4xl mt-4 place-items-center">
+                  {activeStructure.data.officers.slice(4).map(officer => (
+                    <OrgPersonCard key={officer.name} person={officer} size="board" />
                   ))}
                 </div>
               </>
