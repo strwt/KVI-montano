@@ -17,6 +17,27 @@ If you see a `400 Bad Request` on `login_activity?on_conflict=user_id,date`, ens
 
 ## 2) Create your admin user
 
+Option A (recommended): bootstrap admin via Vercel (ID-number only)
+
+1. In Vercel env vars, add:
+   - `SUPABASE_URL`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+   - `BOOTSTRAP_SECRET` (any long random string; delete it after bootstrapping)
+2. Redeploy.
+3. Call the bootstrap endpoint once:
+
+```bash
+curl -X POST "$YOUR_APP_URL/api/admin/bootstrap" \
+  -H "Content-Type: application/json" \
+  -H "X-Bootstrap-Secret: $BOOTSTRAP_SECRET" \
+  -d "{\"name\":\"Admin\",\"idNumber\":\"ADMIN001\",\"password\":\"ChangeMe123!\"}"
+```
+
+4. Log in using `ADMIN001` + `ChangeMe123!`.
+5. Remove `BOOTSTRAP_SECRET` from Vercel env vars and redeploy again.
+
+Option B: create admin in Supabase Dashboard (email + password required by Supabase Auth)
+
 1. Create a user in Supabase Dashboard -> Authentication -> Users (set an email + password).
 2. In Supabase Table Editor -> `profiles`, set `role = 'admin'` and set an `id_number` for that user.
 
