@@ -360,7 +360,6 @@ export function AuthProvider({ children }) {
 
 		    let active = true
 		    let refreshInterval
-		    let bootstrapTimeout
 
 	    const safelyStartAutoRefresh = () => {
 	      try {
@@ -426,17 +425,7 @@ export function AuthProvider({ children }) {
 		      refreshSessionIfNeeded().catch(() => {})
 		    }
 
-		    const startBootstrapTimeout = () => {
-		      if (bootstrapTimeout) window.clearTimeout(bootstrapTimeout)
-		      bootstrapTimeout = window.setTimeout(() => {
-		        if (!active) return
-		        console.warn('Auth bootstrap timed out; continuing without blocking render.')
-		        setLoading(false)
-		      }, 12 * 1000)
-		    }
-
 	    const bootstrap = async () => {
-	      startBootstrapTimeout()
 	      try {
 	        const { data, error } = await supabase.auth.getSession()
 	        if (!active) return
@@ -477,7 +466,6 @@ export function AuthProvider({ children }) {
           setRecruitments([])
         }
 	      } finally {
-	        if (bootstrapTimeout) window.clearTimeout(bootstrapTimeout)
 	        if (active) setLoading(false)
 	      }
 	    }
@@ -553,7 +541,6 @@ export function AuthProvider({ children }) {
 		      active = false
 		      safelyStopAutoRefresh()
 		      if (refreshInterval) window.clearInterval(refreshInterval)
-		      if (bootstrapTimeout) window.clearTimeout(bootstrapTimeout)
 		      window.removeEventListener('focus', handleFocus)
 		      window.removeEventListener('blur', handleBlur)
 		      window.removeEventListener('online', handleOnline)
