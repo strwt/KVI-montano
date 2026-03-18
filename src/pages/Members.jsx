@@ -16,6 +16,8 @@ import {
   MapPin,
   Droplets,
   Shield,
+  Eye,
+  EyeOff,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
@@ -113,6 +115,7 @@ function Members() {
     committee: splitCategoryAndType(committees[0] || COMMITTEE_OPTIONS[0]).category || COMMITTEE_OPTIONS[0],
     category: splitCategoryAndType(committees[0] || COMMITTEE_OPTIONS[0]).category || COMMITTEE_OPTIONS[0],
   })
+  const [showTempPassword, setShowTempPassword] = useState(false)
   const membersPerPage = 9
 
   const allMembers = getAllMembers()
@@ -572,45 +575,82 @@ function Members() {
               </div>
             )}
             {formError && <p className="text-sm text-red-600 mb-2">{formError}</p>}
-	            <form id="create-member-form" onSubmit={handleCreateMember} className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <input
-                type="text"
-                placeholder="Full name"
-                value={newMember.name}
-                onChange={e => setNewMember({ ...newMember, name: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                required
-              />
-	              <input
-	                type="text"
-	                placeholder="ID Number"
-                value={newMember.idNumber}
-                onChange={e => setNewMember({ ...newMember, idNumber: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                required
-              />
-              <input
-                type="password"
-                placeholder="Temporary password"
-                value={newMember.password}
-                onChange={e => setNewMember({ ...newMember, password: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                required
-              />
-              <input
-                type="text"
-                placeholder="Address"
-                value={newMember.address}
-                onChange={e => setNewMember({ ...newMember, address: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-              />
-              <input
-                type="text"
-                placeholder="Contact Number"
-                value={newMember.contactNumber}
-                onChange={e => setNewMember({ ...newMember, contactNumber: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-              />
+            <form id="create-member-form" onSubmit={handleCreateMember} className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Full Name</label>
+                <input
+                  type="text"
+                  placeholder="Full name"
+                  value={newMember.name}
+                  onChange={e => setNewMember({ ...newMember, name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Email</label>
+                <input
+                  type="email"
+                  placeholder="Email"
+                  value={newMember.email}
+                  onChange={e => setNewMember({ ...newMember, email: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">ID Number</label>
+                <input
+                  type="text"
+                  placeholder="ID Number"
+                  value={newMember.idNumber}
+                  onChange={e => setNewMember({ ...newMember, idNumber: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Temporary Password</label>
+                <div className="relative">
+                  <input
+                    type={showTempPassword ? 'text' : 'password'}
+                    placeholder="Temporary password"
+                    value={newMember.password}
+                    onChange={e => setNewMember({ ...newMember, password: e.target.value })}
+                    className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowTempPassword(prev => !prev)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-red-600"
+                    aria-label={showTempPassword ? 'Hide password' : 'Show password'}
+                    title={showTempPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showTempPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Address</label>
+                <input
+                  type="text"
+                  placeholder="Address"
+                  value={newMember.address}
+                  onChange={e => setNewMember({ ...newMember, address: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Contact Number</label>
+                <input
+                  type="text"
+                  placeholder="Contact Number"
+                  value={newMember.contactNumber}
+                  onChange={e => setNewMember({ ...newMember, contactNumber: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                />
+              </div>
               <div>
                 <label className="block text-xs text-gray-500 mb-1">Blood Type</label>
                 <select
