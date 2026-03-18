@@ -13,6 +13,28 @@ alter table public.profiles add column if not exists settings jsonb not null def
 -- LOGIN ACTIVITY additions
 alter table public.login_activity add column if not exists is_online boolean not null default false;
 alter table public.login_activity add column if not exists last_status_at timestamptz;
+do $$
+begin
+  if to_regclass('public.login_activity') is null then
+    return;
+  end if;
+
+  if not exists (
+    select 1
+    from information_schema.table_constraints tc
+    join information_schema.key_column_usage kcu
+      on tc.constraint_name = kcu.constraint_name
+     and tc.table_schema = kcu.table_schema
+    where tc.table_schema = 'public'
+      and tc.table_name = 'login_activity'
+      and tc.constraint_type = 'UNIQUE'
+    group by tc.constraint_name
+    having array_agg(kcu.column_name::text order by kcu.ordinal_position) = array['user_id', 'date']::text[]
+  ) then
+    alter table public.login_activity
+      add constraint login_activity_user_id_date_key unique (user_id, date);
+  end if;
+end $$;
 
 -- RECRUITMENTS addition
 alter table public.recruitments add column if not exists id_number text;
@@ -70,4 +92,3 @@ to authenticated
 using (user_id = auth.uid() or public.is_admin());
 
 commit;
-

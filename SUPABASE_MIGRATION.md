@@ -11,6 +11,8 @@ Run in order:
 
 If you already ran an older version of `schema.sql`, run `supabase/migrations/20260317_upgrade.sql` as well.
 
+If you see a `400 Bad Request` on `login_activity?on_conflict=user_id,date`, ensure `login_activity` has a UNIQUE constraint on `(user_id, date)` (the upgrade migration now enforces this).
+
 ## 2) Create your admin user
 
 1. Sign up in the app (or Supabase Auth UI).

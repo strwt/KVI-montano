@@ -166,22 +166,45 @@ export function AuthProvider({ children }) {
     return () => users
   }, [users])
 
-  const recordDailyPresenceSupabase = async (userId) => {
-    if (!supabaseEnabled || !userId) return
-    const todayKey = dayjs().format('YYYY-MM-DD')
-    await supabase
-      .from('login_activity')
-      .upsert(
-        {
-          user_id: userId,
-          date: todayKey,
-          last_login_at: new Date().toISOString(),
-          is_online: true,
-          last_status_at: new Date().toISOString(),
-        },
-        { onConflict: 'user_id,date' }
-      )
-  }
+	  const recordDailyPresenceSupabase = async (userId) => {
+	    if (!supabaseEnabled || !userId) return
+	    const todayKey = dayjs().format('YYYY-MM-DD')
+	    const { error } = await supabase
+	      .from('login_activity')
+	      .upsert(
+	        {
+	          user_id: userId,
+	          date: todayKey,
+	          last_login_at: new Date().toISOString(),
+	          is_online: true,
+	          last_status_at: new Date().toISOString(),
+	        },
+	        { onConflict: 'user_id,date' }
+	      )
+
+	    if (!error) return
+
+	    const errorMessage = String(error.message || '')
+	    const conflictTargetMissing =
+	      error.code === '42P10' || /no unique|ON CONFLICT/i.test(errorMessage) || /on_conflict/i.test(errorMessage)
+
+	    if (!conflictTargetMissing) {
+	      console.warn('Failed to record daily presence in login_activity.', error)
+	      return
+	    }
+
+	    const fallback = await supabase.from('login_activity').insert({
+	      user_id: userId,
+	      date: todayKey,
+	      last_login_at: new Date().toISOString(),
+	      is_online: true,
+	      last_status_at: new Date().toISOString(),
+	    })
+
+	    if (fallback.error) {
+	      console.warn('Failed to record daily presence in login_activity (fallback insert).', fallback.error)
+	    }
+	  }
 
   const reloadProfile = async (authUser) => {
     if (!supabaseEnabled) return null
@@ -288,100 +311,185 @@ export function AuthProvider({ children }) {
     setRecruitments(mapped)
   }
 
-  useEffect(() => {
-    if (!supabaseEnabled) {
-      setLoading(false)
-      return
-    }
+	  useEffect(() => {
+	    if (!supabaseEnabled) {
+	      setLoading(false)
+	      return
+	    }
 
-    let active = true
+	    let active = true
+	    let refreshInterval
 
-    const bootstrap = async () => {
-      try {
-        const { data } = await runAuthOperationWithRetry(() => supabase.auth.getSession())
-        if (!active) return
-        const authUser = data?.session?.user || null
-        const currentUser = await reloadProfile(authUser)
-        if (authUser?.id) await recordDailyPresenceSupabase(authUser.id)
-        if (authUser) {
-          await reloadMembers()
-          const committeeList = await reloadCommittees()
-          await reloadUtilities(committeeList)
-          await reloadRecruitments(currentUser?.role === 'admin')
-        } else {
-          setUsers([])
-          setCommittees([])
-          setUtilitiesByCommittee({})
-          setRecruitments([])
-        }
-      } catch (error) {
-        if (active) {
-          setUser(null)
-          setUsers([])
-          setCommittees([])
-          setUtilitiesByCommittee({})
-          setRecruitments([])
-        }
-      } finally {
-        if (active) setLoading(false)
-      }
-    }
+	    const safelyStartAutoRefresh = () => {
+	      try {
+	        supabase.auth.startAutoRefresh?.()
+	      } catch {
+	        // Ignore; not all supabase-js builds expose these helpers.
+	      }
+	    }
 
-    const { data: authSub } = supabase.auth.onAuthStateChange((_event, session) => {
-      queueAuthOperation(async () => {
-        if (!active) return
-        const authUser = session?.user || null
-        const currentUser = await reloadProfile(authUser)
-        if (authUser?.id) await recordDailyPresenceSupabase(authUser.id)
-        if (authUser) {
-          await reloadMembers()
-          const committeeList = await reloadCommittees()
-          await reloadUtilities(committeeList)
-          await reloadRecruitments(currentUser?.role === 'admin')
-        } else {
-          setUsers([])
-          setCommittees([])
-          setUtilitiesByCommittee({})
-          setRecruitments([])
-        }
-      }).catch(() => {})
-    })
+	    const safelyStopAutoRefresh = () => {
+	      try {
+	        supabase.auth.stopAutoRefresh?.()
+	      } catch {
+	        // Ignore.
+	      }
+	    }
 
-    bootstrap()
+	    const refreshSessionIfNeeded = async () => {
+	      try {
+	        const { data, error } = await runAuthOperationWithRetry(() => supabase.auth.getSession())
+	        if (error) return
+	        const session = data?.session
+	        if (!session?.user) return
 
-    const committeesChannel = supabase
-      .channel('kusgan-committees')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'committees' }, async () => {
-        const committeeList = await reloadCommittees()
-        await reloadUtilities(committeeList)
-      })
-      .subscribe()
+	        const expiresAtSeconds = Number(session.expires_at || 0)
+	        if (!expiresAtSeconds) return
 
-    const utilitiesChannel = supabase
-      .channel('kusgan-committee-utilities')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'committee_utilities' }, () => reloadUtilities())
-      .subscribe()
+	        const expiresAtMs = expiresAtSeconds * 1000
+	        const msRemaining = expiresAtMs - Date.now()
 
-    const profilesChannel = supabase
-      .channel('kusgan-profiles')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => reloadMembers())
-      .subscribe()
+	        if (msRemaining > 2 * 60 * 1000) return
 
-    const recruitmentsChannel = supabase
-      .channel('kusgan-recruitments')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'recruitments' }, () => reloadRecruitments(user?.role === 'admin'))
-      .subscribe()
+	        await runAuthOperationWithRetry(() => supabase.auth.refreshSession())
+	      } catch {
+	        // Best-effort: autoRefreshToken handles most cases; this is a safety net.
+	      }
+	    }
 
-    return () => {
-      active = false
-      authSub?.subscription?.unsubscribe?.()
-      supabase.removeChannel(committeesChannel)
-      supabase.removeChannel(utilitiesChannel)
-      supabase.removeChannel(profilesChannel)
-      supabase.removeChannel(recruitmentsChannel)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [supabaseEnabled])
+	    const handleVisibilityChange = () => {
+	      if (!active) return
+	      if (document.visibilityState === 'visible') {
+	        safelyStartAutoRefresh()
+	        refreshSessionIfNeeded().catch(() => {})
+	      } else {
+	        safelyStopAutoRefresh()
+	      }
+	    }
+
+	    const handleFocus = () => {
+	      if (!active) return
+	      safelyStartAutoRefresh()
+	      refreshSessionIfNeeded().catch(() => {})
+	    }
+
+	    const handleBlur = () => {
+	      if (!active) return
+	      safelyStopAutoRefresh()
+	    }
+
+	    const handleOnline = () => {
+	      if (!active) return
+	      safelyStartAutoRefresh()
+	      refreshSessionIfNeeded().catch(() => {})
+	    }
+
+	    const bootstrap = async () => {
+	      try {
+	        const { data } = await runAuthOperationWithRetry(() => supabase.auth.getSession())
+	        if (!active) return
+	        const authUser = data?.session?.user || null
+	        const currentUser = await reloadProfile(authUser)
+	        if (authUser?.id) await recordDailyPresenceSupabase(authUser.id)
+	        if (authUser) {
+	          await reloadMembers()
+	          const committeeList = await reloadCommittees()
+	          await reloadUtilities(committeeList)
+	          await reloadRecruitments(currentUser?.role === 'admin')
+	        } else {
+	          setUsers([])
+	          setCommittees([])
+	          setUtilitiesByCommittee({})
+	          setRecruitments([])
+	        }
+	      } catch (error) {
+	        void error
+	        if (active) {
+	          setUser(null)
+	          setUsers([])
+	          setCommittees([])
+	          setUtilitiesByCommittee({})
+	          setRecruitments([])
+	        }
+	      } finally {
+	        if (active) setLoading(false)
+	      }
+	    }
+
+	    const { data: authSub } = supabase.auth.onAuthStateChange((_event, session) => {
+	      queueAuthOperation(async () => {
+	        if (!active) return
+	        const authUser = session?.user || null
+	        const currentUser = await reloadProfile(authUser)
+	        if (authUser?.id) await recordDailyPresenceSupabase(authUser.id)
+	        if (authUser) {
+	          await reloadMembers()
+	          const committeeList = await reloadCommittees()
+	          await reloadUtilities(committeeList)
+	          await reloadRecruitments(currentUser?.role === 'admin')
+	        } else {
+	          setUsers([])
+	          setCommittees([])
+	          setUtilitiesByCommittee({})
+	          setRecruitments([])
+	        }
+	      }).catch(() => {})
+	    })
+
+	    safelyStartAutoRefresh()
+	    refreshSessionIfNeeded().catch(() => {})
+	    refreshInterval = window.setInterval(() => {
+	      refreshSessionIfNeeded().catch(() => {})
+	    }, 60 * 1000)
+
+	    window.addEventListener('focus', handleFocus)
+	    window.addEventListener('blur', handleBlur)
+	    window.addEventListener('online', handleOnline)
+	    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+	    bootstrap()
+
+	    const committeesChannel = supabase
+	      .channel('kusgan-committees')
+	      .on('postgres_changes', { event: '*', schema: 'public', table: 'committees' }, async () => {
+	        const committeeList = await reloadCommittees()
+	        await reloadUtilities(committeeList)
+	      })
+	      .subscribe()
+
+	    const utilitiesChannel = supabase
+	      .channel('kusgan-committee-utilities')
+	      .on('postgres_changes', { event: '*', schema: 'public', table: 'committee_utilities' }, () => reloadUtilities())
+	      .subscribe()
+
+	    const profilesChannel = supabase
+	      .channel('kusgan-profiles')
+	      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => reloadMembers())
+	      .subscribe()
+
+	    const recruitmentsChannel = supabase
+	      .channel('kusgan-recruitments')
+	      .on('postgres_changes', { event: '*', schema: 'public', table: 'recruitments' }, () =>
+	        reloadRecruitments(user?.role === 'admin')
+	      )
+	      .subscribe()
+
+	    return () => {
+	      active = false
+	      safelyStopAutoRefresh()
+	      if (refreshInterval) window.clearInterval(refreshInterval)
+	      window.removeEventListener('focus', handleFocus)
+	      window.removeEventListener('blur', handleBlur)
+	      window.removeEventListener('online', handleOnline)
+	      document.removeEventListener('visibilitychange', handleVisibilityChange)
+	      authSub?.subscription?.unsubscribe?.()
+	      supabase.removeChannel(committeesChannel)
+	      supabase.removeChannel(utilitiesChannel)
+	      supabase.removeChannel(profilesChannel)
+	      supabase.removeChannel(recruitmentsChannel)
+	    }
+	    // eslint-disable-next-line react-hooks/exhaustive-deps
+	  }, [supabaseEnabled])
 
   const login = async (email, password) => {
     const normalizedEmail = (email || '').trim().toLowerCase()
@@ -784,6 +892,7 @@ export function AuthProvider({ children }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   const context = useContext(AuthContext)
   if (!context) {
