@@ -532,27 +532,37 @@ export function AuthProvider({ children }) {
 	    // eslint-disable-next-line react-hooks/exhaustive-deps
 	  }, [supabaseEnabled])
 
-  const login = async (email, password) => {
-    const normalizedEmail = (email || '').trim().toLowerCase()
-    const trimmedPassword = password || ''
+	  const login = async (email, password) => {
+	    const normalizedEmail = (email || '').trim().toLowerCase()
+	    const trimmedPassword = password || ''
 
-    if (!normalizedEmail || !trimmedPassword) {
-      return { success: false, message: 'Email and password are required.' }
-    }
+	    if (!normalizedEmail || !trimmedPassword) {
+	      return { success: false, message: 'Email and password are required.' }
+	    }
 
-    const { data, error } = await runAuthOperationWithRetry(() =>
-      supabase.auth.signInWithPassword({
-        email: normalizedEmail,
-        password: trimmedPassword,
-      })
-    )
-    if (error) return { success: false, message: error.message || 'Login failed.' }
+	    let data
+	    let error
+	    try {
+	      const res = await runAuthOperationWithRetry(() =>
+	        supabase.auth.signInWithPassword({
+	          email: normalizedEmail,
+	          password: trimmedPassword,
+	        })
+	      )
+	      data = res?.data
+	      error = res?.error
+	    } catch (err) {
+	      const message = err?.message ? String(err.message) : ''
+	      return { success: false, message: message || 'Login failed.' }
+	    }
 
-    const authUser = data?.user || data?.session?.user || null
-    await reloadProfile(authUser)
-    if (authUser?.id) await recordDailyPresenceSupabase(authUser.id)
-    return { success: true }
-  }
+	    if (error) return { success: false, message: error.message || 'Login failed.' }
+
+	    const authUser = data?.user || data?.session?.user || null
+	    await reloadProfile(authUser)
+	    if (authUser?.id) await recordDailyPresenceSupabase(authUser.id)
+	    return { success: true }
+	  }
 
   const logout = async () => {
     await runAuthOperationWithRetry(() => supabase.auth.signOut())

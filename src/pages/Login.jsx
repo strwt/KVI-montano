@@ -19,6 +19,7 @@ function Login() {
     if (typeof message === 'string' && message.trim()) {
       setInfo(message.trim())
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleSubmit = async (e) => {
@@ -33,16 +34,26 @@ function Login() {
 
     setIsLoading(true)
 
-    // Simulate network delay for animation
-    await new Promise(resolve => setTimeout(resolve, 500))
+    try {
+      // Simulate network delay for animation
+      await new Promise(resolve => setTimeout(resolve, 500))
 
-    const result = await login(identifier, password)
-    if (result.success) {
-      navigate('/')
-    } else {
-      setError(result.message)
+      const timeout = new Promise(resolve =>
+        setTimeout(() => resolve({ success: false, message: 'Login timed out. Please try again.' }), 15_000)
+      )
+
+      const result = await Promise.race([login(identifier, password), timeout])
+      if (result.success) {
+        navigate('/')
+      } else {
+        setError(result.message || 'Login failed.')
+      }
+    } catch (err) {
+      const message = err?.message ? String(err.message) : ''
+      setError(message || 'Login failed. Please try again.')
+    } finally {
+      setIsLoading(false)
     }
-    setIsLoading(false)
   }
 
   return (
