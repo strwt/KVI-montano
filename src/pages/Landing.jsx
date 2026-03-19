@@ -6,7 +6,6 @@ import {
   Sparkles,
   Crown,
   ShieldCheck,
-  Briefcase,
   Leaf,
   Activity,
   Flame,
@@ -148,14 +147,12 @@ const KUSGAN_STRUCTURE = {
     position: 'President',
     name: 'Juan Dela Cruz',
     committee: 'Executive Council',
-    image: 'https://i.pravatar.cc/520?img=12',
     icon: Crown,
   },
   vicePresident: {
     position: 'Vice President',
     name: 'Maria Santos',
     committee: 'Executive Council',
-    image: 'https://i.pravatar.cc/520?img=5',
     icon: ShieldCheck,
   },
   committees: [
@@ -165,12 +162,11 @@ const KUSGAN_STRUCTURE = {
         name: 'Carlo Reyes',
         position: 'Committee Head',
         committee: 'Environmental Committee',
-        image: 'https://i.pravatar.cc/420?img=32',
       },
       members: [
-        { name: 'Ana Lopez', position: 'Member', committee: 'Environmental Committee', image: 'https://i.pravatar.cc/360?img=47' },
-        { name: 'Mark Villanueva', position: 'Member', committee: 'Environmental Committee', image: 'https://i.pravatar.cc/360?img=54' },
-        { name: 'James Cruz', position: 'Member', committee: 'Environmental Committee', image: 'https://i.pravatar.cc/360?img=60' },
+        { name: 'Ana Lopez', position: 'Member', committee: 'Environmental Committee' },
+        { name: 'Mark Villanueva', position: 'Member', committee: 'Environmental Committee' },
+        { name: 'James Cruz', position: 'Member', committee: 'Environmental Committee' },
       ],
     },
     {
@@ -179,12 +175,11 @@ const KUSGAN_STRUCTURE = {
         name: 'Sophia Ramos',
         position: 'Committee Head',
         committee: 'Relief Operation Committee',
-        image: 'https://i.pravatar.cc/420?img=23',
       },
       members: [
-        { name: 'Kevin Torres', position: 'Member', committee: 'Relief Operation Committee', image: 'https://i.pravatar.cc/360?img=14' },
-        { name: 'Angelica Lim', position: 'Member', committee: 'Relief Operation Committee', image: 'https://i.pravatar.cc/360?img=44' },
-        { name: 'Brian Flores', position: 'Member', committee: 'Relief Operation Committee', image: 'https://i.pravatar.cc/360?img=17' },
+        { name: 'Kevin Torres', position: 'Member', committee: 'Relief Operation Committee' },
+        { name: 'Angelica Lim', position: 'Member', committee: 'Relief Operation Committee' },
+        { name: 'Brian Flores', position: 'Member', committee: 'Relief Operation Committee' },
       ],
     },
     {
@@ -193,12 +188,11 @@ const KUSGAN_STRUCTURE = {
         name: 'Michael Tan',
         position: 'Committee Head',
         committee: 'Fire Response Committee',
-        image: 'https://i.pravatar.cc/420?img=36',
       },
       members: [
-        { name: 'David Garcia', position: 'Member', committee: 'Fire Response Committee', image: 'https://i.pravatar.cc/360?img=26' },
-        { name: 'Louie Mendoza', position: 'Member', committee: 'Fire Response Committee', image: 'https://i.pravatar.cc/360?img=31' },
-        { name: 'Patrick Sy', position: 'Member', committee: 'Fire Response Committee', image: 'https://i.pravatar.cc/360?img=63' },
+        { name: 'David Garcia', position: 'Member', committee: 'Fire Response Committee' },
+        { name: 'Louie Mendoza', position: 'Member', committee: 'Fire Response Committee' },
+        { name: 'Patrick Sy', position: 'Member', committee: 'Fire Response Committee' },
       ],
     },
     {
@@ -207,12 +201,11 @@ const KUSGAN_STRUCTURE = {
         name: 'Angela Rivera',
         position: 'Committee Head',
         committee: 'Medical Committee',
-        image: 'https://i.pravatar.cc/420?img=45',
       },
       members: [
-        { name: 'Paolo Dizon', position: 'Member', committee: 'Medical Committee', image: 'https://i.pravatar.cc/360?img=12' },
-        { name: 'Shane Ortega', position: 'Member', committee: 'Medical Committee', image: 'https://i.pravatar.cc/360?img=58' },
-        { name: 'Rico Medina', position: 'Member', committee: 'Medical Committee', image: 'https://i.pravatar.cc/360?img=50' },
+        { name: 'Paolo Dizon', position: 'Member', committee: 'Medical Committee' },
+        { name: 'Shane Ortega', position: 'Member', committee: 'Medical Committee' },
+        { name: 'Rico Medina', position: 'Member', committee: 'Medical Committee' },
       ],
     },
     {
@@ -221,12 +214,11 @@ const KUSGAN_STRUCTURE = {
         name: 'Loren Santos',
         position: 'Committee Head',
         committee: 'Community Outreach Committee',
-        image: 'https://i.pravatar.cc/420?img=9',
       },
       members: [
-        { name: 'Mia Alvarez', position: 'Member', committee: 'Community Outreach Committee', image: 'https://i.pravatar.cc/360?img=41' },
-        { name: 'Joel Navarro', position: 'Member', committee: 'Community Outreach Committee', image: 'https://i.pravatar.cc/360?img=53' },
-        { name: 'Nina Delgado', position: 'Member', committee: 'Community Outreach Committee', image: 'https://i.pravatar.cc/360?img=62' },
+        { name: 'Mia Alvarez', position: 'Member', committee: 'Community Outreach Committee' },
+        { name: 'Joel Navarro', position: 'Member', committee: 'Community Outreach Committee' },
+        { name: 'Nina Delgado', position: 'Member', committee: 'Community Outreach Committee' },
       ],
     },
     {
@@ -235,12 +227,11 @@ const KUSGAN_STRUCTURE = {
         name: 'Carmina Lopez',
         position: 'Committee Head',
         committee: 'Logistics Committee',
-        image: 'https://i.pravatar.cc/420?img=8',
       },
       members: [
-        { name: 'Troy Mendoza', position: 'Member', committee: 'Logistics Committee', image: 'https://i.pravatar.cc/360?img=11' },
-        { name: 'Ella Fernandez', position: 'Member', committee: 'Logistics Committee', image: 'https://i.pravatar.cc/360?img=49' },
-        { name: 'Ronel Castro', position: 'Member', committee: 'Logistics Committee', image: 'https://i.pravatar.cc/360?img=21' },
+        { name: 'Troy Mendoza', position: 'Member', committee: 'Logistics Committee' },
+        { name: 'Ella Fernandez', position: 'Member', committee: 'Logistics Committee' },
+        { name: 'Ronel Castro', position: 'Member', committee: 'Logistics Committee' },
       ],
     },
     {
@@ -249,12 +240,11 @@ const KUSGAN_STRUCTURE = {
         name: 'Denise Salazar',
         position: 'Committee Head',
         committee: 'Youth Engagement Committee',
-        image: 'https://i.pravatar.cc/420?img=38',
       },
       members: [
-        { name: 'Kyle Ramos', position: 'Member', committee: 'Youth Engagement Committee', image: 'https://i.pravatar.cc/360?img=57' },
-        { name: 'Faith Aquino', position: 'Member', committee: 'Youth Engagement Committee', image: 'https://i.pravatar.cc/360?img=33' },
-        { name: 'Ian Morales', position: 'Member', committee: 'Youth Engagement Committee', image: 'https://i.pravatar.cc/360?img=25' },
+        { name: 'Kyle Ramos', position: 'Member', committee: 'Youth Engagement Committee' },
+        { name: 'Faith Aquino', position: 'Member', committee: 'Youth Engagement Committee' },
+        { name: 'Ian Morales', position: 'Member', committee: 'Youth Engagement Committee' },
       ],
     },
     {
@@ -263,16 +253,83 @@ const KUSGAN_STRUCTURE = {
         name: 'Marvin De Leon',
         position: 'Committee Head',
         committee: 'Education Support Committee',
-        image: 'https://i.pravatar.cc/420?img=29',
       },
       members: [
-        { name: 'Jessa Cruz', position: 'Member', committee: 'Education Support Committee', image: 'https://i.pravatar.cc/360?img=64' },
-        { name: 'Paolo Reyes', position: 'Member', committee: 'Education Support Committee', image: 'https://i.pravatar.cc/360?img=40' },
-        { name: 'Grace Uy', position: 'Member', committee: 'Education Support Committee', image: 'https://i.pravatar.cc/360?img=52' },
+        { name: 'Jessa Cruz', position: 'Member', committee: 'Education Support Committee' },
+        { name: 'Paolo Reyes', position: 'Member', committee: 'Education Support Committee' },
+        { name: 'Grace Uy', position: 'Member', committee: 'Education Support Committee' },
       ],
     },
   ],
 }
+
+const KUSGAN_VOLUNTEERS = [
+  'Albert Edralin',
+  'Antonitte Joy Liarasan',
+  'April Joy Rica',
+  'Balbina Cabanes Cuerquis',
+  'Brielle Jay Goabon',
+  'Chaplin Selaras',
+  'Dindo Rafael Namas',
+  'Donald Valmores',
+  'Elena S. Libot',
+  'Eric Art Bernardo',
+  'Erik Art Bernardo',
+  'Ernisto L. Yting',
+  'Eugene Pajaron',
+  'Eva Agua',
+  'Gladys R. Nilugao',
+  'Ireneo P. Pancho jr.',
+  'Jabbar D. Lominog',
+  'Jayford Abalde',
+  'Jayson Gregorio',
+  'Jeliaca Macabinlar',
+  'Jennifer T. Quijano',
+  'Jennifer Valmores',
+  'Jeonarah Del Rosario',
+  'Jesse B. Valdehuaza',
+  'Jessidel C. Benidecto',
+  'Jesson Randiola',
+  'Jhunder T. Ebal',
+  'Jocelyn Q. Peñalosa',
+  'Jodelyn Turno',
+  'Joel Obrial',
+  'Jojo Abella',
+  'Jorel Earl A. Yamyamin',
+  'Joshua Peruda',
+  'Jovelyn A. Andaya',
+  'Jovelyn Abriol',
+  'Judith A. Lapa',
+  'Keith Campus',
+  'Kenneth Montaño',
+  'Kenny Jes Sy Pabua',
+  'Lorenzo Rosales',
+  'Loreto Calotes',
+  'Margie S. Nadal',
+  'Marina Jorja',
+  'Marisol M. Rosales',
+  'Maruin B. Paayas',
+  'Mary Faith ALthea P. Precillas',
+  'Mary Grace S. Gilbert',
+  'Mary Jean B. Nillas',
+  'Marygail Z. Bayson',
+  'Maureen A. Campus',
+  'Modessa S. Omondang',
+  'Myra B. Nob',
+  'Nely Dear Joy U. Gabasa',
+  'Niña A. Dinorog',
+  'Paturna J. Ursabia',
+  'Rey Naranjo',
+  'Richard Damalan',
+  'Rizal Bondoc',
+  'Rodel Garceniego',
+  'Rodel Predog',
+  'Romanito Delos Reyes',
+  'Rommel Benalayo',
+  'Ronald Jumamoy',
+  'Rowel Regodos',
+  'Rutchie John Friolo',
+]
 
 const BOARD_STRUCTURE = {
   chairperson: {
@@ -326,7 +383,7 @@ const ORGANIZATION_VIEWS = [
   {
     key: 'kusgan',
     label: 'KUSGAN Organizational Structure',
-    subtitle: 'Leadership hierarchy and committee teams of KUSGAN.',
+    subtitle: 'Committee teams of KUSGAN.',
     data: KUSGAN_STRUCTURE,
   },
 ]
@@ -524,60 +581,13 @@ function OrgPersonCard({ person, large = false, size = 'normal' }) {
   )
 }
 
-function CommitteeCard({ committee }) {
-  return (
-    <article
-      className="h-full rounded-2xl p-4 sm:p-5"
-      style={{
-        background: 'rgba(14,14,14,0.85)',
-        border: '1px solid rgba(255,255,255,0.1)',
-        backdropFilter: 'blur(16px)',
-        boxShadow: '0 12px 32px rgba(0,0,0,0.35)',
-      }}
-    >
-      <div
-        className="flex items-center gap-2.5 mb-4 pb-3"
-        style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}
-      >
-        <div
-          className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-          style={{
-            background: 'rgba(220,38,38,0.15)',
-            border: '1px solid rgba(220,38,38,0.25)',
-            color: '#f87171',
-          }}
-        >
-          <Briefcase size={13} />
-        </div>
-        <h3 className="font-semibold text-xs sm:text-sm text-white font-heading leading-snug">
-          {committee.name}
-        </h3>
-      </div>
-
-      <div className="flex justify-center pb-4 mb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-        <OrgPersonCard person={committee.head} />
-      </div>
-
-      <div className="flex justify-center">
-        <ul className="grid grid-cols-3 gap-2 w-full">
-          {committee.members.map(member => (
-            <li key={`${committee.name}-${member.name}`}>
-              <OrgPersonCard person={member} />
-            </li>
-          ))}
-        </ul>
-      </div>
-    </article>
-  )
-}
-
 /* ── Main Page ──────────────────────────────────── */
 
 function Landing() {
   const navigate = useNavigate()
   const pageRef = useRef(null)
-  const [structureKey, setStructureKey] = useState('kusgan')
-  const activeStructure = ORGANIZATION_VIEWS.find(view => view.key === structureKey) || ORGANIZATION_VIEWS[1]
+  const [structureKey, setStructureKey] = useState('board')
+  const activeStructure = ORGANIZATION_VIEWS.find(view => view.key === structureKey) || ORGANIZATION_VIEWS[0]
 
   useEffect(() => {
     const root = pageRef.current
@@ -776,7 +786,7 @@ function Landing() {
         }}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12">
-          <p className="text-center text-[10px] tracking-[0.2em] uppercase text-gray-500 mb-4">Sponsored by</p>
+          <p className="text-center text-[10px] tracking-[0.2em] uppercase text-gray-500 mb-4">Partnered by</p>
           <div className="space-y-3">
             <div className="sponsor-marquee">
               <div
@@ -871,7 +881,7 @@ function Landing() {
             subtitle={activeStructure.subtitle}
           />
 
-          <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-3 mb-8">
+          <div className="flex flex-col sm:flex-row sm:flex-wrap items-center justify-center gap-3 mb-8">
             <div
               className="flex flex-col sm:inline-flex sm:flex-row w-full sm:w-auto rounded-2xl sm:rounded-full p-1 border gap-1"
               style={{
@@ -904,7 +914,36 @@ function Landing() {
           <div className="flex flex-col items-center">
             {activeStructure.key === 'kusgan' ? (
               <>
-                <div className="w-full h-8" />
+                <div className="w-full max-w-6xl">
+                  <div className="mt-8">
+                    <div className="w-full flex items-center gap-3 mb-4">
+                      <div className="flex-1 h-px" style={{ background: 'linear-gradient(to right, transparent, rgba(220,38,38,0.25))' }} />
+                      <span
+                        className="px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase border shrink-0"
+                        style={{ color: '#fca5a5', background: 'rgba(220,38,38,0.1)', borderColor: 'rgba(220,38,38,0.2)' }}
+                      >
+                        Kusgan Volunteers
+                      </span>
+                      <div className="flex-1 h-px" style={{ background: 'linear-gradient(to left, transparent, rgba(220,38,38,0.25))' }} />
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+                      {KUSGAN_VOLUNTEERS.map(name => (
+                        <div
+                          key={name}
+                          className="rounded-lg px-2.5 py-2 text-center text-[11px] sm:text-xs font-semibold text-white border"
+                          style={{
+                            background: 'rgba(12,12,12,0.85)',
+                            borderColor: 'rgba(255,255,255,0.12)',
+                            boxShadow: '0 6px 14px rgba(0,0,0,0.3)',
+                          }}
+                        >
+                          {name}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </>
             ) : (
               <>
