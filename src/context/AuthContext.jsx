@@ -378,11 +378,15 @@ export function AuthProvider({ children }) {
     return mapped
   }
 
-	  const reloadMembers = async () => {
+const reloadMembers = async (roleFilter = 'all') => {
 	    if (!supabaseEnabled) return
 	    let data = []
 	    try {
-	      const res = await supabase.from('profiles').select('*').order('name', { ascending: true })
+	      let query = supabase.from('profiles').select('*').order('name', { ascending: true })
+	      if (roleFilter !== 'all') {
+	        query = query.eq('role', roleFilter)
+	      }
+	      const res = await query
 	      if (res.error) console.warn('Failed to load members from Supabase.', res.error)
 	      data = res.data
 	    } catch (error) {
@@ -398,7 +402,6 @@ export function AuthProvider({ children }) {
             email: profile.email || '',
             role: normalizeRole(profile.role),
             committee: profile.committee || '',
-            category: profile.category || (normalizeRole(profile.role) === 'admin' ? 'Administrator' : DEFAULT_MEMBER_CATEGORY),
             contactNumber: profile.contact_number || '',
             address: profile.address || '',
             bloodType: profile.blood_type || '',
@@ -411,6 +414,13 @@ export function AuthProvider({ children }) {
       : []
     setUsers(mapped)
   }
+  
+  const getMembers = useMemo(() => {
+    return (role = 'all') => {
+      if (role === 'all') return users
+      return users.filter(member => member.role === role)
+    }
+  }, [users])
 
 	  const reloadCommittees = async () => {
 	    if (!supabaseEnabled) return []
@@ -589,7 +599,7 @@ export function AuthProvider({ children }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'committee_utilities' }, () => reloadUtilities())
       .subscribe((status) => logSupabase('realtime committee_utilities', status))
 
-    const profilesChannel = supabase
+const profilesChannel = supabase
       .channel(`kusgan-profiles-${user.id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => reloadMembers())
       .subscribe((status) => logSupabase('realtime profiles', status))

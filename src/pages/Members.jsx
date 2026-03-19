@@ -118,8 +118,13 @@ function Members() {
   const [showTempPassword, setShowTempPassword] = useState(false)
   const membersPerPage = 9
 
+  const [roleFilter, setRoleFilter] = useState('member')
   const allMembers = getAllMembers()
   const isAdmin = user?.role === 'admin'
+  
+  useEffect(() => {
+    setRoleFilter(committeeFilter)
+  }, [committeeFilter])
   const recruitments = getRecruitments()
 
   const pendingRecruitments = useMemo(
@@ -1080,9 +1085,17 @@ function Members() {
             >
               <div className={isAdmin ? 'cursor-pointer' : ''} onClick={() => isAdmin && handleViewMember(member.id)}>
                 <div className="flex items-center gap-4 mb-4">
-                  <div className="w-16 h-16 rounded-full bg-gradient-to-r from-red-600 to-red-700 flex items-center justify-center">
-                    <span className="text-white font-bold text-xl">{member.name.charAt(0).toUpperCase()}</span>
-                  </div>
+                  {member.profileImage && member.profileImage !== '/image-removebg-preview.png' ? (
+                    <img 
+                      src={member.profileImage} 
+                      alt={`${member.name}'s profile`} 
+                      className="w-16 h-16 rounded-full object-cover border-4 border-white shadow-lg" 
+                    />
+                  ) : (
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-r from-red-600 to-red-700 flex items-center justify-center">
+                      <span className="text-white font-bold text-xl">{member.name.charAt(0).toUpperCase()}</span>
+                    </div>
+                  )}
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-gray-800 text-lg truncate">{member.name}</h3>
                     <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium border ${getRoleBadge(member.role)}`}>
