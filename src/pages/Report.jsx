@@ -82,17 +82,8 @@ const normalizeCategory = category =>
   String(category || '')
     .trim()
     .toLowerCase()
-    .replace(/\s+/g, '_')
-
-const splitCategoryAndType = (value = '') => {
-  const raw = String(value || '').trim()
-  if (!raw) return { category: '', type: '' }
-  const parts = raw.split(' - ')
-  if (parts.length === 1) return { category: parts[0], type: 'General' }
-  const category = parts.shift()?.trim() || ''
-  const type = parts.join(' - ').trim() || 'General'
-  return { category, type }
-}
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
 
 const OPERATION_KEY_ALIASES = {
   relief_operations: 'relief_operation',
@@ -108,8 +99,6 @@ const titleCaseFromKey = key =>
     .trim()
     .replace(/_/g, ' ')
     .replace(/\w\S*/g, word => word.charAt(0).toUpperCase() + word.slice(1))
-
-const getCategoryLabel = key => CATEGORY_META[key]?.label || titleCaseFromKey(key) || 'Uncategorized'
 
 const hashColor = key => {
   const input = String(key || '')
@@ -213,7 +202,7 @@ const loadJsPdf = () => {
 }
 
 function Report() {
-  const { user, committees } = useAuth()
+  const { user, eventCategories } = useAuth()
   const supabaseEnabled = isSupabaseEnabled()
   const [events, setEvents] = useState([])
   const [datePreset, setDatePreset] = useState('monthly')
@@ -266,19 +255,35 @@ function Report() {
       })
   }, [events, start, end])
 
-  const availableCategoryKeys = useMemo(() => {
-    const set = new Set(Object.keys(CATEGORY_META))
-    const committeeEntries = Array.isArray(committees) ? committees : []
-    committeeEntries.forEach(entry => {
-      const { category } = splitCategoryAndType(entry)
-      const key = canonicalizeOperationKey(normalizeCategory(category))
-      if (key) set.add(key)
+  const categoryLabelByKey = useMemo(() => {
+    const map = {}
+    Object.keys(CATEGORY_META).forEach(key => {
+      map[key] = CATEGORY_META[key]?.label || titleCaseFromKey(key)
     })
+    const entries = Array.isArray(eventCategories) ? eventCategories : []
+    entries.forEach(entry => {
+      const key = canonicalizeOperationKey(normalizeCategory(entry?.key))
+      const label = String(entry?.label || '').trim()
+      if (!key || !label) return
+      map[key] = label
+    })
+    return map
+  }, [eventCategories])
+
+  const getCategoryLabel = (value) => {
+    const key = canonicalizeOperationKey(normalizeCategory(value))
+    if (!key) return 'Uncategorized'
+    return categoryLabelByKey[key] || titleCaseFromKey(key) || 'Uncategorized'
+  }
+
+  const availableCategoryKeys = useMemo(() => {
+    const set = new Set(Object.keys(categoryLabelByKey))
     baseEvents.forEach(event => {
       if (event._category) set.add(event._category)
     })
-    return Array.from(set).sort((a, b) => getCategoryLabel(a).localeCompare(getCategoryLabel(b)))
-  }, [baseEvents, committees])
+    const getLabel = (key) => categoryLabelByKey[key] || titleCaseFromKey(key) || 'Uncategorized'
+    return Array.from(set).sort((a, b) => getLabel(a).localeCompare(getLabel(b)))
+  }, [baseEvents, categoryLabelByKey])
 
   useEffect(() => {
     if (selectedCategory === 'all') return
@@ -409,7 +414,7 @@ function Report() {
     return filteredEvents.map(event => ({
       title: event.title || '',
       content: event.content || '',
-      category: getCategoryLabel(event._category),
+      category: categoryLabelByKey[event._category] || titleCaseFromKey(event._category) || 'Uncategorized',
       branch: event.branch || '',
       membersInvolve: event.membersInvolve || '',
       dateTime: event._date.format('YYYY-MM-DD HH:mm'),
@@ -435,7 +440,7 @@ function Report() {
       medicalEquipmentUsed: getFieldValue(event, 'medicalEquipmentUsed', ['medicalEquipmentsUsed']),
       expenses: getFieldValue(event, 'expenses', ['expenses']),
     }))
-  }, [filteredEvents])
+  }, [filteredEvents, categoryLabelByKey])
 
   const totalEvents = chartCategoryKeys.reduce((sum, key) => sum + (eventCountByCategory[key] || 0), 0)
   const maxBarValue = useMemo(() => {
