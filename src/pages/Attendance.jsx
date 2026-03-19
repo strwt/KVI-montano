@@ -23,8 +23,9 @@ function Attendance() {
     const load = async () => {
       const { data } = await supabase
         .from('login_activity')
-        .select('date,last_login_at,is_online,last_status_at')
+        .select('date,is_present,present_at')
         .eq('user_id', user.id)
+        .eq('is_present', true)
         .order('date', { ascending: true })
 
       if (!active) return
@@ -32,9 +33,8 @@ function Attendance() {
         ? data.map(row => ({
             date: row.date,
             userId: user.id,
-            lastLoginAt: row.last_login_at,
-            lastStatusAt: row.last_status_at || null,
-            isOnline: Boolean(row.is_online),
+            isPresent: Boolean(row.is_present),
+            presentAt: row.present_at || null,
           }))
         : []
       setLoginActivity(mapped)
@@ -110,8 +110,8 @@ function Attendance() {
       return {
         dateKey,
         label: date.format('MMM D, YYYY'),
-        status: entry ? 'Present' : 'Absent',
-        lastLoginAt: entry?.lastLoginAt || null,
+        status: entry?.isPresent ? 'Present' : 'Absent',
+        presentAt: entry?.presentAt || null,
       }
     })
   }, [loginActivity, userId])
@@ -139,52 +139,38 @@ function Attendance() {
     () => loginActivity.find(entry => entry?.date === todayKey && String(entry.userId) === userId) || null,
     [loginActivity, todayKey, userId]
   )
-  const isOnline = Boolean(todayEntry?.isOnline)
+  const isPresentToday = Boolean(todayEntry?.isPresent)
 
-  const markOnline = () => {
-    if (!userId) return
+  const markPresent = async () => {
+    if (!user?.id) return
+    if (isPresentToday) return
+
     const nowIso = dayjs().toISOString()
-    const activity = Array.isArray(loginActivity) ? [...loginActivity] : []
-    const existingIndex = activity.findIndex(
-      entry => entry?.date === todayKey && String(entry.userId) === userId
-    )
 
-    const nextIsOnline = !isOnline
-    const payload = {
-      date: todayKey,
-      userId: user?.id,
-      name: user?.name || 'Member',
-      email: user?.email || '',
-      role: user?.role || 'member',
-      profileImage: user?.profileImage || '/image-removebg-preview.png',
-      lastLoginAt: nextIsOnline ? nowIso : (todayEntry?.lastLoginAt || nowIso),
-      lastStatusAt: nowIso,
-      isOnline: nextIsOnline,
-    }
+    setLoginActivity(prev => {
+      const next = Array.isArray(prev) ? [...prev] : []
+      const idx = next.findIndex(entry => entry?.date === todayKey && String(entry.userId) === userId)
+      const patch = { date: todayKey, userId: user.id, isPresent: true, presentAt: nowIso }
+      if (idx >= 0) next[idx] = { ...next[idx], ...patch }
+      else next.push(patch)
+      return next
+    })
 
-    if (existingIndex >= 0) {
-      activity[existingIndex] = payload
-    } else {
-      activity.push(payload)
-    }
+    if (!supabaseEnabled) return
 
-    if (supabaseEnabled) {
-      supabase
-        .from('login_activity')
-        .upsert(
-          {
-            user_id: user.id,
-            date: todayKey,
-            last_login_at: nextIsOnline ? nowIso : (todayEntry?.lastLoginAt || nowIso),
-            is_online: nextIsOnline,
-            last_status_at: nowIso,
-          },
-          { onConflict: 'user_id,date' }
-        )
-      setLoginActivity(activity)
-      return
-    }
-    setLoginActivity(activity)
+    const { error } = await supabase
+      .from('login_activity')
+      .upsert(
+        {
+          user_id: user.id,
+          date: todayKey,
+          is_present: true,
+          present_at: nowIso,
+        },
+        { onConflict: 'user_id,date' }
+      )
+
+    if (error) console.warn('Unable to mark present.', error)
   }
 
   return (
@@ -202,11 +188,12 @@ function Attendance() {
           </div>
           <button
             type="button"
-            onClick={markOnline}
+            onClick={markPresent}
+            disabled={!userId || isPresentToday}
             className="inline-flex items-center gap-2 rounded-xl border border-red-600 bg-red-600 px-5 py-2 text-[14px] font-semibold text-white transition-all duration-200 hover:scale-[1.02] hover:bg-red-700"
           >
             <CalendarCheck size={16} />
-            {isOnline ? 'I’m Offline' : 'I’m Online'}
+            {isPresentToday ? 'Marked Present' : "I'm Present"}
           </button>
         </div>
       </section>
@@ -244,10 +231,10 @@ function Attendance() {
               >
                 <span>{row.label}</span>
                 <div className="flex items-center gap-2">
-                  {row.lastLoginAt && (
+                  {row.presentAt && (
                     <span className="flex items-center gap-1 text-xs text-neutral-500">
                       <Clock size={12} />
-                      {dayjs(row.lastLoginAt).format('h:mm A')}
+                      {dayjs(row.presentAt).format('h:mm A')}
                     </span>
                   )}
                   <span className="text-xs font-semibold">{row.status}</span>

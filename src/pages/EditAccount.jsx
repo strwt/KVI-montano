@@ -5,13 +5,14 @@ import { useNavigate } from 'react-router-dom'
 
 function EditAccount() {
   const navigate = useNavigate()
-  const { user, updateCurrentUser } = useAuth()
+  const { user, updateCurrentUser, uploadProfileImage } = useAuth()
 
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [form, setForm] = useState({ name: '', email: '', address: '', contactNumber: '', bloodType: '', profileImage: '' })
-  const [uploadedImageData, setUploadedImageData] = useState('')
+  const [selectedFile, setSelectedFile] = useState(null)
+  const [previewUrl, setPreviewUrl] = useState('')
   const [selectedFileName, setSelectedFileName] = useState('')
 
   useEffect(() => {
@@ -27,9 +28,12 @@ function EditAccount() {
       bloodType: user.bloodType || '',
       profileImage: user.profileImage || '',
     })
-    setUploadedImageData('')
+    setSelectedFile(null)
+    if (previewUrl) URL.revokeObjectURL(previewUrl)
+    setPreviewUrl('')
     setSuccess('')
     setError('')
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, navigate])
 
   const handleFileChange = (e) => {
@@ -37,7 +41,9 @@ function EditAccount() {
     setSuccess('')
     const file = e.target.files && e.target.files[0]
     if (!file) {
-      setUploadedImageData('')
+      setSelectedFile(null)
+      if (previewUrl) URL.revokeObjectURL(previewUrl)
+      setPreviewUrl('')
       setSelectedFileName('')
       return
     }
@@ -45,23 +51,16 @@ function EditAccount() {
       setError('Please select a valid image file (JPEG, PNG, etc.).')
       return
     }
-    const maxBytes = 25 * 1024 * 1024 // 25MB
+    const maxBytes = 2 * 1024 * 1024 // 2MB
     if (file.size > maxBytes) {
       setError('Image must be 2MB or smaller.')
       return
     }
 
-    const reader = new FileReader()
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        setUploadedImageData(reader.result)
-        setSelectedFileName(file.name)
-      }
-    }
-    reader.onerror = () => {
-      setError('Unable to read image file. Please try another image.')
-    }
-    reader.readAsDataURL(file)
+    setSelectedFile(file)
+    if (previewUrl) URL.revokeObjectURL(previewUrl)
+    setPreviewUrl(URL.createObjectURL(file))
+    setSelectedFileName(file.name)
   }
 
   const handleSave = async () => {
@@ -86,13 +85,24 @@ function EditAccount() {
       return
     }
 
+    let profileImageValue = form.profileImage
+    if (selectedFile) {
+      const uploaded = await uploadProfileImage(selectedFile)
+      if (!uploaded?.success) {
+        setError(uploaded?.message || 'Unable to upload image.')
+        setIsSaving(false)
+        return
+      }
+      profileImageValue = uploaded.path
+    }
+
     const payload = {
       name: form.name,
       email: form.email,
       address: form.address,
       contactNumber: phone,
       bloodType: blood,
-      profileImage: uploadedImageData || form.profileImage,
+      profileImage: profileImageValue,
     }
 
     try {
@@ -109,7 +119,9 @@ function EditAccount() {
   }
 
   const handleRemovePhoto = () => {
-    setUploadedImageData('')
+    setSelectedFile(null)
+    if (previewUrl) URL.revokeObjectURL(previewUrl)
+    setPreviewUrl('')
     setForm(prev => ({ ...prev, profileImage: '' }))
     setSelectedFileName('')
     setError('')
@@ -153,13 +165,13 @@ function EditAccount() {
                   <div className="rounded-2xl border border-red-100 bg-white p-4 shadow-md shadow-red-900/10">
                     <div className="mx-auto w-44 h-44 rounded-2xl overflow-hidden border-2 border-zinc-200 bg-zinc-100 flex items-center justify-center">
                       <img
-                        src={uploadedImageData || form.profileImage || '/image-removebg-preview.png'}
+                        src={previewUrl || form.profileImage || '/image-removebg-preview.png'}
                         alt="Avatar Preview"
                         className="w-full h-full object-cover"
                       />
                     </div>
                     <p className="text-center text-xs font-medium text-zinc-600 mt-3">Live Preview</p>
-                    <p className="text-center text-[11px] text-zinc-500 mt-1">JPG, PNG up to 25MB</p>
+                    <p className="text-center text-[11px] text-zinc-500 mt-1">JPG, PNG up to 2MB</p>
                   </div>
 
                   <div className="rounded-2xl border border-zinc-200 bg-white p-4">
@@ -185,7 +197,7 @@ function EditAccount() {
                           <button
                             type="button"
                             onClick={handleRemovePhoto}
-                            disabled={!selectedFileName && !(uploadedImageData || form.profileImage)}
+                            disabled={!selectedFileName && !(previewUrl || form.profileImage)}
                             className="inline-flex items-center justify-center rounded-full border border-zinc-200 bg-white p-1 text-zinc-500 hover:text-red-600 hover:border-red-200 disabled:opacity-40 disabled:cursor-not-allowed"
                             aria-label="Remove selected image"
                           >
@@ -200,7 +212,7 @@ function EditAccount() {
                         </div>
                         <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
                           <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">Allowed</p>
-                          <p className="text-sm text-zinc-700 mt-1">JPG or PNG, up to 25MB total size.</p>
+                          <p className="text-sm text-zinc-700 mt-1">JPG or PNG, up to 2MB total size.</p>
                         </div>
                       </div>
                       <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3">

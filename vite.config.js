@@ -4,6 +4,7 @@ import tailwindcss from '@tailwindcss/vite'
 import bootstrapHandler from './api/admin/bootstrap.js'
 import createUserHandler from './api/admin/create-user.js'
 import updateUserHandler from './api/admin/update-user.js'
+import deleteUsersHandler from './api/admin/delete-users.js'
 import healthHandler from './api/health.js'
 
 const collectRawBody = async (req) => {
@@ -41,6 +42,7 @@ const devApiPlugin = () => {
     ['/api/admin/bootstrap', bootstrapHandler],
     ['/api/admin/create-user', createUserHandler],
     ['/api/admin/update-user', updateUserHandler],
+    ['/api/admin/delete-users', deleteUsersHandler],
   ])
 
   return {

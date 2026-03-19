@@ -151,10 +151,14 @@ function Dashboard() {
     let active = true
 
       const load = async () => {
+      const todayKey = dayjs().format('YYYY-MM-DD')
       const { data } = await supabase
         .from('login_activity')
-        .select('date,last_login_at,is_online,last_status_at,user_id,profiles(name,email,role,profile_image)')
-        .order('last_login_at', { ascending: false })
+        .select('date,present_at,user_id,profiles(name,email,role,profile_image)')
+        .eq('date', todayKey)
+        .eq('is_present', true)
+        .eq('profiles.role', 'member')
+        .order('present_at', { ascending: false })
         .limit(LOGIN_ACTIVITY_LIMIT)
 
       if (!active) return
@@ -164,11 +168,9 @@ function Dashboard() {
             userId: row.user_id,
             name: row.profiles?.name || '',
             email: row.profiles?.email || '',
-            role: row.profiles?.role || 'member',
+            role: row.profiles?.role || '',
             profileImage: row.profiles?.profile_image || '',
-            lastLoginAt: row.last_login_at,
-            isOnline: Boolean(row.is_online),
-            lastStatusAt: row.last_status_at || null,
+            presentAt: row.present_at || null,
           }))
         : []
       setRecentLogins(mapped)
@@ -541,19 +543,17 @@ function Dashboard() {
         <section className="grid grid-cols-12 gap-4">
           <article className="col-span-12 rounded-2xl border border-red-600 bg-white p-5 md:p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] dark:border-red-600 dark:bg-zinc-900">
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-[24px] font-semibold text-black dark:text-zinc-100">{t('Logged in Members')}</h2>
+              <h2 className="text-[24px] font-semibold text-black dark:text-zinc-100">{t('Present Members')}</h2>
               <span className="rounded-lg border border-red-600 bg-red-50 px-3 py-1 text-[14px] text-red-700 dark:bg-red-950/30 dark:text-red-300">
-                {recentLogins.filter(entry => entry.role === 'member').length} {t('recent')}
+                {recentLogins.length} {t('present')}
               </span>
             </div>
             <div className="max-h-[320px] space-y-2 overflow-y-auto pr-1">
               {recentLogins
-                .filter(entry => entry.role === 'member')
                 .map((entry, index) => {
-                  const isOnline = entry.isOnline === true
                   return (
                     <div
-                      key={`${entry.userId}-${entry.lastLoginAt}-${index}`}
+                      key={`${entry.userId}-${entry.presentAt}-${index}`}
                       className="grid grid-cols-12 items-center gap-3 rounded-xl border border-red-600 bg-white p-3 dark:border-red-600 dark:bg-zinc-950"
                     >
                       <div className="col-span-12 flex items-center gap-3 md:col-span-5">
@@ -568,20 +568,18 @@ function Dashboard() {
                         </div>
                       </div>
                       <div className="col-span-12 md:col-span-5">
-                        <p className="text-[14px] text-neutral-700 dark:text-zinc-300">{dayjs(entry.lastLoginAt).format('MMM D, YYYY h:mm A')}</p>
+                        <p className="text-[14px] text-neutral-700 dark:text-zinc-300">{entry.presentAt ? dayjs(entry.presentAt).format('MMM D, YYYY h:mm A') : t('No timestamp')}</p>
                       </div>
                       <div className="col-span-12 md:col-span-2">
-                        <span className={`inline-flex rounded-lg border px-2 py-1 text-[14px] ${
-                          isOnline ? 'border-red-600 bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-300' : 'border-neutral-300 bg-neutral-100 text-neutral-600 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300'
-                        }`}>
-                          {isOnline ? t('Online') : t('Offline')}
+                        <span className="inline-flex rounded-lg border border-emerald-300 bg-emerald-50 px-2 py-1 text-[14px] text-emerald-700 dark:border-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-300">
+                          {t('Present')}
                         </span>
                       </div>
                     </div>
                   )
                 })}
-              {recentLogins.filter(entry => entry.role === 'member').length === 0 && (
-                 <p className="py-2 text-[14px] text-neutral-500 dark:text-zinc-400">{t('No recent member logins yet.')}</p>
+              {recentLogins.length === 0 && (
+                 <p className="py-2 text-[14px] text-neutral-500 dark:text-zinc-400">{t('No present members yet.')}</p>
               )}
             </div>
           </article>

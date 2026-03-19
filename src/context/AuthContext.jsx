@@ -16,6 +16,8 @@ const SESSION_EXPIRED_MESSAGE = 'Session expired. Please log in again.'
 const LOADING_FALLBACK_MS = 3_000
 const PROFILE_CACHE_TTL_MS = 30_000
 const PROFILE_NEGATIVE_CACHE_TTL_MS = 2_000
+const PROFILE_IMAGE_BUCKET = 'profile-images'
+const PROFILE_IMAGE_PREFIX = 'avatars'
 
 const profileCache = new Map()
 const profileInflight = new Map()
@@ -40,6 +42,27 @@ const enrichUserWithProfileImage = (user = {}) => ({
   ...user,
   profileImage: user.profileImage || DEFAULT_PROFILE_IMAGE,
 })
+
+const isLikelyExternalUrl = (value) => /^https?:\/\//i.test(String(value || '').trim())
+const isLikelyDataUrl = (value) => /^data:image\//i.test(String(value || '').trim())
+
+const resolveProfileImageSrc = (value) => {
+  const raw = String(value || '').trim()
+  if (!raw) return DEFAULT_PROFILE_IMAGE
+  if (raw === DEFAULT_PROFILE_IMAGE) return raw
+  if (raw.startsWith('/')) return raw
+  if (isLikelyExternalUrl(raw) || isLikelyDataUrl(raw)) return raw
+
+  // Treat as Supabase Storage object path. This requires the bucket to be public.
+  try {
+    const { data } = supabase?.storage?.from?.(PROFILE_IMAGE_BUCKET)?.getPublicUrl?.(raw) || {}
+    if (data?.publicUrl) return data.publicUrl
+  } catch {
+    // Ignore and fall back to default.
+  }
+
+  return DEFAULT_PROFILE_IMAGE
+}
 
 const splitCategoryAndType = (value = '') => {
   const raw = String(value || '').trim()
@@ -95,7 +118,7 @@ const mapProfileToUser = (profile, authUser) => {
     address: profile?.address || '',
     bloodType: profile?.blood_type || '',
     memberSince: profile?.member_since || authUser?.created_at || new Date().toISOString(),
-    profileImage: profile?.profile_image || DEFAULT_PROFILE_IMAGE,
+    profileImage: resolveProfileImageSrc(profile?.profile_image),
     accountStatus: profile?.account_status || 'Active',
     status: profile?.status || 'active',
     appLanguage: profile?.app_language || 'English',
@@ -178,7 +201,6 @@ export function AuthProvider({ children }) {
   const runAuthOperationWithRetry = (operation, options = {}) => {
     const attempts = Number.isFinite(options.attempts) ? options.attempts : 2
     const timeoutMs = Number.isFinite(options.timeoutMs) ? options.timeoutMs : 20_000
-    const queued = options.queued !== false
 
     const runner = async () => {
       let lastError
@@ -337,46 +359,6 @@ export function AuthProvider({ children }) {
     return promise
   }
 
-	  const recordDailyPresenceSupabase = async (userId) => {
-	    if (!supabaseEnabled || !userId) return
-	    const todayKey = dayjs().format('YYYY-MM-DD')
-	    const { error } = await supabase
-	      .from('login_activity')
-	      .upsert(
-	        {
-	          user_id: userId,
-	          date: todayKey,
-	          last_login_at: new Date().toISOString(),
-	          is_online: true,
-	          last_status_at: new Date().toISOString(),
-	        },
-	        { onConflict: 'user_id,date' }
-	      )
-
-	    if (!error) return
-
-	    const errorMessage = String(error.message || '')
-	    const conflictTargetMissing =
-	      error.code === '42P10' || /no unique|ON CONFLICT/i.test(errorMessage) || /on_conflict/i.test(errorMessage)
-
-	    if (!conflictTargetMissing) {
-	      console.warn('Failed to record daily presence in login_activity.', error)
-	      return
-	    }
-
-	    const fallback = await supabase.from('login_activity').insert({
-	      user_id: userId,
-	      date: todayKey,
-	      last_login_at: new Date().toISOString(),
-	      is_online: true,
-	      last_status_at: new Date().toISOString(),
-	    })
-
-	    if (fallback.error) {
-	      console.warn('Failed to record daily presence in login_activity (fallback insert).', fallback.error)
-	    }
-	  }
-
   const hydrateProfile = async (authUser, epoch) => {
     if (!supabaseEnabled || !authUser?.id) return null
 
@@ -421,7 +403,7 @@ export function AuthProvider({ children }) {
             address: profile.address || '',
             bloodType: profile.blood_type || '',
             memberSince: profile.member_since || new Date().toISOString(),
-            profileImage: profile.profile_image || DEFAULT_PROFILE_IMAGE,
+            profileImage: resolveProfileImageSrc(profile.profile_image),
             accountStatus: profile.account_status || 'Active',
             status: profile.status || 'active',
           })
@@ -543,7 +525,6 @@ export function AuthProvider({ children }) {
           reloadMembers(),
           committeeListPromise.then(list => reloadUtilities(list)),
           reloadRecruitments(Boolean(isAdmin)),
-          recordDailyPresenceSupabase(authUser.id),
         ])
       } finally {
         if (!disposed && epoch === authEpochRef.current) setLoading(false)
@@ -832,7 +813,6 @@ export function AuthProvider({ children }) {
       setAuthResolved(true)
       setUser(mapProfileToUser(null, activeUser))
       await hydrateProfile(activeUser, epoch)
-      await recordDailyPresenceSupabase(activeUser.id)
       return { success: true, user: activeUser }
     }
 
@@ -852,9 +832,7 @@ export function AuthProvider({ children }) {
     const bloodType = (updates.bloodType ?? user.bloodType ?? '').toString().toUpperCase()
     const hasProfileImageUpdate = Object.prototype.hasOwnProperty.call(updates, 'profileImage')
     const nextProfileImageRaw = hasProfileImageUpdate ? (updates.profileImage ?? '').toString().trim() : null
-    const profileImage = hasProfileImageUpdate
-      ? (nextProfileImageRaw || DEFAULT_PROFILE_IMAGE)
-      : (user.profileImage || DEFAULT_PROFILE_IMAGE)
+    const profileImageToStore = hasProfileImageUpdate ? (nextProfileImageRaw || null) : undefined
 
     if (email !== (user.email || '').trim().toLowerCase()) {
       try {
@@ -867,25 +845,44 @@ export function AuthProvider({ children }) {
       }
     }
 
-    const { error } = await supabase
-      .from('profiles')
-      .update({
-        name,
-        email,
-        address,
-        contact_number: contactNumber,
-        blood_type: bloodType || null,
-        profile_image: profileImage,
-      })
-      .eq('id', user.id)
+    const patch = {
+      name,
+      email,
+      address,
+      contact_number: contactNumber,
+      blood_type: bloodType || null,
+    }
+    if (hasProfileImageUpdate) patch.profile_image = profileImageToStore
+
+    const { error } = await supabase.from('profiles').update(patch).eq('id', user.id)
 
     if (error) return { success: false, message: error.message || 'Unable to update profile.' }
 
-    setUser(prev => (prev ? { ...prev, name, email, address, contactNumber, bloodType, profileImage } : prev))
+    setUser(prev =>
+      prev
+        ? {
+            ...prev,
+            name,
+            email,
+            address,
+            contactNumber,
+            bloodType,
+            ...(hasProfileImageUpdate ? { profileImage: resolveProfileImageSrc(profileImageToStore) } : null),
+          }
+        : prev
+    )
     setUsers(prev =>
       prev.map(member =>
         member?.id === user.id
-          ? { ...member, name, email, address, contactNumber, bloodType, profileImage }
+          ? {
+              ...member,
+              name,
+              email,
+              address,
+              contactNumber,
+              bloodType,
+              ...(hasProfileImageUpdate ? { profileImage: resolveProfileImageSrc(profileImageToStore) } : null),
+            }
           : member
       )
     )
@@ -899,6 +896,39 @@ export function AuthProvider({ children }) {
       authEpochRef.current
     )
     return { success: true }
+  }
+
+  const uploadProfileImage = async (file) => {
+    if (!supabaseEnabled) return { success: false, message: getSupabaseConfigError() || 'Supabase not configured.' }
+    if (!user?.id) return { success: false, message: 'User not found.' }
+    if (!file) return { success: false, message: 'No file selected.' }
+
+    const contentType = String(file.type || '').trim()
+    if (!contentType.startsWith('image/')) return { success: false, message: 'Please select an image file.' }
+
+    const safeExt = (() => {
+      const raw = String(file.name || '').trim()
+      const idx = raw.lastIndexOf('.')
+      const ext = idx >= 0 ? raw.slice(idx + 1).toLowerCase() : ''
+      return /^[a-z0-9]{1,8}$/.test(ext) ? ext : ''
+    })()
+
+    const uuid = typeof crypto !== 'undefined' && crypto?.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`
+    const filename = safeExt ? `${uuid}.${safeExt}` : uuid
+    const path = `${PROFILE_IMAGE_PREFIX}/${user.id}/${filename}`
+
+    const { error: uploadError } = await supabase.storage.from(PROFILE_IMAGE_BUCKET).upload(path, file, {
+      upsert: true,
+      contentType: contentType || undefined,
+      cacheControl: '3600',
+    })
+
+    if (uploadError) return { success: false, message: uploadError.message || 'Unable to upload image.' }
+
+    const { data } = supabase.storage.from(PROFILE_IMAGE_BUCKET).getPublicUrl(path)
+    if (!data?.publicUrl) return { success: false, message: 'Upload succeeded but URL could not be generated.' }
+
+    return { success: true, path, publicUrl: data.publicUrl }
   }
 
   const changeCurrentUserPassword = async (currentPassword, newPassword) => {
@@ -1004,6 +1034,51 @@ export function AuthProvider({ children }) {
 
     const { error } = await supabase.from('profiles').update(payload).eq('id', memberId)
     if (error) return { success: false, message: error.message || 'Unable to update member.' }
+    await reloadMembers()
+    return { success: true }
+  }
+
+  const deleteMembers = async (memberIds = []) => {
+    if (!user?.id) return { success: false, message: 'User not found.' }
+    if (user.role !== 'admin') return { success: false, message: 'Only admins can delete members.' }
+
+    const ids = Array.isArray(memberIds)
+      ? memberIds.map(id => String(id || '').trim()).filter(Boolean)
+      : [String(memberIds || '').trim()].filter(Boolean)
+
+    const uniqueIds = [...new Set(ids)]
+    if (uniqueIds.length === 0) return { success: false, message: 'No members selected.' }
+
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+    const token = sessionData?.session?.access_token
+    if (sessionError || !token) return { success: false, message: SESSION_EXPIRED_MESSAGE }
+
+    let response
+    try {
+      response = await fetch('/api/admin/delete-users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ userIds: uniqueIds }),
+      })
+    } catch (error) {
+      console.warn('Failed to reach admin delete-users endpoint.', error)
+      return { success: false, message: 'Unable to reach the server. Please try again.' }
+    }
+
+    const payload = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      return { success: false, message: payload?.message || `Unable to delete members (HTTP ${response.status}).` }
+    }
+
+    if (Array.isArray(payload?.failed) && payload.failed.length > 0) {
+      await reloadMembers()
+      const first = payload.failed[0]
+      return { success: false, message: first?.message || 'Some users could not be deleted.' }
+    }
+
     await reloadMembers()
     return { success: true }
   }
@@ -1280,13 +1355,11 @@ export function AuthProvider({ children }) {
     logout,
     register,
     updateCurrentUser,
+    uploadProfileImage,
 	    changeCurrentUserPassword,
 	    getAllMembers,
 	    createMember,
-	    deleteMembers: async () => ({
-	      success: false,
-	      message: 'Deleting users requires a server-side Admin/Service Role flow in Supabase (client cannot delete Auth users).',
-	    }),
+	    deleteMembers,
     updateMember,
     addCommittee,
     editCommittee,
