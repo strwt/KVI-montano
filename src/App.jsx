@@ -16,17 +16,45 @@ import Settings from './pages/Settings'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import './index.css'
 
-// Protected Route Component
-function ProtectedRoute({ children }) {
-  const { user, loading } = useAuth()
-
-  if (loading && !user) {
-    return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-600"></div>
+function AuthPendingState({ title = 'Loading your session...' }) {
+  return (
+    <div className="min-h-screen bg-gray-100 px-4 py-8">
+      <div className="mx-auto max-w-5xl">
+        <div className="mb-4 h-10 w-40 animate-pulse rounded-xl bg-white shadow-sm" />
+        <div className="grid gap-4 md:grid-cols-[240px_1fr]">
+          <div className="hidden rounded-2xl bg-white p-4 shadow-sm md:block">
+            <div className="mb-3 h-6 w-28 animate-pulse rounded bg-gray-200" />
+            <div className="space-y-2">
+              <div className="h-10 animate-pulse rounded-lg bg-gray-100" />
+              <div className="h-10 animate-pulse rounded-lg bg-gray-100" />
+              <div className="h-10 animate-pulse rounded-lg bg-gray-100" />
+            </div>
+          </div>
+          <div className="rounded-2xl bg-white p-6 shadow-sm">
+            <div className="mb-3 flex items-center gap-3">
+              <div className="h-3 w-3 animate-pulse rounded-full bg-red-600" />
+              <p className="text-sm font-medium text-gray-700">{title}</p>
+            </div>
+            <div className="space-y-3">
+              <div className="h-5 w-48 animate-pulse rounded bg-gray-200" />
+              <div className="h-24 animate-pulse rounded-xl bg-gray-100" />
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="h-28 animate-pulse rounded-xl bg-gray-100" />
+                <div className="h-28 animate-pulse rounded-xl bg-gray-100" />
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-    )
-  }
+    </div>
+  )
+}
+
+function ProtectedRoute({ children }) {
+  const { user, authResolved } = useAuth()
+
+  if (!authResolved && !user) return <AuthPendingState />
+  if (user && !user.role) return <AuthPendingState title="Loading account access..." />
 
   if (!user) {
     return <Navigate to="/login" replace />
@@ -36,15 +64,10 @@ function ProtectedRoute({ children }) {
 }
 
 function AdminRoute({ children }) {
-  const { user, loading } = useAuth()
+  const { user, authResolved, loading } = useAuth()
 
-  if (loading && !user) {
-    return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-600"></div>
-      </div>
-    )
-  }
+  if (!authResolved && !user) return <AuthPendingState title="Checking admin access..." />
+  if (user && !user.role) return <AuthPendingState title="Loading account access..." />
 
   if (!user) {
     return <Navigate to="/landing" replace />
@@ -59,11 +82,7 @@ function AdminRoute({ children }) {
 
 // Public Route - Redirects to dashboard if already logged in
 function PublicRoute({ children }) {
-  const { user, loading } = useAuth()
-
-  // Don't block public pages (login/landing/recruitment) while auth bootstraps.
-  // This keeps the login page responsive even if Supabase is slow/unreachable.
-  if (loading && !user) return children
+  const { user } = useAuth()
 
   if (user) {
     return <Navigate to="/" replace />

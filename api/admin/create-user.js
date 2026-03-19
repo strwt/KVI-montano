@@ -82,6 +82,9 @@ export default async function handler(req, res) {
       email,
       password,
       email_confirm: true,
+      app_metadata: {
+        role,
+      },
       user_metadata: {
         name,
         id_number: idNumber,
