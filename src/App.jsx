@@ -64,7 +64,7 @@ function ProtectedRoute({ children }) {
 }
 
 function AdminRoute({ children }) {
-  const { user, authResolved, loading } = useAuth()
+  const { user, authResolved } = useAuth()
 
   if (!authResolved && !user) return <AuthPendingState title="Checking admin access..." />
   if (user && !user.role) return <AuthPendingState title="Loading account access..." />
@@ -111,8 +111,8 @@ function AppRoutes() {
         <Route path="account/edit" element={<EditAccount />} />
         <Route path="change-password" element={<ChangePassword />} />
         <Route path="settings" element={<Settings />} />
-        <Route path="members" element={<Members />} />
-        <Route path="members/:id" element={<MemberDetail />} />
+        <Route path="members" element={<AdminRoute><Members /></AdminRoute>} />
+        <Route path="members/:id" element={<AdminRoute><MemberDetail /></AdminRoute>} />
       </Route>
 
       {/* Catch all - redirect to home */}

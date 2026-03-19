@@ -266,11 +266,10 @@ function Dashboard() {
   const categoryLabelByKey = useMemo(() => {
     const map = {}
     const entries = Array.isArray(eventCategories) ? eventCategories : []
-    entries.forEach(entry => {
-      const key = canonicalizeOperationKey(normalizeCategoryKey(entry?.key))
-      const label = String(entry?.label || '').trim()
-      if (!key || !label) return
-      map[key] = label
+    entries.forEach(name => {
+      const key = canonicalizeOperationKey(normalizeCategoryKey(name))
+      if (!key) return
+      map[key] = titleCaseFromKey(key)
     })
     return map
   }, [eventCategories])

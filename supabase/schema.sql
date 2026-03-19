@@ -175,63 +175,35 @@ begin
 end;
 $$;
 
--- Committees (member grouping)
+-- Committees (member grouping; used for USERS only)
 create table if not exists public.committees (
-  name text primary key,
-  created_at timestamptz not null default now(),
-  created_by uuid references public.profiles(id),
-  updated_at timestamptz not null default now()
-);
-
-drop trigger if exists committees_set_updated_at on public.committees;
-create trigger committees_set_updated_at
-before update on public.committees
-for each row execute function public.set_updated_at();
-
--- Event Categories (events.category)
-create table if not exists public.event_categories (
-  key text primary key,
-  label text not null,
-  created_at timestamptz not null default now(),
-  created_by uuid references public.profiles(id),
-  updated_at timestamptz not null default now()
-);
-
-drop trigger if exists event_categories_set_updated_at on public.event_categories;
-create trigger event_categories_set_updated_at
-before update on public.event_categories
-for each row execute function public.set_updated_at();
-
--- Seed default categories (safe to rerun)
-insert into public.event_categories (key, label)
-values
-  ('tuli', 'Tuli'),
-  ('blood_letting', 'Blood Letting'),
-  ('donations', 'Donations'),
-  ('environmental', 'Environmental'),
-  ('relief_operation', 'Relief Operation'),
-  ('fire_response', 'Fire Response'),
-  ('water_distribution', 'Water Distribution'),
-  ('notes', 'Notes'),
-  ('medical', 'Medical')
-on conflict (key) do nothing;
-
--- Utilities linked to a committee name (same key used in current app utilitiesByCommittee)
-create table if not exists public.committee_utilities (
   id uuid primary key default gen_random_uuid(),
-  committee_name text not null references public.committees(name) on update cascade on delete cascade,
-  name text not null,
-  created_at timestamptz not null default now(),
-  created_by uuid references public.profiles(id),
-  unique (committee_name, name)
+  name text not null unique,
+  created_at timestamptz not null default now()
 );
+
+alter table public.committees
+  drop constraint if exists committees_name_not_blank,
+  add constraint committees_name_not_blank check (btrim(name) <> '');
+
+-- Event Categories (used for EVENTS only)
+create table if not exists public.event_categories (
+  id uuid primary key default gen_random_uuid(),
+  name text not null unique,
+  created_by uuid references public.profiles(id),
+  created_at timestamptz not null default now()
+);
+
+alter table public.event_categories
+  drop constraint if exists event_categories_name_not_blank,
+  add constraint event_categories_name_not_blank check (btrim(name) <> '');
 
 -- Events (kept close to current localStorage shape)
 create table if not exists public.events (
   id bigint primary key,
   title text not null default '',
   content text not null default '',
-  category text not null default 'notes',
+  category text not null,
   date_time timestamptz not null,
   address text not null default '',
   location jsonb,
@@ -305,7 +277,7 @@ create table if not exists public.notifications (
   type text not null default 'info',
   event_id bigint references public.events(id) on delete cascade,
   title text not null default '',
-  category text not null default 'notes',
+  category text,
   date_time timestamptz,
   details text,
   assigned_by text,
@@ -330,7 +302,6 @@ create table if not exists public.event_files (
 alter table public.profiles enable row level security;
 alter table public.committees enable row level security;
 alter table public.event_categories enable row level security;
-alter table public.committee_utilities enable row level security;
 alter table public.events enable row level security;
 alter table public.event_views enable row level security;
 alter table public.recruitments enable row level security;
@@ -343,7 +314,7 @@ drop policy if exists profiles_select_auth on public.profiles;
 create policy profiles_select_auth
 on public.profiles for select
 to authenticated
-using (true);
+using (id = auth.uid() or public.is_admin());
 
 drop policy if exists profiles_insert_self on public.profiles;
 create policy profiles_insert_self
@@ -420,32 +391,6 @@ with check (public.is_admin());
 drop policy if exists event_categories_delete_admin on public.event_categories;
 create policy event_categories_delete_admin
 on public.event_categories for delete
-to authenticated
-using (public.is_admin());
-
--- UTILITIES
-drop policy if exists utilities_select_auth on public.committee_utilities;
-create policy utilities_select_auth
-on public.committee_utilities for select
-to authenticated
-using (true);
-
-drop policy if exists utilities_write_admin on public.committee_utilities;
-create policy utilities_write_admin
-on public.committee_utilities for insert
-to authenticated
-with check (public.is_admin());
-
-drop policy if exists utilities_update_admin on public.committee_utilities;
-create policy utilities_update_admin
-on public.committee_utilities for update
-to authenticated
-using (public.is_admin())
-with check (public.is_admin());
-
-drop policy if exists utilities_delete_admin on public.committee_utilities;
-create policy utilities_delete_admin
-on public.committee_utilities for delete
 to authenticated
 using (public.is_admin());
 

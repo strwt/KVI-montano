@@ -11,23 +11,22 @@ function Attendance() {
   const [loginActivity, setLoginActivity] = useState([])
   const [events, setEvents] = useState([])
 
-  const categoryLabelByKey = useMemo(() => {
-    const map = {}
-    const entries = Array.isArray(eventCategories) ? eventCategories : []
-    entries.forEach(entry => {
-      const key = String(entry?.key || '').trim()
-      const label = String(entry?.label || '').trim()
-      if (!key || !label) return
-      map[key] = label
-    })
-    return map
-  }, [eventCategories])
-
   const titleCaseFromKey = key =>
     String(key || '')
       .trim()
       .replace(/_/g, ' ')
       .replace(/\w\S*/g, word => word.charAt(0).toUpperCase() + word.slice(1))
+
+  const categoryLabelByKey = useMemo(() => {
+    const map = {}
+    const entries = Array.isArray(eventCategories) ? eventCategories : []
+    entries.forEach(name => {
+      const key = String(name || '').trim()
+      if (!key) return
+      map[key] = titleCaseFromKey(key)
+    })
+    return map
+  }, [eventCategories])
 
   const getCategoryLabel = key => {
     const normalized = String(key || '').trim()

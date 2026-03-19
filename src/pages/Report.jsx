@@ -261,11 +261,10 @@ function Report() {
       map[key] = CATEGORY_META[key]?.label || titleCaseFromKey(key)
     })
     const entries = Array.isArray(eventCategories) ? eventCategories : []
-    entries.forEach(entry => {
-      const key = canonicalizeOperationKey(normalizeCategory(entry?.key))
-      const label = String(entry?.label || '').trim()
-      if (!key || !label) return
-      map[key] = label
+    entries.forEach(name => {
+      const key = canonicalizeOperationKey(normalizeCategory(name))
+      if (!key) return
+      if (!map[key]) map[key] = titleCaseFromKey(key)
     })
     return map
   }, [eventCategories])

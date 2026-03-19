@@ -454,20 +454,10 @@ export function AuthProvider({ children }) {
   const sortEventCategories = (list) => {
     const items = Array.isArray(list) ? list : []
     const normalized = items
-      .map(item => ({
-        key: toEventCategoryKey(item?.key),
-        label: String(item?.label || '').trim(),
-      }))
-      .filter(item => item.key && item.label)
-
-    const map = new Map()
-    normalized.forEach(item => {
-      if (map.has(item.key)) return
-      map.set(item.key, item)
-    })
-
-    const unique = Array.from(map.values())
-    unique.sort((a, b) => a.label.localeCompare(b.label))
+      .map(name => toEventCategoryKey(name))
+      .filter(Boolean)
+    const unique = [...new Set(normalized)]
+    unique.sort((a, b) => a.localeCompare(b))
     return unique
   }
 
@@ -528,14 +518,14 @@ export function AuthProvider({ children }) {
       try {
         const res = await supabase
           .from('event_categories')
-          .select('key,label')
-          .order('label', { ascending: true })
+          .select('name')
+          .order('name', { ascending: true })
         if (res.error) console.warn('Failed to load event categories from Supabase.', res.error)
         data = res.data
       } catch (error) {
         console.warn('Failed to load event categories from Supabase.', error)
       }
-      const categories = sortEventCategories(Array.isArray(data) ? data : [])
+      const categories = sortEventCategories(Array.isArray(data) ? data.map(row => row.name) : [])
       setEventCategories(categories)
       return categories
     }
@@ -613,7 +603,7 @@ export function AuthProvider({ children }) {
         const isAdmin = profileUser?.role === 'admin'
 
         await Promise.all([
-          reloadMembersRef.current ? reloadMembersRef.current() : Promise.resolve(),
+          isAdmin && reloadMembersRef.current ? reloadMembersRef.current() : Promise.resolve(),
           isAdmin && reloadAdminsRef.current ? reloadAdminsRef.current() : Promise.resolve(),
           reloadCommitteesRef.current ? reloadCommitteesRef.current() : Promise.resolve(),
           reloadEventCategoriesRef.current ? reloadEventCategoriesRef.current() : Promise.resolve(),
@@ -730,29 +720,27 @@ export function AuthProvider({ children }) {
 
     const handleEventCategoriesChange = (payload) => {
       const eventType = payload?.eventType
-      const nextKey = payload?.new?.key ? toEventCategoryKey(payload.new.key) : ''
-      const nextLabel = payload?.new?.label ? String(payload.new.label).trim() : ''
-      const prevKey = payload?.old?.key ? toEventCategoryKey(payload.old.key) : ''
+      const nextName = payload?.new?.name ? toEventCategoryKey(payload.new.name) : ''
+      const prevName = payload?.old?.name ? toEventCategoryKey(payload.old.name) : ''
 
       setEventCategories(prev => {
         const list = Array.isArray(prev) ? prev : []
 
         if (eventType === 'INSERT') {
-          if (!nextKey || !nextLabel) return list
-          if (list.some(item => item.key === nextKey)) return list
-          return sortEventCategories([...list, { key: nextKey, label: nextLabel }])
+          if (!nextName) return list
+          if (list.includes(nextName)) return list
+          return sortEventCategories([...list, nextName])
         }
 
         if (eventType === 'UPDATE') {
-          if (!prevKey) return list
-          if (!nextKey || !nextLabel) return list
-          const next = list.map(item => (item.key === prevKey ? { key: nextKey, label: nextLabel } : item))
+          if (!prevName || !nextName) return list
+          const next = list.map(name => (name === prevName ? nextName : name))
           return sortEventCategories(next)
         }
 
         if (eventType === 'DELETE') {
-          if (!prevKey) return list
-          return list.filter(item => item.key !== prevKey)
+          if (!prevName) return list
+          return list.filter(name => name !== prevName)
         }
 
         if (eventType === 'TRUNCATE') return []
@@ -1309,7 +1297,7 @@ export function AuthProvider({ children }) {
     if (user?.role !== 'admin') return { success: false, message: 'Only admins can add committees.' }
     const normalizedName = committeeName?.trim()
     if (!normalizedName) return { success: false, message: 'Committee name is required.' }
-    const { error } = await supabase.from('committees').insert({ name: normalizedName, created_by: user?.id || null })
+    const { error } = await supabase.from('committees').insert({ name: normalizedName })
     if (error) return { success: false, message: error.message || 'Unable to add committee.' }
     return { success: true }
   }
@@ -1360,46 +1348,47 @@ export function AuthProvider({ children }) {
     return { success: true }
   }
 
-  const addEventCategory = async (label, keyOverride = '') => {
+  const addEventCategory = async (categoryName) => {
     if (user?.role !== 'admin') return { success: false, message: 'Only admins can add event categories.' }
-    const normalizedLabel = String(label || '').trim()
-    const normalizedKey = toEventCategoryKey(keyOverride || normalizedLabel)
-
-    if (!normalizedLabel) return { success: false, message: 'Category label is required.' }
-    if (!normalizedKey) return { success: false, message: 'Category key is required.' }
+    const normalizedKey = toEventCategoryKey(categoryName)
+    if (!normalizedKey) return { success: false, message: 'Category name is required.' }
 
     const { error } = await supabase.from('event_categories').insert({
-      key: normalizedKey,
-      label: normalizedLabel,
+      name: normalizedKey,
       created_by: user?.id || null,
     })
 
     if (error) return { success: false, message: error.message || 'Unable to add event category.' }
-
-    setEventCategories(prev => sortEventCategories([...prev, { key: normalizedKey, label: normalizedLabel }]))
-    return { success: true, key: normalizedKey }
+    setEventCategories(prev => sortEventCategories([...(Array.isArray(prev) ? prev : []), normalizedKey]))
+    return { success: true, name: normalizedKey }
   }
 
-  const editEventCategory = async (categoryKey, nextLabel) => {
+  const editEventCategory = async (currentName, nextName) => {
     if (user?.role !== 'admin') return { success: false, message: 'Only admins can update event categories.' }
-    const key = toEventCategoryKey(categoryKey)
-    const label = String(nextLabel || '').trim()
-    if (!key) return { success: false, message: 'Category not found.' }
-    if (!label) return { success: false, message: 'Category label is required.' }
+    const source = toEventCategoryKey(currentName)
+    const target = toEventCategoryKey(nextName)
+    if (!source) return { success: false, message: 'Category not found.' }
+    if (!target) return { success: false, message: 'Category name is required.' }
+    if (source === target) return { success: true }
 
-    const { error } = await supabase.from('event_categories').update({ label }).eq('key', key)
+    const { error } = await supabase.from('event_categories').update({ name: target }).eq('name', source)
     if (error) return { success: false, message: error.message || 'Unable to update event category.' }
 
-    setEventCategories(prev => sortEventCategories(prev.map(item => (item.key === key ? { ...item, label } : item))))
+    await Promise.all([
+      supabase.from('events').update({ category: target }).eq('category', source),
+      supabase.from('notifications').update({ category: target }).eq('category', source),
+    ])
+
+    setEventCategories(prev => sortEventCategories((Array.isArray(prev) ? prev : []).map(name => (name === source ? target : name))))
     return { success: true }
   }
 
-  const deleteEventCategory = async (categoryKey, fallbackCategoryKey) => {
+  const deleteEventCategory = async (categoryName, fallbackCategoryName) => {
     if (user?.role !== 'admin') return { success: false, message: 'Only admins can delete event categories.' }
-    const key = toEventCategoryKey(categoryKey)
+    const key = toEventCategoryKey(categoryName)
     if (!key) return { success: false, message: 'Category not found.' }
 
-    const fallback = fallbackCategoryKey ? toEventCategoryKey(fallbackCategoryKey) : ''
+    const fallback = fallbackCategoryName ? toEventCategoryKey(fallbackCategoryName) : ''
     if (fallback && fallback === key) return { success: false, message: 'Fallback category must be different.' }
 
     const { count, error: countError } = await supabase
@@ -1417,13 +1406,16 @@ export function AuthProvider({ children }) {
     }
 
     if (assignedCount > 0 && fallback) {
-      await supabase.from('events').update({ category: fallback }).eq('category', key)
+      await Promise.all([
+        supabase.from('events').update({ category: fallback }).eq('category', key),
+        supabase.from('notifications').update({ category: fallback }).eq('category', key),
+      ])
     }
 
-    const { error } = await supabase.from('event_categories').delete().eq('key', key)
+    const { error } = await supabase.from('event_categories').delete().eq('name', key)
     if (error) return { success: false, message: error.message || 'Unable to delete event category.' }
 
-    setEventCategories(prev => prev.filter(item => item.key !== key))
+    setEventCategories(prev => (Array.isArray(prev) ? prev : []).filter(name => name !== key))
     return { success: true, reassignedTo: fallback || null }
   }
 

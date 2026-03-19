@@ -29,7 +29,6 @@ const ROLE_OPTIONS = [
   { value: 'member', label: 'Member' },
   { value: 'admin', label: 'Admin' },
 ]
-const COMMITTEE_OPTIONS = ['Environmental', 'Relief Operations', 'Fire Response', 'Medical']
 const BLOOD_TYPE_OPTIONS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
 
 function Members() {
@@ -39,9 +38,13 @@ function Members() {
     getAdmins,
     createMember,
     committees,
+    eventCategories,
     addCommittee,
     editCommittee,
     deleteCommittee,
+    addEventCategory,
+    editEventCategory,
+    deleteEventCategory,
     getRecruitments,
     rejectRecruitment,
   } = useAuth()
@@ -59,6 +62,15 @@ function Members() {
   const [committeeToDelete, setCommitteeToDelete] = useState('')
   const [fallbackCommittee, setFallbackCommittee] = useState('')
   const [committeeError, setCommitteeError] = useState('')
+  const [eventCategoryName, setEventCategoryName] = useState('')
+  const [eventCategoryActionBusy, setEventCategoryActionBusy] = useState(false)
+  const [eventCategoryError, setEventCategoryError] = useState('')
+  const [showEditEventCategoryModal, setShowEditEventCategoryModal] = useState(false)
+  const [eventCategoryToEdit, setEventCategoryToEdit] = useState('')
+  const [editedEventCategoryName, setEditedEventCategoryName] = useState('')
+  const [showDeleteEventCategoryModal, setShowDeleteEventCategoryModal] = useState(false)
+  const [eventCategoryToDelete, setEventCategoryToDelete] = useState('')
+  const [fallbackEventCategory, setFallbackEventCategory] = useState('')
   const [formError, setFormError] = useState('')
   const [recruitmentActionError, setRecruitmentActionError] = useState('')
   const [expandedRecruitmentId, setExpandedRecruitmentId] = useState(null)
@@ -72,7 +84,7 @@ function Members() {
     bloodType: '',
     memberSince: dayjs().format('YYYY-MM-DD'),
     role: ROLE_OPTIONS[0].value,
-    committee: committees[0] || COMMITTEE_OPTIONS[0],
+    committee: committees[0] || '',
   })
   const [showTempPassword, setShowTempPassword] = useState(false)
   const membersPerPage = 9
@@ -92,12 +104,26 @@ function Members() {
   )
 
   const committeeOptions = useMemo(() => {
-    const list = Array.isArray(committees) && committees.length > 0 ? committees : COMMITTEE_OPTIONS
+    const list = Array.isArray(committees) ? committees : []
     const normalized = list.map(name => String(name || '').trim()).filter(Boolean)
     const unique = [...new Set(normalized)]
     unique.sort((a, b) => a.localeCompare(b))
-    return unique.length > 0 ? unique : COMMITTEE_OPTIONS
+    return unique
   }, [committees])
+
+  const titleCaseFromKey = (key) =>
+    String(key || '')
+      .trim()
+      .replace(/_/g, ' ')
+      .replace(/\w\S*/g, word => word.charAt(0).toUpperCase() + word.slice(1))
+
+  const eventCategoryOptions = useMemo(() => {
+    const list = Array.isArray(eventCategories) ? eventCategories : []
+    const normalized = list.map(name => String(name || '').trim()).filter(Boolean)
+    const unique = [...new Set(normalized)]
+    unique.sort((a, b) => (titleCaseFromKey(a) || a).localeCompare(titleCaseFromKey(b) || b))
+    return unique
+  }, [eventCategories])
 
   useEffect(() => {
     if (committeeOptions.length === 0) return
@@ -283,6 +309,116 @@ function Members() {
     })
   }
 
+  const handleEventCategoryAdd = async (e) => {
+    e.preventDefault()
+    if (!isAdmin) return
+    setEventCategoryError('')
+
+    const name = eventCategoryName.trim()
+    if (!name) {
+      setEventCategoryError('Category name is required.')
+      return
+    }
+
+    const exists = eventCategoryOptions.some(item => item.toLowerCase() === name.toLowerCase())
+    if (exists) {
+      setEventCategoryError('Category already exists.')
+      return
+    }
+
+    setEventCategoryActionBusy(true)
+    const result = await addEventCategory(name)
+    setEventCategoryActionBusy(false)
+
+    if (!result.success) {
+      setEventCategoryError(result.message || 'Unable to add category.')
+      return
+    }
+
+    setEventCategoryName('')
+  }
+
+  const openEditEventCategory = (name) => {
+    if (!isAdmin) return
+    setEventCategoryError('')
+    setEventCategoryToEdit(name)
+    setEditedEventCategoryName(name)
+    setShowEditEventCategoryModal(true)
+  }
+
+  const handleEventCategoryRename = async (e) => {
+    e.preventDefault()
+    if (!isAdmin) return
+    setEventCategoryError('')
+
+    const source = eventCategoryToEdit.trim()
+    const target = editedEventCategoryName.trim()
+
+    if (!source) {
+      setEventCategoryError('Select a category to edit.')
+      return
+    }
+
+    if (!target) {
+      setEventCategoryError('New category name is required.')
+      return
+    }
+
+    const exists = eventCategoryOptions.some(item => item.toLowerCase() === target.toLowerCase() && item !== source)
+    if (exists) {
+      setEventCategoryError('Category name already exists.')
+      return
+    }
+
+    setEventCategoryActionBusy(true)
+    const result = await editEventCategory(source, target)
+    setEventCategoryActionBusy(false)
+
+    if (!result.success) {
+      setEventCategoryError(result.message || 'Unable to update category.')
+      return
+    }
+
+    setShowEditEventCategoryModal(false)
+  }
+
+  const openDeleteEventCategory = (name) => {
+    if (!isAdmin) return
+    setEventCategoryError('')
+    setEventCategoryToDelete(name)
+    const fallback = eventCategoryOptions.find(item => item !== name) || ''
+    setFallbackEventCategory(fallback)
+    setShowDeleteEventCategoryModal(true)
+  }
+
+  const handleEventCategoryDelete = async () => {
+    if (!isAdmin) return
+    setEventCategoryError('')
+
+    const category = eventCategoryToDelete.trim()
+    if (!category) {
+      setEventCategoryError('Select a category to delete.')
+      return
+    }
+
+    const fallback = fallbackEventCategory.trim()
+    if (fallback && fallback === category) {
+      setEventCategoryError('Fallback category must be different.')
+      return
+    }
+
+    setEventCategoryActionBusy(true)
+    const result = await deleteEventCategory(category, fallback || null)
+    setEventCategoryActionBusy(false)
+
+    if (!result.success) {
+      setEventCategoryError(result.message || 'Unable to delete category.')
+      return
+    }
+
+    setShowDeleteEventCategoryModal(false)
+  }
+
 	  const handleCreateMember = async (e) => {
 	    e.preventDefault()
 	    setFormError('')
@@ -303,7 +439,7 @@ function Members() {
       bloodType: '',
       memberSince: dayjs().format('YYYY-MM-DD'),
       role: ROLE_OPTIONS[0].value,
-      committee: committeeOptions[0] || COMMITTEE_OPTIONS[0],
+      committee: committeeOptions[0] || '',
     })
     setPendingApprovalRecruitmentId(null)
     setRecruitmentActionError('')
@@ -327,7 +463,7 @@ function Members() {
       bloodType: recruitment.bloodType || '',
       memberSince: dayjs().format('YYYY-MM-DD'),
       role: ROLE_OPTIONS[0].value,
-      committee: committeeOptions[0] || COMMITTEE_OPTIONS[0],
+      committee: committeeOptions[0] || '',
     })
     const createMemberSection = document.getElementById('create-member-form')
     if (createMemberSection) {
@@ -361,7 +497,19 @@ function Members() {
       {isAdmin && (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
           <div className="bg-white dark:bg-zinc-900 border border-red-600 rounded-2xl shadow-md p-5">
-            <h3 className="font-semibold text-gray-800 dark:text-zinc-100 mb-3">Committee Management</h3>
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <h3 className="font-semibold text-gray-800 dark:text-zinc-100">Committee Management</h3>
+              <button
+                type="button"
+                onClick={() => {
+                  const el = document.getElementById('event-category-management')
+                  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                }}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-colors dark:bg-zinc-900 dark:text-zinc-300 dark:border-zinc-700 dark:hover:bg-zinc-800"
+              >
+                Categories
+              </button>
+            </div>
             {committeeError && <p className="text-sm text-red-600 mb-3">{committeeError}</p>}
 
             <form onSubmit={handleCommitteeAdd} className="flex flex-col sm:flex-row gap-2 mb-4">
@@ -560,6 +708,72 @@ function Members() {
         </div>
       )}
 
+      {isAdmin && (
+        <div
+          id="event-category-management"
+          className="bg-white dark:bg-zinc-900 border border-red-600 rounded-2xl shadow-md p-5 mb-6"
+        >
+          <h3 className="font-semibold text-gray-800 dark:text-zinc-100 mb-3">Event Category Management</h3>
+          {eventCategoryError && <p className="text-sm text-red-600 mb-3">{eventCategoryError}</p>}
+
+          <form onSubmit={handleEventCategoryAdd} className="flex flex-col sm:flex-row gap-2 mb-4">
+            <input
+              type="text"
+              value={eventCategoryName}
+              onChange={e => setEventCategoryName(e.target.value)}
+              placeholder="New event category (e.g. Water Distribution)"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+              disabled={eventCategoryActionBusy}
+            />
+            <button
+              type="submit"
+              className="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              disabled={eventCategoryActionBusy}
+            >
+              Add
+            </button>
+          </form>
+
+          <div className="space-y-2 max-h-[420px] overflow-auto pr-1">
+            {eventCategoryOptions.length === 0 ? (
+              <p className="text-sm text-gray-500 dark:text-zinc-400">No categories available.</p>
+            ) : (
+              eventCategoryOptions.map(name => (
+                <div
+                  key={name}
+                  className="flex items-start justify-between gap-3 rounded-xl border border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-gray-800 dark:text-zinc-100 truncate">{titleCaseFromKey(name)}</p>
+                    <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5 break-all">
+                      Key: <span className="font-mono">{name}</span>
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => openEditEventCategory(name)}
+                      className="px-3 py-1.5 rounded-lg text-sm bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                      disabled={eventCategoryActionBusy}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openDeleteEventCategory(name)}
+                      className="px-3 py-1.5 rounded-lg text-sm bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                      disabled={eventCategoryActionBusy}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
       {isAdmin && showEditCommitteeModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="w-full max-w-xl bg-white dark:bg-zinc-900 rounded-xl shadow-2xl p-5 space-y-4 animate-fade-in-up">
@@ -673,6 +887,128 @@ function Members() {
                   onClick={handleCommitteeDelete}
                   className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors text-sm disabled:opacity-60 disabled:cursor-not-allowed"
                   disabled={committeeActionBusy}
+                >
+                  Confirm Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isAdmin && showEditEventCategoryModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="w-full max-w-xl bg-white dark:bg-zinc-900 rounded-xl shadow-2xl p-5 space-y-4 animate-fade-in-up">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-gray-800 dark:text-zinc-100">Edit Event Category</h3>
+              <button
+                type="button"
+                onClick={() => {
+                  if (eventCategoryActionBusy) return
+                  setShowEditEventCategoryModal(false)
+                  setEventCategoryToEdit('')
+                  setEditedEventCategoryName('')
+                  setEventCategoryError('')
+                }}
+                className="px-3 py-1.5 bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-100 rounded-lg hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                disabled={eventCategoryActionBusy}
+              >
+                Close
+              </button>
+            </div>
+
+            {eventCategoryError && <p className="text-sm text-red-600">{eventCategoryError}</p>}
+
+            <form onSubmit={handleEventCategoryRename} className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <input
+                type="text"
+                value={editedEventCategoryName}
+                onChange={e => setEditedEventCategoryName(e.target.value)}
+                placeholder="New category name"
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                required
+              />
+              <button
+                type="submit"
+                className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                disabled={eventCategoryActionBusy}
+              >
+                Save
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {isAdmin && showDeleteEventCategoryModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="w-full max-w-xl bg-white dark:bg-zinc-900 rounded-xl shadow-2xl p-5 space-y-4 animate-fade-in-up">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-gray-800 dark:text-zinc-100">Delete Event Category</h3>
+              <button
+                type="button"
+                onClick={() => {
+                  if (eventCategoryActionBusy) return
+                  setShowDeleteEventCategoryModal(false)
+                  setEventCategoryToDelete('')
+                  setFallbackEventCategory('')
+                  setEventCategoryError('')
+                }}
+                className="px-3 py-1.5 bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-100 rounded-lg hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                disabled={eventCategoryActionBusy}
+              >
+                Close
+              </button>
+            </div>
+
+            {eventCategoryError && <p className="text-sm text-red-600">{eventCategoryError}</p>}
+
+            <div className="rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/30 p-4 space-y-3">
+              <p className="text-sm text-red-700 dark:text-red-200">
+                You are about to delete <span className="font-semibold">{titleCaseFromKey(eventCategoryToDelete)}</span>.
+              </p>
+              <p className="text-xs text-red-700 dark:text-red-200">
+                If this category is used by existing events, you must choose a fallback category to reassign them.
+              </p>
+
+              <div>
+                <label className="block text-xs text-gray-700 dark:text-zinc-200 mb-1">Fallback category (optional)</label>
+                <select
+                  value={fallbackEventCategory}
+                  onChange={e => setFallbackEventCategory(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                >
+                  <option value="">No fallback</option>
+                  {eventCategoryOptions
+                    .filter(name => name !== eventCategoryToDelete)
+                    .map(name => (
+                      <option key={name} value={name}>
+                        {titleCaseFromKey(name)}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (eventCategoryActionBusy) return
+                    setShowDeleteEventCategoryModal(false)
+                    setEventCategoryToDelete('')
+                    setFallbackEventCategory('')
+                    setEventCategoryError('')
+                  }}
+                  className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-100 hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                  disabled={eventCategoryActionBusy}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleEventCategoryDelete}
+                  className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                  disabled={eventCategoryActionBusy}
                 >
                   Confirm Delete
                 </button>
@@ -931,7 +1267,7 @@ function Members() {
 
                 <div className="mt-4 flex flex-wrap gap-2">
                   <span className="px-2 py-1 rounded bg-red-50 text-red-700 text-xs border border-red-200">
-                    Committee: {member.committee || committeeOptions[0] || 'N/A'}
+                    Committee: {member.committee || 'N/A'}
                   </span>
                   <span className="px-2 py-1 rounded bg-blue-50 text-blue-700 text-xs border border-blue-200">
                     Role: {member.role === 'admin' ? 'Admin' : 'Member'}
