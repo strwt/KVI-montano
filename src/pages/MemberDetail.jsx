@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { ArrowLeft, Mail, Calendar, User, Trash2 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -9,10 +9,8 @@ const BLOOD_TYPE_OPTIONS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
 function MemberDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { user, getAllMembers, deleteMembers, updateMember } = useAuth()
+  const { user, loading: authLoading, authResolved, getAllMembers, getAdmins, deleteMembers, updateMember } = useAuth()
   
-  const [member, setMember] = useState(null)
-  const [loading, setLoading] = useState(true)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showUpdateModal, setShowUpdateModal] = useState(false)
   const [actionError, setActionError] = useState('')
@@ -27,24 +25,9 @@ function MemberDetail() {
     memberSince: '',
   })
 
-  useEffect(() => {
-    const allMembers = getAllMembers()
-    const foundMember = allMembers.find(m => String(m.id) === String(id))
-    if (foundMember) {
-      setMember(foundMember)
-      setEditForm({
-        idNumber: foundMember.idNumber || '',
-        name: foundMember.name || '',
-        email: foundMember.email || '',
-        address: foundMember.address || '',
-        contactNumber: foundMember.contactNumber || '',
-        bloodType: foundMember.bloodType || '',
-        status: foundMember.status || 'active',
-        memberSince: (foundMember.memberSince || new Date().toISOString()).split('T')[0],
-      })
-    }
-    setLoading(false)
-  }, [id, getAllMembers])
+  const members = getAllMembers()
+  const admins = getAdmins()
+  const member = [...admins, ...members].find(m => String(m.id) === String(id)) || null
 
   const getRoleBadge = (role) => {
     return role === 'admin' 
@@ -54,7 +37,24 @@ function MemberDetail() {
 
   const isAdmin = user?.role === 'admin'
 
+  const openUpdateModal = () => {
+    if (!member) return
+    setActionError('')
+    setEditForm({
+      idNumber: member.idNumber || '',
+      name: member.name || '',
+      email: member.email || '',
+      address: member.address || '',
+      contactNumber: member.contactNumber || '',
+      bloodType: member.bloodType || '',
+      status: member.status || 'active',
+      memberSince: (member.memberSince || new Date().toISOString()).split('T')[0],
+    })
+    setShowUpdateModal(true)
+  }
+
   const handleDeleteMember = async () => {
+    if (!member) return
     setActionError('')
     const result = await deleteMembers([member.id])
     if (!result.success) {
@@ -66,6 +66,7 @@ function MemberDetail() {
 
   const handleUpdateMember = async (e) => {
     e.preventDefault()
+    if (!member) return
     setActionError('')
     const result = await updateMember(member.id, {
       idNumber: editForm.idNumber,
@@ -81,14 +82,10 @@ function MemberDetail() {
       setActionError(result.message || 'Unable to update member.')
       return
     }
-    setMember(prev => ({
-      ...prev,
-      ...editForm,
-    }))
     setShowUpdateModal(false)
   }
 
-  if (loading) {
+  if (!authResolved || authLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-600"></div>
@@ -113,6 +110,14 @@ function MemberDetail() {
     )
   }
 
+  const joinedDateLabel = (() => {
+    const raw = member?.memberSince
+    if (!raw) return 'N/A'
+    const date = new Date(raw)
+    if (Number.isNaN(date.getTime())) return 'N/A'
+    return date.toLocaleDateString()
+  })()
+
   return (
     <div className="animate-fade-in text-gray-900 dark:text-zinc-100">
       {/* Header */}
@@ -126,7 +131,7 @@ function MemberDetail() {
         </button>
         {isAdmin && (
           <button
-            onClick={() => setShowUpdateModal(true)}
+            onClick={openUpdateModal}
             className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
           >
             Update
@@ -165,7 +170,7 @@ function MemberDetail() {
                 </div>
                 <div className="flex items-center gap-3 text-gray-600 dark:text-zinc-400">
                   <Calendar size={18} className="text-gray-400" />
-                  <span>Joined {new Date(member.memberSince || Date.now()).toLocaleDateString()}</span>
+                  <span>Joined {joinedDateLabel}</span>
                 </div>
                 <div className="flex flex-wrap gap-2 pt-1">
                   <span className="px-2 py-1 rounded bg-red-50 text-red-700 text-xs border border-red-200">
@@ -205,7 +210,7 @@ function MemberDetail() {
           <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl shadow-md p-5">
             <p className="text-sm text-gray-500 mb-1">Member Since</p>
             <p className="text-lg font-semibold text-gray-800">
-              {new Date(member.memberSince || Date.now()).toLocaleDateString()}
+              {joinedDateLabel}
             </p>
           </div>
           <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl shadow-md p-5">

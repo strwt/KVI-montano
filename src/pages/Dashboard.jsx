@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useEffect, useMemo, useState } from 'react'
 import {
   Activity,
@@ -19,21 +20,12 @@ import { supabase } from '../lib/supabaseClient'
 import { fetchSupabaseEvents, isSupabaseEnabled } from '../lib/supabaseEvents'
 import { fetchMyNotifications } from '../lib/supabaseNotifications'
 
-const splitCategoryAndType = (value = '') => {
-  const raw = String(value || '').trim()
-  if (!raw) return { category: '', type: '' }
-  const parts = raw.split(' - ')
-  if (parts.length === 1) return { category: parts[0], type: 'General' }
-  const category = parts.shift()?.trim() || ''
-  const type = parts.join(' - ').trim() || 'General'
-  return { category, type }
-}
-
 const normalizeCategoryKey = value =>
   String(value || '')
     .trim()
     .toLowerCase()
-    .replace(/\s+/g, '_')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
 
 const OPERATION_KEY_ALIASES = {
   relief_operations: 'relief_operation',
@@ -99,7 +91,7 @@ const getIconThemeClass = categoryKey => {
 }
 
 function Dashboard() {
-  const { user, committees } = useAuth()
+  const { user, eventCategories } = useAuth()
   const { t } = useI18n()
   const navigate = useNavigate()
   const isAdmin = user?.role === 'admin'
@@ -271,22 +263,41 @@ function Dashboard() {
     [userNotifications]
   )
 
+  const categoryLabelByKey = useMemo(() => {
+    const map = {}
+    const entries = Array.isArray(eventCategories) ? eventCategories : []
+    entries.forEach(entry => {
+      const key = canonicalizeOperationKey(normalizeCategoryKey(entry?.key))
+      const label = String(entry?.label || '').trim()
+      if (!key || !label) return
+      map[key] = label
+    })
+    return map
+  }, [eventCategories])
+
+  const getCategoryLabel = (value) => {
+    const key = canonicalizeOperationKey(normalizeCategoryKey(value))
+    if (!key) return t('Uncategorized')
+    return categoryLabelByKey[key] || OPERATION_META[key]?.label || titleCaseFromKey(key) || t('Uncategorized')
+  }
+
   const operations = useMemo(() => {
-    const committeeEntries = Array.isArray(committees) ? committees : []
-    const labelByKey = {}
-    committeeEntries.forEach(entry => {
-      const { category } = splitCategoryAndType(entry)
-      const key = canonicalizeOperationKey(normalizeCategoryKey(category))
+    const keySet = new Set(Object.keys(categoryLabelByKey))
+    if (keySet.size === 0) {
+      DEFAULT_OPERATION_ORDER.forEach(key => keySet.add(key))
+    }
+    events.forEach(event => {
+      const key = canonicalizeOperationKey(normalizeCategoryKey(event.category))
       if (!key) return
-      if (!labelByKey[key]) labelByKey[key] = category.trim()
+      keySet.add(key)
     })
 
-    const keysFromCommittees = Object.keys(labelByKey)
-    const keySet = new Set(keysFromCommittees)
     const keys = Array.from(keySet)
     const unknownKeys = keys
       .filter(key => !DEFAULT_OPERATION_ORDER.includes(key))
-      .sort((a, b) => titleCaseFromKey(a).localeCompare(titleCaseFromKey(b)))
+      .sort((a, b) =>
+        (categoryLabelByKey[a] || titleCaseFromKey(a)).localeCompare(categoryLabelByKey[b] || titleCaseFromKey(b))
+      )
     const orderedKeys = [
       ...DEFAULT_OPERATION_ORDER.filter(key => keySet.has(key)),
       ...unknownKeys,
@@ -294,10 +305,10 @@ function Dashboard() {
 
     return orderedKeys.map(key => ({
       key,
-      label: labelByKey[key] || OPERATION_META[key]?.label || titleCaseFromKey(key) || 'Uncategorized',
+      label: categoryLabelByKey[key] || OPERATION_META[key]?.label || titleCaseFromKey(key) || 'Uncategorized',
       icon: OPERATION_META[key]?.icon || FileText,
     }))
-  }, [events, committees])
+  }, [categoryLabelByKey, events])
 
   const categoryCounts = useMemo(() => {
     const counts = {}
@@ -307,32 +318,6 @@ function Dashboard() {
       counts[key] = (counts[key] || 0) + 1
     })
     return counts
-  }, [events])
-
-  const volunteerBars = useMemo(() => {
-    const map = {}
-    events.forEach(event => {
-      const names = (event.membersInvolve || '')
-        .split(',')
-        .map(name => name.trim())
-        .filter(Boolean)
-      names.forEach(name => {
-        map[name] = (map[name] || 0) + 1
-      })
-    })
-    const items = Object.entries(map)
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5)
-    return items.length ? items : [{ name: t('No assigned volunteers'), count: 0 }]
-  }, [events, t])
-
-  const maxVolunteerCount = useMemo(() => Math.max(...volunteerBars.map(item => item.count), 1), [volunteerBars])
-  const eventsThisMonth = useMemo(() => {
-    return events.filter(event => {
-      const dateValue = resolveEventDate(event)
-      return dateValue && dayjs(dateValue).isValid() && dayjs(dateValue).isSame(dayjs(), 'month')
-    }).length
   }, [events])
 
   const handleOpenEventInCalendar = event => {
@@ -624,7 +609,7 @@ function Dashboard() {
                   </p>
                 </div>
                 <span className="rounded-md border border-neutral-300 bg-neutral-100 px-2 py-1 text-[14px] capitalize text-neutral-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-                  {event.category || t('Uncategorized')}
+                  {getCategoryLabel(event.category)}
                 </span>
               </button>
             ))}
@@ -636,10 +621,5 @@ function Dashboard() {
 	    </div>
 	  )
 	}
-  const channel = supabase.channel('test')
-
-  channel.subscribe((status) => {
-    console.log('STATUS:', status)
-  })
 
 export default Dashboard

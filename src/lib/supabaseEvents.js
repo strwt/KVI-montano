@@ -3,6 +3,36 @@ import { isSupabaseConfigured, supabase } from './supabaseClient'
 
 export const isSupabaseEnabled = () => Boolean(isSupabaseConfigured && supabase)
 
+const normalizeEventCategoryKey = (value) =>
+  String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+
+const splitCategoryAndType = (value = '') => {
+  const raw = String(value || '').trim()
+  if (!raw) return { category: '', type: '' }
+  const parts = raw.split(' - ')
+  if (parts.length === 1) return { category: parts[0], type: '' }
+  const category = parts.shift()?.trim() || ''
+  const type = parts.join(' - ').trim() || ''
+  return { category, type }
+}
+
+const EVENT_CATEGORY_KEY_ALIASES = {
+  relief_operations: 'relief_operation',
+  fire_responses: 'fire_response',
+  water_distributions: 'water_distribution',
+  blood_lettings: 'blood_letting',
+}
+
+const canonicalizeEventCategoryKey = (key) => EVENT_CATEGORY_KEY_ALIASES[key] || key
+const toEventCategoryKey = (value) => {
+  const { category } = splitCategoryAndType(value)
+  return canonicalizeEventCategoryKey(normalizeEventCategoryKey(category))
+}
+
 export const mapEventRowToEvent = (row) => {
   if (!row) return null
   return {
@@ -16,7 +46,7 @@ export const mapEventRowToEvent = (row) => {
     membersInvolve: row.members_involve || '',
     assignedMemberIds: Array.isArray(row.assigned_member_ids) ? row.assigned_member_ids : [],
     viewedBy: Array.isArray(row.viewed_by) ? row.viewed_by : [],
-    category: row.category || 'notes',
+    category: toEventCategoryKey(row.category) || 'notes',
     categoryData: row.category_data && typeof row.category_data === 'object' ? row.category_data : {},
     status: row.status === 'done' ? 'done' : 'ongoing',
     completedAt: row.completed_at || null,
@@ -45,7 +75,7 @@ export const insertSupabaseEvent = async (event, currentUser) => {
     id: event.id,
     title: event.title || '',
     content: event.content || '',
-    category: event.category || 'notes',
+    category: toEventCategoryKey(event.category) || 'notes',
     date_time: event.dateTime,
     address: event.address || '',
     location: event.location || null,
@@ -69,7 +99,7 @@ export const updateSupabaseEvent = async (eventId, payload) => {
   const dbPatch = {
     title: payload.title || '',
     content: payload.content || '',
-    category: payload.category || 'notes',
+    category: toEventCategoryKey(payload.category) || 'notes',
     date_time: payload.dateTime,
     address: payload.address || '',
     location: payload.location || null,

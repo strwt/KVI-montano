@@ -34,7 +34,6 @@ const buildProfilePatch = (updates = {}) => {
 
   if (Object.prototype.hasOwnProperty.call(updates, 'name')) patch.name = normalizeText(updates.name) || ''
   if (Object.prototype.hasOwnProperty.call(updates, 'committee')) patch.committee = normalizeText(updates.committee) || null
-  if (Object.prototype.hasOwnProperty.call(updates, 'category')) patch.category = normalizeText(updates.category) || null
   if (Object.prototype.hasOwnProperty.call(updates, 'address')) patch.address = normalizeText(updates.address) || null
   if (Object.prototype.hasOwnProperty.call(updates, 'contactNumber')) patch.contact_number = normalizeText(updates.contactNumber) || null
   if (Object.prototype.hasOwnProperty.call(updates, 'bloodType')) {

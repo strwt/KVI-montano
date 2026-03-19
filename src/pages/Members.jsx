@@ -22,7 +22,6 @@ import {
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import dayjs from 'dayjs'
-import { supabase } from '../lib/supabaseClient'
 
 /* eslint-disable react-hooks/set-state-in-effect */
 
@@ -33,71 +32,32 @@ const ROLE_OPTIONS = [
 const COMMITTEE_OPTIONS = ['Environmental', 'Relief Operations', 'Fire Response', 'Medical']
 const BLOOD_TYPE_OPTIONS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
 
-const normalizeCategoryKey = value =>
-  String(value || '')
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, '_')
-
-const OPERATION_KEY_ALIASES = {
-  relief_operations: 'relief_operation',
-  fire_responses: 'fire_response',
-  water_distributions: 'water_distribution',
-  blood_lettings: 'blood_letting',
-}
-
-const canonicalizeCategoryKey = key => OPERATION_KEY_ALIASES[key] || key
-
-const titleCaseFromKey = key =>
-  String(key || '')
-    .trim()
-    .replace(/_/g, ' ')
-    .replace(/\w\S*/g, word => word.charAt(0).toUpperCase() + word.slice(1))
-
-const splitCategoryAndType = (value = '') => {
-  const raw = String(value || '').trim()
-  if (!raw) return { category: '', type: '' }
-  const parts = raw.split(' - ')
-  if (parts.length === 1) return { category: parts[0], type: 'General' }
-  const category = parts.shift()?.trim() || ''
-  const type = parts.join(' - ').trim() || 'General'
-  return { category, type }
-}
-
 function Members() {
   const {
     user,
     getAllMembers,
+    getAdmins,
     createMember,
     committees,
     addCommittee,
     editCommittee,
     deleteCommittee,
-    utilitiesByCommittee,
     getRecruitments,
     rejectRecruitment,
   } = useAuth()
   const navigate = useNavigate()
   const [searchQuery, setSearchQuery] = useState('')
+  const [roleFilter, setRoleFilter] = useState('member')
   const [committeeFilter, setCommitteeFilter] = useState('all')
-  const [categoryFilter, setCategoryFilter] = useState('all')
-	  const [currentPage, setCurrentPage] = useState(1)
-	  const [committeeName, setCommitteeName] = useState('')
-	  const [showAddOperationModal, setShowAddOperationModal] = useState(false)
-	  const [_showAddOperationTypeInline, setShowAddOperationTypeInline] = useState(false)
-	  const [showEditOperationForm, setShowEditOperationForm] = useState(false)
-	  const [showDeleteOperationForm, setShowDeleteOperationForm] = useState(false)
-	  const [showOperationManagementPanel, setShowOperationManagementPanel] = useState(false)
-  const [selectedOperationCategory, setSelectedOperationCategory] = useState('')
-  const [selectedOperationType, setSelectedOperationType] = useState('')
-  const [deleteOperationCategory, setDeleteOperationCategory] = useState('')
-	  const [deleteOperationType, setDeleteOperationType] = useState('')
-	  const [editedOperationCategory, setEditedOperationCategory] = useState('')
-	  const [_editedOperationType, setEditedOperationType] = useState('')
-	  const [addTypeOperationCategory, setAddTypeOperationCategory] = useState('')
-	  const [newOperationTypeName, setNewOperationTypeName] = useState('')
-	  const [addModalCategory, setAddModalCategory] = useState('')
-	  const [_addModalType, setAddModalType] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [committeeName, setCommitteeName] = useState('')
+  const [committeeActionBusy, setCommitteeActionBusy] = useState(false)
+  const [showEditCommitteeModal, setShowEditCommitteeModal] = useState(false)
+  const [committeeToEdit, setCommitteeToEdit] = useState('')
+  const [editedCommitteeName, setEditedCommitteeName] = useState('')
+  const [showDeleteCommitteeModal, setShowDeleteCommitteeModal] = useState(false)
+  const [committeeToDelete, setCommitteeToDelete] = useState('')
+  const [fallbackCommittee, setFallbackCommittee] = useState('')
   const [committeeError, setCommitteeError] = useState('')
   const [formError, setFormError] = useState('')
   const [recruitmentActionError, setRecruitmentActionError] = useState('')
@@ -109,16 +69,16 @@ function Members() {
 	    password: '',
 	    address: '',
 	    contactNumber: '',
-	    bloodType: '',
+    bloodType: '',
     memberSince: dayjs().format('YYYY-MM-DD'),
     role: ROLE_OPTIONS[0].value,
-    committee: splitCategoryAndType(committees[0] || COMMITTEE_OPTIONS[0]).category || COMMITTEE_OPTIONS[0],
-    category: splitCategoryAndType(committees[0] || COMMITTEE_OPTIONS[0]).category || COMMITTEE_OPTIONS[0],
+    committee: committees[0] || COMMITTEE_OPTIONS[0],
   })
   const [showTempPassword, setShowTempPassword] = useState(false)
   const membersPerPage = 9
 
-  const allMembers = getAllMembers()
+  const members = getAllMembers()
+  const admins = getAdmins()
   const isAdmin = user?.role === 'admin'
   const recruitments = getRecruitments()
 
@@ -131,111 +91,37 @@ function Members() {
     [recruitments]
   )
 
-  const memberCommittees = useMemo(() => {
-    if (Array.isArray(committees) && committees.length > 0) return committees
-    return COMMITTEE_OPTIONS
+  const committeeOptions = useMemo(() => {
+    const list = Array.isArray(committees) && committees.length > 0 ? committees : COMMITTEE_OPTIONS
+    const normalized = list.map(name => String(name || '').trim()).filter(Boolean)
+    const unique = [...new Set(normalized)]
+    unique.sort((a, b) => a.localeCompare(b))
+    return unique.length > 0 ? unique : COMMITTEE_OPTIONS
   }, [committees])
 
-  const memberOperations = useMemo(() => {
-    const operations = Array.from(
-      new Set(
-        memberCommittees
-          .map(entry => splitCategoryAndType(entry).category)
-          .filter(Boolean)
-      )
-    )
-    return operations.length > 0 ? operations : COMMITTEE_OPTIONS
-  }, [memberCommittees])
-
-  const categoryLabelByKey = useMemo(() => {
-    const map = {}
-    memberCommittees.forEach(entry => {
-      const { category } = splitCategoryAndType(entry)
-      const key = canonicalizeCategoryKey(normalizeCategoryKey(category))
-      if (!key) return
-      if (!map[key]) map[key] = category.trim()
+  useEffect(() => {
+    if (committeeOptions.length === 0) return
+    setNewMember(prev => {
+      const currentCommittee = String(prev?.committee || '').trim()
+      if (currentCommittee && committeeOptions.includes(currentCommittee)) return prev
+      return { ...prev, committee: committeeOptions[0] }
     })
-    return map
-  }, [memberCommittees])
+  }, [committeeOptions])
 
-	  useEffect(() => {
-	    if (!newMember.committee) {
-	      setNewMember(prev => ({ ...prev, committee: memberOperations[0], category: memberOperations[0] }))
-	    }
-	    if (newMember.committee && !memberOperations.includes(newMember.committee)) {
-	      setNewMember(prev => ({ ...prev, committee: memberOperations[0], category: memberOperations[0] }))
-	    }
-	  }, [memberOperations, newMember.committee])
+  useEffect(() => {
+    if (committeeFilter === 'all') return
+    if (committeeOptions.includes(committeeFilter)) return
+    setCommitteeFilter('all')
+  }, [committeeFilter, committeeOptions])
 
-  const operationTypesByCategory = useMemo(() => {
-    return memberCommittees.reduce((acc, entry) => {
-      const { category, type } = splitCategoryAndType(entry)
-      const key = canonicalizeCategoryKey(normalizeCategoryKey(category))
-      if (!key) return acc
-      if (!acc[key]) acc[key] = []
-      if (type && !acc[key].includes(type)) acc[key].push(type)
-      return acc
-    }, {})
-  }, [memberCommittees])
+  const visibleUsers = roleFilter === 'admin' ? admins : members
 
-  const operationCategories = useMemo(
-    () => Object.keys(categoryLabelByKey).sort((a, b) => (categoryLabelByKey[a] || a).localeCompare(categoryLabelByKey[b] || b)),
-    [categoryLabelByKey]
-  )
-
-  const selectedCategoryTypes = useMemo(
-    () => operationTypesByCategory[selectedOperationCategory] || [],
-    [operationTypesByCategory, selectedOperationCategory]
-  )
-  const deleteCategoryTypes = useMemo(
-    () => operationTypesByCategory[deleteOperationCategory] || [],
-    [operationTypesByCategory, deleteOperationCategory]
-  )
-  const operationEntryByCategoryType = useMemo(() => {
-    return memberCommittees.reduce((acc, entry) => {
-      const { category, type } = splitCategoryAndType(entry)
-      const key = canonicalizeCategoryKey(normalizeCategoryKey(category))
-      if (!key || !type) return acc
-      acc[`${key}|||${type}`] = entry
-      return acc
-    }, {})
-  }, [memberCommittees])
-
-	  useEffect(() => {
-	    if (selectedOperationCategory && !operationCategories.includes(selectedOperationCategory)) {
-	      setSelectedOperationCategory('')
-	      setSelectedOperationType('')
-	      setEditedOperationCategory('')
-	      setEditedOperationType('')
-	    }
-	  }, [operationCategories, selectedOperationCategory])
-
-	  useEffect(() => {
-	    if (selectedOperationType && !selectedCategoryTypes.includes(selectedOperationType)) {
-	      setSelectedOperationType('')
-	      setEditedOperationType('')
-	    }
-	  }, [selectedCategoryTypes, selectedOperationType])
-
-	  useEffect(() => {
-	    if (deleteOperationType && !deleteCategoryTypes.includes(deleteOperationType)) {
-	      setDeleteOperationType('')
-	    }
-	  }, [deleteCategoryTypes, deleteOperationType])
-
-		  useEffect(() => {
-		    if (selectedOperationCategory && !editedOperationCategory) {
-		      setEditedOperationCategory(categoryLabelByKey[selectedOperationCategory] || titleCaseFromKey(selectedOperationCategory))
-		    }
-		  }, [selectedOperationCategory, editedOperationCategory, categoryLabelByKey])
-
-  const filteredMembers = allMembers.filter(member => {
+  const filteredMembers = visibleUsers.filter(member => {
     const matchesSearch =
       member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (member.email || member.idNumber || '').toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesCommittee = committeeFilter === 'all' || member.role === committeeFilter
-    const matchesCategory = categoryFilter === 'all' || member.committee === categoryFilter
-    return matchesSearch && matchesCommittee && matchesCategory
+    const matchesCommittee = committeeFilter === 'all' || member.committee === committeeFilter
+    return matchesSearch && matchesCommittee
   })
 
   const indexOfLastMember = currentPage * membersPerPage
@@ -253,184 +139,155 @@ function Members() {
     navigate(`/members/${memberId}`)
   }
 
+  const userCountByCommittee = (() => {
+    const map = {}
+    const allUsers = [...admins, ...members]
+    allUsers.forEach(member => {
+      const committee = String(member?.committee || '').trim()
+      if (!committee) return
+      map[committee] = (map[committee] || 0) + 1
+    })
+    return map
+  })()
+
   const handleCommitteeAdd = async (e) => {
-	    e.preventDefault()
-	    setCommitteeError('')
-	    const normalizedCategory = committeeName.trim()
-		    if (!normalizedCategory) {
-		      setCommitteeError('Category name is required.')
-		      return
-		    }
-	    const normalizedLower = normalizedCategory.toLowerCase()
-	    const operationExists = operationCategories.some(categoryKey => {
-	      const label = categoryLabelByKey[categoryKey] || titleCaseFromKey(categoryKey)
-	      return label.toLowerCase() === normalizedLower
-	    })
-	    if (operationExists) {
-	      setCommitteeError('Category name already exists.')
-	      return
-	    }
-	    const result = await addCommittee(`${normalizedCategory} - General`)
-	    if (!result.success) {
-	      setCommitteeError(result.message)
-	      return
-	    }
-    setSelectedOperationCategory(canonicalizeCategoryKey(normalizeCategoryKey(normalizedCategory)))
-    setSelectedOperationType('General')
+    e.preventDefault()
+    if (!isAdmin) return
+    setCommitteeError('')
+
+    const name = committeeName.trim()
+    if (!name) {
+      setCommitteeError('Committee name is required.')
+      return
+    }
+
+    const exists = committeeOptions.some(item => item.toLowerCase() === name.toLowerCase())
+    if (exists) {
+      setCommitteeError('Committee already exists.')
+      return
+    }
+
+    setCommitteeActionBusy(true)
+    const result = await addCommittee(name)
+    setCommitteeActionBusy(false)
+
+    if (!result.success) {
+      setCommitteeError(result.message)
+      return
+    }
+
     setCommitteeName('')
-    setAddModalCategory(canonicalizeCategoryKey(normalizeCategoryKey(normalizedCategory)))
-    setAddModalType('General')
-    setShowAddOperationModal(false)
-    setShowAddOperationTypeInline(false)
   }
 
-		  const _handleAddOperationType = async (e) => {
-		    e.preventDefault()
-		    setCommitteeError('')
-		    const operationName = (categoryLabelByKey[addTypeOperationCategory] || '').trim()
-		    const typeName = newOperationTypeName.trim()
-    if (!operationName || !typeName) {
-      setCommitteeError('Category name and new type are required.')
-      return
-    }
-    const existingTypes = operationTypesByCategory[addTypeOperationCategory] || []
-    const hasDuplicateType = existingTypes.some(type => type.toLowerCase() === typeName.toLowerCase())
-    if (hasDuplicateType) {
-      setCommitteeError('Type already exists under this category.')
-      return
-    }
-	    const result = await addCommittee(`${operationName} - ${typeName}`)
-	    if (!result.success) {
-	      setCommitteeError(result.message)
-	      return
-	    }
-    setSelectedOperationCategory(addTypeOperationCategory)
-    setSelectedOperationType(typeName)
-    setAddModalCategory(addTypeOperationCategory)
-    setAddModalType(typeName)
-    setAddTypeOperationCategory('')
-    setNewOperationTypeName('')
-    setShowAddOperationTypeInline(false)
+  const openEditCommittee = (name) => {
+    if (!isAdmin) return
+    setCommitteeError('')
+    setCommitteeToEdit(name)
+    setEditedCommitteeName(name)
+    setShowEditCommitteeModal(true)
   }
 
-	  const handleCommitteeRename = async (e) => {
-	    e.preventDefault()
-	    setCommitteeError('')
-    if (!selectedOperationCategory) {
-      setCommitteeError('Select category name to update.')
-      return
-    }
-    const nextCategory = editedOperationCategory.trim()
-    if (!nextCategory) {
-      setCommitteeError('New category name is required.')
-      return
-    }
+  const handleCommitteeRename = async (e) => {
+    e.preventDefault()
+    if (!isAdmin) return
+    setCommitteeError('')
 
-    const nextKey = canonicalizeCategoryKey(normalizeCategoryKey(nextCategory))
-    if (!nextKey) {
-      setCommitteeError('New category name is required.')
+    const source = committeeToEdit.trim()
+    const target = editedCommitteeName.trim()
+
+    if (!source) {
+      setCommitteeError('Select a committee to edit.')
       return
     }
 
-    if (
-      selectedOperationCategory !== nextKey &&
-      operationCategories.includes(nextKey)
-    ) {
-      setCommitteeError('Category name already exists.')
+    if (!target) {
+      setCommitteeError('New committee name is required.')
       return
     }
 
-    const entriesToRename = memberCommittees.filter(entry => {
-      const { category } = splitCategoryAndType(entry)
-      const key = canonicalizeCategoryKey(normalizeCategoryKey(category))
-      return key === selectedOperationCategory
-    })
+    const exists = committeeOptions.some(item => item.toLowerCase() === target.toLowerCase() && item !== source)
+    if (exists) {
+      setCommitteeError('Committee name already exists.')
+      return
+    }
 
-	    // Update saved category entries (if any).
-	    for (const source of entriesToRename) {
-	      const { type } = splitCategoryAndType(source)
-	      const target = `${nextCategory} - ${type || 'General'}`
-	      const result = await editCommittee(source, target)
-	      if (!result.success) {
-	        setCommitteeError(result.message)
-	        return
-	      }
-	    }
+    setCommitteeActionBusy(true)
+    const result = await editCommittee(source, target)
+    setCommitteeActionBusy(false)
 
-    // If this category only existed in events (no saved entries), persist it as a managed category.
-    if (entriesToRename.length === 0) {
-      const result = await addCommittee(`${nextCategory} - General`)
-      if (!result.success) {
-	        setCommitteeError(result.message)
-	        return
-	      }
-	    }
+    if (!result.success) {
+      setCommitteeError(result.message)
+      return
+    }
 
-    setSelectedOperationCategory(nextKey)
-    setEditedOperationCategory(nextCategory)
+    setShowEditCommitteeModal(false)
+
+    setCommitteeFilter(prev => (prev === source ? target : prev))
+    setNewMember(prev => (prev.committee === source ? { ...prev, committee: target } : prev))
   }
 
-	  const handleDeleteOperation = async () => {
-	    setCommitteeError('')
-	    if (!deleteOperationCategory) {
-	      setCommitteeError('Select category name first.')
+  const openDeleteCommittee = (name) => {
+    if (!isAdmin) return
+    setCommitteeError('')
+    setCommitteeToDelete(name)
+    const fallback = committeeOptions.find(item => item !== name) || ''
+    setFallbackCommittee(fallback)
+    setShowDeleteCommitteeModal(true)
+  }
+
+  const handleCommitteeDelete = async () => {
+    if (!isAdmin) return
+    setCommitteeError('')
+
+    const committee = committeeToDelete.trim()
+    if (!committee) {
+      setCommitteeError('Select a committee to delete.')
       return
     }
 
-    const entriesForOperation = memberCommittees.filter(entry => {
-      const { category } = splitCategoryAndType(entry)
-      const key = canonicalizeCategoryKey(normalizeCategoryKey(category))
-      return key === deleteOperationCategory
-    })
+    const affectedCount = userCountByCommittee[committee] || 0
+    const fallback = fallbackCommittee.trim()
 
-	    // Delete saved category entries (if any).
-	    if (entriesForOperation.length > 0) {
-	      if (memberCommittees.length - entriesForOperation.length < 1) {
-	        setCommitteeError('At least one category entry must remain.')
-	        return
-	      }
-	      const fallbackCommittee = memberCommittees.find(entry => !entriesForOperation.includes(entry)) || ''
-		      for (const entry of entriesForOperation) {
-		        const result = await deleteCommittee(entry, fallbackCommittee)
-		        if (!result.success) {
-		          setCommitteeError(result.message)
-		          return
-		        }
-        if (categoryFilter === entry) {
-          setCategoryFilter('all')
-        }
+    if (affectedCount > 0) {
+      if (!fallback) {
+        setCommitteeError('Select a committee to reassign members to before deleting.')
+        return
+      }
+      if (fallback === committee) {
+        setCommitteeError('Fallback committee must be different.')
+        return
       }
     }
 
-    // If this category key only existed in events (no saved entries), clear it.
-    if (entriesForOperation.length === 0 && deleteOperationCategory) {
-      await supabase.from('events').update({ category: 'notes' }).eq('category', deleteOperationCategory)
+    if (!fallback && committeeOptions.length <= 1) {
+      setCommitteeError('Add another committee before deleting the last one.')
+      return
     }
 
-    if (selectedOperationCategory === deleteOperationCategory) {
-      setSelectedOperationCategory('')
-      setSelectedOperationType('')
-      setEditedOperationCategory('')
-      setEditedOperationType('')
+    setCommitteeActionBusy(true)
+    const result = await deleteCommittee(committee, fallback || null)
+    setCommitteeActionBusy(false)
+
+    if (!result.success) {
+      setCommitteeError(result.message)
+      return
     }
-    setDeleteOperationCategory('')
-    setDeleteOperationType('')
+
+    setShowDeleteCommitteeModal(false)
+
+    setCommitteeFilter(prev => (prev === committee ? 'all' : prev))
+    setNewMember(prev => {
+      if (prev.committee !== committee) return prev
+      const nextCommittee = fallback || committeeOptions.find(item => item !== committee) || ''
+      return { ...prev, committee: nextCommittee }
+    })
   }
-
-  const selectedOperationKey = selectedOperationCategory && selectedOperationType
-    ? (operationEntryByCategoryType[`${selectedOperationCategory}|||${selectedOperationType}`] || `${categoryLabelByKey[selectedOperationCategory] || titleCaseFromKey(selectedOperationCategory)} - ${selectedOperationType}`)
-    : ''
-  const selectedOperationUtilities = selectedOperationKey ? (utilitiesByCommittee[selectedOperationKey] || []) : []
-  const operationNameExists = operationCategories.some(
-    categoryKey => (categoryLabelByKey[categoryKey] || '').toLowerCase() === committeeName.trim().toLowerCase()
-  )
 
 	  const handleCreateMember = async (e) => {
 	    e.preventDefault()
 	    setFormError('')
 	    const result = await createMember({
 	      ...newMember,
-	      category: newMember.committee,
 	      recruitmentId: pendingApprovalRecruitmentId || undefined,
 	    })
     if (!result.success) {
@@ -446,8 +303,7 @@ function Members() {
       bloodType: '',
       memberSince: dayjs().format('YYYY-MM-DD'),
       role: ROLE_OPTIONS[0].value,
-      committee: memberOperations[0] || COMMITTEE_OPTIONS[0],
-      category: memberOperations[0] || COMMITTEE_OPTIONS[0],
+      committee: committeeOptions[0] || COMMITTEE_OPTIONS[0],
     })
     setPendingApprovalRecruitmentId(null)
     setRecruitmentActionError('')
@@ -471,8 +327,7 @@ function Members() {
       bloodType: recruitment.bloodType || '',
       memberSince: dayjs().format('YYYY-MM-DD'),
       role: ROLE_OPTIONS[0].value,
-      committee: memberOperations[0] || COMMITTEE_OPTIONS[0],
-      category: memberOperations[0] || COMMITTEE_OPTIONS[0],
+      committee: committeeOptions[0] || COMMITTEE_OPTIONS[0],
     })
     const createMemberSection = document.getElementById('create-member-form')
     if (createMemberSection) {
@@ -492,6 +347,8 @@ function Members() {
     }
   }
 
+  const deletingCommitteeAssignedCount = committeeToDelete ? (userCountByCommittee[committeeToDelete] || 0) : 0
+
   return (
     <div className="animate-fade-in text-gray-900 dark:text-zinc-100">
       <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
@@ -504,66 +361,64 @@ function Members() {
       {isAdmin && (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
           <div className="bg-white dark:bg-zinc-900 border border-red-600 rounded-2xl shadow-md p-5">
-            <h3 className="font-semibold text-gray-800 dark:text-zinc-100 mb-3">Category Management</h3>
-            <button
-              type="button"
-              onClick={() => setShowOperationManagementPanel(prev => !prev)}
-              className="w-full px-3 py-2 mb-3 bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-100 rounded-lg hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors text-sm"
-            >
-              {showOperationManagementPanel ? 'Hide Category Actions' : 'Show Category Actions'}
-            </button>
-            {showOperationManagementPanel && (
-              <div className="space-y-4 mb-3">
-                <div className="max-w-3xl mx-auto space-y-4">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowAddOperationModal(true)
-                      setShowEditOperationForm(false)
-                      setShowDeleteOperationForm(false)
-                      setCommitteeError('')
-                    }}
-                    className="w-full py-3 rounded-full text-lg font-medium bg-green-500 text-white hover:bg-green-600 transition-colors"
-                  >
-                    Add
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowEditOperationForm(true)
-                      setShowDeleteOperationForm(false)
-                      setCommitteeError('')
-                    }}
-                    className="w-full py-3 rounded-full text-lg font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowDeleteOperationForm(true)
-                      setShowEditOperationForm(false)
-                      setCommitteeError('')
-                    }}
-                    className="w-full py-3 rounded-full text-lg font-medium bg-red-600 text-white hover:bg-red-700 transition-colors"
-                  >
-                    Delete
-                  </button>
-                </div>
+            <h3 className="font-semibold text-gray-800 dark:text-zinc-100 mb-3">Committee Management</h3>
+            {committeeError && <p className="text-sm text-red-600 mb-3">{committeeError}</p>}
 
-              {selectedOperationUtilities.length > 0 && (
-                <div className="rounded-lg border border-gray-200 p-3 bg-white">
-                  <p className="text-xs text-gray-500 mb-2">Saved Utilities for Selected Category</p>
-                  <div className="space-y-1">
-                    {selectedOperationUtilities.map(item => (
-                      <p key={item} className="text-sm text-gray-700">{item}</p>
-                    ))}
+            <form onSubmit={handleCommitteeAdd} className="flex flex-col sm:flex-row gap-2 mb-4">
+              <input
+                type="text"
+                value={committeeName}
+                onChange={e => setCommitteeName(e.target.value)}
+                placeholder="New committee name"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                disabled={committeeActionBusy}
+              />
+              <button
+                type="submit"
+                className="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                disabled={committeeActionBusy}
+              >
+                Add
+              </button>
+            </form>
+
+            <div className="space-y-2 max-h-[420px] overflow-auto pr-1">
+              {committeeOptions.length === 0 ? (
+                <p className="text-sm text-gray-500 dark:text-zinc-400">No committees available.</p>
+              ) : (
+                committeeOptions.map(name => (
+                  <div
+                    key={name}
+                    className="flex items-start justify-between gap-3 rounded-xl border border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-gray-800 dark:text-zinc-100 truncate">{name}</p>
+                      <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5">
+                        {userCountByCommittee[name] || 0} assigned
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => openEditCommittee(name)}
+                        className="px-3 py-1.5 rounded-lg text-sm bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                        disabled={committeeActionBusy}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openDeleteCommittee(name)}
+                        className="px-3 py-1.5 rounded-lg text-sm bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                        disabled={committeeActionBusy}
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
-                </div>
+                ))
               )}
-              </div>
-            )}
-            {showOperationManagementPanel && committeeError && <p className="text-sm text-red-600 mb-2">{committeeError}</p>}
+            </div>
 
           </div>
 
@@ -680,16 +535,16 @@ function Members() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs text-gray-500 mb-1">Category</label>
+                <label className="block text-xs text-gray-500 mb-1">Committee</label>
                 <select
                   value={newMember.committee}
-                  onChange={e => setNewMember({ ...newMember, committee: e.target.value, category: e.target.value })}
+                  onChange={e => setNewMember({ ...newMember, committee: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                   required
                 >
-                  {memberOperations.map(operation => (
-                    <option key={operation} value={operation}>
-                      {operation}
+                  {committeeOptions.map(committee => (
+                    <option key={committee} value={committee}>
+                      {committee}
                     </option>
                   ))}
                 </select>
@@ -705,169 +560,123 @@ function Members() {
         </div>
       )}
 
-      {isAdmin && showAddOperationModal && (
+      {isAdmin && showEditCommitteeModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="w-full max-w-2xl bg-white rounded-xl shadow-2xl p-5 space-y-4 animate-fade-in-up">
+          <div className="w-full max-w-xl bg-white dark:bg-zinc-900 rounded-xl shadow-2xl p-5 space-y-4 animate-fade-in-up">
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-gray-800">Add Category</h3>
+              <h3 className="font-semibold text-gray-800 dark:text-zinc-100">Edit Committee</h3>
               <button
                 type="button"
                 onClick={() => {
-                  setShowAddOperationModal(false)
+                  if (committeeActionBusy) return
+                  setShowEditCommitteeModal(false)
+                  setCommitteeToEdit('')
+                  setEditedCommitteeName('')
+                  setCommitteeError('')
                 }}
-                className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm"
+                className="px-3 py-1.5 bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-100 rounded-lg hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                disabled={committeeActionBusy}
               >
                 Close
               </button>
             </div>
 
-            <form onSubmit={handleCommitteeAdd} className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">Category name</label>
-                <input
-                  type="text"
-                  value={committeeName}
-                  onChange={e => setCommitteeName(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                  required
-                />
-                {operationNameExists && (
-                  <p className="text-xs text-amber-600 mt-1">
-                    Category name already exists. Add a new type only.
-                  </p>
-                )}
-              </div>
-              <button
-                type="submit"
-                className="md:col-span-2 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-              >
-                Add
-              </button>
-
-	              <div className="md:col-span-2 rounded-lg border border-gray-200 bg-gray-50 p-3 space-y-2">
-	                <p className="text-sm text-gray-600">Saved Category names</p>
-	                <div className="grid grid-cols-1 gap-2">
-		                  <select
-		                    value={addModalCategory}
-		                    onChange={e => {
-		                      const value = e.target.value
-		                      setAddModalCategory(value)
-		                    }}
-		                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-		                  >
-		                    <option value="">Select category name</option>
-	                    {operationCategories.map(categoryKey => (
-	                      <option key={categoryKey} value={categoryKey}>
-	                        {categoryLabelByKey[categoryKey] || titleCaseFromKey(categoryKey)}
-		                      </option>
-		                    ))}
-		                  </select>
-		                </div>
-		              </div>
-	            </form>
-
-          </div>
-        </div>
-      )}
-
-      {isAdmin && showEditOperationForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="w-full max-w-xl bg-white rounded-xl shadow-2xl p-5 space-y-4 animate-fade-in-up">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-gray-800">Edit Category</h3>
-              <button
-                type="button"
-                onClick={() => setShowEditOperationForm(false)}
-                className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm"
-              >
-                Close
-              </button>
-            </div>
-            {committeeError && <p className="text-sm text-red-600">{committeeError}</p>}
             <form onSubmit={handleCommitteeRename} className="grid grid-cols-1 md:grid-cols-2 gap-2">
-	              <select
-	                value={selectedOperationCategory}
-	                onChange={e => {
-	                  const value = e.target.value
-	                  setSelectedOperationCategory(value)
-	                  setEditedOperationCategory(categoryLabelByKey[value] || titleCaseFromKey(value))
-	                }}
-	                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-	                required
-	              >
-		                <option value="">Select category name</option>
-	                {operationCategories.map(categoryKey => (
-	                  <option key={categoryKey} value={categoryKey}>
-	                    {categoryLabelByKey[categoryKey] || titleCaseFromKey(categoryKey)}
-	                  </option>
-	                ))}
-	              </select>
               <input
                 type="text"
-                value={editedOperationCategory}
-                onChange={e => setEditedOperationCategory(e.target.value)}
-	                placeholder="New category name"
+                value={editedCommitteeName}
+                onChange={e => setEditedCommitteeName(e.target.value)}
+                placeholder="New committee name"
                 className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                 required
               />
               <button
                 type="submit"
-                className="md:col-span-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                disabled={committeeActionBusy}
               >
-                Save Update
+                Save
               </button>
             </form>
           </div>
         </div>
       )}
 
-      {isAdmin && showDeleteOperationForm && (
+      {isAdmin && showDeleteCommitteeModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="w-full max-w-xl bg-white rounded-xl shadow-2xl p-5 space-y-4 animate-fade-in-up">
+          <div className="w-full max-w-xl bg-white dark:bg-zinc-900 rounded-xl shadow-2xl p-5 space-y-4 animate-fade-in-up">
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-gray-800">Delete Category</h3>
+              <h3 className="font-semibold text-gray-800 dark:text-zinc-100">Delete Committee</h3>
               <button
                 type="button"
-                onClick={() => setShowDeleteOperationForm(false)}
-                className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm"
+                onClick={() => {
+                  if (committeeActionBusy) return
+                  setShowDeleteCommitteeModal(false)
+                  setCommitteeToDelete('')
+                  setFallbackCommittee('')
+                  setCommitteeError('')
+                }}
+                className="px-3 py-1.5 bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-100 rounded-lg hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                disabled={committeeActionBusy}
               >
                 Close
               </button>
             </div>
-            {committeeError && <p className="text-sm text-red-600">{committeeError}</p>}
-            <div className="rounded-lg border border-red-200 bg-red-50 p-3 space-y-3">
-              <div className="grid grid-cols-1 gap-2">
-	                <select
-	                  value={deleteOperationCategory}
-	                  onChange={e => {
-	                    const value = e.target.value
-	                    setDeleteOperationCategory(value)
-	                  }}
-	                  className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-	                >
-		                  <option value="">Select category name</option>
-	                  {operationCategories.map(categoryKey => (
-	                    <option key={categoryKey} value={categoryKey}>
-	                      {categoryLabelByKey[categoryKey] || titleCaseFromKey(categoryKey)}
-	                    </option>
-	                  ))}
-	                </select>
-              </div>
 
-              {deleteOperationCategory && (
-                <p className="text-sm text-red-700">
-                  Warning: all entries under this Category will be deleted.
-                </p>
+            {committeeError && <p className="text-sm text-red-600">{committeeError}</p>}
+
+            <div className="rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/30 p-4 space-y-3">
+              <p className="text-sm text-red-700 dark:text-red-200">
+                You are about to delete <span className="font-semibold">{committeeToDelete}</span>.
+              </p>
+              <p className="text-xs text-red-700 dark:text-red-200">
+                Assigned users: <span className="font-semibold tabular-nums">{deletingCommitteeAssignedCount}</span>
+              </p>
+
+              {deletingCommitteeAssignedCount > 0 && (
+                <div>
+                  <label className="block text-xs text-gray-700 dark:text-zinc-200 mb-1">Reassign users to</label>
+                  <select
+                    value={fallbackCommittee}
+                    onChange={e => setFallbackCommittee(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                  >
+                    <option value="">Select a committee</option>
+                    {committeeOptions
+                      .filter(name => name !== committeeToDelete)
+                      .map(name => (
+                        <option key={name} value={name}>
+                          {name}
+                        </option>
+                      ))}
+                  </select>
+                </div>
               )}
 
-              <button
-                type="button"
-                onClick={handleDeleteOperation}
-                disabled={!deleteOperationCategory}
-                className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Confirm Delete
-              </button>
+              <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (committeeActionBusy) return
+                    setShowDeleteCommitteeModal(false)
+                    setCommitteeToDelete('')
+                    setFallbackCommittee('')
+                    setCommitteeError('')
+                  }}
+                  className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-100 hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                  disabled={committeeActionBusy}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCommitteeDelete}
+                  className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                  disabled={committeeActionBusy}
+                >
+                  Confirm Delete
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -1030,14 +839,13 @@ function Members() {
           <div className="relative">
             <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
             <select
-              value={committeeFilter}
+              value={roleFilter}
               onChange={e => {
                 setCurrentPage(1)
-                setCommitteeFilter(e.target.value)
+                setRoleFilter(e.target.value)
               }}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
             >
-              <option value="all">All Roles</option>
               {ROLE_OPTIONS.map(roleOption => (
                 <option key={roleOption.value} value={roleOption.value}>
                   {roleOption.label}
@@ -1047,15 +855,15 @@ function Members() {
           </div>
           <div>
             <select
-              value={categoryFilter}
+              value={committeeFilter}
               onChange={e => {
                 setCurrentPage(1)
-                setCategoryFilter(e.target.value)
+                setCommitteeFilter(e.target.value)
               }}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
             >
               <option value="all">All Committees</option>
-              {memberCommittees.map(committee => (
+              {committeeOptions.map(committee => (
                 <option key={committee} value={committee}>
                   {committee}
                 </option>
@@ -1080,9 +888,17 @@ function Members() {
             >
               <div className={isAdmin ? 'cursor-pointer' : ''} onClick={() => isAdmin && handleViewMember(member.id)}>
                 <div className="flex items-center gap-4 mb-4">
-                  <div className="w-16 h-16 rounded-full bg-gradient-to-r from-red-600 to-red-700 flex items-center justify-center">
-                    <span className="text-white font-bold text-xl">{member.name.charAt(0).toUpperCase()}</span>
-                  </div>
+                  {member.profileImage && member.profileImage !== '/image-removebg-preview.png' ? (
+                    <img 
+                      src={member.profileImage} 
+                      alt={`${member.name}'s profile`} 
+                      className="w-16 h-16 rounded-full object-cover border-4 border-white shadow-lg" 
+                    />
+                  ) : (
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-r from-red-600 to-red-700 flex items-center justify-center">
+                      <span className="text-white font-bold text-xl">{member.name.charAt(0).toUpperCase()}</span>
+                    </div>
+                  )}
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-gray-800 text-lg truncate">{member.name}</h3>
                     <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium border ${getRoleBadge(member.role)}`}>
@@ -1115,7 +931,7 @@ function Members() {
 
                 <div className="mt-4 flex flex-wrap gap-2">
                   <span className="px-2 py-1 rounded bg-red-50 text-red-700 text-xs border border-red-200">
-                    Category: {member.committee || memberOperations[0]}
+                    Committee: {member.committee || committeeOptions[0] || 'N/A'}
                   </span>
                   <span className="px-2 py-1 rounded bg-blue-50 text-blue-700 text-xs border border-blue-200">
                     Role: {member.role === 'admin' ? 'Admin' : 'Member'}
