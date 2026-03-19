@@ -175,7 +175,7 @@ begin
 end;
 $$;
 
--- Categories/Committees (kept as "name" strings to match current app)
+-- Committees (member grouping)
 create table if not exists public.committees (
   name text primary key,
   created_at timestamptz not null default now(),
@@ -187,6 +187,34 @@ drop trigger if exists committees_set_updated_at on public.committees;
 create trigger committees_set_updated_at
 before update on public.committees
 for each row execute function public.set_updated_at();
+
+-- Event Categories (events.category)
+create table if not exists public.event_categories (
+  key text primary key,
+  label text not null,
+  created_at timestamptz not null default now(),
+  created_by uuid references public.profiles(id),
+  updated_at timestamptz not null default now()
+);
+
+drop trigger if exists event_categories_set_updated_at on public.event_categories;
+create trigger event_categories_set_updated_at
+before update on public.event_categories
+for each row execute function public.set_updated_at();
+
+-- Seed default categories (safe to rerun)
+insert into public.event_categories (key, label)
+values
+  ('tuli', 'Tuli'),
+  ('blood_letting', 'Blood Letting'),
+  ('donations', 'Donations'),
+  ('environmental', 'Environmental'),
+  ('relief_operation', 'Relief Operation'),
+  ('fire_response', 'Fire Response'),
+  ('water_distribution', 'Water Distribution'),
+  ('notes', 'Notes'),
+  ('medical', 'Medical')
+on conflict (key) do nothing;
 
 -- Utilities linked to a committee name (same key used in current app utilitiesByCommittee)
 create table if not exists public.committee_utilities (
@@ -301,6 +329,7 @@ create table if not exists public.event_files (
 -- RLS
 alter table public.profiles enable row level security;
 alter table public.committees enable row level security;
+alter table public.event_categories enable row level security;
 alter table public.committee_utilities enable row level security;
 alter table public.events enable row level security;
 alter table public.event_views enable row level security;
@@ -365,6 +394,32 @@ with check (public.is_admin());
 drop policy if exists committees_delete_admin on public.committees;
 create policy committees_delete_admin
 on public.committees for delete
+to authenticated
+using (public.is_admin());
+
+-- EVENT CATEGORIES
+drop policy if exists event_categories_select_auth on public.event_categories;
+create policy event_categories_select_auth
+on public.event_categories for select
+to authenticated
+using (true);
+
+drop policy if exists event_categories_write_admin on public.event_categories;
+create policy event_categories_write_admin
+on public.event_categories for insert
+to authenticated
+with check (public.is_admin());
+
+drop policy if exists event_categories_update_admin on public.event_categories;
+create policy event_categories_update_admin
+on public.event_categories for update
+to authenticated
+using (public.is_admin())
+with check (public.is_admin());
+
+drop policy if exists event_categories_delete_admin on public.event_categories;
+create policy event_categories_delete_admin
+on public.event_categories for delete
 to authenticated
 using (public.is_admin());
 

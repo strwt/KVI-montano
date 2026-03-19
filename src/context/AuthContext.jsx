@@ -45,6 +45,23 @@ const enrichUserWithProfileImage = (user = {}) => ({
 const isLikelyExternalUrl = (value) => /^https?:\/\//i.test(String(value || '').trim())
 const isLikelyDataUrl = (value) => /^data:image\//i.test(String(value || '').trim())
 
+const normalizeEventCategoryKey = (value) =>
+  String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+
+const EVENT_CATEGORY_KEY_ALIASES = {
+  relief_operations: 'relief_operation',
+  fire_responses: 'fire_response',
+  water_distributions: 'water_distribution',
+  blood_lettings: 'blood_letting',
+}
+
+const canonicalizeEventCategoryKey = (key) => EVENT_CATEGORY_KEY_ALIASES[key] || key
+const toEventCategoryKey = (value) => canonicalizeEventCategoryKey(normalizeEventCategoryKey(value))
+
 const resolveProfileImageSrc = (value) => {
   const raw = String(value || '').trim()
   if (!raw) return DEFAULT_PROFILE_IMAGE
@@ -61,37 +78,6 @@ const resolveProfileImageSrc = (value) => {
   }
 
   return DEFAULT_PROFILE_IMAGE
-}
-
-const splitCategoryAndType = (value = '') => {
-  const raw = String(value || '').trim()
-  if (!raw) return { category: '', type: '' }
-  const parts = raw.split(' - ')
-  if (parts.length === 1) return { category: parts[0], type: 'General' }
-  const category = parts.shift()?.trim() || ''
-  const type = parts.join(' - ').trim() || 'General'
-  return { category, type }
-}
-
-const normalizeCategoryKey = value =>
-  String(value || '')
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, '_')
-
-const OPERATION_KEY_ALIASES = {
-  relief_operations: 'relief_operation',
-  fire_responses: 'fire_response',
-  water_distributions: 'water_distribution',
-  blood_lettings: 'blood_letting',
-}
-
-const canonicalizeCategoryKey = key => OPERATION_KEY_ALIASES[key] || key
-
-const buildCategoryKeyFromCommitteeEntry = (committeeEntry) => {
-  const { category } = splitCategoryAndType(committeeEntry)
-  if (!category) return ''
-  return canonicalizeCategoryKey(normalizeCategoryKey(category))
 }
 
 const mapProfileToUser = (profile, authUser) => {
@@ -161,13 +147,17 @@ const emptyContext = (configError) => ({
     message: 'Members must self-register (or implement an invite flow using a server route with the Service Role key).',
   }),
   deleteMembers: async () => ({
-    success: false,
-    message: 'Deleting users requires a server-side Admin/Service Role flow in Supabase (client cannot delete Auth users).',
+  success: false,
+  message: 'Deleting users requires a server-side Admin/Service Role flow in Supabase (client cannot delete Auth users).',
   }),
   updateMember: async () => ({ success: false, message: configError || 'Supabase not configured.' }),
   addCommittee: async () => ({ success: false, message: configError || 'Supabase not configured.' }),
   editCommittee: async () => ({ success: false, message: configError || 'Supabase not configured.' }),
   deleteCommittee: async () => ({ success: false, message: configError || 'Supabase not configured.' }),
+  eventCategories: [],
+  addEventCategory: async () => ({ success: false, message: configError || 'Supabase not configured.' }),
+  editEventCategory: async () => ({ success: false, message: configError || 'Supabase not configured.' }),
+  deleteEventCategory: async () => ({ success: false, message: configError || 'Supabase not configured.' }),
   submitRecruitmentApplication: async () => ({ success: false, message: configError || 'Supabase not configured.' }),
   rejectRecruitment: async () => ({ success: false, message: configError || 'Supabase not configured.' }),
   getRecruitments: () => [],
@@ -183,6 +173,7 @@ export function AuthProvider({ children }) {
   const [members, setMembers] = useState([])
   const [admins, setAdmins] = useState([])
   const [committees, setCommittees] = useState([])
+  const [eventCategories, setEventCategories] = useState([])
   const [recruitments, setRecruitments] = useState([])
   const authEpochRef = useRef(0)
   const initialSessionHandledRef = useRef(false)
@@ -192,6 +183,7 @@ export function AuthProvider({ children }) {
   const reloadMembersRef = useRef(null)
   const reloadAdminsRef = useRef(null)
   const reloadCommitteesRef = useRef(null)
+  const reloadEventCategoriesRef = useRef(null)
   const reloadRecruitmentsRef = useRef(null)
 
   useEffect(() => {
@@ -254,6 +246,7 @@ export function AuthProvider({ children }) {
     setMembers([])
     setAdmins([])
     setCommittees([])
+    setEventCategories([])
     setRecruitments([])
     setLoading(false)
     setAuthResolved(true)
@@ -458,10 +451,30 @@ export function AuthProvider({ children }) {
     return unique
   }
 
+  const sortEventCategories = (list) => {
+    const items = Array.isArray(list) ? list : []
+    const normalized = items
+      .map(item => ({
+        key: toEventCategoryKey(item?.key),
+        label: String(item?.label || '').trim(),
+      }))
+      .filter(item => item.key && item.label)
+
+    const map = new Map()
+    normalized.forEach(item => {
+      if (map.has(item.key)) return
+      map.set(item.key, item)
+    })
+
+    const unique = Array.from(map.values())
+    unique.sort((a, b) => a.label.localeCompare(b.label))
+    return unique
+  }
+
   const reloadMembers = async () => {
- 	    if (!supabaseEnabled) return
- 	    let data = []
- 	    try {
+  	    if (!supabaseEnabled) return
+  	    let data = []
+  	    try {
 	      const res = await supabase
           .from('profiles')
           .select('*')
@@ -494,24 +507,42 @@ export function AuthProvider({ children }) {
     setAdmins(sortUsersByName(mapped))
   }
 
-	  const reloadCommittees = async () => {
-	    if (!supabaseEnabled) return []
-	    let data = []
-	    try {
+  	  const reloadCommittees = async () => {
+  	    if (!supabaseEnabled) return []
+  	    let data = []
+  	    try {
 	      const res = await supabase.from('committees').select('name').order('name', { ascending: true })
 	      if (res.error) console.warn('Failed to load committees from Supabase.', res.error)
 	      data = res.data
-	    } catch (error) {
+  	    } catch (error) {
 	      console.warn('Failed to load committees from Supabase.', error)
-	    }
-	    const names = sortCommittees(Array.isArray(data) ? data.map(row => row.name) : [])
-	    setCommittees(names)
-	    return names
-	  }
+  	    }
+  	    const names = sortCommittees(Array.isArray(data) ? data.map(row => row.name) : [])
+  	    setCommittees(names)
+  	    return names
+  	  }
 
-	  const reloadRecruitments = async (asAdmin) => {
-	    if (!supabaseEnabled) return
-	    if (!asAdmin) {
+    const reloadEventCategories = async () => {
+      if (!supabaseEnabled) return []
+      let data = []
+      try {
+        const res = await supabase
+          .from('event_categories')
+          .select('key,label')
+          .order('label', { ascending: true })
+        if (res.error) console.warn('Failed to load event categories from Supabase.', res.error)
+        data = res.data
+      } catch (error) {
+        console.warn('Failed to load event categories from Supabase.', error)
+      }
+      const categories = sortEventCategories(Array.isArray(data) ? data : [])
+      setEventCategories(categories)
+      return categories
+    }
+
+  	  const reloadRecruitments = async (asAdmin) => {
+  	    if (!supabaseEnabled) return
+  	    if (!asAdmin) {
 	      setRecruitments([])
 	      return
 	    }
@@ -548,6 +579,7 @@ export function AuthProvider({ children }) {
   reloadMembersRef.current = reloadMembers
   reloadAdminsRef.current = reloadAdmins
   reloadCommitteesRef.current = reloadCommittees
+  reloadEventCategoriesRef.current = reloadEventCategories
   reloadRecruitmentsRef.current = reloadRecruitments
 
   useEffect(() => {
@@ -559,17 +591,18 @@ export function AuthProvider({ children }) {
 
     let disposed = false
 
-    const applySignedOut = () => {
-      authEpochRef.current += 1
-      clearProfileCache()
-      setUser(null)
-      setMembers([])
-      setAdmins([])
-      setCommittees([])
-      setRecruitments([])
-      setAuthResolved(true)
-      setLoading(false)
-    }
+      const applySignedOut = () => {
+        authEpochRef.current += 1
+        clearProfileCache()
+        setUser(null)
+        setMembers([])
+        setAdmins([])
+        setCommittees([])
+        setEventCategories([])
+        setRecruitments([])
+        setAuthResolved(true)
+        setLoading(false)
+      }
 
     const hydrateForUser = async (authUser, epoch) => {
       setLoading(true)
@@ -583,6 +616,7 @@ export function AuthProvider({ children }) {
           reloadMembersRef.current ? reloadMembersRef.current() : Promise.resolve(),
           isAdmin && reloadAdminsRef.current ? reloadAdminsRef.current() : Promise.resolve(),
           reloadCommitteesRef.current ? reloadCommitteesRef.current() : Promise.resolve(),
+          reloadEventCategoriesRef.current ? reloadEventCategoriesRef.current() : Promise.resolve(),
           reloadRecruitmentsRef.current ? reloadRecruitmentsRef.current(Boolean(isAdmin)) : Promise.resolve(),
         ])
       } finally {
@@ -694,6 +728,38 @@ export function AuthProvider({ children }) {
       })
     }
 
+    const handleEventCategoriesChange = (payload) => {
+      const eventType = payload?.eventType
+      const nextKey = payload?.new?.key ? toEventCategoryKey(payload.new.key) : ''
+      const nextLabel = payload?.new?.label ? String(payload.new.label).trim() : ''
+      const prevKey = payload?.old?.key ? toEventCategoryKey(payload.old.key) : ''
+
+      setEventCategories(prev => {
+        const list = Array.isArray(prev) ? prev : []
+
+        if (eventType === 'INSERT') {
+          if (!nextKey || !nextLabel) return list
+          if (list.some(item => item.key === nextKey)) return list
+          return sortEventCategories([...list, { key: nextKey, label: nextLabel }])
+        }
+
+        if (eventType === 'UPDATE') {
+          if (!prevKey) return list
+          if (!nextKey || !nextLabel) return list
+          const next = list.map(item => (item.key === prevKey ? { key: nextKey, label: nextLabel } : item))
+          return sortEventCategories(next)
+        }
+
+        if (eventType === 'DELETE') {
+          if (!prevKey) return list
+          return list.filter(item => item.key !== prevKey)
+        }
+
+        if (eventType === 'TRUNCATE') return []
+        return list
+      })
+    }
+
     const handleProfilesChange = (payload) => {
       const eventType = payload?.eventType
 
@@ -747,6 +813,11 @@ export function AuthProvider({ children }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'committees' }, handleCommitteesChange)
       .subscribe((status) => logSupabase('realtime committees', status))
 
+    const eventCategoriesChannel = supabase
+      .channel(`kusgan-event-categories-${user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'event_categories' }, handleEventCategoriesChange)
+      .subscribe((status) => logSupabase('realtime event categories', status))
+
     const profilesChannel = supabase
       .channel(`kusgan-profiles-${user.id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, handleProfilesChange)
@@ -754,6 +825,7 @@ export function AuthProvider({ children }) {
 
     return () => {
       supabase.removeChannel(committeesChannel)
+      supabase.removeChannel(eventCategoriesChannel)
       supabase.removeChannel(profilesChannel)
     }
   }, [supabaseEnabled, user?.id])
@@ -1249,17 +1321,10 @@ export function AuthProvider({ children }) {
     if (!source || !target) return { success: false, message: 'Both current and new committee names are required.' }
     if (source === target) return { success: true }
 
-    const sourceKey = buildCategoryKeyFromCommitteeEntry(source)
-    const targetKey = buildCategoryKeyFromCommitteeEntry(target)
-
     const { error } = await supabase.from('committees').update({ name: target }).eq('name', source)
     if (error) return { success: false, message: error.message || 'Unable to update committee.' }
 
     await supabase.from('profiles').update({ committee: target }).eq('committee', source)
-
-    if (sourceKey && targetKey && sourceKey !== targetKey) {
-      await supabase.from('events').update({ category: targetKey }).eq('category', sourceKey)
-    }
 
     return { success: true }
   }
@@ -1286,24 +1351,80 @@ export function AuthProvider({ children }) {
       return { success: false, message: 'Fallback committee must be different.' }
     }
 
-    const oldKey = buildCategoryKeyFromCommitteeEntry(committee)
-
     if (assignedCount > 0 && fallbackCommittee) {
       await supabase.from('profiles').update({ committee: fallbackCommittee }).eq('committee', committee)
-    }
-
-    if (oldKey) {
-      const fallbackKey = fallbackCommittee ? buildCategoryKeyFromCommitteeEntry(fallbackCommittee) : ''
-      if (fallbackKey && fallbackKey !== oldKey) {
-        await supabase.from('events').update({ category: fallbackKey }).eq('category', oldKey)
-      } else {
-        await supabase.from('events').update({ category: 'notes' }).eq('category', oldKey)
-      }
     }
 
     const { error } = await supabase.from('committees').delete().eq('name', committee)
     if (error) return { success: false, message: error.message || 'Unable to delete committee.' }
     return { success: true }
+  }
+
+  const addEventCategory = async (label, keyOverride = '') => {
+    if (user?.role !== 'admin') return { success: false, message: 'Only admins can add event categories.' }
+    const normalizedLabel = String(label || '').trim()
+    const normalizedKey = toEventCategoryKey(keyOverride || normalizedLabel)
+
+    if (!normalizedLabel) return { success: false, message: 'Category label is required.' }
+    if (!normalizedKey) return { success: false, message: 'Category key is required.' }
+
+    const { error } = await supabase.from('event_categories').insert({
+      key: normalizedKey,
+      label: normalizedLabel,
+      created_by: user?.id || null,
+    })
+
+    if (error) return { success: false, message: error.message || 'Unable to add event category.' }
+
+    setEventCategories(prev => sortEventCategories([...prev, { key: normalizedKey, label: normalizedLabel }]))
+    return { success: true, key: normalizedKey }
+  }
+
+  const editEventCategory = async (categoryKey, nextLabel) => {
+    if (user?.role !== 'admin') return { success: false, message: 'Only admins can update event categories.' }
+    const key = toEventCategoryKey(categoryKey)
+    const label = String(nextLabel || '').trim()
+    if (!key) return { success: false, message: 'Category not found.' }
+    if (!label) return { success: false, message: 'Category label is required.' }
+
+    const { error } = await supabase.from('event_categories').update({ label }).eq('key', key)
+    if (error) return { success: false, message: error.message || 'Unable to update event category.' }
+
+    setEventCategories(prev => sortEventCategories(prev.map(item => (item.key === key ? { ...item, label } : item))))
+    return { success: true }
+  }
+
+  const deleteEventCategory = async (categoryKey, fallbackCategoryKey) => {
+    if (user?.role !== 'admin') return { success: false, message: 'Only admins can delete event categories.' }
+    const key = toEventCategoryKey(categoryKey)
+    if (!key) return { success: false, message: 'Category not found.' }
+
+    const fallback = fallbackCategoryKey ? toEventCategoryKey(fallbackCategoryKey) : ''
+    if (fallback && fallback === key) return { success: false, message: 'Fallback category must be different.' }
+
+    const { count, error: countError } = await supabase
+      .from('events')
+      .select('id', { count: 'exact', head: true })
+      .eq('category', key)
+
+    if (countError) {
+      console.warn('Failed to count events for category.', countError)
+    }
+
+    const assignedCount = Number(count || 0)
+    if (assignedCount > 0 && !fallback) {
+      return { success: false, message: 'Reassign events to another category before deleting this category.' }
+    }
+
+    if (assignedCount > 0 && fallback) {
+      await supabase.from('events').update({ category: fallback }).eq('category', key)
+    }
+
+    const { error } = await supabase.from('event_categories').delete().eq('key', key)
+    if (error) return { success: false, message: error.message || 'Unable to delete event category.' }
+
+    setEventCategories(prev => prev.filter(item => item.key !== key))
+    return { success: true, reassignedTo: fallback || null }
   }
 
   const submitRecruitmentApplication = async (applicationData = {}) => {
@@ -1530,6 +1651,7 @@ export function AuthProvider({ children }) {
     authResolved,
     loading,
     committees,
+    eventCategories,
     appLanguage,
     setAppLanguage,
     darkMode,
@@ -1553,6 +1675,9 @@ export function AuthProvider({ children }) {
     addCommittee,
     editCommittee,
     deleteCommittee,
+    addEventCategory,
+    editEventCategory,
+    deleteEventCategory,
     submitRecruitmentApplication,
     rejectRecruitment,
     getRecruitments,
