@@ -104,7 +104,6 @@ export default async function handler(req, res) {
       id_number: idNumber,
       email,
       committee: body.committee ? String(body.committee).trim() : null,
-      category: body.category ? String(body.category).trim() : null,
       address: body.address ? String(body.address).trim() : null,
       contact_number: body.contactNumber ? String(body.contactNumber).trim() : null,
       blood_type: body.bloodType ? String(body.bloodType).trim().toUpperCase() : null,

@@ -386,16 +386,6 @@ const splitPipe = value =>
     .map(item => item.trim())
     .filter(Boolean)
 
-const resolveStoredLocation = event => {
-  if (event?.location && typeof event.location.lat === 'number' && typeof event.location.lng === 'number') {
-    return { lat: event.location.lat, lng: event.location.lng }
-  }
-  if (typeof event?.latitude === 'number' && typeof event?.longitude === 'number') {
-    return { lat: event.latitude, lng: event.longitude }
-  }
-  return null
-}
-
 const getEventMatchKey = event => {
   const baseId = event?.id
   if (baseId !== undefined && baseId !== null && String(baseId).trim()) return `id:${baseId}`
@@ -405,7 +395,7 @@ const getEventMatchKey = event => {
   return `fallback:${dateValue}|${title}|${category}`
 }
 
-const buildAssignmentNotification = (memberId, event, actorName) => ({
+const _buildAssignmentNotification = (memberId, event, actorName) => ({
   id: `${Date.now()}-${memberId}-${Math.floor(Math.random() * 1000)}`,
   type: 'assignment',
   userId: memberId,
@@ -885,7 +875,6 @@ function Calendar({ listOnly = false }) {
     assignedMemberIds: [],
   })
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState('All')
   const [selectedDateFilter, setSelectedDateFilter] = useState('')
   const [doneFields, setDoneFields] = useState(getDefaultDynamicFields())
   const [donePartners, setDonePartners] = useState([''])
@@ -895,6 +884,7 @@ function Calendar({ listOnly = false }) {
   const eventRefs = useRef({})
   const handledRedirectRef = useRef(false)
   const routeCategory = searchParams.get('category') || ''
+  const selectedCategory = getCategoryLabelFromQuery(routeCategory)
 
   const resetForm = () => {
     setEditingEventId(null)
@@ -912,11 +902,7 @@ function Calendar({ listOnly = false }) {
   }
 
   useEffect(() => {
-    if (!supabaseEnabled) return
-    if (!user?.id) {
-      setEvents([])
-      return
-    }
+    if (!supabaseEnabled || !user?.id) return undefined
 
     let active = true
 
@@ -926,7 +912,7 @@ function Calendar({ listOnly = false }) {
       setEvents(data)
     }
 
-    load()
+    void load()
 
     const channel = supabase
       .channel('kusgan-events')
@@ -940,7 +926,7 @@ function Calendar({ listOnly = false }) {
   }, [supabaseEnabled, user?.id])
 
   const assignableMembers = useMemo(
-    () => getAllMembers().filter(member => member.role === 'member'),
+    () => getAllMembers(),
     [getAllMembers]
   )
 
@@ -1014,14 +1000,6 @@ function Calendar({ listOnly = false }) {
     })
   }
 
-  useEffect(() => {
-    if (!listOnly) return
-    const nextCategory = getCategoryLabelFromQuery(routeCategory)
-    setSelectedCategory(prev => (prev === nextCategory ? prev : nextCategory))
-    setSelectedMonthKey(null)
-    setSelectedDateFilter('')
-  }, [listOnly, routeCategory])
-
   const updateCategoryRoute = categoryLabel => {
     const params = new URLSearchParams(searchParams)
     if (categoryLabel === 'All') {
@@ -1039,36 +1017,61 @@ function Calendar({ listOnly = false }) {
     if (!state || Object.keys(state).length === 0) return
 
     let didConsumeState = false
+    let nextSearchParams = null
+
+    const updateCategoryParam = (categoryLabel) => {
+      const label = String(categoryLabel || '').trim()
+      if (!nextSearchParams) nextSearchParams = new URLSearchParams(routerLocation.search)
+
+      if (!label || label === 'All') {
+        nextSearchParams.delete('category')
+        return
+      }
+
+      const nextKey =
+        getCategoryKeyFromLabel(label) || canonicalizeOperationKey(normalizeCategoryKey(label))
+      nextSearchParams.set('category', nextKey)
+    }
+
+    let nextSelectedMonthKey
+    let nextExpandedItemId
+    let nextSelectedDateFilter
+    let nextCurrentYear
+    let nextSearchQuery
+    let shouldResetForm = false
+    let shouldShowEventForm = false
+    let highlightEventId
+    let clearHighlightAfterMs
 
     if (state.preserveFilters) didConsumeState = true
 
     if (typeof state.presetCategory === 'string' && state.presetCategory.trim()) {
-      setSelectedCategory(state.presetCategory.trim())
-      setSelectedMonthKey(null)
-      setExpandedItemId(null)
+      updateCategoryParam(state.presetCategory.trim())
+      nextSelectedMonthKey = null
+      nextExpandedItemId = null
       didConsumeState = true
     }
 
     if (typeof state.openMonthKey === 'string' && dayjs(state.openMonthKey, 'YYYY-MM', true).isValid()) {
-      setCurrentYear(dayjs(`${state.openMonthKey}-01`).year())
-      setSelectedMonthKey(state.openMonthKey)
-      setExpandedItemId(null)
-      setSelectedDateFilter('')
+      nextCurrentYear = dayjs(`${state.openMonthKey}-01`).year()
+      nextSelectedMonthKey = state.openMonthKey
+      nextExpandedItemId = null
+      nextSelectedDateFilter = ''
       didConsumeState = true
     }
 
     if (typeof state.focusDate === 'string' && dayjs(state.focusDate, 'YYYY-MM-DD', true).isValid()) {
       const focusMonthKey = dayjs(state.focusDate).format('YYYY-MM')
-      setCurrentYear(dayjs(state.focusDate).year())
-      setSelectedMonthKey(focusMonthKey)
-      setExpandedItemId(null)
-      setSelectedDateFilter(state.focusDate)
+      nextCurrentYear = dayjs(state.focusDate).year()
+      nextSelectedMonthKey = focusMonthKey
+      nextExpandedItemId = null
+      nextSelectedDateFilter = state.focusDate
       didConsumeState = true
     }
 
     if (state.openCreateEventForm && canManageEvents) {
-      resetForm()
-      setShowEventForm(true)
+      shouldResetForm = true
+      shouldShowEventForm = true
       didConsumeState = true
     }
 
@@ -1086,22 +1089,52 @@ function Calendar({ listOnly = false }) {
       if (targetEvent?.dateTime && dayjs(targetEvent.dateTime).isValid()) {
         handledRedirectRef.current = true
         const monthKey = dayjs(targetEvent.dateTime).format('YYYY-MM')
-        setCurrentYear(dayjs(targetEvent.dateTime).year())
-        setSelectedMonthKey(monthKey)
+        nextCurrentYear = dayjs(targetEvent.dateTime).year()
+        nextSelectedMonthKey = monthKey
         if (forceFocusEvent) {
-          setSearchQuery('')
-          setSelectedCategory('All')
-          setSelectedDateFilter('')
+          nextSearchQuery = ''
+          updateCategoryParam('All')
+          nextSelectedDateFilter = ''
         }
-        setExpandedItemId(targetEvent.id)
-        setHighlightedEventId(targetEvent.id)
-        setTimeout(() => setHighlightedEventId(null), 3000)
+        nextExpandedItemId = targetEvent.id
+        highlightEventId = targetEvent.id
+        clearHighlightAfterMs = 3000
         didConsumeState = true
       }
     }
 
+    const shouldApplyLocalUpdates =
+      nextSelectedMonthKey !== undefined ||
+      nextExpandedItemId !== undefined ||
+      nextSelectedDateFilter !== undefined ||
+      nextCurrentYear !== undefined ||
+      nextSearchQuery !== undefined ||
+      shouldResetForm ||
+      shouldShowEventForm ||
+      highlightEventId !== undefined
+
+    if (shouldApplyLocalUpdates) {
+      Promise.resolve().then(() => {
+        if (nextCurrentYear !== undefined) setCurrentYear(nextCurrentYear)
+        if (nextSelectedMonthKey !== undefined) setSelectedMonthKey(nextSelectedMonthKey)
+        if (nextExpandedItemId !== undefined) setExpandedItemId(nextExpandedItemId)
+        if (nextSelectedDateFilter !== undefined) setSelectedDateFilter(nextSelectedDateFilter)
+        if (nextSearchQuery !== undefined) setSearchQuery(nextSearchQuery)
+        if (shouldResetForm) resetForm()
+        if (shouldShowEventForm) setShowEventForm(true)
+        if (highlightEventId !== undefined) {
+          setHighlightedEventId(highlightEventId)
+          if (clearHighlightAfterMs) {
+            setTimeout(() => setHighlightedEventId(null), clearHighlightAfterMs)
+          }
+        }
+      })
+    }
+
     if (didConsumeState) {
-      navigate(routerLocation.pathname + routerLocation.search, { replace: true, state: {} })
+      const nextQuery = nextSearchParams ? nextSearchParams.toString() : ''
+      const nextSearch = nextSearchParams ? (nextQuery ? `?${nextQuery}` : '') : routerLocation.search
+      navigate(routerLocation.pathname + nextSearch, { replace: true, state: {} })
     }
   }, [routerLocation.state, routerLocation.pathname, routerLocation.search, events, navigate, canManageEvents])
 
@@ -1760,10 +1793,7 @@ function Calendar({ listOnly = false }) {
               {selectedCategory !== 'All' && (
                 <button
                   type="button"
-                  onClick={() => {
-                    setSelectedCategory('All')
-                    updateCategoryRoute('All')
-                  }}
+                  onClick={() => updateCategoryRoute('All')}
                   className="inline-flex items-center gap-1 px-3 py-1 rounded-full border border-gray-200 text-xs font-medium text-gray-700 hover:bg-gray-50"
                 >
                   <X size={12} />
@@ -1786,11 +1816,7 @@ function Calendar({ listOnly = false }) {
               />
 	              <select
 	                value={selectedCategory}
-	                onChange={e => {
-	                  const next = e.target.value
-	                  setSelectedCategory(next)
-	                  updateCategoryRoute(next)
-	                }}
+	                onChange={e => updateCategoryRoute(e.target.value)}
 	                className="lg:w-64 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
 	              >
 	                <option value="All">All Categories</option>
@@ -1817,10 +1843,7 @@ function Calendar({ listOnly = false }) {
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                onClick={() => {
-                  setSelectedCategory('All')
-                  updateCategoryRoute('All')
-                }}
+                onClick={() => updateCategoryRoute('All')}
                 className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
                   selectedCategory === 'All'
                     ? 'bg-red-600 border-red-600 text-white'
@@ -1833,11 +1856,7 @@ function Calendar({ listOnly = false }) {
 	                <button
 	                  key={categoryKey}
 	                  type="button"
-	                  onClick={() => {
-	                    const next = CATEGORY_CONFIG[categoryKey].label
-	                    setSelectedCategory(next)
-	                    updateCategoryRoute(next)
-	                  }}
+	                  onClick={() => updateCategoryRoute(CATEGORY_CONFIG[categoryKey].label)}
 	                  className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
 	                    selectedCategory === CATEGORY_CONFIG[categoryKey].label
 	                      ? 'bg-red-600 border-red-600 text-white'
@@ -1853,10 +1872,7 @@ function Calendar({ listOnly = false }) {
 	                  <button
 	                    key={categoryKey}
 	                    type="button"
-	                    onClick={() => {
-	                      setSelectedCategory(label)
-	                      updateCategoryRoute(label)
-	                    }}
+	                    onClick={() => updateCategoryRoute(label)}
 	                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
 	                      selectedCategory === label
 	                        ? 'bg-red-600 border-red-600 text-white'
@@ -2227,7 +2243,7 @@ function Calendar({ listOnly = false }) {
               />
               <select
                 value={selectedCategory}
-                onChange={e => setSelectedCategory(e.target.value)}
+                onChange={e => updateCategoryRoute(e.target.value)}
                 className="sm:w-64 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
               >
                 <option value="All">All Categories</option>
