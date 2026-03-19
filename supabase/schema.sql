@@ -26,7 +26,6 @@ create table if not exists public.profiles (
   email text unique,
   role text not null default 'member' check (role in ('admin','member')),
   name text not null default '',
-  category text not null default 'General Member',
   id_number text unique,
   contact_number text,
   address text,

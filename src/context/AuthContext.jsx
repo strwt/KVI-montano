@@ -11,7 +11,6 @@ const logSupabase = (...args) => {
 }
 
 const DEFAULT_PROFILE_IMAGE = '/image-removebg-preview.png'
-const DEFAULT_MEMBER_CATEGORY = 'General Member'
 const SESSION_EXPIRED_MESSAGE = 'Session expired. Please log in again.'
 const LOADING_FALLBACK_MS = 3_000
 const PROFILE_CACHE_TTL_MS = 30_000
@@ -113,7 +112,6 @@ const mapProfileToUser = (profile, authUser) => {
     email,
     role,
     committee: profile?.committee || '',
-    category: profile?.category || (role === 'admin' ? 'Administrator' : DEFAULT_MEMBER_CATEGORY),
     contactNumber: profile?.contact_number || '',
     address: profile?.address || '',
     bloodType: profile?.blood_type || '',
@@ -142,10 +140,11 @@ const emptyContext = (configError) => ({
   authResolved: true,
   loading: false,
   committees: [],
-  utilitiesByCommittee: {},
   appLanguage: 'English',
   darkMode: false,
   settings: {},
+  members: [],
+  admins: [],
   users: [],
   login: async () => ({ success: false, message: configError || 'Supabase not configured.' }),
   logout: async () => {},
@@ -156,6 +155,7 @@ const emptyContext = (configError) => ({
   setDarkMode: async () => ({ success: false, message: configError || 'Supabase not configured.' }),
   saveSettings: async () => ({ success: false, message: configError || 'Supabase not configured.' }),
   getAllMembers: () => [],
+  getAdmins: () => [],
   createMember: async () => ({
     success: false,
     message: 'Members must self-register (or implement an invite flow using a server route with the Service Role key).',
@@ -168,9 +168,6 @@ const emptyContext = (configError) => ({
   addCommittee: async () => ({ success: false, message: configError || 'Supabase not configured.' }),
   editCommittee: async () => ({ success: false, message: configError || 'Supabase not configured.' }),
   deleteCommittee: async () => ({ success: false, message: configError || 'Supabase not configured.' }),
-  addUtilityItem: async () => ({ success: false, message: configError || 'Supabase not configured.' }),
-  editUtilityItem: async () => ({ success: false, message: configError || 'Supabase not configured.' }),
-  deleteUtilityItem: async () => ({ success: false, message: configError || 'Supabase not configured.' }),
   submitRecruitmentApplication: async () => ({ success: false, message: configError || 'Supabase not configured.' }),
   rejectRecruitment: async () => ({ success: false, message: configError || 'Supabase not configured.' }),
   getRecruitments: () => [],
@@ -183,12 +180,23 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(false)
   const [authResolved, setAuthResolved] = useState(false)
   const [user, setUser] = useState(null)
-  const [users, setUsers] = useState([])
+  const [members, setMembers] = useState([])
+  const [admins, setAdmins] = useState([])
   const [committees, setCommittees] = useState([])
-  const [utilitiesByCommittee, setUtilitiesByCommittee] = useState({})
   const [recruitments, setRecruitments] = useState([])
   const authEpochRef = useRef(0)
   const initialSessionHandledRef = useRef(false)
+  const userRef = useRef(null)
+  const activeAuthUserIdRef = useRef(null)
+  const hydrateProfileRef = useRef(null)
+  const reloadMembersRef = useRef(null)
+  const reloadAdminsRef = useRef(null)
+  const reloadCommitteesRef = useRef(null)
+  const reloadRecruitmentsRef = useRef(null)
+
+  useEffect(() => {
+    userRef.current = user
+  }, [user])
 
   const isAuthLockError = (error) => {
     if (!error) return false
@@ -243,9 +251,9 @@ export function AuthProvider({ children }) {
 
   const clearClientState = () => {
     setUser(null)
-    setUsers([])
+    setMembers([])
+    setAdmins([])
     setCommittees([])
-    setUtilitiesByCommittee({})
     setRecruitments([])
     setLoading(false)
     setAuthResolved(true)
@@ -263,9 +271,15 @@ export function AuthProvider({ children }) {
     return () => window.clearTimeout(timeoutId)
   }, [authResolved])
 
+  const users = useMemo(() => [...admins, ...members], [admins, members])
+
   const getAllMembers = useMemo(() => {
-    return () => users
-  }, [users])
+    return () => members
+  }, [members])
+
+  const getAdmins = useMemo(() => {
+    return () => admins
+  }, [admins])
 
   const runSupabaseQuery = async (label, queryFactory) => {
     try {
@@ -301,10 +315,25 @@ export function AuthProvider({ children }) {
     const normalizedIdNumber = String(authUser?.user_metadata?.id_number || '').trim()
 
     const promise = (async () => {
-      const [exactResult, emailResult, idNumberResult] = await Promise.all([
-        runSupabaseQuery('Failed to load profile by auth user id.', () =>
-          supabase.from('profiles').select('*').eq('id', authUser.id).maybeSingle()
-        ),
+      const exactResult = await runSupabaseQuery('Failed to load profile by auth user id.', () =>
+        supabase.from('profiles').select('*').eq('id', authUser.id).maybeSingle()
+      )
+      const exactProfile = exactResult?.data || null
+      if (exactProfile) {
+        logSupabase('profile lookup result', {
+          authUserId: authUser.id,
+          matchedBy: 'id',
+          profileId: exactProfile.id,
+          profileRole: exactProfile.role || null,
+          email: normalizedEmail || null,
+          idNumber: normalizedIdNumber || null,
+        })
+
+        profileCache.set(authUser.id, { profile: exactProfile, error: exactResult?.error || null, at: Date.now() })
+        return { profile: exactProfile, error: exactResult?.error || null }
+      }
+
+      const [emailResult, idNumberResult] = await Promise.all([
         normalizedEmail
           ? runSupabaseQuery('Failed to load profile by email.', () =>
               supabase.from('profiles').select('*').eq('email', normalizedEmail).limit(1).maybeSingle()
@@ -317,19 +346,12 @@ export function AuthProvider({ children }) {
           : Promise.resolve({ data: null, error: null }),
       ])
 
-      const exactProfile = exactResult?.data || null
       const emailProfile = emailResult?.data || null
       const idNumberProfile = idNumberResult?.data || null
       const lookupError = exactResult?.error || emailResult?.error || idNumberResult?.error || null
 
-      const profile = exactProfile || emailProfile || idNumberProfile || null
-      const matchedBy = exactProfile
-        ? 'id'
-        : emailProfile
-          ? 'email'
-          : idNumberProfile
-            ? 'id_number'
-            : null
+      const profile = emailProfile || idNumberProfile || null
+      const matchedBy = emailProfile ? 'email' : idNumberProfile ? 'id_number' : null
 
       if (profile && profile.id !== authUser.id) {
         console.warn('Auth/profile ID mismatch detected.', {
@@ -378,23 +400,10 @@ export function AuthProvider({ children }) {
     return mapped
   }
 
-const reloadMembers = async (roleFilter = 'all') => {
-	    if (!supabaseEnabled) return
-	    let data = []
-	    try {
-	      let query = supabase.from('profiles').select('*').order('name', { ascending: true })
-	      if (roleFilter !== 'all') {
-	        query = query.eq('role', roleFilter)
-	      }
-	      const res = await query
-	      if (res.error) console.warn('Failed to load members from Supabase.', res.error)
-	      data = res.data
-	    } catch (error) {
-	      console.warn('Failed to load members from Supabase.', error)
-	    }
-	    const mapped = Array.isArray(data)
-	      ? data.map(profile =>
-	          enrichUserWithProfileImage({
+  const mapProfilesToUsers = (data) => {
+    return Array.isArray(data)
+      ? data.map(profile =>
+          enrichUserWithProfileImage({
             id: profile.id,
             profileId: profile.id,
             idNumber: profile.id_number || '',
@@ -412,15 +421,78 @@ const reloadMembers = async (roleFilter = 'all') => {
           })
         )
       : []
-    setUsers(mapped)
   }
-  
-  const getMembers = useMemo(() => {
-    return (role = 'all') => {
-      if (role === 'all') return users
-      return users.filter(member => member.role === role)
+
+  const sortUsersByName = (list) => {
+    const items = Array.isArray(list) ? [...list] : []
+    items.sort((a, b) => String(a?.name || '').localeCompare(String(b?.name || ''), undefined, { sensitivity: 'base' }))
+    return items
+  }
+
+  const upsertUserById = (list, nextUser) => {
+    if (!nextUser?.id) return Array.isArray(list) ? list : []
+    const items = Array.isArray(list) ? [...list] : []
+    const id = String(nextUser.id)
+    const index = items.findIndex(item => String(item?.id || '') === id)
+    if (index === -1) {
+      items.push(nextUser)
+      return items
     }
-  }, [users])
+    items[index] = { ...items[index], ...nextUser }
+    return items
+  }
+
+  const removeUserById = (list, userId) => {
+    const items = Array.isArray(list) ? list : []
+    const id = String(userId || '')
+    if (!id) return items
+    const index = items.findIndex(item => String(item?.id || '') === id)
+    if (index === -1) return items
+    return [...items.slice(0, index), ...items.slice(index + 1)]
+  }
+
+  const sortCommittees = (list) => {
+    const items = Array.isArray(list) ? list.map(name => String(name || '').trim()).filter(Boolean) : []
+    const unique = [...new Set(items)]
+    unique.sort((a, b) => a.localeCompare(b))
+    return unique
+  }
+
+  const reloadMembers = async () => {
+ 	    if (!supabaseEnabled) return
+ 	    let data = []
+ 	    try {
+	      const res = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('role', 'member')
+          .order('name', { ascending: true })
+ 	      if (res.error) console.warn('Failed to load members from Supabase.', res.error)
+ 	      data = res.data
+	    } catch (error) {
+	      console.warn('Failed to load members from Supabase.', error)
+	    }
+	    const mapped = mapProfilesToUsers(data)
+    setMembers(sortUsersByName(mapped))
+	  }
+
+  const reloadAdmins = async () => {
+    if (!supabaseEnabled) return
+    let data = []
+    try {
+      const res = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('role', 'admin')
+        .order('name', { ascending: true })
+      if (res.error) console.warn('Failed to load admins from Supabase.', res.error)
+      data = res.data
+    } catch (error) {
+      console.warn('Failed to load admins from Supabase.', error)
+    }
+    const mapped = mapProfilesToUsers(data)
+    setAdmins(sortUsersByName(mapped))
+  }
 
 	  const reloadCommittees = async () => {
 	    if (!supabaseEnabled) return []
@@ -432,39 +504,10 @@ const reloadMembers = async (roleFilter = 'all') => {
 	    } catch (error) {
 	      console.warn('Failed to load committees from Supabase.', error)
 	    }
-	    const names = Array.isArray(data) ? data.map(row => row.name).filter(Boolean) : []
+	    const names = sortCommittees(Array.isArray(data) ? data.map(row => row.name) : [])
 	    setCommittees(names)
 	    return names
 	  }
-
-	  const reloadUtilities = async (committeeList = committees) => {
-	    if (!supabaseEnabled) return
-	    let data = []
-	    try {
-	      const res = await supabase
-	        .from('committee_utilities')
-	        .select('committee_name,name')
-	        .order('committee_name', { ascending: true })
-	        .order('name', { ascending: true })
-	      if (res.error) console.warn('Failed to load committee utilities from Supabase.', res.error)
-	      data = res.data
-	    } catch (error) {
-	      console.warn('Failed to load committee utilities from Supabase.', error)
-	    }
-
-	    const map = {}
-	    committeeList.forEach(name => {
-      map[name] = []
-    })
-    if (Array.isArray(data)) {
-      data.forEach(row => {
-        if (!row?.committee_name || !row?.name) return
-        if (!map[row.committee_name]) map[row.committee_name] = []
-        map[row.committee_name].push(row.name)
-      })
-    }
-    setUtilitiesByCommittee(map)
-  }
 
 	  const reloadRecruitments = async (asAdmin) => {
 	    if (!supabaseEnabled) return
@@ -501,6 +544,12 @@ const reloadMembers = async (roleFilter = 'all') => {
     setRecruitments(mapped)
   }
 
+  hydrateProfileRef.current = hydrateProfile
+  reloadMembersRef.current = reloadMembers
+  reloadAdminsRef.current = reloadAdmins
+  reloadCommitteesRef.current = reloadCommittees
+  reloadRecruitmentsRef.current = reloadRecruitments
+
   useEffect(() => {
     if (!supabaseEnabled) {
       setLoading(false)
@@ -514,9 +563,9 @@ const reloadMembers = async (roleFilter = 'all') => {
       authEpochRef.current += 1
       clearProfileCache()
       setUser(null)
-      setUsers([])
+      setMembers([])
+      setAdmins([])
       setCommittees([])
-      setUtilitiesByCommittee({})
       setRecruitments([])
       setAuthResolved(true)
       setLoading(false)
@@ -525,16 +574,16 @@ const reloadMembers = async (roleFilter = 'all') => {
     const hydrateForUser = async (authUser, epoch) => {
       setLoading(true)
       try {
-        const profileUser = await hydrateProfile(authUser, epoch)
+        const profileUser = hydrateProfileRef.current ? await hydrateProfileRef.current(authUser, epoch) : null
         if (epoch !== authEpochRef.current || disposed) return
 
         const isAdmin = profileUser?.role === 'admin'
 
-        const committeeListPromise = reloadCommittees()
         await Promise.all([
-          reloadMembers(),
-          committeeListPromise.then(list => reloadUtilities(list)),
-          reloadRecruitments(Boolean(isAdmin)),
+          reloadMembersRef.current ? reloadMembersRef.current() : Promise.resolve(),
+          isAdmin && reloadAdminsRef.current ? reloadAdminsRef.current() : Promise.resolve(),
+          reloadCommitteesRef.current ? reloadCommitteesRef.current() : Promise.resolve(),
+          reloadRecruitmentsRef.current ? reloadRecruitmentsRef.current(Boolean(isAdmin)) : Promise.resolve(),
         ])
       } finally {
         if (!disposed && epoch === authEpochRef.current) setLoading(false)
@@ -551,19 +600,53 @@ const reloadMembers = async (roleFilter = 'all') => {
 
       if (debugSupabase) logSupabase('auth event', event)
 
-      const authUser = session?.user || null
-      if (!authUser?.id) {
+      if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESH_FAILED') {
+        activeAuthUserIdRef.current = null
         applySignedOut()
         return
       }
 
+      const authUser = session?.user || null
+      if (!authUser?.id) {
+        activeAuthUserIdRef.current = null
+        applySignedOut()
+        return
+      }
+
+      const previousAuthUserId = activeAuthUserIdRef.current
+      const nextAuthUserId = authUser.id
+      const sameUser = previousAuthUserId === nextAuthUserId
+      activeAuthUserIdRef.current = nextAuthUserId
+
+      const currentUser = userRef.current
+      const hasResolvedRole = Boolean(currentUser?.id === nextAuthUserId && currentUser?.role)
+
+      if (event === 'TOKEN_REFRESHED' && sameUser && hasResolvedRole) {
+        setAuthResolved(true)
+        return
+      }
+
+      if (event === 'USER_UPDATED' && sameUser) {
+        authEpochRef.current += 1
+        const epoch = authEpochRef.current
+        setAuthResolved(true)
+        void hydrateProfileRef.current?.(authUser, epoch)
+        return
+      }
+
+      const shouldHydrateFull = event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || !sameUser || !hasResolvedRole
+      if (!shouldHydrateFull) return
+
       // Make the UI react instantly: session exists, auth is resolved, stop auth-loading immediately.
       authEpochRef.current += 1
-      clearProfileCache()
       const epoch = authEpochRef.current
+      if (!sameUser) clearProfileCache()
       setAuthResolved(true)
       setLoading(false)
-      setUser(mapProfileToUser(null, authUser))
+
+      if (!hasResolvedRole) {
+        setUser(mapProfileToUser(null, authUser))
+      }
 
       void hydrateForUser(authUser, epoch)
     }
@@ -586,38 +669,94 @@ const reloadMembers = async (roleFilter = 'all') => {
   useEffect(() => {
     if (!supabaseEnabled || !user?.id) return undefined
 
+    const handleCommitteesChange = (payload) => {
+      const eventType = payload?.eventType
+      const nextName = payload?.new?.name ? String(payload.new.name).trim() : ''
+      const prevName = payload?.old?.name ? String(payload.old.name).trim() : ''
+
+      setCommittees(prev => {
+        const list = Array.isArray(prev) ? prev : []
+        if (eventType === 'INSERT') {
+          if (!nextName || list.includes(nextName)) return list
+          return sortCommittees([...list, nextName])
+        }
+        if (eventType === 'UPDATE') {
+          if (!prevName || !nextName) return list
+          const next = list.map(name => (name === prevName ? nextName : name))
+          return sortCommittees(next)
+        }
+        if (eventType === 'DELETE') {
+          if (!prevName) return list
+          return list.filter(name => name !== prevName)
+        }
+        if (eventType === 'TRUNCATE') return []
+        return list
+      })
+    }
+
+    const handleProfilesChange = (payload) => {
+      const eventType = payload?.eventType
+
+      if (eventType === 'DELETE') {
+        const deletedId = payload?.old?.id
+        if (!deletedId) return
+        setMembers(prev => removeUserById(prev, deletedId))
+        setAdmins(prev => removeUserById(prev, deletedId))
+        return
+      }
+
+      const profile = payload?.new
+      if (!profile?.id) return
+      const nextUser = mapProfilesToUsers([profile])[0]
+      if (!nextUser) return
+
+      if (String(userRef.current?.id || '') === String(profile.id)) {
+        const authLikeUser = {
+          id: profile.id,
+          email: profile.email,
+          user_metadata: {
+            name: profile.name,
+            id_number: profile.id_number,
+          },
+          created_at: profile.created_at,
+        }
+        const mapped = mapProfileToUser(profile, authLikeUser)
+        if (mapped) {
+          applyMappedUserState(mapped, { setUser, setAppLanguageState, setDarkModeState, setSettingsState })
+        }
+      }
+
+      if (nextUser.role === 'admin') {
+        setAdmins(prev => sortUsersByName(upsertUserById(prev, nextUser)))
+        setMembers(prev => removeUserById(prev, nextUser.id))
+        return
+      }
+
+      if (nextUser.role === 'member') {
+        setMembers(prev => sortUsersByName(upsertUserById(prev, nextUser)))
+        setAdmins(prev => removeUserById(prev, nextUser.id))
+        return
+      }
+
+      setMembers(prev => removeUserById(prev, nextUser.id))
+      setAdmins(prev => removeUserById(prev, nextUser.id))
+    }
+
     const committeesChannel = supabase
       .channel(`kusgan-committees-${user.id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'committees' }, async () => {
-        const committeeList = await reloadCommittees()
-        await reloadUtilities(committeeList)
-      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'committees' }, handleCommitteesChange)
       .subscribe((status) => logSupabase('realtime committees', status))
 
-    const utilitiesChannel = supabase
-      .channel(`kusgan-committee-utilities-${user.id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'committee_utilities' }, () => reloadUtilities())
-      .subscribe((status) => logSupabase('realtime committee_utilities', status))
-
-const profilesChannel = supabase
+    const profilesChannel = supabase
       .channel(`kusgan-profiles-${user.id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => reloadMembers())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, handleProfilesChange)
       .subscribe((status) => logSupabase('realtime profiles', status))
-
-    const recruitmentsChannel = user.role === 'admin'
-      ? supabase
-          .channel(`kusgan-recruitments-${user.id}`)
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'recruitments' }, () => reloadRecruitments(true))
-          .subscribe((status) => logSupabase('realtime recruitments', status))
-      : null
 
     return () => {
       supabase.removeChannel(committeesChannel)
-      supabase.removeChannel(utilitiesChannel)
       supabase.removeChannel(profilesChannel)
-      if (recruitmentsChannel) supabase.removeChannel(recruitmentsChannel)
     }
-  }, [supabaseEnabled, user?.id, user?.role])
+  }, [supabaseEnabled, user?.id])
 
 		  const login = async (identifier, password) => {
         if (loginRequestRef.current) return loginRequestRef.current
@@ -881,11 +1020,12 @@ const profilesChannel = supabase
           }
         : prev
     )
-    setUsers(prev =>
-      prev.map(member =>
-        member?.id === user.id
+
+    const applyProfilePatch = (list) =>
+      list.map((profile) =>
+        profile?.id === user.id
           ? {
-              ...member,
+              ...profile,
               name,
               email,
               address,
@@ -893,9 +1033,14 @@ const profilesChannel = supabase
               bloodType,
               ...(hasProfileImageUpdate ? { profileImage: resolveProfileImageSrc(profileImageToStore) } : null),
             }
-          : member
+          : profile
       )
-    )
+
+    if (user.role === 'admin') {
+      setAdmins((prev) => applyProfilePatch(prev))
+    } else {
+      setMembers((prev) => applyProfilePatch(prev))
+    }
     authEpochRef.current += 1
     await hydrateProfile(
       {
@@ -1027,14 +1172,12 @@ const profilesChannel = supabase
         return { success: false, message: payload?.message || `Unable to update member (HTTP ${response.status}).` }
       }
 
-      await reloadMembers()
       return { success: true }
     }
 
     const payload = {
       name: (updates.name ?? '').toString().trim() || null,
       committee: (updates.committee ?? '').toString().trim() || null,
-      category: (updates.category ?? '').toString().trim() || null,
       address: (updates.address ?? '').toString().trim() || null,
       contact_number: (updates.contactNumber ?? '').toString().trim() || null,
       blood_type: (updates.bloodType ?? '').toString().trim().toUpperCase() || null,
@@ -1044,7 +1187,6 @@ const profilesChannel = supabase
 
     const { error } = await supabase.from('profiles').update(payload).eq('id', memberId)
     if (error) return { success: false, message: error.message || 'Unable to update member.' }
-    await reloadMembers()
     return { success: true }
   }
 
@@ -1084,36 +1226,34 @@ const profilesChannel = supabase
     }
 
     if (Array.isArray(payload?.failed) && payload.failed.length > 0) {
-      await reloadMembers()
       const first = payload.failed[0]
       return { success: false, message: first?.message || 'Some users could not be deleted.' }
     }
 
-    await reloadMembers()
     return { success: true }
   }
 
   const addCommittee = async (committeeName) => {
-    if (user?.role !== 'admin') return { success: false, message: 'Only admins can add categories.' }
+    if (user?.role !== 'admin') return { success: false, message: 'Only admins can add committees.' }
     const normalizedName = committeeName?.trim()
-    if (!normalizedName) return { success: false, message: 'Category name is required.' }
+    if (!normalizedName) return { success: false, message: 'Committee name is required.' }
     const { error } = await supabase.from('committees').insert({ name: normalizedName, created_by: user?.id || null })
-    if (error) return { success: false, message: error.message || 'Unable to add category.' }
+    if (error) return { success: false, message: error.message || 'Unable to add committee.' }
     return { success: true }
   }
 
   const editCommittee = async (oldName, newName) => {
-    if (user?.role !== 'admin') return { success: false, message: 'Only admins can update categories.' }
+    if (user?.role !== 'admin') return { success: false, message: 'Only admins can update committees.' }
     const source = oldName?.trim()
     const target = newName?.trim()
-    if (!source || !target) return { success: false, message: 'Both current and new category names are required.' }
+    if (!source || !target) return { success: false, message: 'Both current and new committee names are required.' }
     if (source === target) return { success: true }
 
     const sourceKey = buildCategoryKeyFromCommitteeEntry(source)
     const targetKey = buildCategoryKeyFromCommitteeEntry(target)
 
     const { error } = await supabase.from('committees').update({ name: target }).eq('name', source)
-    if (error) return { success: false, message: error.message || 'Unable to update category.' }
+    if (error) return { success: false, message: error.message || 'Unable to update committee.' }
 
     await supabase.from('profiles').update({ committee: target }).eq('committee', source)
 
@@ -1125,53 +1265,44 @@ const profilesChannel = supabase
   }
 
   const deleteCommittee = async (committeeName, fallbackCommitteeName) => {
-    if (user?.role !== 'admin') return { success: false, message: 'Only admins can delete categories.' }
+    if (user?.role !== 'admin') return { success: false, message: 'Only admins can delete committees.' }
     const committee = committeeName?.trim()
-    if (!committee) return { success: false, message: 'Category not found.' }
+    if (!committee) return { success: false, message: 'Committee not found.' }
 
-    const fallbackCommittee = (fallbackCommitteeName || committees.find(item => item !== committee) || '').trim()
-    if (!fallbackCommittee) return { success: false, message: 'At least one category must remain.' }
+    const fallbackCommittee = String(fallbackCommitteeName || '').trim()
+    const { count, error: countError } = await supabase
+      .from('profiles')
+      .select('id', { count: 'exact', head: true })
+      .eq('committee', committee)
+    if (countError) {
+      console.warn('Failed to count committee assignments.', countError)
+    }
+
+    const assignedCount = Number(count || 0)
+    if (assignedCount > 0 && !fallbackCommittee) {
+      return { success: false, message: 'Reassign users to another committee before deleting this committee.' }
+    }
+    if (assignedCount > 0 && fallbackCommittee === committee) {
+      return { success: false, message: 'Fallback committee must be different.' }
+    }
 
     const oldKey = buildCategoryKeyFromCommitteeEntry(committee)
 
-    await supabase.from('profiles').update({ committee: fallbackCommittee }).eq('committee', committee)
+    if (assignedCount > 0 && fallbackCommittee) {
+      await supabase.from('profiles').update({ committee: fallbackCommittee }).eq('committee', committee)
+    }
+
     if (oldKey) {
-      await supabase.from('events').update({ category: 'notes' }).eq('category', oldKey)
+      const fallbackKey = fallbackCommittee ? buildCategoryKeyFromCommitteeEntry(fallbackCommittee) : ''
+      if (fallbackKey && fallbackKey !== oldKey) {
+        await supabase.from('events').update({ category: fallbackKey }).eq('category', oldKey)
+      } else {
+        await supabase.from('events').update({ category: 'notes' }).eq('category', oldKey)
+      }
     }
 
     const { error } = await supabase.from('committees').delete().eq('name', committee)
-    if (error) return { success: false, message: error.message || 'Unable to delete category.' }
-    return { success: true }
-  }
-
-  const addUtilityItem = async (committeeName, itemName) => {
-    if (user?.role !== 'admin') return { success: false, message: 'Only admins can manage utilities.' }
-    const committee = committeeName?.trim()
-    const item = itemName?.trim()
-    if (!committee || !item) return { success: false, message: 'Category and utility item are required.' }
-    const { error } = await supabase.from('committee_utilities').insert({ committee_name: committee, name: item, created_by: user?.id || null })
-    if (error) return { success: false, message: error.message || 'Unable to add utility item.' }
-    return { success: true }
-  }
-
-  const editUtilityItem = async (committeeName, oldItemName, newItemName) => {
-    if (user?.role !== 'admin') return { success: false, message: 'Only admins can manage utilities.' }
-    const committee = committeeName?.trim()
-    const oldItem = oldItemName?.trim()
-    const newItem = newItemName?.trim()
-    if (!committee || !oldItem || !newItem) return { success: false, message: 'Category, current item, and new item are required.' }
-    const { error } = await supabase.from('committee_utilities').update({ name: newItem }).eq('committee_name', committee).eq('name', oldItem)
-    if (error) return { success: false, message: error.message || 'Unable to update utility item.' }
-    return { success: true }
-  }
-
-  const deleteUtilityItem = async (committeeName, itemName) => {
-    if (user?.role !== 'admin') return { success: false, message: 'Only admins can manage utilities.' }
-    const committee = committeeName?.trim()
-    const item = itemName?.trim()
-    if (!committee || !item) return { success: false, message: 'Category and utility item are required.' }
-    const { error } = await supabase.from('committee_utilities').delete().eq('committee_name', committee).eq('name', item)
-    if (error) return { success: false, message: error.message || 'Unable to delete utility item.' }
+    if (error) return { success: false, message: error.message || 'Unable to delete committee.' }
     return { success: true }
   }
 
@@ -1227,11 +1358,19 @@ const profilesChannel = supabase
 
   const rejectRecruitment = async (recruitmentId) => {
     if (user?.role !== 'admin') return { success: false, message: 'Only admins can process recruitments.' }
+    const processedAt = dayjs().toISOString()
+    const processedBy = user?.id || null
     const { error } = await supabase
       .from('recruitments')
-      .update({ status: 'rejected', processed_at: dayjs().toISOString(), processed_by: user?.id || null })
+      .update({ status: 'rejected', processed_at: processedAt, processed_by: processedBy })
       .eq('id', recruitmentId)
     if (error) return { success: false, message: error.message || 'Unable to reject recruitment.' }
+
+    setRecruitments(prev =>
+      prev.map(item =>
+        item.id === recruitmentId ? { ...item, status: 'rejected', reviewedAt: processedAt, reviewedBy: processedBy } : item
+      )
+    )
     return { success: true }
   }
 
@@ -1275,7 +1414,6 @@ const profilesChannel = supabase
 	          password,
 	          role,
 	          committee: memberData.committee || null,
-	          category: memberData.category || null,
 	          address: memberData.address || null,
 	          contactNumber: memberData.contactNumber || null,
 	          bloodType: memberData.bloodType || null,
@@ -1303,15 +1441,54 @@ const profilesChannel = supabase
 	      return { success: false, message: payload?.message || `Unable to create member.${statusHint}` }
 	    }
 
+      const createdUserId = payload?.userId ? String(payload.userId) : ''
+      const createdEmail = payload?.email ? String(payload.email) : ''
+
+      if (createdUserId) {
+        const createdUser = enrichUserWithProfileImage({
+          id: createdUserId,
+          profileId: createdUserId,
+          idNumber,
+          name,
+          email: createdEmail,
+          role,
+          committee: memberData.committee || '',
+          contactNumber: memberData.contactNumber || '',
+          address: memberData.address || '',
+          bloodType: memberData.bloodType || '',
+          memberSince: memberData.memberSince || new Date().toISOString(),
+          profileImage: DEFAULT_PROFILE_IMAGE,
+          accountStatus: 'Active',
+          status: 'active',
+        })
+
+        if (role === 'admin') {
+          setAdmins(prev => sortUsersByName(upsertUserById(prev, createdUser)))
+          setMembers(prev => removeUserById(prev, createdUserId))
+        } else {
+          setMembers(prev => sortUsersByName(upsertUserById(prev, createdUser)))
+          setAdmins(prev => removeUserById(prev, createdUserId))
+        }
+      }
+
 	    if (memberData.recruitmentId) {
+        const processedAt = dayjs().toISOString()
+        const processedBy = user?.id || null
 	      await supabase
 	        .from('recruitments')
-	        .update({ status: 'approved', processed_at: dayjs().toISOString(), processed_by: user?.id || null })
+	        .update({ status: 'approved', processed_at: processedAt, processed_by: processedBy })
 	        .eq('id', memberData.recruitmentId)
+
+        setRecruitments(prev =>
+          prev.map(item =>
+            item.id === memberData.recruitmentId
+              ? { ...item, status: 'approved', reviewedAt: processedAt, reviewedBy: processedBy }
+              : item
+          )
+        )
 	    }
 
-	    await reloadMembers()
-	    return { success: true, userId: payload?.userId || null }
+	    return { success: true, userId: createdUserId || null, email: createdEmail || null }
 	  }
 
   const setAppLanguage = async (nextLanguage) => {
@@ -1353,13 +1530,14 @@ const profilesChannel = supabase
     authResolved,
     loading,
     committees,
-    utilitiesByCommittee,
     appLanguage,
     setAppLanguage,
     darkMode,
     setDarkMode,
     settings,
     saveSettings,
+    members,
+    admins,
     users,
     login,
     logout,
@@ -1368,15 +1546,13 @@ const profilesChannel = supabase
     uploadProfileImage,
 	    changeCurrentUserPassword,
 	    getAllMembers,
+      getAdmins,
 	    createMember,
 	    deleteMembers,
     updateMember,
     addCommittee,
     editCommittee,
     deleteCommittee,
-    addUtilityItem,
-    editUtilityItem,
-    deleteUtilityItem,
     submitRecruitmentApplication,
     rejectRecruitment,
     getRecruitments,
