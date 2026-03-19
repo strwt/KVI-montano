@@ -47,7 +47,7 @@ const saveOutbox = (items) => {
 }
 
 function Attendance() {
-  const { user } = useAuth()
+  const { user, eventCategories } = useAuth()
   const supabaseEnabled = isSupabaseEnabled()
   const [localLoginActivity, setLocalLoginActivity] = useState(getStoredLoginActivity)
   const [supabaseLoginActivity, setSupabaseLoginActivity] = useState([])
@@ -68,6 +68,30 @@ function Attendance() {
     }
   }, [supabaseEnabled])
 
+  const categoryLabelByKey = useMemo(() => {
+    const map = {}
+    const entries = Array.isArray(eventCategories) ? eventCategories : []
+    entries.forEach(entry => {
+      const key = String(entry?.key || '').trim()
+      const label = String(entry?.label || '').trim()
+      if (!key || !label) return
+      map[key] = label
+    })
+    return map
+  }, [eventCategories])
+
+  const titleCaseFromKey = key =>
+    String(key || '')
+      .trim()
+      .replace(/_/g, ' ')
+      .replace(/\w\S*/g, word => word.charAt(0).toUpperCase() + word.slice(1))
+
+  const getCategoryLabel = key => {
+    const normalized = String(key || '').trim()
+    if (!normalized) return 'Notes'
+    return categoryLabelByKey[normalized] || titleCaseFromKey(normalized) || 'Notes'
+  }
+
   useEffect(() => {
     if (!supabaseEnabled) return
     if (!user?.id) {
@@ -82,6 +106,7 @@ function Attendance() {
       .from('login_activity')
         .select('date,is_present,present_at,status,time_in,time_out,time_out_reason')
         .eq('user_id', user.id)
+        .eq('is_present', true)
         .order('date', { ascending: true })
 
       if (!active) return
@@ -470,7 +495,7 @@ function Attendance() {
               <div key={`${event.id || 'event'}-${index}`} className="rounded-xl border border-red-100 bg-red-50/30 p-3">
                 <p className="text-sm font-semibold text-neutral-900">{event.title || 'Untitled Event'}</p>
                 <p className="text-xs text-neutral-500 mt-1">{dayjs(event.dateTime).format('MMM D, YYYY h:mm A')}</p>
-                <p className="text-xs text-neutral-500 mt-1">Category: {event.category || 'notes'}</p>
+                <p className="text-xs text-neutral-500 mt-1">Category: {getCategoryLabel(event.category || 'notes')}</p>
                 <span className={`mt-2 inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
                   event.status === 'done'
                     ? 'border-green-200 bg-green-50 text-green-700'

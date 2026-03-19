@@ -11,7 +11,6 @@ const logSupabase = (...args) => {
 }
 
 const DEFAULT_PROFILE_IMAGE = '/image-removebg-preview.png'
-const DEFAULT_MEMBER_CATEGORY = 'General Member'
 const SESSION_EXPIRED_MESSAGE = 'Session expired. Please log in again.'
 const LOADING_FALLBACK_MS = 3_000
 const PROFILE_CACHE_TTL_MS = 30_000
@@ -74,25 +73,39 @@ const splitCategoryAndType = (value = '') => {
   return { category, type }
 }
 
-const normalizeCategoryKey = value =>
+const normalizeEventCategoryKey = (value) =>
   String(value || '')
     .trim()
     .toLowerCase()
-    .replace(/\s+/g, '_')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
 
-const OPERATION_KEY_ALIASES = {
+const EVENT_CATEGORY_KEY_ALIASES = {
   relief_operations: 'relief_operation',
   fire_responses: 'fire_response',
   water_distributions: 'water_distribution',
   blood_lettings: 'blood_letting',
 }
 
-const canonicalizeCategoryKey = key => OPERATION_KEY_ALIASES[key] || key
+const canonicalizeEventCategoryKey = (key) => EVENT_CATEGORY_KEY_ALIASES[key] || key
+const toEventCategoryKey = (value) => canonicalizeEventCategoryKey(normalizeEventCategoryKey(value))
 
-const buildCategoryKeyFromCommitteeEntry = (committeeEntry) => {
-  const { category } = splitCategoryAndType(committeeEntry)
-  if (!category) return ''
-  return canonicalizeCategoryKey(normalizeCategoryKey(category))
+const resolveProfileImageSrc = (value) => {
+  const raw = String(value || '').trim()
+  if (!raw) return DEFAULT_PROFILE_IMAGE
+  if (raw === DEFAULT_PROFILE_IMAGE) return raw
+  if (raw.startsWith('/')) return raw
+  if (isLikelyExternalUrl(raw) || isLikelyDataUrl(raw)) return raw
+
+  // Treat as Supabase Storage object path. This requires the bucket to be public.
+  try {
+    const { data } = supabase?.storage?.from?.(PROFILE_IMAGE_BUCKET)?.getPublicUrl?.(raw) || {}
+    if (data?.publicUrl) return data.publicUrl
+  } catch {
+    // Ignore and fall back to default.
+  }
+
+  return DEFAULT_PROFILE_IMAGE
 }
 
 const mapProfileToUser = (profile, authUser) => {
@@ -113,7 +126,6 @@ const mapProfileToUser = (profile, authUser) => {
     email,
     role,
     committee: profile?.committee || '',
-    category: profile?.category || (role === 'admin' ? 'Administrator' : DEFAULT_MEMBER_CATEGORY),
     contactNumber: profile?.contact_number || '',
     address: profile?.address || '',
     bloodType: profile?.blood_type || '',
@@ -142,10 +154,11 @@ const emptyContext = (configError) => ({
   authResolved: true,
   loading: false,
   committees: [],
-  utilitiesByCommittee: {},
   appLanguage: 'English',
   darkMode: false,
   settings: {},
+  members: [],
+  admins: [],
   users: [],
   login: async () => ({ success: false, message: configError || 'Supabase not configured.' }),
   logout: async () => {},
@@ -156,21 +169,23 @@ const emptyContext = (configError) => ({
   setDarkMode: async () => ({ success: false, message: configError || 'Supabase not configured.' }),
   saveSettings: async () => ({ success: false, message: configError || 'Supabase not configured.' }),
   getAllMembers: () => [],
+  getAdmins: () => [],
   createMember: async () => ({
     success: false,
     message: 'Members must self-register (or implement an invite flow using a server route with the Service Role key).',
   }),
   deleteMembers: async () => ({
-    success: false,
-    message: 'Deleting users requires a server-side Admin/Service Role flow in Supabase (client cannot delete Auth users).',
+  success: false,
+  message: 'Deleting users requires a server-side Admin/Service Role flow in Supabase (client cannot delete Auth users).',
   }),
   updateMember: async () => ({ success: false, message: configError || 'Supabase not configured.' }),
   addCommittee: async () => ({ success: false, message: configError || 'Supabase not configured.' }),
   editCommittee: async () => ({ success: false, message: configError || 'Supabase not configured.' }),
   deleteCommittee: async () => ({ success: false, message: configError || 'Supabase not configured.' }),
-  addUtilityItem: async () => ({ success: false, message: configError || 'Supabase not configured.' }),
-  editUtilityItem: async () => ({ success: false, message: configError || 'Supabase not configured.' }),
-  deleteUtilityItem: async () => ({ success: false, message: configError || 'Supabase not configured.' }),
+  eventCategories: [],
+  addEventCategory: async () => ({ success: false, message: configError || 'Supabase not configured.' }),
+  editEventCategory: async () => ({ success: false, message: configError || 'Supabase not configured.' }),
+  deleteEventCategory: async () => ({ success: false, message: configError || 'Supabase not configured.' }),
   submitRecruitmentApplication: async () => ({ success: false, message: configError || 'Supabase not configured.' }),
   rejectRecruitment: async () => ({ success: false, message: configError || 'Supabase not configured.' }),
   getRecruitments: () => [],
@@ -183,9 +198,10 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(false)
   const [authResolved, setAuthResolved] = useState(false)
   const [user, setUser] = useState(null)
-  const [users, setUsers] = useState([])
+  const [members, setMembers] = useState([])
+  const [admins, setAdmins] = useState([])
   const [committees, setCommittees] = useState([])
-  const [utilitiesByCommittee, setUtilitiesByCommittee] = useState({})
+  const [eventCategories, setEventCategories] = useState([])
   const [recruitments, setRecruitments] = useState([])
   const authEpochRef = useRef(0)
   const initialSessionHandledRef = useRef(false)
@@ -378,19 +394,10 @@ export function AuthProvider({ children }) {
     return mapped
   }
 
-	  const reloadMembers = async () => {
-	    if (!supabaseEnabled) return
-	    let data = []
-	    try {
-	      const res = await supabase.from('profiles').select('*').order('name', { ascending: true })
-	      if (res.error) console.warn('Failed to load members from Supabase.', res.error)
-	      data = res.data
-	    } catch (error) {
-	      console.warn('Failed to load members from Supabase.', error)
-	    }
-	    const mapped = Array.isArray(data)
-	      ? data.map(profile =>
-	          enrichUserWithProfileImage({
+  const mapProfilesToUsers = (data) => {
+    return Array.isArray(data)
+      ? data.map(profile =>
+          enrichUserWithProfileImage({
             id: profile.id,
             profileId: profile.id,
             idNumber: profile.id_number || '',
@@ -409,56 +416,135 @@ export function AuthProvider({ children }) {
           })
         )
       : []
-    setUsers(mapped)
   }
 
-	  const reloadCommittees = async () => {
-	    if (!supabaseEnabled) return []
-	    let data = []
-	    try {
+  const sortUsersByName = (list) => {
+    const items = Array.isArray(list) ? [...list] : []
+    items.sort((a, b) => String(a?.name || '').localeCompare(String(b?.name || ''), undefined, { sensitivity: 'base' }))
+    return items
+  }
+
+  const upsertUserById = (list, nextUser) => {
+    if (!nextUser?.id) return Array.isArray(list) ? list : []
+    const items = Array.isArray(list) ? [...list] : []
+    const id = String(nextUser.id)
+    const index = items.findIndex(item => String(item?.id || '') === id)
+    if (index === -1) {
+      items.push(nextUser)
+      return items
+    }
+    items[index] = { ...items[index], ...nextUser }
+    return items
+  }
+
+  const removeUserById = (list, userId) => {
+    const items = Array.isArray(list) ? list : []
+    const id = String(userId || '')
+    if (!id) return items
+    const index = items.findIndex(item => String(item?.id || '') === id)
+    if (index === -1) return items
+    return [...items.slice(0, index), ...items.slice(index + 1)]
+  }
+
+  const sortCommittees = (list) => {
+    const items = Array.isArray(list) ? list.map(name => String(name || '').trim()).filter(Boolean) : []
+    const unique = [...new Set(items)]
+    unique.sort((a, b) => a.localeCompare(b))
+    return unique
+  }
+
+  const sortEventCategories = (list) => {
+    const items = Array.isArray(list) ? list : []
+    const normalized = items
+      .map(item => ({
+        key: toEventCategoryKey(item?.key),
+        label: String(item?.label || '').trim(),
+      }))
+      .filter(item => item.key && item.label)
+
+    const map = new Map()
+    normalized.forEach(item => {
+      if (map.has(item.key)) return
+      map.set(item.key, item)
+    })
+
+    const unique = Array.from(map.values())
+    unique.sort((a, b) => a.label.localeCompare(b.label))
+    return unique
+  }
+
+  const reloadMembers = async () => {
+  	    if (!supabaseEnabled) return
+  	    let data = []
+  	    try {
+	      const res = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('role', 'member')
+          .order('name', { ascending: true })
+ 	      if (res.error) console.warn('Failed to load members from Supabase.', res.error)
+ 	      data = res.data
+	    } catch (error) {
+	      console.warn('Failed to load members from Supabase.', error)
+	    }
+	    const mapped = mapProfilesToUsers(data)
+    setMembers(sortUsersByName(mapped))
+	  }
+
+  const reloadAdmins = async () => {
+    if (!supabaseEnabled) return
+    let data = []
+    try {
+      const res = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('role', 'admin')
+        .order('name', { ascending: true })
+      if (res.error) console.warn('Failed to load admins from Supabase.', res.error)
+      data = res.data
+    } catch (error) {
+      console.warn('Failed to load admins from Supabase.', error)
+    }
+    const mapped = mapProfilesToUsers(data)
+    setAdmins(sortUsersByName(mapped))
+  }
+
+  	  const reloadCommittees = async () => {
+  	    if (!supabaseEnabled) return []
+  	    let data = []
+  	    try {
 	      const res = await supabase.from('committees').select('name').order('name', { ascending: true })
 	      if (res.error) console.warn('Failed to load committees from Supabase.', res.error)
 	      data = res.data
-	    } catch (error) {
+  	    } catch (error) {
 	      console.warn('Failed to load committees from Supabase.', error)
-	    }
-	    const names = Array.isArray(data) ? data.map(row => row.name).filter(Boolean) : []
-	    setCommittees(names)
-	    return names
-	  }
+  	    }
+  	    const names = sortCommittees(Array.isArray(data) ? data.map(row => row.name) : [])
+  	    setCommittees(names)
+  	    return names
+  	  }
 
-	  const reloadUtilities = async (committeeList = committees) => {
-	    if (!supabaseEnabled) return
-	    let data = []
-	    try {
-	      const res = await supabase
-	        .from('committee_utilities')
-	        .select('committee_name,name')
-	        .order('committee_name', { ascending: true })
-	        .order('name', { ascending: true })
-	      if (res.error) console.warn('Failed to load committee utilities from Supabase.', res.error)
-	      data = res.data
-	    } catch (error) {
-	      console.warn('Failed to load committee utilities from Supabase.', error)
-	    }
-
-	    const map = {}
-	    committeeList.forEach(name => {
-      map[name] = []
-    })
-    if (Array.isArray(data)) {
-      data.forEach(row => {
-        if (!row?.committee_name || !row?.name) return
-        if (!map[row.committee_name]) map[row.committee_name] = []
-        map[row.committee_name].push(row.name)
-      })
+    const reloadEventCategories = async () => {
+      if (!supabaseEnabled) return []
+      let data = []
+      try {
+        const res = await supabase
+          .from('event_categories')
+          .select('key,label')
+          .order('label', { ascending: true })
+        if (res.error) console.warn('Failed to load event categories from Supabase.', res.error)
+        data = res.data
+      } catch (error) {
+        console.warn('Failed to load event categories from Supabase.', error)
+      }
+      const categories = sortEventCategories(Array.isArray(data) ? data : [])
+      setEventCategories(categories)
+      return categories
     }
-    setUtilitiesByCommittee(map)
-  }
 
-	  const reloadRecruitments = async (asAdmin) => {
-	    if (!supabaseEnabled) return
-	    if (!asAdmin) {
+  	  const reloadRecruitments = async (asAdmin) => {
+  	    if (!supabaseEnabled) return
+  	    if (!asAdmin) {
 	      setRecruitments([])
 	      return
 	    }
@@ -885,6 +971,20 @@ export function AuthProvider({ children }) {
             }
           : member
       )
+
+    if (user.role === 'admin') {
+      setAdmins((prev) => applyProfilePatch(prev))
+    } else {
+      setMembers((prev) => applyProfilePatch(prev))
+    }
+    authEpochRef.current += 1
+    await hydrateProfile(
+      {
+        id: user.id,
+        email,
+        user_metadata: { name, id_number: user.idNumber || '' },
+      },
+      authEpochRef.current
     )
     authEpochRef.current += 1
     await hydrateProfile(
@@ -1024,7 +1124,6 @@ export function AuthProvider({ children }) {
     const payload = {
       name: (updates.name ?? '').toString().trim() || null,
       committee: (updates.committee ?? '').toString().trim() || null,
-      category: (updates.category ?? '').toString().trim() || null,
       address: (updates.address ?? '').toString().trim() || null,
       contact_number: (updates.contactNumber ?? '').toString().trim() || null,
       blood_type: (updates.bloodType ?? '').toString().trim().toUpperCase() || null,
@@ -1034,7 +1133,49 @@ export function AuthProvider({ children }) {
 
     const { error } = await supabase.from('profiles').update(payload).eq('id', memberId)
     if (error) return { success: false, message: error.message || 'Unable to update member.' }
-    await reloadMembers()
+    return { success: true }
+  }
+
+  const deleteMembers = async (memberIds = []) => {
+    if (!user?.id) return { success: false, message: 'User not found.' }
+    if (user.role !== 'admin') return { success: false, message: 'Only admins can delete members.' }
+
+    const ids = Array.isArray(memberIds)
+      ? memberIds.map(id => String(id || '').trim()).filter(Boolean)
+      : [String(memberIds || '').trim()].filter(Boolean)
+
+    const uniqueIds = [...new Set(ids)]
+    if (uniqueIds.length === 0) return { success: false, message: 'No members selected.' }
+
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+    const token = sessionData?.session?.access_token
+    if (sessionError || !token) return { success: false, message: SESSION_EXPIRED_MESSAGE }
+
+    let response
+    try {
+      response = await fetch('/api/admin/delete-users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ userIds: uniqueIds }),
+      })
+    } catch (error) {
+      console.warn('Failed to reach admin delete-users endpoint.', error)
+      return { success: false, message: 'Unable to reach the server. Please try again.' }
+    }
+
+    const payload = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      return { success: false, message: payload?.message || `Unable to delete members (HTTP ${response.status}).` }
+    }
+
+    if (Array.isArray(payload?.failed) && payload.failed.length > 0) {
+      const first = payload.failed[0]
+      return { success: false, message: first?.message || 'Some users could not be deleted.' }
+    }
+
     return { success: true }
   }
 
@@ -1084,85 +1225,125 @@ export function AuthProvider({ children }) {
   }
 
   const addCommittee = async (committeeName) => {
-    if (user?.role !== 'admin') return { success: false, message: 'Only admins can add categories.' }
+    if (user?.role !== 'admin') return { success: false, message: 'Only admins can add committees.' }
     const normalizedName = committeeName?.trim()
-    if (!normalizedName) return { success: false, message: 'Category name is required.' }
+    if (!normalizedName) return { success: false, message: 'Committee name is required.' }
     const { error } = await supabase.from('committees').insert({ name: normalizedName, created_by: user?.id || null })
-    if (error) return { success: false, message: error.message || 'Unable to add category.' }
+    if (error) return { success: false, message: error.message || 'Unable to add committee.' }
     return { success: true }
   }
 
   const editCommittee = async (oldName, newName) => {
-    if (user?.role !== 'admin') return { success: false, message: 'Only admins can update categories.' }
+    if (user?.role !== 'admin') return { success: false, message: 'Only admins can update committees.' }
     const source = oldName?.trim()
     const target = newName?.trim()
-    if (!source || !target) return { success: false, message: 'Both current and new category names are required.' }
+    if (!source || !target) return { success: false, message: 'Both current and new committee names are required.' }
     if (source === target) return { success: true }
 
-    const sourceKey = buildCategoryKeyFromCommitteeEntry(source)
-    const targetKey = buildCategoryKeyFromCommitteeEntry(target)
-
     const { error } = await supabase.from('committees').update({ name: target }).eq('name', source)
-    if (error) return { success: false, message: error.message || 'Unable to update category.' }
+    if (error) return { success: false, message: error.message || 'Unable to update committee.' }
 
     await supabase.from('profiles').update({ committee: target }).eq('committee', source)
-
-    if (sourceKey && targetKey && sourceKey !== targetKey) {
-      await supabase.from('events').update({ category: targetKey }).eq('category', sourceKey)
-    }
 
     return { success: true }
   }
 
   const deleteCommittee = async (committeeName, fallbackCommitteeName) => {
-    if (user?.role !== 'admin') return { success: false, message: 'Only admins can delete categories.' }
+    if (user?.role !== 'admin') return { success: false, message: 'Only admins can delete committees.' }
     const committee = committeeName?.trim()
-    if (!committee) return { success: false, message: 'Category not found.' }
+    if (!committee) return { success: false, message: 'Committee not found.' }
 
-    const fallbackCommittee = (fallbackCommitteeName || committees.find(item => item !== committee) || '').trim()
-    if (!fallbackCommittee) return { success: false, message: 'At least one category must remain.' }
+    const fallbackCommittee = String(fallbackCommitteeName || '').trim()
+    const { count, error: countError } = await supabase
+      .from('profiles')
+      .select('id', { count: 'exact', head: true })
+      .eq('committee', committee)
+    if (countError) {
+      console.warn('Failed to count committee assignments.', countError)
+    }
 
-    const oldKey = buildCategoryKeyFromCommitteeEntry(committee)
+    const assignedCount = Number(count || 0)
+    if (assignedCount > 0 && !fallbackCommittee) {
+      return { success: false, message: 'Reassign users to another committee before deleting this committee.' }
+    }
+    if (assignedCount > 0 && fallbackCommittee === committee) {
+      return { success: false, message: 'Fallback committee must be different.' }
+    }
 
-    await supabase.from('profiles').update({ committee: fallbackCommittee }).eq('committee', committee)
-    if (oldKey) {
-      await supabase.from('events').update({ category: 'notes' }).eq('category', oldKey)
+    if (assignedCount > 0 && fallbackCommittee) {
+      await supabase.from('profiles').update({ committee: fallbackCommittee }).eq('committee', committee)
     }
 
     const { error } = await supabase.from('committees').delete().eq('name', committee)
-    if (error) return { success: false, message: error.message || 'Unable to delete category.' }
+    if (error) return { success: false, message: error.message || 'Unable to delete committee.' }
     return { success: true }
   }
 
-  const addUtilityItem = async (committeeName, itemName) => {
-    if (user?.role !== 'admin') return { success: false, message: 'Only admins can manage utilities.' }
-    const committee = committeeName?.trim()
-    const item = itemName?.trim()
-    if (!committee || !item) return { success: false, message: 'Category and utility item are required.' }
-    const { error } = await supabase.from('committee_utilities').insert({ committee_name: committee, name: item, created_by: user?.id || null })
-    if (error) return { success: false, message: error.message || 'Unable to add utility item.' }
+  const addEventCategory = async (label, keyOverride = '') => {
+    if (user?.role !== 'admin') return { success: false, message: 'Only admins can add event categories.' }
+    const normalizedLabel = String(label || '').trim()
+    const normalizedKey = toEventCategoryKey(keyOverride || normalizedLabel)
+
+    if (!normalizedLabel) return { success: false, message: 'Category label is required.' }
+    if (!normalizedKey) return { success: false, message: 'Category key is required.' }
+
+    const { error } = await supabase.from('event_categories').insert({
+      key: normalizedKey,
+      label: normalizedLabel,
+      created_by: user?.id || null,
+    })
+
+    if (error) return { success: false, message: error.message || 'Unable to add event category.' }
+
+    setEventCategories(prev => sortEventCategories([...prev, { key: normalizedKey, label: normalizedLabel }]))
+    return { success: true, key: normalizedKey }
+  }
+
+  const editEventCategory = async (categoryKey, nextLabel) => {
+    if (user?.role !== 'admin') return { success: false, message: 'Only admins can update event categories.' }
+    const key = toEventCategoryKey(categoryKey)
+    const label = String(nextLabel || '').trim()
+    if (!key) return { success: false, message: 'Category not found.' }
+    if (!label) return { success: false, message: 'Category label is required.' }
+
+    const { error } = await supabase.from('event_categories').update({ label }).eq('key', key)
+    if (error) return { success: false, message: error.message || 'Unable to update event category.' }
+
+    setEventCategories(prev => sortEventCategories(prev.map(item => (item.key === key ? { ...item, label } : item))))
     return { success: true }
   }
 
-  const editUtilityItem = async (committeeName, oldItemName, newItemName) => {
-    if (user?.role !== 'admin') return { success: false, message: 'Only admins can manage utilities.' }
-    const committee = committeeName?.trim()
-    const oldItem = oldItemName?.trim()
-    const newItem = newItemName?.trim()
-    if (!committee || !oldItem || !newItem) return { success: false, message: 'Category, current item, and new item are required.' }
-    const { error } = await supabase.from('committee_utilities').update({ name: newItem }).eq('committee_name', committee).eq('name', oldItem)
-    if (error) return { success: false, message: error.message || 'Unable to update utility item.' }
-    return { success: true }
-  }
+  const deleteEventCategory = async (categoryKey, fallbackCategoryKey) => {
+    if (user?.role !== 'admin') return { success: false, message: 'Only admins can delete event categories.' }
+    const key = toEventCategoryKey(categoryKey)
+    if (!key) return { success: false, message: 'Category not found.' }
 
-  const deleteUtilityItem = async (committeeName, itemName) => {
-    if (user?.role !== 'admin') return { success: false, message: 'Only admins can manage utilities.' }
-    const committee = committeeName?.trim()
-    const item = itemName?.trim()
-    if (!committee || !item) return { success: false, message: 'Category and utility item are required.' }
-    const { error } = await supabase.from('committee_utilities').delete().eq('committee_name', committee).eq('name', item)
-    if (error) return { success: false, message: error.message || 'Unable to delete utility item.' }
-    return { success: true }
+    const fallback = fallbackCategoryKey ? toEventCategoryKey(fallbackCategoryKey) : ''
+    if (fallback && fallback === key) return { success: false, message: 'Fallback category must be different.' }
+
+    const { count, error: countError } = await supabase
+      .from('events')
+      .select('id', { count: 'exact', head: true })
+      .eq('category', key)
+
+    if (countError) {
+      console.warn('Failed to count events for category.', countError)
+    }
+
+    const assignedCount = Number(count || 0)
+    if (assignedCount > 0 && !fallback) {
+      return { success: false, message: 'Reassign events to another category before deleting this category.' }
+    }
+
+    if (assignedCount > 0 && fallback) {
+      await supabase.from('events').update({ category: fallback }).eq('category', key)
+    }
+
+    const { error } = await supabase.from('event_categories').delete().eq('key', key)
+    if (error) return { success: false, message: error.message || 'Unable to delete event category.' }
+
+    setEventCategories(prev => prev.filter(item => item.key !== key))
+    return { success: true, reassignedTo: fallback || null }
   }
 
   const submitRecruitmentApplication = async (applicationData = {}) => {
@@ -1217,11 +1398,19 @@ export function AuthProvider({ children }) {
 
   const rejectRecruitment = async (recruitmentId) => {
     if (user?.role !== 'admin') return { success: false, message: 'Only admins can process recruitments.' }
+    const processedAt = dayjs().toISOString()
+    const processedBy = user?.id || null
     const { error } = await supabase
       .from('recruitments')
-      .update({ status: 'rejected', processed_at: dayjs().toISOString(), processed_by: user?.id || null })
+      .update({ status: 'rejected', processed_at: processedAt, processed_by: processedBy })
       .eq('id', recruitmentId)
     if (error) return { success: false, message: error.message || 'Unable to reject recruitment.' }
+
+    setRecruitments(prev =>
+      prev.map(item =>
+        item.id === recruitmentId ? { ...item, status: 'rejected', reviewedAt: processedAt, reviewedBy: processedBy } : item
+      )
+    )
     return { success: true }
   }
 
@@ -1265,7 +1454,6 @@ export function AuthProvider({ children }) {
 	          password,
 	          role,
 	          committee: memberData.committee || null,
-	          category: memberData.category || null,
 	          address: memberData.address || null,
 	          contactNumber: memberData.contactNumber || null,
 	          bloodType: memberData.bloodType || null,
@@ -1293,15 +1481,54 @@ export function AuthProvider({ children }) {
 	      return { success: false, message: payload?.message || `Unable to create member.${statusHint}` }
 	    }
 
+      const createdUserId = payload?.userId ? String(payload.userId) : ''
+      const createdEmail = payload?.email ? String(payload.email) : ''
+
+      if (createdUserId) {
+        const createdUser = enrichUserWithProfileImage({
+          id: createdUserId,
+          profileId: createdUserId,
+          idNumber,
+          name,
+          email: createdEmail,
+          role,
+          committee: memberData.committee || '',
+          contactNumber: memberData.contactNumber || '',
+          address: memberData.address || '',
+          bloodType: memberData.bloodType || '',
+          memberSince: memberData.memberSince || new Date().toISOString(),
+          profileImage: DEFAULT_PROFILE_IMAGE,
+          accountStatus: 'Active',
+          status: 'active',
+        })
+
+        if (role === 'admin') {
+          setAdmins(prev => sortUsersByName(upsertUserById(prev, createdUser)))
+          setMembers(prev => removeUserById(prev, createdUserId))
+        } else {
+          setMembers(prev => sortUsersByName(upsertUserById(prev, createdUser)))
+          setAdmins(prev => removeUserById(prev, createdUserId))
+        }
+      }
+
 	    if (memberData.recruitmentId) {
+        const processedAt = dayjs().toISOString()
+        const processedBy = user?.id || null
 	      await supabase
 	        .from('recruitments')
-	        .update({ status: 'approved', processed_at: dayjs().toISOString(), processed_by: user?.id || null })
+	        .update({ status: 'approved', processed_at: processedAt, processed_by: processedBy })
 	        .eq('id', memberData.recruitmentId)
+
+        setRecruitments(prev =>
+          prev.map(item =>
+            item.id === memberData.recruitmentId
+              ? { ...item, status: 'approved', reviewedAt: processedAt, reviewedBy: processedBy }
+              : item
+          )
+        )
 	    }
 
-	    await reloadMembers()
-	    return { success: true, userId: payload?.userId || null }
+	    return { success: true, userId: createdUserId || null, email: createdEmail || null }
 	  }
 
   const setAppLanguage = async (nextLanguage) => {
@@ -1343,13 +1570,15 @@ export function AuthProvider({ children }) {
     authResolved,
     loading,
     committees,
-    utilitiesByCommittee,
+    eventCategories,
     appLanguage,
     setAppLanguage,
     darkMode,
     setDarkMode,
     settings,
     saveSettings,
+    members,
+    admins,
     users,
     login,
     logout,
@@ -1358,15 +1587,16 @@ export function AuthProvider({ children }) {
     uploadProfileImage,
 	    changeCurrentUserPassword,
 	    getAllMembers,
+      getAdmins,
 	    createMember,
 	    deleteMembers,
     updateMember,
     addCommittee,
     editCommittee,
     deleteCommittee,
-    addUtilityItem,
-    editUtilityItem,
-    deleteUtilityItem,
+    addEventCategory,
+    editEventCategory,
+    deleteEventCategory,
     submitRecruitmentApplication,
     rejectRecruitment,
     getRecruitments,
