@@ -93,22 +93,12 @@ function Attendance() {
   }
 
   useEffect(() => {
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> bd65cbb46c278d17a2c28eb1a74e434e7aba06e4
+
     if (!supabaseEnabled) return
     if (!user?.id) {
       setSupabaseLoginActivity([])
       return
     }
-<<<<<<< HEAD
-=======
-    if (!supabaseEnabled || !user?.id) return undefined
->>>>>>> 6b5b9ceef02ae6ea3b9b852a747aa14b106d9c91
-=======
->>>>>>> bd65cbb46c278d17a2c28eb1a74e434e7aba06e4
-
     let active = true
 
     const load = async () => {
@@ -151,12 +141,8 @@ function Attendance() {
       supabase.removeChannel(channel)
     }
   }, [supabaseEnabled, user?.id])
-
   useEffect(() => {
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> bd65cbb46c278d17a2c28eb1a74e434e7aba06e4
+
     if (!supabaseEnabled || !user?.id) return
     let active = true
 
@@ -195,13 +181,6 @@ function Attendance() {
       setEvents([])
       return
     }
-<<<<<<< HEAD
-=======
-    if (!supabaseEnabled || !user?.id) return undefined
->>>>>>> 6b5b9ceef02ae6ea3b9b852a747aa14b106d9c91
-=======
->>>>>>> bd65cbb46c278d17a2c28eb1a74e434e7aba06e4
-
     let active = true
 
     const load = async () => {
