@@ -2,14 +2,28 @@ import { isSupabaseConfigured, supabase } from './supabaseClient'
 
 export const isSupabaseEnabled = () => Boolean(isSupabaseConfigured && supabase)
 
-export const fetchMyNotifications = async (limit = 50) => {
+let notificationsInflight = null
+
+export const fetchMyNotifications = async (userId, limit = 50) => {
   if (!isSupabaseEnabled()) return { data: [], error: null }
+  const id = String(userId || '').trim()
+  if (!id) return { data: [], error: null }
+
+  if (notificationsInflight) return notificationsInflight
+
+  notificationsInflight = (async () => {
   const { data, error } = await supabase
     .from('notifications')
     .select('id,user_id,type,event_id,title,category,date_time,details,assigned_by,created_at,read_at')
+    .eq('user_id', id)
     .order('created_at', { ascending: false })
     .limit(limit)
-  return { data: Array.isArray(data) ? data : [], error: error || null }
+    return { data: Array.isArray(data) ? data : [], error: error || null }
+  })().finally(() => {
+    notificationsInflight = null
+  })
+
+  return notificationsInflight
 }
 
 export const insertAssignmentNotifications = async ({ memberIds, event, assignedBy }) => {

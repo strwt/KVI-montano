@@ -47,6 +47,7 @@ function Members() {
     deleteEventCategory,
     getRecruitments,
     rejectRecruitment,
+    ensureAdminDataLoaded,
   } = useAuth()
   const navigate = useNavigate()
   const [searchQuery, setSearchQuery] = useState('')
@@ -73,6 +74,11 @@ function Members() {
   const [fallbackEventCategory, setFallbackEventCategory] = useState('')
   const [formError, setFormError] = useState('')
   const [recruitmentActionError, setRecruitmentActionError] = useState('')
+
+  useEffect(() => {
+    if (user?.role !== 'admin') return
+    void ensureAdminDataLoaded()
+  }, [ensureAdminDataLoaded, user?.role, user?.id])
   const [expandedRecruitmentId, setExpandedRecruitmentId] = useState(null)
   const [pendingApprovalRecruitmentId, setPendingApprovalRecruitmentId] = useState(null)
 	  const [newMember, setNewMember] = useState({

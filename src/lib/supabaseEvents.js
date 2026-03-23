@@ -3,6 +3,15 @@ import { isSupabaseConfigured, supabase } from './supabaseClient'
 
 export const isSupabaseEnabled = () => Boolean(isSupabaseConfigured && supabase)
 
+const EVENTS_CACHE_TTL_MS = 10_000
+let eventsCache = { at: 0, data: [] }
+let eventsInflight = null
+
+export const invalidateSupabaseEventsCache = () => {
+  eventsCache = { at: 0, data: [] }
+  eventsInflight = null
+}
+
 const normalizeEventCategoryKey = (value) =>
   String(value || '')
     .trim()
@@ -59,16 +68,30 @@ export const mapEventRowToEvent = (row) => {
 export const fetchSupabaseEvents = async () => {
   if (!isSupabaseEnabled()) return { data: [], error: null }
 
-  const { data, error } = await supabase
-    .from('events')
-    .select(
-      'id,title,content,category,date_time,address,location,branch,members_involve,assigned_member_ids,status,category_data,viewed_by,created_by,created_by_name,created_at,updated_at,completed_at'
-    )
-    .order('date_time', { ascending: false })
+  const now = Date.now()
+  if (eventsCache.at && now - eventsCache.at < EVENTS_CACHE_TTL_MS) {
+    return { data: Array.isArray(eventsCache.data) ? eventsCache.data : [], error: null }
+  }
 
-  if (error) return { data: [], error }
-  const mapped = Array.isArray(data) ? data.map(mapEventRowToEvent).filter(Boolean) : []
-  return { data: mapped, error: null }
+  if (eventsInflight) return eventsInflight
+
+  eventsInflight = (async () => {
+    const { data, error } = await supabase
+      .from('events')
+      .select(
+        'id,title,content,category,date_time,address,location,branch,members_involve,assigned_member_ids,status,category_data,viewed_by,created_by,created_by_name,created_at,updated_at,completed_at'
+      )
+      .order('date_time', { ascending: false })
+
+    if (error) return { data: [], error }
+    const mapped = Array.isArray(data) ? data.map(mapEventRowToEvent).filter(Boolean) : []
+    eventsCache = { at: Date.now(), data: mapped }
+    return { data: mapped, error: null }
+  })().finally(() => {
+    eventsInflight = null
+  })
+
+  return eventsInflight
 }
 
 export const insertSupabaseEvent = async (event, currentUser) => {
@@ -93,6 +116,7 @@ export const insertSupabaseEvent = async (event, currentUser) => {
   }
 
   const { error } = await supabase.from('events').insert(payload)
+  if (!error) invalidateSupabaseEventsCache()
   return { error: error || null }
 }
 
@@ -112,12 +136,14 @@ export const updateSupabaseEvent = async (eventId, payload) => {
   }
 
   const { error } = await supabase.from('events').update(dbPatch).eq('id', eventId)
+  if (!error) invalidateSupabaseEventsCache()
   return { error: error || null }
 }
 
 export const deleteSupabaseEvent = async (eventId) => {
   if (!isSupabaseEnabled()) return { error: new Error('Supabase not configured.') }
   const { error } = await supabase.from('events').delete().eq('id', eventId)
+  if (!error) invalidateSupabaseEventsCache()
   return { error: error || null }
 }
 
@@ -129,6 +155,7 @@ export const markSupabaseEventDone = async (eventId, patch) => {
     completed_at: patch.completedAt || new Date().toISOString(),
   }
   const { error } = await supabase.from('events').update(dbPatch).eq('id', eventId)
+  if (!error) invalidateSupabaseEventsCache()
   return { error: error || null }
 }
 
