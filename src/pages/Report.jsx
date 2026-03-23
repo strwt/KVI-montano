@@ -15,7 +15,6 @@ import {
   Loader2,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { supabase } from '../lib/supabaseClient'
 import { fetchSupabaseEvents, isSupabaseEnabled } from '../lib/supabaseEvents'
 
 const CATEGORY_META = {
@@ -681,8 +680,10 @@ function Report() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div>
-            <label className="block text-xs text-gray-500 dark:text-zinc-400 mb-1">Date Range</label>
+            <label htmlFor="report-date-range" className="block text-xs text-gray-500 dark:text-zinc-400 mb-1">Date Range</label>
             <select
+              id="report-date-range"
+              name="datePreset"
               value={datePreset}
               onChange={e => setDatePreset(e.target.value)}
               className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-sm text-gray-700 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-red-500"
@@ -693,12 +694,14 @@ function Report() {
             </select>
           </div>
           <div>
-            <label className="block text-xs text-gray-500 dark:text-zinc-400 mb-1">Category</label>
-	            <select
-	              value={selectedCategory}
-	              onChange={e => setSelectedCategory(e.target.value)}
-	              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-sm text-gray-700 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-red-500"
-	            >
+            <label htmlFor="report-category" className="block text-xs text-gray-500 dark:text-zinc-400 mb-1">Category</label>
+ 	            <select
+                id="report-category"
+                name="category"
+ 	              value={selectedCategory}
+ 	              onChange={e => setSelectedCategory(e.target.value)}
+ 	              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-sm text-gray-700 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-red-500"
+ 	            >
 	              <option value="all">All Categories</option>
 	              {availableCategoryKeys.map(key => (
 	                <option key={key} value={key}>{getCategoryLabel(key)}</option>

@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import dayjs from 'dayjs'
 import { getSupabaseConfigError, isSupabaseConfigured, supabase, supabaseAnonKey, supabaseUrl } from '../lib/supabaseClient'
 
@@ -11,7 +11,6 @@ const logSupabase = (...args) => {
 }
 
 const DEFAULT_PROFILE_IMAGE = '/image-removebg-preview.png'
-const DEFAULT_MEMBER_CATEGORY = 'Member'
 const SESSION_EXPIRED_MESSAGE = 'Session expired. Please log in again.'
 const LOADING_FALLBACK_MS = 3_000
 const PROFILE_CACHE_TTL_MS = 30_000
@@ -99,16 +98,6 @@ const resolveProfileImageSrc = (value) => {
   }
 
   return DEFAULT_PROFILE_IMAGE
-}
-
-const splitCategoryAndType = (value = '') => {
-  const raw = String(value || '').trim()
-  if (!raw) return { category: '', type: '' }
-  const parts = raw.split(' - ')
-  if (parts.length === 1) return { category: parts[0], type: 'General' }
-  const category = parts.shift()?.trim() || ''
-  const type = parts.join(' - ').trim() || 'General'
-  return { category, type }
 }
 
 const normalizeEventCategoryKey = (value) =>
@@ -519,11 +508,6 @@ export function AuthProvider({ children }) {
     return all.filter(entry => entry?.role === 'member')
   }
 
-  const reloadAdmins = async () => {
-    const all = await reloadUsers()
-    return all.filter(entry => entry?.role === 'admin')
-  }
-
   	  const reloadCommittees = async () => {
   	    if (!supabaseEnabled) return []
   	    let data = []
@@ -614,6 +598,7 @@ export function AuthProvider({ children }) {
     })
 
     return adminDataInflightRef.current
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supabaseEnabled, user?.role, users, recruitments])
 
   useEffect(() => {
@@ -644,7 +629,7 @@ export function AuthProvider({ children }) {
     const hydrateForUser = async (authUser, epoch) => {
       setLoading(true)
       try {
-        const profileUser = await hydrateProfile(authUser, epoch)
+        await hydrateProfile(authUser, epoch)
         if (epoch !== authEpochRef.current || disposed) return
 
         if (lookupsUserIdRef.current !== authUser.id) {
@@ -706,6 +691,7 @@ export function AuthProvider({ children }) {
       disposed = true
       sub?.subscription?.unsubscribe?.()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supabaseEnabled])
 
 		  const login = async (identifier, password) => {
@@ -985,6 +971,23 @@ export function AuthProvider({ children }) {
           : member
       )
     )
+
+    const applyProfilePatch = (list) => {
+      const items = Array.isArray(list) ? list : []
+      return items.map(member =>
+        member?.id === user.id
+          ? {
+              ...member,
+              name,
+              email,
+              address,
+              contactNumber,
+              bloodType,
+              ...(hasProfileImageUpdate ? { profileImage: resolveProfileImageSrc(profileImageToStore) } : null),
+            }
+          : member
+      )
+    }
 
     if (user.role === 'admin') {
       setAdmins((prev) => applyProfilePatch(prev))

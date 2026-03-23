@@ -81,30 +81,36 @@ function Recruitment() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm text-gray-700 dark:text-gray-200 mb-2">Full Name</label>
+            <label htmlFor="recruitment-full-name" className="block text-sm text-gray-700 dark:text-gray-200 mb-2">Full Name</label>
             <div className="relative">
               <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
+                id="recruitment-full-name"
+                name="fullName"
                 type="text"
                 value={formData.fullName}
                 onChange={e => setFormData(prev => ({ ...prev, fullName: e.target.value }))}
                 className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900/60 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500"
                 placeholder="Enter your full name"
+                autoComplete="name"
                 required
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm text-gray-700 dark:text-gray-200 mb-2">Email</label>
+            <label htmlFor="recruitment-email" className="block text-sm text-gray-700 dark:text-gray-200 mb-2">Email</label>
             <div className="relative">
               <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
+                id="recruitment-email"
+                name="email"
                 type="email"
                 value={formData.email}
                 onChange={e => setFormData(prev => ({ ...prev, email: e.target.value }))}
                 className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900/60 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500"
                 placeholder="Enter your email"
+                autoComplete="email"
                 required
               />
             </div>
@@ -112,10 +118,12 @@ function Recruitment() {
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="block text-sm text-gray-700 dark:text-gray-200 mb-2">Insurance</label>
+              <label htmlFor="recruitment-insurance-status" className="block text-sm text-gray-700 dark:text-gray-200 mb-2">Insurance</label>
               <div className="relative">
                 <Shield size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <select
+                  id="recruitment-insurance-status"
+                  name="insuranceStatus"
                   value={formData.insuranceStatus}
                   onChange={e => {
                     const nextStatus = e.target.value
@@ -135,10 +143,12 @@ function Recruitment() {
             </div>
 
             <div>
-              <label className="block text-sm text-gray-700 dark:text-gray-200 mb-2">What Year</label>
+              <label htmlFor="recruitment-insurance-year" className="block text-sm text-gray-700 dark:text-gray-200 mb-2">What Year</label>
               <div className="relative">
                 <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
+                  id="recruitment-insurance-year"
+                  name="insuranceYear"
                   type="number"
                   inputMode="numeric"
                   value={formData.insuranceYear}
@@ -155,39 +165,47 @@ function Recruitment() {
           </div>
 
           <div>
-            <label className="block text-sm text-gray-700 dark:text-gray-200 mb-2">Contact Number</label>
+            <label htmlFor="recruitment-contact-number" className="block text-sm text-gray-700 dark:text-gray-200 mb-2">Contact Number</label>
             <div className="relative">
               <Phone size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
+                id="recruitment-contact-number"
+                name="contactNumber"
                 type="tel"
                 value={formData.contactNumber}
                 onChange={e => setFormData(prev => ({ ...prev, contactNumber: e.target.value }))}
                 className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900/60 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500"
                 placeholder="e.g. +63 912 345 6789"
+                autoComplete="tel"
                 required
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm text-gray-700 dark:text-gray-200 mb-2">Address</label>
+            <label htmlFor="recruitment-address" className="block text-sm text-gray-700 dark:text-gray-200 mb-2">Address</label>
             <div className="relative">
               <MapPin size={16} className="absolute left-3 top-3 text-gray-400" />
               <textarea
+                id="recruitment-address"
+                name="address"
                 value={formData.address}
                 onChange={e => setFormData(prev => ({ ...prev, address: e.target.value }))}
                 className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900/60 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500 min-h-[88px] resize-y"
                 placeholder="Street, Barangay, City"
+                autoComplete="street-address"
                 required
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm text-gray-700 dark:text-gray-200 mb-2">Blood Type</label>
+            <label htmlFor="recruitment-blood-type" className="block text-sm text-gray-700 dark:text-gray-200 mb-2">Blood Type</label>
             <div className="relative">
               <Droplets size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <select
+                id="recruitment-blood-type"
+                name="bloodType"
                 value={formData.bloodType}
                 onChange={e => setFormData(prev => ({ ...prev, bloodType: e.target.value }))}
                 className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900/60 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500 appearance-none"

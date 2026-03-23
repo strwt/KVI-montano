@@ -39,6 +39,7 @@ const getStoredLoginActivity = () => {
 function AdminAttendance() {
   const { user, users, ensureAdminDataLoaded } = useAuth()
   const supabaseEnabled = isSupabaseEnabled()
+  const isAdmin = user?.role === 'admin'
   const [localLoginActivity, setLocalLoginActivity] = useState(getStoredLoginActivity)
   const [supabaseLoginActivity, setSupabaseLoginActivity] = useState([])
   const [adminAttendanceCache, setAdminAttendanceCache] = useState(getAdminAttendanceCache)
@@ -80,10 +81,7 @@ function AdminAttendance() {
   }, [])
 
   useEffect(() => {
-    if (!supabaseEnabled || user?.role !== 'admin') {
-      setSupabaseLoginActivity([])
-      return
-    }
+    if (!supabaseEnabled || !isAdmin) return
     let active = true
 
     const load = async () => {
@@ -176,7 +174,7 @@ function AdminAttendance() {
       active = false
       supabase.removeChannel(channel)
     }
-  }, [supabaseEnabled, selectedDate, user?.role])
+  }, [supabaseEnabled, selectedDate, isAdmin])
 
   const members = useMemo(() => {
     return (users || [])
@@ -206,9 +204,11 @@ function AdminAttendance() {
       }, {})
 
     const cachedForDate = adminAttendanceCache?.[selectedDate]
-    const effectiveSupabaseActivity = (supabaseLoginActivity && supabaseLoginActivity.length)
-      ? supabaseLoginActivity
-      : (Array.isArray(cachedForDate) ? cachedForDate : [])
+    const effectiveSupabaseActivity = !isAdmin
+      ? []
+      : ((supabaseLoginActivity && supabaseLoginActivity.length)
+        ? supabaseLoginActivity
+        : (Array.isArray(cachedForDate) ? cachedForDate : []))
 
     const supabaseByUser = (effectiveSupabaseActivity || [])
       .filter(entry => entry?.date === selectedDate)
@@ -231,7 +231,7 @@ function AdminAttendance() {
     })
 
     return merged
-  }, [localLoginActivity, supabaseLoginActivity, adminAttendanceCache, selectedDate])
+  }, [localLoginActivity, supabaseLoginActivity, adminAttendanceCache, selectedDate, isAdmin])
 
   const rows = useMemo(() => {
     return members.map(member => {
