@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, Calendar, ChevronLeft, ChevronRight, Users, FileText, Sun, Moon, Settings, ClipboardCheck } from 'lucide-react'
+import { LayoutDashboard, Calendar, ChevronLeft, ChevronRight, Users, FileText, Sun, Moon, ClipboardCheck } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useI18n } from '../i18n/useI18n'
 
@@ -135,22 +135,6 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
             >
               <Users size={20} className={isOpen ? '' : 'mx-auto'} />
               {isOpen && <span>{t('Management')}</span>}
-            </button>
-          )}
-
-          {isAdmin && (
-            <button
-              type="button"
-              onClick={() => {
-                navigate('/settings')
-                if (window.innerWidth < 768 && isOpen) toggleSidebar()
-              }}
-              className={`group relative flex w-full items-center gap-3 rounded-lg border-l-2 border-transparent px-4 py-3 transition-all duration-200 hover:scale-[1.02] ${navTone} ${
-                !isOpen && 'justify-center px-3'
-              }`}
-            >
-              <Settings size={20} className={isOpen ? '' : 'mx-auto'} />
-              {isOpen && <span>{t('Settings')}</span>}
             </button>
           )}
         </nav>
