@@ -123,7 +123,52 @@ function AdminAttendance() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'login_activity', filter: `date=eq.${selectedDate}` },
-        () => load()
+        (payload) => {
+          if (!active) return
+          const eventType = payload?.eventType
+          const nextRow = payload?.new
+          const oldRow = payload?.old
+
+          const mapRow = (row) => ({
+            date: row.date,
+            userId: row.user_id,
+            isOnline: Boolean(row.is_present),
+            status: row.status || 'Present',
+            presentAt: row.present_at || null,
+            timeIn: row.time_in || row.present_at || null,
+            timeOut: row.time_out || null,
+            timeOutReason: row.time_out_reason || '',
+          })
+
+          if ((eventType === 'INSERT' || eventType === 'UPDATE') && nextRow?.user_id) {
+            const mapped = mapRow(nextRow)
+            setSupabaseLoginActivity(prev => {
+              const list = Array.isArray(prev) ? prev : []
+              const idx = list.findIndex(item => String(item?.userId || '') === String(mapped.userId))
+              const next = idx === -1 ? [...list, mapped] : list.map((item, i) => (i === idx ? { ...item, ...mapped } : item))
+              setAdminAttendanceCache(cachePrev => {
+                const cache = { ...(cachePrev || {}) }
+                cache[selectedDate] = next
+                saveAdminAttendanceCache(cache)
+                return cache
+              })
+              return next
+            })
+          } else if (eventType === 'DELETE' && oldRow?.user_id) {
+            const deletedUserId = oldRow.user_id
+            setSupabaseLoginActivity(prev => {
+              const list = Array.isArray(prev) ? prev : []
+              const next = list.filter(item => String(item?.userId || '') !== String(deletedUserId))
+              setAdminAttendanceCache(cachePrev => {
+                const cache = { ...(cachePrev || {}) }
+                cache[selectedDate] = next
+                saveAdminAttendanceCache(cache)
+                return cache
+              })
+              return next
+            })
+          }
+        }
       )
       .subscribe()
 

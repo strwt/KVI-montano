@@ -164,14 +164,8 @@ function Dashboard() {
 
     void load()
 
-    const channel = supabase
-      .channel(`kusgan-login-activity-${todayKey}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'login_activity', filter: `date=eq.${todayKey}` }, () => load())
-      .subscribe()
-
     return () => {
       active = false
-      supabase.removeChannel(channel)
     }
   }, [supabaseEnabled, user?.id, isAdmin])
 
@@ -195,53 +189,68 @@ function Dashboard() {
     }
 
     let active = true
-    let inflight = null
-    let debounceId = null
 
-    const load = async () => {
-      if (inflight) return inflight
-      inflight = (async () => {
-        const { data } = await fetchMyNotifications(user.id, 80)
-        if (!active) return
-        const mapped = data.map(row => ({
-          id: row.id,
-          type: row.type,
-          userId: row.user_id,
-          eventId: row.event_id,
-          title: row.title,
-          category: row.category,
-          dateTime: row.date_time,
-          details: row.details || '',
-          assignedBy: row.assigned_by || 'Admin',
-          createdAt: row.created_at,
-          readAt: row.read_at,
-        }))
-        setNotifications(mapped)
-      })().finally(() => {
-        inflight = null
-      })
-      return inflight
+    const mapRow = (row) => ({
+      id: row.id,
+      type: row.type,
+      userId: row.user_id,
+      eventId: row.event_id,
+      title: row.title,
+      category: row.category,
+      dateTime: row.date_time,
+      details: row.details || '',
+      assignedBy: row.assigned_by || 'Admin',
+      createdAt: row.created_at,
+      readAt: row.read_at,
+    })
+
+    const loadInitial = async () => {
+      const { data } = await fetchMyNotifications(user.id, 80)
+      if (!active) return
+      setNotifications(data.map(mapRow))
     }
 
-    const scheduleLoad = () => {
-      if (debounceId) window.clearTimeout(debounceId)
-      debounceId = window.setTimeout(() => void load(), 300)
-    }
-
-    void load()
+    void loadInitial()
 
     const channel = supabase
       .channel('kusgan-notifications')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
-        () => scheduleLoad()
+        (payload) => {
+          if (!active) return
+          const eventType = payload?.eventType
+          if (eventType === 'INSERT' && payload?.new?.id) {
+            const row = mapRow(payload.new)
+            setNotifications(prev => {
+              const list = Array.isArray(prev) ? prev : []
+              if (list.some(item => item.id === row.id)) return list
+              return [row, ...list].slice(0, 80)
+            })
+            return
+          }
+          if (eventType === 'UPDATE' && payload?.new?.id) {
+            const row = mapRow(payload.new)
+            setNotifications(prev => {
+              const list = Array.isArray(prev) ? prev : []
+              const idx = list.findIndex(item => item.id === row.id)
+              if (idx === -1) return [row, ...list].slice(0, 80)
+              const next = [...list]
+              next[idx] = { ...next[idx], ...row }
+              return next
+            })
+            return
+          }
+          if (eventType === 'DELETE' && payload?.old?.id) {
+            const deletedId = payload.old.id
+            setNotifications(prev => (Array.isArray(prev) ? prev : []).filter(item => item.id !== deletedId))
+          }
+        }
       )
       .subscribe()
 
     return () => {
       active = false
-      if (debounceId) window.clearTimeout(debounceId)
       supabase.removeChannel(channel)
     }
   }, [supabaseEnabled, user?.id])
