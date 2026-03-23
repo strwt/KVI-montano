@@ -493,7 +493,7 @@ to authenticated
 using (user_id = auth.uid())
 with check (user_id = auth.uid());
 
--- EVENT FILES
+-- EVENT FILES                                                                      
 drop policy if exists event_files_select_auth on public.event_files;
 create policy event_files_select_auth
 on public.event_files for select

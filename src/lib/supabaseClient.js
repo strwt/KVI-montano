@@ -12,6 +12,56 @@ export const supabaseAnonKey = String(import.meta.env.VITE_SUPABASE_ANON_KEY || 
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey)
 
+const createSafeStorage = () => {
+  const memory = new Map()
+  const getLocalStorage = () => {
+    try {
+      if (typeof window === 'undefined') return null
+      return window.localStorage || null
+    } catch {
+      return null
+    }
+  }
+
+  return {
+    getItem: (key) => {
+      const storage = getLocalStorage()
+      if (storage) {
+        try {
+          return storage.getItem(key)
+        } catch {
+          // Fall back to memory.
+        }
+      }
+      return memory.has(key) ? memory.get(key) : null
+    },
+    setItem: (key, value) => {
+      const storage = getLocalStorage()
+      if (storage) {
+        try {
+          storage.setItem(key, value)
+          return
+        } catch {
+          // Fall back to memory.
+        }
+      }
+      memory.set(key, value)
+    },
+    removeItem: (key) => {
+      const storage = getLocalStorage()
+      if (storage) {
+        try {
+          storage.removeItem(key)
+          return
+        } catch {
+          // Fall back to memory.
+        }
+      }
+      memory.delete(key)
+    },
+  }
+}
+
 const fetchWithTimeout = (input, init = {}) => {
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), 15_000)
@@ -33,6 +83,7 @@ export const supabase = isSupabaseConfigured
         fetch: fetchWithTimeout,
       },
       auth: {
+        storage: createSafeStorage(),
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true,

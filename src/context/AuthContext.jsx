@@ -679,7 +679,7 @@ export function AuthProvider({ children }) {
       }
 
       const shouldHydrate =
-        event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'USER_UPDATED'
+        event === 'INITIAL_SESSION' || event === 'SIGNED_IN'
       if (!shouldHydrate) return
 
       // Make the UI react instantly: session exists, auth is resolved, stop auth-loading immediately.
