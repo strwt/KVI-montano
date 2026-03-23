@@ -195,39 +195,53 @@ function Dashboard() {
     }
 
     let active = true
+    let inflight = null
+    let debounceId = null
 
     const load = async () => {
-      const { data } = await fetchMyNotifications(80)
-      if (!active) return
-      const mapped = data.map(row => ({
-        id: row.id,
-        type: row.type,
-        userId: row.user_id,
-        eventId: row.event_id,
-        title: row.title,
-        category: row.category,
-        dateTime: row.date_time,
-        details: row.details || '',
-        assignedBy: row.assigned_by || 'Admin',
-        createdAt: row.created_at,
-        readAt: row.read_at,
-      }))
-      setNotifications(mapped)
+      if (inflight) return inflight
+      inflight = (async () => {
+        const { data } = await fetchMyNotifications(user.id, 80)
+        if (!active) return
+        const mapped = data.map(row => ({
+          id: row.id,
+          type: row.type,
+          userId: row.user_id,
+          eventId: row.event_id,
+          title: row.title,
+          category: row.category,
+          dateTime: row.date_time,
+          details: row.details || '',
+          assignedBy: row.assigned_by || 'Admin',
+          createdAt: row.created_at,
+          readAt: row.read_at,
+        }))
+        setNotifications(mapped)
+      })().finally(() => {
+        inflight = null
+      })
+      return inflight
     }
 
-    load()
+    const scheduleLoad = () => {
+      if (debounceId) window.clearTimeout(debounceId)
+      debounceId = window.setTimeout(() => void load(), 300)
+    }
+
+    void load()
 
     const channel = supabase
       .channel('kusgan-notifications')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
-        () => load()
+        () => scheduleLoad()
       )
       .subscribe()
 
     return () => {
       active = false
+      if (debounceId) window.clearTimeout(debounceId)
       supabase.removeChannel(channel)
     }
   }, [supabaseEnabled, user?.id])

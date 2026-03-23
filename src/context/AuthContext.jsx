@@ -190,6 +190,7 @@ const emptyContext = (configError) => ({
   saveSettings: async () => ({ success: false, message: configError || 'Supabase not configured.' }),
   getAllMembers: () => [],
   getAdmins: () => [],
+  ensureAdminDataLoaded: async () => ({ success: false, message: configError || 'Supabase not configured.' }),
   createMember: async () => ({
     success: false,
     message: 'Members must self-register (or implement an invite flow using a server route with the Service Role key).',
@@ -221,13 +222,14 @@ export function AuthProvider({ children }) {
   const [users, setUsers] = useState([])
   const [members, setMembers] = useState([])
   const [admins, setAdmins] = useState([])
-  const [users, setUsers] = useState([])
   const [committees, setCommittees] = useState([])
-  const [utilitiesByCommittee, setUtilitiesByCommittee] = useState({})
   const [eventCategories, setEventCategories] = useState([])
   const [recruitments, setRecruitments] = useState([])
   const authEpochRef = useRef(0)
   const initialSessionHandledRef = useRef(false)
+  const adminDataInflightRef = useRef(null)
+  const lookupsUserIdRef = useRef('')
+  const lookupsLoadedRef = useRef(false)
 
   const isAuthLockError = (error) => {
     if (!error) return false
@@ -290,6 +292,8 @@ export function AuthProvider({ children }) {
     setRecruitments([])
     setLoading(false)
     setAuthResolved(true)
+    lookupsUserIdRef.current = ''
+    lookupsLoadedRef.current = false
   }
 
   useEffect(() => {
@@ -306,10 +310,6 @@ export function AuthProvider({ children }) {
 
   const getAllMembers = useCallback(() => members, [members])
   const getAdmins = useCallback(() => admins, [admins])
-
-  const getAdmins = useMemo(() => {
-    return () => admins
-  }, [admins])
 
   const runSupabaseQuery = async (label, queryFactory) => {
     try {
@@ -493,26 +493,8 @@ export function AuthProvider({ children }) {
     return unique
   }
 
-  const reloadMembers = async () => {
-  	    if (!supabaseEnabled) return
-  	    let data = []
-  	    try {
-	      const res = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('role', 'member')
-          .order('name', { ascending: true })
- 	      if (res.error) console.warn('Failed to load members from Supabase.', res.error)
- 	      data = res.data
-	    } catch (error) {
-	      console.warn('Failed to load members from Supabase.', error)
-	    }
-    const mapped = mapProfilesToUsers(data)
-    setMembers(sortUsersByName(mapped))
-	  }
-
-  const reloadAdmins = async () => {
-    if (!supabaseEnabled) return
+  const reloadUsers = async () => {
+    if (!supabaseEnabled) return []
     let data = []
     try {
       const res = await supabase
@@ -540,32 +522,6 @@ export function AuthProvider({ children }) {
   const reloadAdmins = async () => {
     const all = await reloadUsers()
     return all.filter(entry => entry?.role === 'admin')
-  }
-
-  const reloadUtilities = async () => {
-    if (!supabaseEnabled) {
-      setUtilitiesByCommittee({})
-      return {}
-    }
-    let data = []
-    try {
-      const res = await supabase.from('committee_utilities').select('*')
-      if (res.error) console.warn('Failed to load committee utilities from Supabase.', res.error)
-      data = res.data
-    } catch (error) {
-      console.warn('Failed to load committee utilities from Supabase.', error)
-    }
-
-    const map = {}
-    ;(Array.isArray(data) ? data : []).forEach(row => {
-      const committee = String(row?.committee || row?.committee_name || row?.name || '').trim()
-      if (!committee) return
-      if (!map[committee]) map[committee] = []
-      map[committee].push(row)
-    })
-
-    setUtilitiesByCommittee(map)
-    return map
   }
 
   	  const reloadCommittees = async () => {
@@ -639,6 +595,27 @@ export function AuthProvider({ children }) {
     setRecruitments(mapped)
   }
 
+  const ensureAdminDataLoaded = useCallback(async () => {
+    if (!supabaseEnabled) return
+    if (user?.role !== 'admin') return
+
+    if ((users && users.length) && (recruitments && recruitments.length)) return
+    if (adminDataInflightRef.current) return adminDataInflightRef.current
+
+    adminDataInflightRef.current = (async () => {
+      if (!users || users.length === 0) {
+        await reloadUsers()
+      }
+      if (!recruitments || recruitments.length === 0) {
+        await reloadRecruitments(true)
+      }
+    })().finally(() => {
+      adminDataInflightRef.current = null
+    })
+
+    return adminDataInflightRef.current
+  }, [supabaseEnabled, user?.role, users, recruitments])
+
   useEffect(() => {
     if (!supabaseEnabled) {
       setLoading(false)
@@ -660,6 +637,8 @@ export function AuthProvider({ children }) {
       setRecruitments([])
       setAuthResolved(true)
       setLoading(false)
+      lookupsUserIdRef.current = ''
+      lookupsLoadedRef.current = false
     }
 
     const hydrateForUser = async (authUser, epoch) => {
@@ -668,15 +647,15 @@ export function AuthProvider({ children }) {
         const profileUser = await hydrateProfile(authUser, epoch)
         if (epoch !== authEpochRef.current || disposed) return
 
-        const isAdmin = profileUser?.role === 'admin'
+        if (lookupsUserIdRef.current !== authUser.id) {
+          lookupsUserIdRef.current = authUser.id
+          lookupsLoadedRef.current = false
+        }
 
-        await reloadCommittees()
-        await reloadEventCategories()
-        if (isAdmin) {
-          await reloadUsers()
-          await reloadRecruitments(true)
-        } else {
-          await reloadRecruitments(false)
+        if (!lookupsLoadedRef.current) {
+          await reloadCommittees()
+          await reloadEventCategories()
+          lookupsLoadedRef.current = true
         }
       } finally {
         if (!disposed && epoch === authEpochRef.current) setLoading(false)
@@ -1236,6 +1215,7 @@ export function AuthProvider({ children }) {
     if (!normalizedName) return { success: false, message: 'Committee name is required.' }
     const { error } = await supabase.from('committees').insert({ name: normalizedName })
     if (error) return { success: false, message: error.message || 'Unable to add committee.' }
+    setCommittees(prev => sortCommittees([...(Array.isArray(prev) ? prev : []), normalizedName]))
     return { success: true }
   }
 
@@ -1250,6 +1230,15 @@ export function AuthProvider({ children }) {
     if (error) return { success: false, message: error.message || 'Unable to update committee.' }
 
     await supabase.from('profiles').update({ committee: target }).eq('committee', source)
+
+    setCommittees(prev => sortCommittees((Array.isArray(prev) ? prev : []).map(name => (name === source ? target : name))))
+    const patchCommittee = (list) =>
+      (Array.isArray(list) ? list : []).map(entry =>
+        entry?.committee === source ? { ...entry, committee: target } : entry
+      )
+    setUsers(prev => patchCommittee(prev))
+    setMembers(prev => patchCommittee(prev))
+    setAdmins(prev => patchCommittee(prev))
 
     return { success: true }
   }
@@ -1282,6 +1271,16 @@ export function AuthProvider({ children }) {
 
     const { error } = await supabase.from('committees').delete().eq('name', committee)
     if (error) return { success: false, message: error.message || 'Unable to delete committee.' }
+
+    setCommittees(prev => (Array.isArray(prev) ? prev : []).filter(name => name !== committee))
+    const nextCommittee = fallbackCommittee || ''
+    const patchCommittee = (list) =>
+      (Array.isArray(list) ? list : []).map(entry =>
+        entry?.committee === committee ? { ...entry, committee: nextCommittee } : entry
+      )
+    setUsers(prev => patchCommittee(prev))
+    setMembers(prev => patchCommittee(prev))
+    setAdmins(prev => patchCommittee(prev))
     return { success: true }
   }
 
@@ -1591,10 +1590,11 @@ export function AuthProvider({ children }) {
     register,
     updateCurrentUser,
     uploadProfileImage,
-	    changeCurrentUserPassword,
-	    getAllMembers,
+ 	    changeCurrentUserPassword,
+ 	    getAllMembers,
       getAdmins,
-	    createMember,
+      ensureAdminDataLoaded,
+ 	    createMember,
 	    deleteMembers,
     updateMember,
     addCommittee,

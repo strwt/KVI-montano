@@ -37,7 +37,7 @@ const getStoredLoginActivity = () => {
 }
 
 function AdminAttendance() {
-  const { user, users } = useAuth()
+  const { user, users, ensureAdminDataLoaded } = useAuth()
   const supabaseEnabled = isSupabaseEnabled()
   const [localLoginActivity, setLocalLoginActivity] = useState(getStoredLoginActivity)
   const [supabaseLoginActivity, setSupabaseLoginActivity] = useState([])
@@ -51,6 +51,11 @@ function AdminAttendance() {
     timeOut: '',
     timeOutReason: '',
   })
+
+  useEffect(() => {
+    if (user?.role !== 'admin') return
+    void ensureAdminDataLoaded()
+  }, [ensureAdminDataLoaded, user?.role, user?.id])
 
   useEffect(() => {
     const refreshLogin = () => setLocalLoginActivity(getStoredLoginActivity())
