@@ -92,12 +92,12 @@ function Attendance() {
   }
 
   useEffect(() => {
+
     if (!supabaseEnabled) return
     if (!user?.id) {
       setSupabaseLoginActivity([])
       return
     }
-
     let active = true
 
     const load = async () => {
@@ -130,8 +130,8 @@ function Attendance() {
       active = false
     }
   }, [supabaseEnabled, user?.id])
-
   useEffect(() => {
+
     if (!supabaseEnabled || !user?.id) return
     let active = true
 
@@ -170,7 +170,6 @@ function Attendance() {
       setEvents([])
       return
     }
-
     let active = true
 
     const load = async () => {
