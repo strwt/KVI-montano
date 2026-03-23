@@ -367,7 +367,7 @@ function Attendance() {
           {!isPresentToday ? (
             <button
               type="button"
-              onClick={markOnline}
+              onClick={markOnline} 
               disabled={!userId}
               className="inline-flex items-center gap-2 rounded-xl border border-emerald-600 bg-emerald-600 px-5 py-2 text-[14px] font-semibold text-white transition-all duration-200 hover:scale-[1.02] hover:bg-emerald-700"
             >
