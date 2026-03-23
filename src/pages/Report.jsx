@@ -227,16 +227,10 @@ function Report() {
       setEvents(data)
     }
 
-    load()
-
-    const channel = supabase
-      .channel('kusgan-events-report')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => load())
-      .subscribe()
+    void load()
 
     return () => {
       active = false
-      supabase.removeChannel(channel)
     }
   }, [supabaseEnabled, user?.id])
 
@@ -261,11 +255,10 @@ function Report() {
       map[key] = CATEGORY_META[key]?.label || titleCaseFromKey(key)
     })
     const entries = Array.isArray(eventCategories) ? eventCategories : []
-    entries.forEach(entry => {
-      const key = canonicalizeOperationKey(normalizeCategory(entry?.key))
-      const label = String(entry?.label || '').trim()
-      if (!key || !label) return
-      map[key] = label
+    entries.forEach(name => {
+      const key = canonicalizeOperationKey(normalizeCategory(name))
+      if (!key) return
+      if (!map[key]) map[key] = titleCaseFromKey(key)
     })
     return map
   }, [eventCategories])

@@ -121,16 +121,10 @@ function Dashboard() {
       setEvents(data)
     }
 
-    load()
-
-    const channel = supabase
-      .channel('kusgan-events-dashboard')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => load())
-      .subscribe()
+    void load()
 
     return () => {
       active = false
-      supabase.removeChannel(channel)
     }
   }, [supabaseEnabled, user?.id])
 
@@ -141,9 +135,9 @@ function Dashboard() {
     }
 
     let active = true
+    const todayKey = dayjs().format('YYYY-MM-DD')
 
-      const load = async () => {
-      const todayKey = dayjs().format('YYYY-MM-DD')
+    const load = async () => {
       const { data } = await supabase
         .from('login_activity')
         .select('date,present_at,user_id,profiles(name,email,role,profile_image)')
@@ -168,11 +162,11 @@ function Dashboard() {
       setRecentLogins(mapped)
     }
 
-    load()
+    void load()
 
     const channel = supabase
-      .channel('kusgan-login-activity')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'login_activity' }, () => load())
+      .channel(`kusgan-login-activity-${todayKey}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'login_activity', filter: `date=eq.${todayKey}` }, () => load())
       .subscribe()
 
     return () => {
@@ -266,11 +260,10 @@ function Dashboard() {
   const categoryLabelByKey = useMemo(() => {
     const map = {}
     const entries = Array.isArray(eventCategories) ? eventCategories : []
-    entries.forEach(entry => {
-      const key = canonicalizeOperationKey(normalizeCategoryKey(entry?.key))
-      const label = String(entry?.label || '').trim()
-      if (!key || !label) return
-      map[key] = label
+    entries.forEach(name => {
+      const key = canonicalizeOperationKey(normalizeCategoryKey(name))
+      if (!key) return
+      map[key] = titleCaseFromKey(key)
     })
     return map
   }, [eventCategories])
