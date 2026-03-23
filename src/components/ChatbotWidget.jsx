@@ -65,7 +65,20 @@ const PAGE_SUGGESTIONS = [
     ],
     links: [
       { label: 'Members', to: '/members' },
-      { label: 'Dashboard', to: '/' },
+      { label: 'Settings', to: '/settings' },
+    ],
+  },
+  {
+    match: pathname => pathname.startsWith('/settings'),
+    title: 'Settings',
+    suggestions: [
+      'How do I change the theme?',
+      'Where do I change language?',
+      'How do I update notifications?',
+    ],
+    links: [
+      { label: 'Settings', to: '/settings' },
+      { label: 'Profile', to: '/profile' },
     ],
   },
   {
@@ -166,6 +179,9 @@ const buildResponse = (input) => {
   if (text.includes('password')) {
     return 'Go to Change Password from your profile to update your password.'
   }
+  if (text.includes('settings') || text.includes('language') || text.includes('notification')) {
+    return 'Settings lets you change language, theme, and notification preferences.'
+  }
   if (text.includes('recruitment') || text.includes('join') || text.includes('register')) {
     return 'Use the Recruitment form to apply. Fill out all required fields and submit.'
   }
@@ -173,7 +189,7 @@ const buildResponse = (input) => {
     return 'If you need help beyond this assistant, please contact an admin for account or data issues.'
   }
 
-  return 'I can help with navigation, events, attendance, profile, and reports. Try one of the suggested questions or use the quick links.'
+  return 'I can help with navigation, events, attendance, profile, settings, and reports. Try one of the suggested questions or use the quick links.'
 }
 
 function ChatbotWidget() {
@@ -181,15 +197,7 @@ function ChatbotWidget() {
   const navigate = useNavigate()
   const [isOpen, setIsOpen] = useState(false)
   const [input, setInput] = useState('')
-  const [position, setPosition] = useState(() => {
-    if (typeof window === 'undefined') return null
-    const buttonSize = 48
-    const offset = 24
-    return {
-      x: Math.max(0, window.innerWidth - buttonSize - offset),
-      y: Math.max(0, window.innerHeight - buttonSize - offset),
-    }
-  })
+  const [position, setPosition] = useState(null)
   const [showSuggestions, setShowSuggestions] = useState(true)
   const [isTyping, setIsTyping] = useState(false)
   const typingTimerRef = useRef(null)
@@ -213,6 +221,16 @@ function ChatbotWidget() {
   const pageConfig = useMemo(() => {
     return PAGE_SUGGESTIONS.find(item => item.match(pathname)) || DEFAULT_SUGGESTIONS
   }, [pathname])
+
+  useEffect(() => {
+    if (position || typeof window === 'undefined') return
+    const buttonSize = 48
+    const offset = 24
+    setPosition({
+      x: Math.max(0, window.innerWidth - buttonSize - offset),
+      y: Math.max(0, window.innerHeight - buttonSize - offset),
+    })
+  }, [position])
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined
