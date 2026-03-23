@@ -156,10 +156,10 @@ function EditAccount() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="md:col-span-3 relative z-10 rounded-2xl border border-zinc-200 bg-gradient-to-b from-white to-zinc-50 p-4 md:p-5">
-                <label className="block text-sm text-zinc-700 mb-3 font-medium flex items-center gap-2">
+                <div className="block text-sm text-zinc-700 mb-3 font-medium flex items-center gap-2">
                   <ImageIcon size={16} className="text-red-600" />
                   Avatar / Profile Image
-                </label>
+                </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4 lg:gap-5">
                   <div className="rounded-2xl border border-red-100 bg-white p-4 shadow-md shadow-red-900/10">
@@ -224,65 +224,79 @@ function EditAccount() {
               </div>
 
               <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-                <label className="block text-sm text-zinc-700 mb-1.5 font-medium flex items-center gap-2">
+                <label htmlFor="edit-account-name" className="block text-sm text-zinc-700 mb-1.5 font-medium flex items-center gap-2">
                   <User size={15} className="text-red-600" />
                   Full Name
                 </label>
                 <input
+                  id="edit-account-name"
+                  name="name"
                   type="text"
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  autoComplete="name"
                   className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500"
                 />
               </div>
 
               <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-                <label className="block text-sm text-zinc-700 mb-1.5 font-medium flex items-center gap-2">
+                <label htmlFor="edit-account-email" className="block text-sm text-zinc-700 mb-1.5 font-medium flex items-center gap-2">
                   <Mail size={15} className="text-red-600" />
                   Email
                 </label>
                 <input
+                  id="edit-account-email"
+                  name="email"
                   type="email"
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  autoComplete="email"
                   className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500"
                 />
               </div>
 
               <div className="md:col-span-3 rounded-2xl border border-zinc-200 bg-white p-4">
-                <label className="block text-sm text-zinc-700 mb-1.5 font-medium flex items-center gap-2">
+                <label htmlFor="edit-account-address" className="block text-sm text-zinc-700 mb-1.5 font-medium flex items-center gap-2">
                   <MapPin size={16} className="text-red-600" />
                   Address
                 </label>
                 <input
+                  id="edit-account-address"
+                  name="address"
                   type="text"
                   placeholder="Street, City, Province"
                   value={form.address}
                   onChange={(e) => setForm({ ...form, address: e.target.value })}
+                  autoComplete="street-address"
                   className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500"
                 />
               </div>
 
               <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-                <label className="block text-sm text-zinc-700 mb-1.5 font-medium flex items-center gap-2">
+                <label htmlFor="edit-account-contact-number" className="block text-sm text-zinc-700 mb-1.5 font-medium flex items-center gap-2">
                   <Phone size={16} className="text-red-600" />
                   Contact Number
                 </label>
                 <input
+                  id="edit-account-contact-number"
+                  name="contactNumber"
                   type="tel"
                   placeholder="e.g. +63 912 345 6789"
                   value={form.contactNumber}
                   onChange={(e) => setForm({ ...form, contactNumber: e.target.value })}
+                  autoComplete="tel"
                   className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500"
                 />
               </div>
 
               <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-                <label className="block text-sm text-zinc-700 mb-1.5 font-medium flex items-center gap-2">
+                <label htmlFor="edit-account-blood-type" className="block text-sm text-zinc-700 mb-1.5 font-medium flex items-center gap-2">
                   <Droplets size={16} className="text-red-600" />
                   Blood Type
                 </label>
                 <select
+                  id="edit-account-blood-type"
+                  name="bloodType"
                   value={form.bloodType}
                   onChange={(e) => setForm({ ...form, bloodType: e.target.value })}
                   className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-zinc-800 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500"

@@ -502,7 +502,167 @@ function Members() {
 
       {isAdmin && (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
-          <div className="bg-white dark:bg-zinc-900 border border-red-600 rounded-2xl shadow-md p-5">
+          <div className="bg-white border border-red-600 rounded-2xl shadow-md p-5 xl:col-span-2">
+            <h3 className="font-semibold text-gray-800 mb-3">Create Member</h3>
+            {pendingApprovalRecruitmentId && (
+              <div className="mb-3 p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm">
+                Recruitment approval in progress. Complete member creation to mark this application as approved.
+              </div>
+            )}
+            {formError && <p className="text-sm text-red-600 mb-2">{formError}</p>}
+            <form id="create-member-form" onSubmit={handleCreateMember} className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label htmlFor="create-member-name" className="block text-xs text-gray-500 mb-1">Full Name</label>
+                <input
+                  id="create-member-name"
+                  name="name"
+                  type="text"
+                  placeholder="Full name"
+                  value={newMember.name}
+                  onChange={e => setNewMember({ ...newMember, name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                  required
+                  autoComplete="name"
+                />
+              </div>
+              <div>
+                <label htmlFor="create-member-id-number" className="block text-xs text-gray-500 mb-1">ID Number</label>
+                <input
+                  id="create-member-id-number"
+                  name="idNumber"
+                  type="text"
+                  placeholder="ID Number"
+                  value={newMember.idNumber}
+                  onChange={e => setNewMember({ ...newMember, idNumber: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                  required
+                  autoComplete="off"
+                />
+              </div>
+              <div>
+                <label htmlFor="create-member-password" className="block text-xs text-gray-500 mb-1">Temporary Password</label>
+                <div className="relative">
+                  <input
+                    id="create-member-password"
+                    name="password"
+                    type={showTempPassword ? 'text' : 'password'}
+                    placeholder="Temporary password"
+                    value={newMember.password}
+                    onChange={e => setNewMember({ ...newMember, password: e.target.value })}
+                    className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                    required
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowTempPassword(prev => !prev)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-red-600"
+                    aria-label={showTempPassword ? 'Hide password' : 'Show password'}
+                    title={showTempPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showTempPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label htmlFor="create-member-address" className="block text-xs text-gray-500 mb-1">Address</label>
+                <input
+                  id="create-member-address"
+                  name="address"
+                  type="text"
+                  placeholder="Address"
+                  value={newMember.address}
+                  onChange={e => setNewMember({ ...newMember, address: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                  autoComplete="street-address"
+                />
+              </div>
+              <div>
+                <label htmlFor="create-member-contact-number" className="block text-xs text-gray-500 mb-1">Contact Number</label>
+                <input
+                  id="create-member-contact-number"
+                  name="contactNumber"
+                  type="text"
+                  placeholder="Contact Number"
+                  value={newMember.contactNumber}
+                  onChange={e => setNewMember({ ...newMember, contactNumber: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                  autoComplete="tel"
+                />
+              </div>
+              <div>
+                <label htmlFor="create-member-blood-type" className="block text-xs text-gray-500 mb-1">Blood Type</label>
+                <select
+                  id="create-member-blood-type"
+                  name="bloodType"
+                  value={newMember.bloodType}
+                  onChange={e => setNewMember({ ...newMember, bloodType: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                >
+                  <option value="">Select Blood Type</option>
+                  {BLOOD_TYPE_OPTIONS.map(type => (
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="create-member-member-since" className="block text-xs text-gray-500 mb-1">Member Since</label>
+                <input
+                  id="create-member-member-since"
+                  name="memberSince"
+                  type="date"
+                  value={newMember.memberSince}
+                  onChange={e => setNewMember({ ...newMember, memberSince: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                  autoComplete="off"
+                />
+              </div>
+              <div>
+                <label htmlFor="create-member-role" className="block text-xs text-gray-500 mb-1">Type</label>
+                <select
+                  id="create-member-role"
+                  name="role"
+                  value={newMember.role}
+                  onChange={e => setNewMember({ ...newMember, role: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                  required
+                >
+                  {ROLE_OPTIONS.map(roleOption => (
+                    <option key={roleOption.value} value={roleOption.value}>
+                      {roleOption.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="create-member-committee" className="block text-xs text-gray-500 mb-1">Committee</label>
+                <select
+                  id="create-member-committee"
+                  name="committee"
+                  value={newMember.committee}
+                  onChange={e => setNewMember({ ...newMember, committee: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                  required
+                >
+                  {committeeOptions.map(committee => (
+                    <option key={committee} value={committee}>
+                      {committee}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <button
+                type="submit"
+                className="md:col-span-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                {pendingApprovalRecruitmentId ? 'Approve & Create Account' : 'Create Member'}
+              </button>
+            </form>
+          </div>
+
+          <div className="bg-white dark:bg-zinc-900 border border-red-600 rounded-2xl shadow-md p-5 xl:col-span-2">
             <div className="flex items-center justify-between gap-3 mb-3">
               <h3 className="font-semibold text-gray-800 dark:text-zinc-100">Committee Management</h3>
               <button
@@ -520,12 +680,15 @@ function Members() {
 
             <form onSubmit={handleCommitteeAdd} className="flex flex-col sm:flex-row gap-2 mb-4">
               <input
+                id="committee-new-name"
+                name="committeeName"
                 type="text"
                 value={committeeName}
                 onChange={e => setCommitteeName(e.target.value)}
                 placeholder="New committee name"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                 disabled={committeeActionBusy}
+                autoComplete="off"
               />
               <button
                 type="submit"
@@ -573,143 +736,6 @@ function Members() {
                 ))
               )}
             </div>
-
-          </div>
-
-          <div className="bg-white border border-red-600 rounded-2xl shadow-md p-5">
-            <h3 className="font-semibold text-gray-800 mb-3">Create Member</h3>
-            {pendingApprovalRecruitmentId && (
-              <div className="mb-3 p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm">
-                Recruitment approval in progress. Complete member creation to mark this application as approved.
-              </div>
-            )}
-            {formError && <p className="text-sm text-red-600 mb-2">{formError}</p>}
-            <form id="create-member-form" onSubmit={handleCreateMember} className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Full Name</label>
-                <input
-                  type="text"
-                  placeholder="Full name"
-                  value={newMember.name}
-                  onChange={e => setNewMember({ ...newMember, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">ID Number</label>
-                <input
-                  type="text"
-                  placeholder="ID Number"
-                  value={newMember.idNumber}
-                  onChange={e => setNewMember({ ...newMember, idNumber: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Temporary Password</label>
-                <div className="relative">
-                  <input
-                    type={showTempPassword ? 'text' : 'password'}
-                    placeholder="Temporary password"
-                    value={newMember.password}
-                    onChange={e => setNewMember({ ...newMember, password: e.target.value })}
-                    className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowTempPassword(prev => !prev)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-red-600"
-                    aria-label={showTempPassword ? 'Hide password' : 'Show password'}
-                    title={showTempPassword ? 'Hide password' : 'Show password'}
-                  >
-                    {showTempPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Address</label>
-                <input
-                  type="text"
-                  placeholder="Address"
-                  value={newMember.address}
-                  onChange={e => setNewMember({ ...newMember, address: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Contact Number</label>
-                <input
-                  type="text"
-                  placeholder="Contact Number"
-                  value={newMember.contactNumber}
-                  onChange={e => setNewMember({ ...newMember, contactNumber: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Blood Type</label>
-                <select
-                  value={newMember.bloodType}
-                  onChange={e => setNewMember({ ...newMember, bloodType: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                >
-                  <option value="">Select Blood Type</option>
-                  {BLOOD_TYPE_OPTIONS.map(type => (
-                    <option key={type} value={type}>
-                      {type}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Member Since</label>
-                <input
-                  type="date"
-                  value={newMember.memberSince}
-                  onChange={e => setNewMember({ ...newMember, memberSince: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Type</label>
-                <select
-                  value={newMember.role}
-                  onChange={e => setNewMember({ ...newMember, role: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                  required
-                >
-                  {ROLE_OPTIONS.map(roleOption => (
-                    <option key={roleOption.value} value={roleOption.value}>
-                      {roleOption.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Committee</label>
-                <select
-                  value={newMember.committee}
-                  onChange={e => setNewMember({ ...newMember, committee: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                  required
-                >
-                  {committeeOptions.map(committee => (
-                    <option key={committee} value={committee}>
-                      {committee}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <button
-                type="submit"
-                className="md:col-span-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-              >
-                {pendingApprovalRecruitmentId ? 'Approve & Create Account' : 'Create Member'}
-              </button>
-            </form>
           </div>
         </div>
       )}
@@ -855,8 +881,10 @@ function Members() {
 
               {deletingCommitteeAssignedCount > 0 && (
                 <div>
-                  <label className="block text-xs text-gray-700 dark:text-zinc-200 mb-1">Reassign users to</label>
+                  <label htmlFor="delete-committee-fallback" className="block text-xs text-gray-700 dark:text-zinc-200 mb-1">Reassign users to</label>
                   <select
+                    id="delete-committee-fallback"
+                    name="fallbackCommittee"
                     value={fallbackCommittee}
                     onChange={e => setFallbackCommittee(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
@@ -978,8 +1006,10 @@ function Members() {
               </p>
 
               <div>
-                <label className="block text-xs text-gray-700 dark:text-zinc-200 mb-1">Fallback category (optional)</label>
+                <label htmlFor="delete-event-category-fallback" className="block text-xs text-gray-700 dark:text-zinc-200 mb-1">Fallback category (optional)</label>
                 <select
+                  id="delete-event-category-fallback"
+                  name="fallbackEventCategory"
                   value={fallbackEventCategory}
                   onChange={e => setFallbackEventCategory(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"

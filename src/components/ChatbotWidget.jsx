@@ -181,7 +181,15 @@ function ChatbotWidget() {
   const navigate = useNavigate()
   const [isOpen, setIsOpen] = useState(false)
   const [input, setInput] = useState('')
-  const [position, setPosition] = useState(null)
+  const [position, setPosition] = useState(() => {
+    if (typeof window === 'undefined') return null
+    const buttonSize = 48
+    const offset = 24
+    return {
+      x: Math.max(0, window.innerWidth - buttonSize - offset),
+      y: Math.max(0, window.innerHeight - buttonSize - offset),
+    }
+  })
   const [showSuggestions, setShowSuggestions] = useState(true)
   const [isTyping, setIsTyping] = useState(false)
   const typingTimerRef = useRef(null)
@@ -205,16 +213,6 @@ function ChatbotWidget() {
   const pageConfig = useMemo(() => {
     return PAGE_SUGGESTIONS.find(item => item.match(pathname)) || DEFAULT_SUGGESTIONS
   }, [pathname])
-
-  useEffect(() => {
-    if (position || typeof window === 'undefined') return
-    const buttonSize = 48
-    const offset = 24
-    setPosition({
-      x: Math.max(0, window.innerWidth - buttonSize - offset),
-      y: Math.max(0, window.innerHeight - buttonSize - offset),
-    })
-  }, [position])
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined

@@ -1,5 +1,5 @@
 
-import { useMemo, useState, useEffect, useRef } from 'react'
+import { useId, useMemo, useState, useEffect, useRef } from 'react'
 import {
   Calendar as CalendarIcon,
   ChevronLeft,
@@ -580,10 +580,12 @@ function EventLocationPicker({ address, location, onAddressInput, onLocationSele
   return (
     <div className="space-y-3">
       <div className="relative">
-        <label className="block text-sm font-medium text-gray-700 mb-2">Address</label>
+        <label htmlFor="event-location-address" className="block text-sm font-medium text-gray-700 mb-2">Address</label>
         <div className="relative">
           <MapPin size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
+            id="event-location-address"
+            name="address"
             type="text"
             value={address}
             onChange={e => {
@@ -621,6 +623,7 @@ function EventLocationPicker({ address, location, onAddressInput, onLocationSele
             placeholder="Search address"
             className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
             required
+            autoComplete="street-address"
           />
           {isSearching && <Loader2 size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 animate-spin" />}
         </div>
@@ -736,6 +739,7 @@ function AssignMembersPicker({ allMembers, selectedIds, onChange, label = 'Assig
   const [open, setOpen] = useState(false)
   const panelRef = useRef(null)
   const inputRef = useRef(null)
+  const inputId = useId()
 
   const filteredMembers = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -773,10 +777,12 @@ function AssignMembersPicker({ allMembers, selectedIds, onChange, label = 'Assig
 
   return (
     <div className="space-y-2" ref={panelRef}>
-      <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
+      <label htmlFor={inputId} className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
       <div className="relative">
         <Users size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
         <input
+          id={inputId}
+          name="memberSearch"
           ref={inputRef}
           type="text"
           value={query}
@@ -2472,15 +2478,17 @@ function Calendar({ listOnly = false }) {
               <div className="layout-glow rounded-2xl p-4 sm:p-5 bg-white">
                 <h4 className="text-sm font-semibold text-gray-800 uppercase tracking-wide mb-3">Category</h4>
                 <div className="space-y-4">
-	                  <div className="grid grid-cols-1 gap-4">
-	                    <div>
-	                      <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+  	                  <div className="grid grid-cols-1 gap-4">
+  	                    <div>
+	                      <label htmlFor="event-form-category" className="block text-sm font-medium text-gray-700 mb-2">Category</label>
 	                      <div className="relative">
                         <SelectedCategoryIcon
                           size={16}
                           className={`absolute left-3 top-1/2 -translate-y-1/2 ${selectedCategoryMeta?.text || 'text-gray-500'} ${selectedCategoryMeta?.iconClass || ''}`}
                         />
 	                        <select
+                            id="event-form-category"
+                            name="category"
 	                          value={formData.category}
 	                          onChange={e => setFormData({ ...formData, category: e.target.value })}
 	                          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
@@ -2509,8 +2517,10 @@ function Calendar({ listOnly = false }) {
 	                  {/* Partners + Activity fields are collected when marking an event as Done. */}
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Content</label>
+                    <label htmlFor="event-form-content" className="block text-sm font-medium text-gray-700 mb-2">Content</label>
                     <textarea
+                      id="event-form-content"
+                      name="content"
                       value={formData.content}
                       onChange={e => setFormData({ ...formData, content: e.target.value })}
                       rows={3}
@@ -2520,8 +2530,10 @@ function Calendar({ listOnly = false }) {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Date and Time</label>
+                      <label htmlFor="event-form-date-time" className="block text-sm font-medium text-gray-700 mb-2">Date and Time</label>
                       <input
+                        id="event-form-date-time"
+                        name="dateTime"
                         type="datetime-local"
                         value={formData.dateTime}
                         onChange={e => setFormData({ ...formData, dateTime: e.target.value })}
@@ -2630,9 +2642,11 @@ function Calendar({ listOnly = false }) {
 		                  </span>
 		                </div>
 		                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-		                  <div>
-		                    <label className="block text-sm font-medium text-gray-700 mb-2">Search member</label>
+  		                  <div>
+		                    <label htmlFor="done-contributor-search" className="block text-sm font-medium text-gray-700 mb-2">Search member</label>
 		                    <Input
+                          id="done-contributor-search"
+                          name="doneContributorSearch"
 		                      value={doneContributorSearch}
 		                      onChange={e => setDoneContributorSearch(e.target.value)}
 		                      placeholder="Search by name, email, ID number, or committee..."
@@ -2717,9 +2731,14 @@ function Calendar({ listOnly = false }) {
 		                      if (!isDoneFieldVisible(markDoneCategoryKey, field)) return null
 		                      const fieldValue = doneFields[markDoneCategoryKey]?.[field.key]
 		                      const colSpan = field.type === 'text' || field.type === 'list_text' ? 'md:col-span-2' : ''
+                          const domSafeCategoryKey = String(markDoneCategoryKey || 'category').replace(/[^a-z0-9_-]/gi, '-')
+                          const domSafeFieldKey = String(field.key || 'field').replace(/[^a-z0-9_-]/gi, '-')
+                          const fieldIdBase = `done-field-${domSafeCategoryKey}-${domSafeFieldKey}`
+                          const fieldNameBase = String(field.key || 'field')
+                          const labelForId = field.type === 'list_text' || field.type === 'list_select' ? `${fieldIdBase}-0` : fieldIdBase
 		                      return (
 		                      <div key={field.key} className={colSpan}>
-		                        <label className="block text-sm font-medium text-gray-700 mb-2">{field.label}</label>
+		                        <label htmlFor={labelForId} className="block text-sm font-medium text-gray-700 mb-2">{field.label}</label>
 		                        {field.type === 'list_text' ? (
 		                          <div className="space-y-2">
 		                            <div className="flex items-center justify-between gap-2">
@@ -2739,6 +2758,8 @@ function Calendar({ listOnly = false }) {
 		                              {(Array.isArray(fieldValue) ? fieldValue : ['']).map((value, index) => (
 		                                <div key={`done-${field.key}-${index}`} className="flex items-center gap-2">
 		                                  <Input
+                                        id={`${fieldIdBase}-${index}`}
+                                        name={`${fieldNameBase}[${index}]`}
 		                                    value={value}
 		                                    onChange={e =>
 		                                      updateDoneListField(markDoneCategoryKey, field.key, prev => {
@@ -2786,6 +2807,8 @@ function Calendar({ listOnly = false }) {
 		                              {(Array.isArray(fieldValue) ? fieldValue : ['']).map((value, index) => (
 		                                <div key={`done-${field.key}-${index}`} className="flex items-center gap-2">
 		                                  <select
+                                        id={`${fieldIdBase}-${index}`}
+                                        name={`${fieldNameBase}[${index}]`}
 		                                    value={value}
 		                                    onChange={e =>
 		                                      updateDoneListField(markDoneCategoryKey, field.key, prev => {
@@ -2823,6 +2846,8 @@ function Calendar({ listOnly = false }) {
 		                          </div>
 		                        ) : field.type === 'select' ? (
 		                          <select
+                                id={fieldIdBase}
+                                name={fieldNameBase}
 		                            value={doneFields[markDoneCategoryKey]?.[field.key] ?? ''}
 		                            onChange={e => handleDoneFieldChange(markDoneCategoryKey, field.key, e.target.value)}
 		                            className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-red-500"
@@ -2837,6 +2862,8 @@ function Calendar({ listOnly = false }) {
 		                          </select>
 		                        ) : field.type === 'number' ? (
 		                          <Input
+                                id={fieldIdBase}
+                                name={fieldNameBase}
 		                            type="number"
 		                            min={field.min}
 		                            step={field.step}
@@ -2846,6 +2873,8 @@ function Calendar({ listOnly = false }) {
 		                          />
 		                        ) : (
 		                          <Input
+                                id={fieldIdBase}
+                                name={fieldNameBase}
 		                            value={doneFields[markDoneCategoryKey]?.[field.key] ?? ''}
 		                            onChange={e => handleDoneFieldChange(markDoneCategoryKey, field.key, e.target.value)}
 		                            required

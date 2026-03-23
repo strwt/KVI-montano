@@ -31,8 +31,6 @@ function Layout() {
       if (!event.matches) setSidebarOpen(false)
     }
 
-    if (!media.matches) setSidebarOpen(false)
-
     if (media.addEventListener) {
       media.addEventListener('change', handleChange)
       return () => media.removeEventListener('change', handleChange)
