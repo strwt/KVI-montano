@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import dayjs from 'dayjs'
 import { getSupabaseConfigError, isSupabaseConfigured, supabase, supabaseAnonKey, supabaseUrl } from '../lib/supabaseClient'
 
@@ -11,6 +11,7 @@ const logSupabase = (...args) => {
 }
 
 const DEFAULT_PROFILE_IMAGE = '/image-removebg-preview.png'
+const DEFAULT_MEMBER_CATEGORY = 'Member'
 const SESSION_EXPIRED_MESSAGE = 'Session expired. Please log in again.'
 const LOADING_FALLBACK_MS = 3_000
 const PROFILE_CACHE_TTL_MS = 30_000
@@ -220,7 +221,9 @@ export function AuthProvider({ children }) {
   const [users, setUsers] = useState([])
   const [members, setMembers] = useState([])
   const [admins, setAdmins] = useState([])
+  const [users, setUsers] = useState([])
   const [committees, setCommittees] = useState([])
+  const [utilitiesByCommittee, setUtilitiesByCommittee] = useState({})
   const [eventCategories, setEventCategories] = useState([])
   const [recruitments, setRecruitments] = useState([])
   const authEpochRef = useRef(0)
@@ -301,9 +304,8 @@ export function AuthProvider({ children }) {
     return () => window.clearTimeout(timeoutId)
   }, [authResolved])
 
-  const getAllMembers = useMemo(() => {
-    return () => users
-  }, [users])
+  const getAllMembers = useCallback(() => members, [members])
+  const getAdmins = useCallback(() => admins, [admins])
 
   const getAdmins = useMemo(() => {
     return () => admins
@@ -448,6 +450,10 @@ export function AuthProvider({ children }) {
     return items
   }
 
+  useEffect(() => {
+    setUsers(sortUsersByName([...(admins || []), ...(members || [])]))
+  }, [admins, members])
+
   const upsertUserById = (list, nextUser) => {
     if (!nextUser?.id) return Array.isArray(list) ? list : []
     const items = Array.isArray(list) ? [...list] : []
@@ -487,8 +493,26 @@ export function AuthProvider({ children }) {
     return unique
   }
 
-  const reloadUsers = async () => {
-    if (!supabaseEnabled) return []
+  const reloadMembers = async () => {
+  	    if (!supabaseEnabled) return
+  	    let data = []
+  	    try {
+	      const res = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('role', 'member')
+          .order('name', { ascending: true })
+ 	      if (res.error) console.warn('Failed to load members from Supabase.', res.error)
+ 	      data = res.data
+	    } catch (error) {
+	      console.warn('Failed to load members from Supabase.', error)
+	    }
+    const mapped = mapProfilesToUsers(data)
+    setMembers(sortUsersByName(mapped))
+	  }
+
+  const reloadAdmins = async () => {
+    if (!supabaseEnabled) return
     let data = []
     try {
       const res = await supabase
@@ -516,6 +540,32 @@ export function AuthProvider({ children }) {
   const reloadAdmins = async () => {
     const all = await reloadUsers()
     return all.filter(entry => entry?.role === 'admin')
+  }
+
+  const reloadUtilities = async () => {
+    if (!supabaseEnabled) {
+      setUtilitiesByCommittee({})
+      return {}
+    }
+    let data = []
+    try {
+      const res = await supabase.from('committee_utilities').select('*')
+      if (res.error) console.warn('Failed to load committee utilities from Supabase.', res.error)
+      data = res.data
+    } catch (error) {
+      console.warn('Failed to load committee utilities from Supabase.', error)
+    }
+
+    const map = {}
+    ;(Array.isArray(data) ? data : []).forEach(row => {
+      const committee = String(row?.committee || row?.committee_name || row?.name || '').trim()
+      if (!committee) return
+      if (!map[committee]) map[committee] = []
+      map[committee].push(row)
+    })
+
+    setUtilitiesByCommittee(map)
+    return map
   }
 
   	  const reloadCommittees = async () => {
@@ -955,6 +1005,7 @@ export function AuthProvider({ children }) {
             }
           : member
       )
+    )
 
     if (user.role === 'admin') {
       setAdmins((prev) => applyProfilePatch(prev))
@@ -1003,6 +1054,29 @@ export function AuthProvider({ children }) {
     const { data } = supabase.storage.from(PROFILE_IMAGE_BUCKET).getPublicUrl(path)
     if (!data?.publicUrl) return { success: false, message: 'Upload succeeded but URL could not be generated.' }
 
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .update({ profile_image: path })
+      .eq('id', user.id)
+
+    if (profileError) {
+      return { success: false, message: profileError.message || 'Unable to save profile image.' }
+    }
+
+    const resolvedImage = resolveProfileImageSrc(path)
+    setUser(prev => (prev ? { ...prev, profileImage: resolvedImage } : prev))
+    setUsers(prev =>
+      prev.map(member =>
+        member?.id === user.id ? { ...member, profileImage: resolvedImage } : member
+      )
+    )
+    if (user.role === 'admin') {
+      setAdmins(prev => prev.map(member => (member?.id === user.id ? { ...member, profileImage: resolvedImage } : member)))
+    } else {
+      setMembers(prev => prev.map(member => (member?.id === user.id ? { ...member, profileImage: resolvedImage } : member)))
+    }
+
+    clearProfileCache()
     return { success: true, path, publicUrl: data.publicUrl }
   }
 
@@ -1108,49 +1182,6 @@ export function AuthProvider({ children }) {
 
     const { error } = await supabase.from('profiles').update(payload).eq('id', memberId)
     if (error) return { success: false, message: error.message || 'Unable to update member.' }
-    return { success: true }
-  }
-
-  const deleteMembers = async (memberIds = []) => {
-    if (!user?.id) return { success: false, message: 'User not found.' }
-    if (user.role !== 'admin') return { success: false, message: 'Only admins can delete members.' }
-
-    const ids = Array.isArray(memberIds)
-      ? memberIds.map(id => String(id || '').trim()).filter(Boolean)
-      : [String(memberIds || '').trim()].filter(Boolean)
-
-    const uniqueIds = [...new Set(ids)]
-    if (uniqueIds.length === 0) return { success: false, message: 'No members selected.' }
-
-    const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
-    const token = sessionData?.session?.access_token
-    if (sessionError || !token) return { success: false, message: SESSION_EXPIRED_MESSAGE }
-
-    let response
-    try {
-      response = await fetch('/api/admin/delete-users', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ userIds: uniqueIds }),
-      })
-    } catch (error) {
-      console.warn('Failed to reach admin delete-users endpoint.', error)
-      return { success: false, message: 'Unable to reach the server. Please try again.' }
-    }
-
-    const payload = await response.json().catch(() => ({}))
-    if (!response.ok) {
-      return { success: false, message: payload?.message || `Unable to delete members (HTTP ${response.status}).` }
-    }
-
-    if (Array.isArray(payload?.failed) && payload.failed.length > 0) {
-      const first = payload.failed[0]
-      return { success: false, message: first?.message || 'Some users could not be deleted.' }
-    }
-
     return { success: true }
   }
 

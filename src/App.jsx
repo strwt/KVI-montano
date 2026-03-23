@@ -14,6 +14,7 @@ import Login from './pages/Login'
 import Landing from './pages/Landing'
 import Recruitment from './pages/Recruitment'
 import Settings from './pages/Settings'
+import ChatbotWidget from './components/ChatbotWidget'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import './index.css'
 
@@ -128,6 +129,7 @@ function App() {
     <AuthProvider>
       <Router>
         <AppRoutes />
+        <ChatbotWidget />
       </Router>
     </AuthProvider>
   )
