@@ -955,6 +955,7 @@ export function AuthProvider({ children }) {
             }
           : member
       )
+    )
 
     if (user.role === 'admin') {
       setAdmins((prev) => applyProfilePatch(prev))
@@ -1108,49 +1109,6 @@ export function AuthProvider({ children }) {
 
     const { error } = await supabase.from('profiles').update(payload).eq('id', memberId)
     if (error) return { success: false, message: error.message || 'Unable to update member.' }
-    return { success: true }
-  }
-
-  const deleteMembers = async (memberIds = []) => {
-    if (!user?.id) return { success: false, message: 'User not found.' }
-    if (user.role !== 'admin') return { success: false, message: 'Only admins can delete members.' }
-
-    const ids = Array.isArray(memberIds)
-      ? memberIds.map(id => String(id || '').trim()).filter(Boolean)
-      : [String(memberIds || '').trim()].filter(Boolean)
-
-    const uniqueIds = [...new Set(ids)]
-    if (uniqueIds.length === 0) return { success: false, message: 'No members selected.' }
-
-    const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
-    const token = sessionData?.session?.access_token
-    if (sessionError || !token) return { success: false, message: SESSION_EXPIRED_MESSAGE }
-
-    let response
-    try {
-      response = await fetch('/api/admin/delete-users', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ userIds: uniqueIds }),
-      })
-    } catch (error) {
-      console.warn('Failed to reach admin delete-users endpoint.', error)
-      return { success: false, message: 'Unable to reach the server. Please try again.' }
-    }
-
-    const payload = await response.json().catch(() => ({}))
-    if (!response.ok) {
-      return { success: false, message: payload?.message || `Unable to delete members (HTTP ${response.status}).` }
-    }
-
-    if (Array.isArray(payload?.failed) && payload.failed.length > 0) {
-      const first = payload.failed[0]
-      return { success: false, message: first?.message || 'Some users could not be deleted.' }
-    }
-
     return { success: true }
   }
 
