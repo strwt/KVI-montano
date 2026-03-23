@@ -13,7 +13,6 @@ import Report from './pages/Report'
 import Login from './pages/Login'
 import Landing from './pages/Landing'
 import Recruitment from './pages/Recruitment'
-import Settings from './pages/Settings'
 import ChatbotWidget from './components/ChatbotWidget'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import './index.css'
@@ -113,7 +112,6 @@ function AppRoutes() {
         <Route path="profile" element={<Profile />} />
         <Route path="account/edit" element={<EditAccount />} />
         <Route path="change-password" element={<ChangePassword />} />
-        <Route path="settings" element={<Settings />} />
         <Route path="members" element={<AdminRoute><Members /></AdminRoute>} />
         <Route path="members/:id" element={<AdminRoute><MemberDetail /></AdminRoute>} />
       </Route>

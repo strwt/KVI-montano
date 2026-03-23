@@ -65,20 +65,7 @@ const PAGE_SUGGESTIONS = [
     ],
     links: [
       { label: 'Members', to: '/members' },
-      { label: 'Settings', to: '/settings' },
-    ],
-  },
-  {
-    match: pathname => pathname.startsWith('/settings'),
-    title: 'Settings',
-    suggestions: [
-      'How do I change the theme?',
-      'Where do I change language?',
-      'How do I update notifications?',
-    ],
-    links: [
-      { label: 'Settings', to: '/settings' },
-      { label: 'Profile', to: '/profile' },
+      { label: 'Dashboard', to: '/' },
     ],
   },
   {
@@ -179,9 +166,6 @@ const buildResponse = (input) => {
   if (text.includes('password')) {
     return 'Go to Change Password from your profile to update your password.'
   }
-  if (text.includes('settings') || text.includes('language') || text.includes('notification')) {
-    return 'Settings lets you change language, theme, and notification preferences.'
-  }
   if (text.includes('recruitment') || text.includes('join') || text.includes('register')) {
     return 'Use the Recruitment form to apply. Fill out all required fields and submit.'
   }
@@ -189,7 +173,7 @@ const buildResponse = (input) => {
     return 'If you need help beyond this assistant, please contact an admin for account or data issues.'
   }
 
-  return 'I can help with navigation, events, attendance, profile, settings, and reports. Try one of the suggested questions or use the quick links.'
+  return 'I can help with navigation, events, attendance, profile, and reports. Try one of the suggested questions or use the quick links.'
 }
 
 function ChatbotWidget() {
