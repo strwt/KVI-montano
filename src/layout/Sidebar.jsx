@@ -1,5 +1,13 @@
 import { NavLink, useNavigate } from 'react-router-dom'
+<<<<<<< HEAD
 import { LayoutDashboard, Calendar, ChevronLeft, ChevronRight, Users, FileText, Sun, Moon, ClipboardCheck, LogOut } from 'lucide-react'
+=======
+<<<<<<< HEAD
+import { LayoutDashboard, Calendar, ChevronLeft, ChevronRight, Users, FileText, Sun, Moon, ClipboardCheck } from 'lucide-react'
+=======
+import { LayoutDashboard, Calendar, ChevronLeft, ChevronRight, Users, FileText, Sun, Moon, Settings, ClipboardCheck, LogOut } from 'lucide-react'
+>>>>>>> 882ff9c68d865c9b40e1e6ca493d88b2582273a1
+>>>>>>> 6fe5ab8c7c47932087ce564e7cc2ca8d49279ee3
 import { useAuth } from '../context/AuthContext'
 import { useI18n } from '../i18n/useI18n'
 
@@ -145,7 +153,10 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
               {isOpen && <span>{t('Management')}</span>}
             </button>
           )}
+<<<<<<< HEAD
 
+=======
+>>>>>>> 6fe5ab8c7c47932087ce564e7cc2ca8d49279ee3
         </nav>
 
         {/* Footer Section */}
