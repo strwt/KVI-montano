@@ -3,6 +3,7 @@ import Layout from './layout/Layout'
 import Dashboard from './pages/Dashboard'
 import Calendar from './pages/Calendar'
 import Attendance from './pages/Attendance'
+import AttendanceManagement from './pages/AttendanceManagement'
 import Profile from './pages/Profile'
 import ChangePassword from './pages/ChangePassword'
 import EditAccount from './pages/EditAccount'
@@ -105,6 +106,7 @@ function AppRoutes() {
         <Route index element={<Dashboard />} />
         <Route path="calendar" element={<Calendar />} />
         <Route path="attendance" element={<Attendance />} />
+        <Route path="attendance-management" element={<AdminRoute><AttendanceManagement /></AdminRoute>} />
         <Route path="events" element={<Calendar listOnly />} />
         <Route path="report" element={<AdminRoute><Report /></AdminRoute>} />
         <Route path="profile" element={<Profile />} />

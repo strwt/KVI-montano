@@ -5,11 +5,68 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabaseClient'
 import { isSupabaseEnabled, mapEventRowToEvent } from '../lib/supabaseEvents'
 
+const LOGIN_ACTIVITY_KEY = 'kusgan_login_activity'
+const LOGIN_ACTIVITY_UPDATED_EVENT = 'kusgan-login-activity-updated'
+const LOGIN_ACTIVITY_CHANNEL = 'kusgan-attendance-sync'
+const LOGIN_ACTIVITY_OUTBOX_KEY = 'kusgan_login_activity_outbox'
+
+const getStoredLoginActivity = () => {
+  const stored = localStorage.getItem(LOGIN_ACTIVITY_KEY)
+  if (!stored) return []
+  try {
+    const parsed = JSON.parse(stored)
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+const saveLoginActivity = (items) => {
+  localStorage.setItem(LOGIN_ACTIVITY_KEY, JSON.stringify(items))
+  window.dispatchEvent(new Event(LOGIN_ACTIVITY_UPDATED_EVENT))
+  if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+    const channel = new BroadcastChannel(LOGIN_ACTIVITY_CHANNEL)
+    channel.postMessage({ type: 'attendance-updated', at: Date.now() })
+    channel.close()
+  }
+}
+
+const getStoredOutbox = () => {
+  const stored = localStorage.getItem(LOGIN_ACTIVITY_OUTBOX_KEY)
+  if (!stored) return []
+  try {
+    const parsed = JSON.parse(stored)
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+const saveOutbox = (items) => {
+  localStorage.setItem(LOGIN_ACTIVITY_OUTBOX_KEY, JSON.stringify(items))
+}
+
 function Attendance() {
   const { user, eventCategories } = useAuth()
   const supabaseEnabled = isSupabaseEnabled()
-  const [loginActivity, setLoginActivity] = useState([])
+  const [localLoginActivity, setLocalLoginActivity] = useState(getStoredLoginActivity)
+  const [supabaseLoginActivity, setSupabaseLoginActivity] = useState([])
   const [events, setEvents] = useState([])
+  const [offlineMenuOpen, setOfflineMenuOpen] = useState(false)
+
+  useEffect(() => {
+    const refresh = () => setLocalLoginActivity(getStoredLoginActivity())
+    const onStorage = event => {
+      if (event?.key === LOGIN_ACTIVITY_KEY) refresh()
+    }
+    refresh()
+    window.addEventListener('storage', onStorage)
+    window.addEventListener(LOGIN_ACTIVITY_UPDATED_EVENT, refresh)
+    return () => {
+      window.removeEventListener('storage', onStorage)
+      window.removeEventListener(LOGIN_ACTIVITY_UPDATED_EVENT, refresh)
+    }
+  }, [supabaseEnabled])
 
   const categoryLabelByKey = useMemo(() => {
     const map = {}
@@ -36,14 +93,28 @@ function Attendance() {
   }
 
   useEffect(() => {
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> bd65cbb46c278d17a2c28eb1a74e434e7aba06e4
+    if (!supabaseEnabled) return
+    if (!user?.id) {
+      setSupabaseLoginActivity([])
+      return
+    }
+<<<<<<< HEAD
+=======
     if (!supabaseEnabled || !user?.id) return undefined
+>>>>>>> 6b5b9ceef02ae6ea3b9b852a747aa14b106d9c91
+=======
+>>>>>>> bd65cbb46c278d17a2c28eb1a74e434e7aba06e4
 
     let active = true
 
     const load = async () => {
-      const { data } = await supabase
-        .from('login_activity')
-        .select('date,is_present,present_at')
+    const { data } = await supabase
+      .from('login_activity')
+        .select('date,is_present,present_at,status,time_in,time_out,time_out_reason')
         .eq('user_id', user.id)
         .eq('is_present', true)
         .order('date', { ascending: true })
@@ -53,11 +124,15 @@ function Attendance() {
         ? data.map(row => ({
             date: row.date,
             userId: user.id,
-            isPresent: Boolean(row.is_present),
-            presentAt: row.present_at || null,
-          }))
+          isPresent: Boolean(row.is_present),
+          status: row.status || null,
+          presentAt: row.present_at || null,
+          timeIn: row.time_in || null,
+          timeOut: row.time_out || null,
+          timeOutReason: row.time_out_reason || '',
+        }))
         : []
-      setLoginActivity(mapped)
+      setSupabaseLoginActivity(mapped)
     }
 
     load()
@@ -78,7 +153,54 @@ function Attendance() {
   }, [supabaseEnabled, user?.id])
 
   useEffect(() => {
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> bd65cbb46c278d17a2c28eb1a74e434e7aba06e4
+    if (!supabaseEnabled || !user?.id) return
+    let active = true
+
+    const flushOutbox = async () => {
+      if (!active) return
+      const queued = getStoredOutbox()
+      if (!queued.length) return
+      const remaining = []
+
+      for (const item of queued) {
+        try {
+          const { error } = await supabase
+            .from('login_activity')
+            .upsert(item, { onConflict: 'user_id,date' })
+          if (error) remaining.push(item)
+        } catch {
+          remaining.push(item)
+        }
+      }
+
+      saveOutbox(remaining)
+    }
+
+    const intervalId = window.setInterval(flushOutbox, 10_000)
+    flushOutbox()
+
+    return () => {
+      active = false
+      window.clearInterval(intervalId)
+    }
+  }, [supabaseEnabled, user?.id])
+
+  useEffect(() => {
+    if (!supabaseEnabled) return
+    if (!user?.id) {
+      setEvents([])
+      return
+    }
+<<<<<<< HEAD
+=======
     if (!supabaseEnabled || !user?.id) return undefined
+>>>>>>> 6b5b9ceef02ae6ea3b9b852a747aa14b106d9c91
+=======
+>>>>>>> bd65cbb46c278d17a2c28eb1a74e434e7aba06e4
 
     let active = true
 
@@ -109,10 +231,23 @@ function Attendance() {
 
   const userId = String(user?.id || '')
 
+  const mergedLoginActivity = useMemo(() => {
+    const map = new Map()
+    ;(supabaseLoginActivity || []).forEach(entry => {
+      if (!entry?.date || !entry?.userId) return
+      map.set(`${entry.date}-${entry.userId}`, entry)
+    })
+    ;(localLoginActivity || []).forEach(entry => {
+      if (!entry?.date || !entry?.userId) return
+      map.set(`${entry.date}-${entry.userId}`, entry)
+    })
+    return Array.from(map.values())
+  }, [localLoginActivity, supabaseLoginActivity])
+
   const attendanceRows = useMemo(() => {
     const monthStart = dayjs().startOf('month')
     const daysInMonth = monthStart.daysInMonth()
-    const activityForUser = loginActivity.filter(entry => String(entry.userId) === userId)
+    const activityForUser = mergedLoginActivity.filter(entry => String(entry.userId) === userId)
     const activityByDate = activityForUser.reduce((acc, entry) => {
       if (!entry?.date) return acc
       acc[entry.date] = entry
@@ -126,11 +261,13 @@ function Attendance() {
       return {
         dateKey,
         label: date.format('MMM D, YYYY'),
-        status: entry?.isPresent ? 'Present' : 'Absent',
-        presentAt: entry?.presentAt || null,
+        status: entry?.status || (entry?.isPresent ? 'Present' : 'Absent'),
+        presentAt: entry?.timeIn || entry?.presentAt || null,
+        timeOut: entry?.timeOut || null,
+        timeOutReason: entry?.timeOutReason || '',
       }
     })
-  }, [loginActivity, userId])
+  }, [mergedLoginActivity, userId])
 
   const presentCount = useMemo(
     () => attendanceRows.filter(row => row.status === 'Present').length,
@@ -152,41 +289,103 @@ function Attendance() {
 
   const todayKey = dayjs().format('YYYY-MM-DD')
   const todayEntry = useMemo(
-    () => loginActivity.find(entry => entry?.date === todayKey && String(entry.userId) === userId) || null,
-    [loginActivity, todayKey, userId]
+    () => mergedLoginActivity.find(entry => entry?.date === todayKey && String(entry.userId) === userId) || null,
+    [mergedLoginActivity, todayKey, userId]
   )
   const isPresentToday = Boolean(todayEntry?.isPresent)
 
-  const markPresent = async () => {
-    if (!user?.id) return
-    if (isPresentToday) return
-
-    const nowIso = dayjs().toISOString()
-
-    setLoginActivity(prev => {
+  const updateLocalEntry = (patch) => {
+    setLocalLoginActivity(prev => {
       const next = Array.isArray(prev) ? [...prev] : []
       const idx = next.findIndex(entry => entry?.date === todayKey && String(entry.userId) === userId)
-      const patch = { date: todayKey, userId: user.id, isPresent: true, presentAt: nowIso }
       if (idx >= 0) next[idx] = { ...next[idx], ...patch }
       else next.push(patch)
+      saveLoginActivity(next)
       return next
     })
+  }
+
+  const markOnline = async () => {
+    if (!user?.id) return
+    const nowIso = dayjs().toISOString()
+    const wasLunch = todayEntry?.timeOutReason === 'Lunch'
+    const patch = {
+      date: todayKey,
+      userId: user.id,
+      isPresent: true,
+      status: 'Present',
+      presentAt: nowIso,
+      timeIn: todayEntry?.timeIn || nowIso,
+      timeOut: wasLunch ? null : (todayEntry?.timeOut || null),
+      timeOutReason: wasLunch ? '' : (todayEntry?.timeOutReason || ''),
+    }
+
+    updateLocalEntry(patch)
 
     if (!supabaseEnabled) return
 
+    const dbPayload = {
+      user_id: user.id,
+      date: todayKey,
+      is_present: true,
+      present_at: patch.timeIn,
+      status: 'Present',
+      time_in: patch.timeIn,
+      time_out: wasLunch ? null : (todayEntry?.timeOut || null),
+      time_out_reason: wasLunch ? null : (todayEntry?.timeOutReason || null),
+    }
+
     const { error } = await supabase
       .from('login_activity')
-      .upsert(
-        {
-          user_id: user.id,
-          date: todayKey,
-          is_present: true,
-          present_at: nowIso,
-        },
-        { onConflict: 'user_id,date' }
-      )
+      .upsert(dbPayload, { onConflict: 'user_id,date' })
 
-    if (error) console.warn('Unable to mark present.', error)
+    if (error) {
+      console.warn('Unable to mark online.', error)
+      const queued = getStoredOutbox()
+      saveOutbox([...queued, dbPayload])
+    }
+  }
+
+  const markOffline = async (reason) => {
+    if (!user?.id) return
+    const nowIso = dayjs().toISOString()
+    const nextStatus = reason === 'Halfday' ? 'Halfday' : 'Present'
+    const baseTimeIn = todayEntry?.timeIn || todayEntry?.presentAt || nowIso
+    const patch = {
+      date: todayKey,
+      userId: user.id,
+      isPresent: false,
+      status: nextStatus,
+      presentAt: baseTimeIn,
+      timeIn: baseTimeIn,
+      timeOut: nowIso,
+      timeOutReason: reason,
+    }
+
+    updateLocalEntry(patch)
+
+    if (!supabaseEnabled) return
+
+    const dbPayload = {
+      user_id: user.id,
+      date: todayKey,
+      is_present: false,
+      present_at: baseTimeIn,
+      status: nextStatus,
+      time_in: baseTimeIn,
+      time_out: nowIso,
+      time_out_reason: reason,
+    }
+
+    const { error } = await supabase
+      .from('login_activity')
+      .upsert(dbPayload, { onConflict: 'user_id,date' })
+
+    if (error) {
+      console.warn('Unable to mark offline.', error)
+      const queued = getStoredOutbox()
+      saveOutbox([...queued, dbPayload])
+    }
   }
 
   return (
@@ -202,15 +401,61 @@ function Attendance() {
               {dayjs().format('MMMM YYYY')}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={markPresent}
-            disabled={!userId || isPresentToday}
-            className="inline-flex items-center gap-2 rounded-xl border border-red-600 bg-red-600 px-5 py-2 text-[14px] font-semibold text-white transition-all duration-200 hover:scale-[1.02] hover:bg-red-700"
-          >
-            <CalendarCheck size={16} />
-            {isPresentToday ? 'Marked Present' : "I'm Present"}
-          </button>
+          {!isPresentToday ? (
+            <button
+              type="button"
+              onClick={markOnline}
+              disabled={!userId}
+              className="inline-flex items-center gap-2 rounded-xl border border-emerald-600 bg-emerald-600 px-5 py-2 text-[14px] font-semibold text-white transition-all duration-200 hover:scale-[1.02] hover:bg-emerald-700"
+            >
+              <CalendarCheck size={16} />
+              I'm Online
+            </button>
+          ) : (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setOfflineMenuOpen(prev => !prev)}
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-500 bg-slate-700 px-4 py-2 text-[13px] font-semibold text-white transition-all duration-200 hover:bg-slate-800"
+              >
+                I'm Offline
+              </button>
+              {offlineMenuOpen && (
+                <div className="absolute right-0 mt-2 w-44 rounded-xl border border-neutral-200 bg-white p-2 shadow-lg">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOfflineMenuOpen(false)
+                      markOffline('End of Work')
+                    }}
+                    className="w-full rounded-lg px-3 py-2 text-left text-[13px] font-semibold text-slate-700 hover:bg-slate-100"
+                  >
+                    End of Work
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOfflineMenuOpen(false)
+                      markOffline('Lunch')
+                    }}
+                    className="w-full rounded-lg px-3 py-2 text-left text-[13px] font-semibold text-amber-600 hover:bg-amber-50"
+                  >
+                    Lunch
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOfflineMenuOpen(false)
+                      markOffline('Halfday')
+                    }}
+                    className="w-full rounded-lg px-3 py-2 text-left text-[13px] font-semibold text-purple-700 hover:bg-purple-50"
+                  >
+                    Halfday
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </section>
 

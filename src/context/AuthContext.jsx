@@ -45,6 +45,34 @@ const enrichUserWithProfileImage = (user = {}) => ({
 const isLikelyExternalUrl = (value) => /^https?:\/\//i.test(String(value || '').trim())
 const isLikelyDataUrl = (value) => /^data:image\//i.test(String(value || '').trim())
 
+const resolveProfileImageSrc = (value) => {
+  const raw = String(value || '').trim()
+  if (!raw) return DEFAULT_PROFILE_IMAGE
+  if (raw === DEFAULT_PROFILE_IMAGE) return raw
+  if (raw.startsWith('/')) return raw
+  if (isLikelyExternalUrl(raw) || isLikelyDataUrl(raw)) return raw
+
+  // Treat as Supabase Storage object path. This requires the bucket to be public.
+  try {
+    const { data } = supabase?.storage?.from?.(PROFILE_IMAGE_BUCKET)?.getPublicUrl?.(raw) || {}
+    if (data?.publicUrl) return data.publicUrl
+  } catch {
+    // Ignore and fall back to default.
+  }
+
+  return DEFAULT_PROFILE_IMAGE
+}
+
+const splitCategoryAndType = (value = '') => {
+  const raw = String(value || '').trim()
+  if (!raw) return { category: '', type: '' }
+  const parts = raw.split(' - ')
+  if (parts.length === 1) return { category: parts[0], type: 'General' }
+  const category = parts.shift()?.trim() || ''
+  const type = parts.join(' - ').trim() || 'General'
+  return { category, type }
+}
+
 const normalizeEventCategoryKey = (value) =>
   String(value || '')
     .trim()
@@ -177,18 +205,6 @@ export function AuthProvider({ children }) {
   const [recruitments, setRecruitments] = useState([])
   const authEpochRef = useRef(0)
   const initialSessionHandledRef = useRef(false)
-  const userRef = useRef(null)
-  const activeAuthUserIdRef = useRef(null)
-  const hydrateProfileRef = useRef(null)
-  const reloadMembersRef = useRef(null)
-  const reloadAdminsRef = useRef(null)
-  const reloadCommitteesRef = useRef(null)
-  const reloadEventCategoriesRef = useRef(null)
-  const reloadRecruitmentsRef = useRef(null)
-
-  useEffect(() => {
-    userRef.current = user
-  }, [user])
 
   const isAuthLockError = (error) => {
     if (!error) return false
@@ -243,10 +259,9 @@ export function AuthProvider({ children }) {
 
   const clearClientState = () => {
     setUser(null)
-    setMembers([])
-    setAdmins([])
+    setUsers([])
     setCommittees([])
-    setEventCategories([])
+    setUtilitiesByCommittee({})
     setRecruitments([])
     setLoading(false)
     setAuthResolved(true)
@@ -264,15 +279,9 @@ export function AuthProvider({ children }) {
     return () => window.clearTimeout(timeoutId)
   }, [authResolved])
 
-  const users = useMemo(() => [...admins, ...members], [admins, members])
-
   const getAllMembers = useMemo(() => {
-    return () => members
-  }, [members])
-
-  const getAdmins = useMemo(() => {
-    return () => admins
-  }, [admins])
+    return () => users
+  }, [users])
 
   const runSupabaseQuery = async (label, queryFactory) => {
     try {
@@ -308,25 +317,10 @@ export function AuthProvider({ children }) {
     const normalizedIdNumber = String(authUser?.user_metadata?.id_number || '').trim()
 
     const promise = (async () => {
-      const exactResult = await runSupabaseQuery('Failed to load profile by auth user id.', () =>
-        supabase.from('profiles').select('*').eq('id', authUser.id).maybeSingle()
-      )
-      const exactProfile = exactResult?.data || null
-      if (exactProfile) {
-        logSupabase('profile lookup result', {
-          authUserId: authUser.id,
-          matchedBy: 'id',
-          profileId: exactProfile.id,
-          profileRole: exactProfile.role || null,
-          email: normalizedEmail || null,
-          idNumber: normalizedIdNumber || null,
-        })
-
-        profileCache.set(authUser.id, { profile: exactProfile, error: exactResult?.error || null, at: Date.now() })
-        return { profile: exactProfile, error: exactResult?.error || null }
-      }
-
-      const [emailResult, idNumberResult] = await Promise.all([
+      const [exactResult, emailResult, idNumberResult] = await Promise.all([
+        runSupabaseQuery('Failed to load profile by auth user id.', () =>
+          supabase.from('profiles').select('*').eq('id', authUser.id).maybeSingle()
+        ),
         normalizedEmail
           ? runSupabaseQuery('Failed to load profile by email.', () =>
               supabase.from('profiles').select('*').eq('email', normalizedEmail).limit(1).maybeSingle()
@@ -339,12 +333,19 @@ export function AuthProvider({ children }) {
           : Promise.resolve({ data: null, error: null }),
       ])
 
+      const exactProfile = exactResult?.data || null
       const emailProfile = emailResult?.data || null
       const idNumberProfile = idNumberResult?.data || null
       const lookupError = exactResult?.error || emailResult?.error || idNumberResult?.error || null
 
-      const profile = emailProfile || idNumberProfile || null
-      const matchedBy = emailProfile ? 'email' : idNumberProfile ? 'id_number' : null
+      const profile = exactProfile || emailProfile || idNumberProfile || null
+      const matchedBy = exactProfile
+        ? 'id'
+        : emailProfile
+          ? 'email'
+          : idNumberProfile
+            ? 'id_number'
+            : null
 
       if (profile && profile.id !== authUser.id) {
         console.warn('Auth/profile ID mismatch detected.', {
@@ -404,6 +405,7 @@ export function AuthProvider({ children }) {
             email: profile.email || '',
             role: normalizeRole(profile.role),
             committee: profile.committee || '',
+            category: profile.category || (normalizeRole(profile.role) === 'admin' ? 'Administrator' : DEFAULT_MEMBER_CATEGORY),
             contactNumber: profile.contact_number || '',
             address: profile.address || '',
             bloodType: profile.blood_type || '',
@@ -575,13 +577,6 @@ export function AuthProvider({ children }) {
     setRecruitments(mapped)
   }
 
-  hydrateProfileRef.current = hydrateProfile
-  reloadMembersRef.current = reloadMembers
-  reloadAdminsRef.current = reloadAdmins
-  reloadCommitteesRef.current = reloadCommittees
-  reloadEventCategoriesRef.current = reloadEventCategories
-  reloadRecruitmentsRef.current = reloadRecruitments
-
   useEffect(() => {
     if (!supabaseEnabled) {
       setLoading(false)
@@ -591,33 +586,31 @@ export function AuthProvider({ children }) {
 
     let disposed = false
 
-      const applySignedOut = () => {
-        authEpochRef.current += 1
-        clearProfileCache()
-        setUser(null)
-        setMembers([])
-        setAdmins([])
-        setCommittees([])
-        setEventCategories([])
-        setRecruitments([])
-        setAuthResolved(true)
-        setLoading(false)
-      }
+    const applySignedOut = () => {
+      authEpochRef.current += 1
+      clearProfileCache()
+      setUser(null)
+      setUsers([])
+      setCommittees([])
+      setUtilitiesByCommittee({})
+      setRecruitments([])
+      setAuthResolved(true)
+      setLoading(false)
+    }
 
     const hydrateForUser = async (authUser, epoch) => {
       setLoading(true)
       try {
-        const profileUser = hydrateProfileRef.current ? await hydrateProfileRef.current(authUser, epoch) : null
+        const profileUser = await hydrateProfile(authUser, epoch)
         if (epoch !== authEpochRef.current || disposed) return
 
         const isAdmin = profileUser?.role === 'admin'
 
+        const committeeListPromise = reloadCommittees()
         await Promise.all([
-          reloadMembersRef.current ? reloadMembersRef.current() : Promise.resolve(),
-          isAdmin && reloadAdminsRef.current ? reloadAdminsRef.current() : Promise.resolve(),
-          reloadCommitteesRef.current ? reloadCommitteesRef.current() : Promise.resolve(),
-          reloadEventCategoriesRef.current ? reloadEventCategoriesRef.current() : Promise.resolve(),
-          reloadRecruitmentsRef.current ? reloadRecruitmentsRef.current(Boolean(isAdmin)) : Promise.resolve(),
+          reloadMembers(),
+          committeeListPromise.then(list => reloadUtilities(list)),
+          reloadRecruitments(Boolean(isAdmin)),
         ])
       } finally {
         if (!disposed && epoch === authEpochRef.current) setLoading(false)
@@ -634,53 +627,19 @@ export function AuthProvider({ children }) {
 
       if (debugSupabase) logSupabase('auth event', event)
 
-      if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESH_FAILED') {
-        activeAuthUserIdRef.current = null
-        applySignedOut()
-        return
-      }
-
       const authUser = session?.user || null
       if (!authUser?.id) {
-        activeAuthUserIdRef.current = null
         applySignedOut()
         return
       }
-
-      const previousAuthUserId = activeAuthUserIdRef.current
-      const nextAuthUserId = authUser.id
-      const sameUser = previousAuthUserId === nextAuthUserId
-      activeAuthUserIdRef.current = nextAuthUserId
-
-      const currentUser = userRef.current
-      const hasResolvedRole = Boolean(currentUser?.id === nextAuthUserId && currentUser?.role)
-
-      if (event === 'TOKEN_REFRESHED' && sameUser && hasResolvedRole) {
-        setAuthResolved(true)
-        return
-      }
-
-      if (event === 'USER_UPDATED' && sameUser) {
-        authEpochRef.current += 1
-        const epoch = authEpochRef.current
-        setAuthResolved(true)
-        void hydrateProfileRef.current?.(authUser, epoch)
-        return
-      }
-
-      const shouldHydrateFull = event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || !sameUser || !hasResolvedRole
-      if (!shouldHydrateFull) return
 
       // Make the UI react instantly: session exists, auth is resolved, stop auth-loading immediately.
       authEpochRef.current += 1
+      clearProfileCache()
       const epoch = authEpochRef.current
-      if (!sameUser) clearProfileCache()
       setAuthResolved(true)
       setLoading(false)
-
-      if (!hasResolvedRole) {
-        setUser(mapProfileToUser(null, authUser))
-      }
+      setUser(mapProfileToUser(null, authUser))
 
       void hydrateForUser(authUser, epoch)
     }
@@ -703,132 +662,38 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     if (!supabaseEnabled || !user?.id) return undefined
 
-    const handleCommitteesChange = (payload) => {
-      const eventType = payload?.eventType
-      const nextName = payload?.new?.name ? String(payload.new.name).trim() : ''
-      const prevName = payload?.old?.name ? String(payload.old.name).trim() : ''
-
-      setCommittees(prev => {
-        const list = Array.isArray(prev) ? prev : []
-        if (eventType === 'INSERT') {
-          if (!nextName || list.includes(nextName)) return list
-          return sortCommittees([...list, nextName])
-        }
-        if (eventType === 'UPDATE') {
-          if (!prevName || !nextName) return list
-          const next = list.map(name => (name === prevName ? nextName : name))
-          return sortCommittees(next)
-        }
-        if (eventType === 'DELETE') {
-          if (!prevName) return list
-          return list.filter(name => name !== prevName)
-        }
-        if (eventType === 'TRUNCATE') return []
-        return list
-      })
-    }
-
-    const handleEventCategoriesChange = (payload) => {
-      const eventType = payload?.eventType
-      const nextKey = payload?.new?.key ? toEventCategoryKey(payload.new.key) : ''
-      const nextLabel = payload?.new?.label ? String(payload.new.label).trim() : ''
-      const prevKey = payload?.old?.key ? toEventCategoryKey(payload.old.key) : ''
-
-      setEventCategories(prev => {
-        const list = Array.isArray(prev) ? prev : []
-
-        if (eventType === 'INSERT') {
-          if (!nextKey || !nextLabel) return list
-          if (list.some(item => item.key === nextKey)) return list
-          return sortEventCategories([...list, { key: nextKey, label: nextLabel }])
-        }
-
-        if (eventType === 'UPDATE') {
-          if (!prevKey) return list
-          if (!nextKey || !nextLabel) return list
-          const next = list.map(item => (item.key === prevKey ? { key: nextKey, label: nextLabel } : item))
-          return sortEventCategories(next)
-        }
-
-        if (eventType === 'DELETE') {
-          if (!prevKey) return list
-          return list.filter(item => item.key !== prevKey)
-        }
-
-        if (eventType === 'TRUNCATE') return []
-        return list
-      })
-    }
-
-    const handleProfilesChange = (payload) => {
-      const eventType = payload?.eventType
-
-      if (eventType === 'DELETE') {
-        const deletedId = payload?.old?.id
-        if (!deletedId) return
-        setMembers(prev => removeUserById(prev, deletedId))
-        setAdmins(prev => removeUserById(prev, deletedId))
-        return
-      }
-
-      const profile = payload?.new
-      if (!profile?.id) return
-      const nextUser = mapProfilesToUsers([profile])[0]
-      if (!nextUser) return
-
-      if (String(userRef.current?.id || '') === String(profile.id)) {
-        const authLikeUser = {
-          id: profile.id,
-          email: profile.email,
-          user_metadata: {
-            name: profile.name,
-            id_number: profile.id_number,
-          },
-          created_at: profile.created_at,
-        }
-        const mapped = mapProfileToUser(profile, authLikeUser)
-        if (mapped) {
-          applyMappedUserState(mapped, { setUser, setAppLanguageState, setDarkModeState, setSettingsState })
-        }
-      }
-
-      if (nextUser.role === 'admin') {
-        setAdmins(prev => sortUsersByName(upsertUserById(prev, nextUser)))
-        setMembers(prev => removeUserById(prev, nextUser.id))
-        return
-      }
-
-      if (nextUser.role === 'member') {
-        setMembers(prev => sortUsersByName(upsertUserById(prev, nextUser)))
-        setAdmins(prev => removeUserById(prev, nextUser.id))
-        return
-      }
-
-      setMembers(prev => removeUserById(prev, nextUser.id))
-      setAdmins(prev => removeUserById(prev, nextUser.id))
-    }
-
     const committeesChannel = supabase
       .channel(`kusgan-committees-${user.id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'committees' }, handleCommitteesChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'committees' }, async () => {
+        const committeeList = await reloadCommittees()
+        await reloadUtilities(committeeList)
+      })
       .subscribe((status) => logSupabase('realtime committees', status))
 
-    const eventCategoriesChannel = supabase
-      .channel(`kusgan-event-categories-${user.id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'event_categories' }, handleEventCategoriesChange)
-      .subscribe((status) => logSupabase('realtime event categories', status))
+    const utilitiesChannel = supabase
+      .channel(`kusgan-committee-utilities-${user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'committee_utilities' }, () => reloadUtilities())
+      .subscribe((status) => logSupabase('realtime committee_utilities', status))
 
     const profilesChannel = supabase
       .channel(`kusgan-profiles-${user.id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, handleProfilesChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => reloadMembers())
       .subscribe((status) => logSupabase('realtime profiles', status))
+
+    const recruitmentsChannel = user.role === 'admin'
+      ? supabase
+          .channel(`kusgan-recruitments-${user.id}`)
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'recruitments' }, () => reloadRecruitments(true))
+          .subscribe((status) => logSupabase('realtime recruitments', status))
+      : null
 
     return () => {
       supabase.removeChannel(committeesChannel)
-      supabase.removeChannel(eventCategoriesChannel)
+      supabase.removeChannel(utilitiesChannel)
       supabase.removeChannel(profilesChannel)
+      if (recruitmentsChannel) supabase.removeChannel(recruitmentsChannel)
     }
-  }, [supabaseEnabled, user?.id])
+  }, [supabaseEnabled, user?.id, user?.role])
 
 		  const login = async (identifier, password) => {
         if (loginRequestRef.current) return loginRequestRef.current
@@ -1092,12 +957,11 @@ export function AuthProvider({ children }) {
           }
         : prev
     )
-
-    const applyProfilePatch = (list) =>
-      list.map((profile) =>
-        profile?.id === user.id
+    setUsers(prev =>
+      prev.map(member =>
+        member?.id === user.id
           ? {
-              ...profile,
+              ...member,
               name,
               email,
               address,
@@ -1105,7 +969,7 @@ export function AuthProvider({ children }) {
               bloodType,
               ...(hasProfileImageUpdate ? { profileImage: resolveProfileImageSrc(profileImageToStore) } : null),
             }
-          : profile
+          : member
       )
 
     if (user.role === 'admin') {
@@ -1113,6 +977,15 @@ export function AuthProvider({ children }) {
     } else {
       setMembers((prev) => applyProfilePatch(prev))
     }
+    authEpochRef.current += 1
+    await hydrateProfile(
+      {
+        id: user.id,
+        email,
+        user_metadata: { name, id_number: user.idNumber || '' },
+      },
+      authEpochRef.current
+    )
     authEpochRef.current += 1
     await hydrateProfile(
       {
@@ -1244,6 +1117,7 @@ export function AuthProvider({ children }) {
         return { success: false, message: payload?.message || `Unable to update member (HTTP ${response.status}).` }
       }
 
+      await reloadMembers()
       return { success: true }
     }
 
@@ -1302,6 +1176,51 @@ export function AuthProvider({ children }) {
       return { success: false, message: first?.message || 'Some users could not be deleted.' }
     }
 
+    return { success: true }
+  }
+
+  const deleteMembers = async (memberIds = []) => {
+    if (!user?.id) return { success: false, message: 'User not found.' }
+    if (user.role !== 'admin') return { success: false, message: 'Only admins can delete members.' }
+
+    const ids = Array.isArray(memberIds)
+      ? memberIds.map(id => String(id || '').trim()).filter(Boolean)
+      : [String(memberIds || '').trim()].filter(Boolean)
+
+    const uniqueIds = [...new Set(ids)]
+    if (uniqueIds.length === 0) return { success: false, message: 'No members selected.' }
+
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+    const token = sessionData?.session?.access_token
+    if (sessionError || !token) return { success: false, message: SESSION_EXPIRED_MESSAGE }
+
+    let response
+    try {
+      response = await fetch('/api/admin/delete-users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ userIds: uniqueIds }),
+      })
+    } catch (error) {
+      console.warn('Failed to reach admin delete-users endpoint.', error)
+      return { success: false, message: 'Unable to reach the server. Please try again.' }
+    }
+
+    const payload = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      return { success: false, message: payload?.message || `Unable to delete members (HTTP ${response.status}).` }
+    }
+
+    if (Array.isArray(payload?.failed) && payload.failed.length > 0) {
+      await reloadMembers()
+      const first = payload.failed[0]
+      return { success: false, message: first?.message || 'Some users could not be deleted.' }
+    }
+
+    await reloadMembers()
     return { success: true }
   }
 

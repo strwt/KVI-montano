@@ -274,7 +274,6 @@ const KUSGAN_VOLUNTEERS = [
   'Donald Valmores',
   'Elena S. Libot',
   'Eric Art Bernardo',
-  'Erik Art Bernardo',
   'Ernisto L. Yting',
   'Eugene Pajaron',
   'Eva Agua',
