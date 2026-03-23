@@ -68,23 +68,22 @@ function Attendance() {
     }
   }, [supabaseEnabled])
 
-  const categoryLabelByKey = useMemo(() => {
-    const map = {}
-    const entries = Array.isArray(eventCategories) ? eventCategories : []
-    entries.forEach(entry => {
-      const key = String(entry?.key || '').trim()
-      const label = String(entry?.label || '').trim()
-      if (!key || !label) return
-      map[key] = label
-    })
-    return map
-  }, [eventCategories])
-
   const titleCaseFromKey = key =>
     String(key || '')
       .trim()
       .replace(/_/g, ' ')
       .replace(/\w\S*/g, word => word.charAt(0).toUpperCase() + word.slice(1))
+
+  const categoryLabelByKey = useMemo(() => {
+    const map = {}
+    const entries = Array.isArray(eventCategories) ? eventCategories : []
+    entries.forEach(name => {
+      const key = String(name || '').trim()
+      if (!key) return
+      map[key] = titleCaseFromKey(key)
+    })
+    return map
+  }, [eventCategories])
 
   const getCategoryLabel = key => {
     const normalized = String(key || '').trim()
@@ -93,27 +92,17 @@ function Attendance() {
   }
 
   useEffect(() => {
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> bd65cbb46c278d17a2c28eb1a74e434e7aba06e4
     if (!supabaseEnabled) return
     if (!user?.id) {
       setSupabaseLoginActivity([])
       return
     }
-<<<<<<< HEAD
-=======
-    if (!supabaseEnabled || !user?.id) return undefined
->>>>>>> 6b5b9ceef02ae6ea3b9b852a747aa14b106d9c91
-=======
->>>>>>> bd65cbb46c278d17a2c28eb1a74e434e7aba06e4
 
     let active = true
 
     const load = async () => {
-    const { data } = await supabase
-      .from('login_activity')
+      const { data } = await supabase
+        .from('login_activity')
         .select('date,is_present,present_at,status,time_in,time_out,time_out_reason')
         .eq('user_id', user.id)
         .eq('is_present', true)
@@ -135,28 +124,14 @@ function Attendance() {
       setSupabaseLoginActivity(mapped)
     }
 
-    load()
-
-    const channel = supabase
-      .channel('kusgan-login-activity-self')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'login_activity', filter: `user_id=eq.${user.id}` },
-        () => load()
-      )
-      .subscribe()
+    void load()
 
     return () => {
       active = false
-      supabase.removeChannel(channel)
     }
   }, [supabaseEnabled, user?.id])
 
   useEffect(() => {
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> bd65cbb46c278d17a2c28eb1a74e434e7aba06e4
     if (!supabaseEnabled || !user?.id) return
     let active = true
 
@@ -195,19 +170,13 @@ function Attendance() {
       setEvents([])
       return
     }
-<<<<<<< HEAD
-=======
-    if (!supabaseEnabled || !user?.id) return undefined
->>>>>>> 6b5b9ceef02ae6ea3b9b852a747aa14b106d9c91
-=======
->>>>>>> bd65cbb46c278d17a2c28eb1a74e434e7aba06e4
 
     let active = true
 
     const load = async () => {
       const { data } = await supabase
         .from('events')
-        .select('*')
+        .select('id,title,category,date_time,status,assigned_member_ids')
         .contains('assigned_member_ids', [user.id])
         .order('date_time', { ascending: false })
 
@@ -216,16 +185,10 @@ function Attendance() {
       setEvents(mapped)
     }
 
-    load()
-
-    const channel = supabase
-      .channel('kusgan-events-assigned')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => load())
-      .subscribe()
+    void load()
 
     return () => {
       active = false
-      supabase.removeChannel(channel)
     }
   }, [supabaseEnabled, user?.id])
 

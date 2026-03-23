@@ -838,7 +838,7 @@ function AssignMembersPicker({ allMembers, selectedIds, onChange, label = 'Assig
 }
 
 function Calendar({ listOnly = false }) {
-  const { user, getAllMembers, eventCategories, addEventCategory, editEventCategory, deleteEventCategory } = useAuth()
+  const { user, getAllMembers, eventCategories } = useAuth()
   const canManageEvents = user?.role === 'admin'
   const supabaseEnabled = isSupabaseEnabled()
   const routerLocation = useLocation()
@@ -857,15 +857,6 @@ function Calendar({ listOnly = false }) {
   const [doneFormError, setDoneFormError] = useState('')
   const [currentYear, setCurrentYear] = useState(dayjs().year())
   const [formError, setFormError] = useState('')
-  const [showCategoryManager, setShowCategoryManager] = useState(false)
-  const [categoryManagerError, setCategoryManagerError] = useState('')
-  const [categoryManagerBusy, setCategoryManagerBusy] = useState(false)
-  const [newCategoryLabel, setNewCategoryLabel] = useState('')
-  const [newCategoryKey, setNewCategoryKey] = useState('')
-  const [editingCategoryKey, setEditingCategoryKey] = useState('')
-  const [editedCategoryLabel, setEditedCategoryLabel] = useState('')
-  const [deletingCategoryKey, setDeletingCategoryKey] = useState('')
-  const [deleteFallbackCategoryKey, setDeleteFallbackCategoryKey] = useState('')
   const [formData, setFormData] = useState({
     title: '',
     content: '',
@@ -916,14 +907,8 @@ function Calendar({ listOnly = false }) {
 
     void load()
 
-    const channel = supabase
-      .channel('kusgan-events')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => load())
-      .subscribe()
-
     return () => {
       active = false
-      supabase.removeChannel(channel)
     }
   }, [supabaseEnabled, user?.id])
 
@@ -932,16 +917,12 @@ function Calendar({ listOnly = false }) {
     [getAllMembers]
   )
 
-  const categoryLabelsFromDb = useMemo(() => {
+  const categoryKeysFromDb = useMemo(() => {
     const entries = Array.isArray(eventCategories) ? eventCategories : []
-    const map = {}
-    entries.forEach(entry => {
-      const key = canonicalizeOperationKey(normalizeCategoryKey(entry?.key))
-      const label = String(entry?.label || '').trim()
-      if (!key || !label) return
-      map[key] = label
-    })
-    return map
+    const normalized = entries
+      .map(name => canonicalizeOperationKey(normalizeCategoryKey(name)))
+      .filter(Boolean)
+    return [...new Set(normalized)]
   }, [eventCategories])
 
   const categoryLabelByKey = useMemo(() => {
@@ -949,16 +930,15 @@ function Calendar({ listOnly = false }) {
     CATEGORY_KEYS.forEach(key => {
       map[key] = CATEGORY_CONFIG[key]?.label || titleCaseFromKey(key)
     })
-    Object.entries(categoryLabelsFromDb).forEach(([key, label]) => {
-      map[key] = label
+    categoryKeysFromDb.forEach(key => {
+      if (!map[key]) map[key] = titleCaseFromKey(key)
     })
     return map
-  }, [categoryLabelsFromDb])
+  }, [categoryKeysFromDb])
 
   const additionalCategoryKeys = useMemo(() => {
     const set = new Set()
-
-    Object.keys(categoryLabelsFromDb).forEach(key => {
+    categoryKeysFromDb.forEach(key => {
       if (!CATEGORY_CONFIG[key]) set.add(key)
     })
 
@@ -970,7 +950,7 @@ function Calendar({ listOnly = false }) {
 
     const keys = Array.from(set)
     return keys.sort((a, b) => (categoryLabelByKey[a] || titleCaseFromKey(a)).localeCompare(categoryLabelByKey[b] || titleCaseFromKey(b)))
-  }, [categoryLabelsFromDb, events, categoryLabelByKey])
+  }, [categoryKeysFromDb, events, categoryLabelByKey])
 
   const selectedCategoryLabel =
     selectedCategoryKey === 'all'
@@ -979,22 +959,11 @@ function Calendar({ listOnly = false }) {
         CATEGORY_CONFIG[selectedCategoryKey]?.label ||
         titleCaseFromKey(selectedCategoryKey)
 
-  const eventCountByCategoryKey = useMemo(() => {
-    const counts = {}
-    events.forEach(item => {
-      const key = canonicalizeOperationKey(normalizeCategoryKey(item.category))
-      if (!key) return
-      counts[key] = (counts[key] || 0) + 1
-    })
-    return counts
-  }, [events])
-
-  const categoryManagerKeys = useMemo(() => {
-    const set = new Set([...CATEGORY_KEYS, ...additionalCategoryKeys])
-    const keys = Array.from(set)
+  const createCategoryKeys = useMemo(() => {
+    const keys = Array.isArray(categoryKeysFromDb) ? [...categoryKeysFromDb] : []
     keys.sort((a, b) => (categoryLabelByKey[a] || titleCaseFromKey(a)).localeCompare(categoryLabelByKey[b] || titleCaseFromKey(b)))
     return keys
-  }, [additionalCategoryKeys, categoryLabelByKey])
+  }, [categoryKeysFromDb, categoryLabelByKey])
 
   const memberNameById = useMemo(() => {
     const map = {}
@@ -1047,151 +1016,6 @@ function Calendar({ listOnly = false }) {
       params.set('category', nextKey)
     }
     setSearchParams(params, { replace: true })
-  }
-
-  const openCategoryManager = () => {
-    if (!canManageEvents) return
-    setCategoryManagerError('')
-    setEditingCategoryKey('')
-    setEditedCategoryLabel('')
-    setDeletingCategoryKey('')
-    setDeleteFallbackCategoryKey('')
-    setShowCategoryManager(true)
-  }
-
-  const closeCategoryManager = () => {
-    setShowCategoryManager(false)
-    setCategoryManagerError('')
-    setCategoryManagerBusy(false)
-    setEditingCategoryKey('')
-    setEditedCategoryLabel('')
-    setDeletingCategoryKey('')
-    setDeleteFallbackCategoryKey('')
-  }
-
-  const handleAddCategory = async (e) => {
-    e.preventDefault()
-    if (!canManageEvents) return
-    setCategoryManagerError('')
-
-    const label = String(newCategoryLabel || '').trim()
-    const keyOverride = String(newCategoryKey || '').trim()
-
-    if (!label) {
-      setCategoryManagerError('Category label is required.')
-      return
-    }
-
-    setCategoryManagerBusy(true)
-    const result = await addEventCategory(label, keyOverride)
-    setCategoryManagerBusy(false)
-
-    if (!result.success) {
-      setCategoryManagerError(result.message || 'Unable to add category.')
-      return
-    }
-
-    setNewCategoryLabel('')
-    setNewCategoryKey('')
-  }
-
-  const startEditCategory = (category) => {
-    if (!canManageEvents) return
-    setCategoryManagerError('')
-    setDeletingCategoryKey('')
-    setDeleteFallbackCategoryKey('')
-    setEditingCategoryKey(category?.key || '')
-    setEditedCategoryLabel(category?.label || '')
-  }
-
-  const cancelEditCategory = () => {
-    setEditingCategoryKey('')
-    setEditedCategoryLabel('')
-  }
-
-  const saveEditedCategory = async () => {
-    if (!canManageEvents) return
-    setCategoryManagerError('')
-
-    const key = String(editingCategoryKey || '').trim()
-    const label = String(editedCategoryLabel || '').trim()
-    if (!key) return
-    if (!label) {
-      setCategoryManagerError('Category label is required.')
-      return
-    }
-
-    setCategoryManagerBusy(true)
-    const result = await editEventCategory(key, label)
-    setCategoryManagerBusy(false)
-
-    if (!result.success) {
-      setCategoryManagerError(result.message || 'Unable to update category.')
-      return
-    }
-
-    cancelEditCategory()
-  }
-
-  const startDeleteCategory = (categoryKey) => {
-    if (!canManageEvents) return
-    setCategoryManagerError('')
-    cancelEditCategory()
-    const key = String(categoryKey || '').trim()
-    if (!key) return
-
-    const fallbackKeys = categoryManagerKeys.filter(item => item !== key)
-    const defaultFallback = fallbackKeys.includes('notes') ? 'notes' : (fallbackKeys[0] || '')
-    setDeletingCategoryKey(key)
-    setDeleteFallbackCategoryKey(defaultFallback)
-  }
-
-  const cancelDeleteCategory = () => {
-    setDeletingCategoryKey('')
-    setDeleteFallbackCategoryKey('')
-  }
-
-  const confirmDeleteCategory = async () => {
-    if (!canManageEvents) return
-    setCategoryManagerError('')
-
-    const key = String(deletingCategoryKey || '').trim()
-    if (!key) return
-
-    const affectedCount = Number(eventCountByCategoryKey[key] || 0)
-    const fallback = String(deleteFallbackCategoryKey || '').trim()
-
-    if (affectedCount > 0) {
-      if (!fallback) {
-        setCategoryManagerError('Select a fallback category to reassign events before deleting.')
-        return
-      }
-      if (fallback === key) {
-        setCategoryManagerError('Fallback category must be different.')
-        return
-      }
-    }
-
-    setCategoryManagerBusy(true)
-    const result = await deleteEventCategory(key, affectedCount > 0 ? fallback : null)
-    setCategoryManagerBusy(false)
-
-    if (!result.success) {
-      setCategoryManagerError(result.message || 'Unable to delete category.')
-      return
-    }
-
-    if (result.reassignedTo) {
-      setEvents(prev =>
-        prev.map(item => (item.category === key ? { ...item, category: result.reassignedTo } : item))
-      )
-    }
-
-    if (selectedCategoryKey === key) {
-      updateCategoryRoute(result.reassignedTo || 'all')
-    }
-
-    cancelDeleteCategory()
   }
 
   useEffect(() => {
@@ -2269,17 +2093,12 @@ function Calendar({ listOnly = false }) {
             <>
               <button
                 type="button"
-                onClick={openCategoryManager}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-colors dark:bg-zinc-900 dark:text-zinc-300 dark:border-zinc-700 dark:hover:bg-zinc-800"
-              >
-                Categories
-              </button>
-              <button
-                type="button"
                 onClick={() => {
                   resetForm()
+                  setFormData(prev => ({ ...prev, category: createCategoryKeys[0] || '' }))
                   setShowEventForm(true)
                 }}
+                disabled={createCategoryKeys.length === 0}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all shadow-lg"
               >
                 <Plus size={18} />
@@ -2631,187 +2450,6 @@ function Calendar({ listOnly = false }) {
         </div>
       )}
 
-      {canManageEvents && showCategoryManager && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-3 sm:p-4">
-          <div className="relative isolate w-full max-w-2xl animate-fade-in-up max-h-[92vh] overflow-y-auto rounded-2xl border border-gray-200 bg-white shadow-2xl">
-            <div className="flex items-center justify-between p-4 sm:p-5 border-b border-gray-200 sticky top-0 bg-white z-50 rounded-t-2xl">
-              <h3 className="text-lg font-semibold text-gray-800">Event Categories</h3>
-              <button
-                type="button"
-                onClick={closeCategoryManager}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <X size={20} className="text-gray-500" />
-              </button>
-            </div>
-
-            <div className="p-4 sm:p-6 space-y-5">
-              {categoryManagerError && <p className="text-sm text-red-600">{categoryManagerError}</p>}
-
-              <form onSubmit={handleAddCategory} className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Label</label>
-                  <input
-                    type="text"
-                    value={newCategoryLabel}
-                    onChange={e => setNewCategoryLabel(e.target.value)}
-                    placeholder="e.g. Community Outreach"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Key (optional)</label>
-                  <input
-                    type="text"
-                    value={newCategoryKey}
-                    onChange={e => setNewCategoryKey(e.target.value)}
-                    placeholder="e.g. community_outreach"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                  />
-                </div>
-                <div className="md:col-span-3 flex justify-end">
-                  <button
-                    type="submit"
-                    disabled={categoryManagerBusy}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 disabled:opacity-60 disabled:cursor-not-allowed"
-                  >
-                    {categoryManagerBusy ? 'Saving...' : 'Add Category'}
-                  </button>
-                </div>
-              </form>
-
-              <div className="space-y-3">
-                {Array.isArray(eventCategories) && eventCategories.length > 0 ? (
-                  eventCategories.map(category => {
-                    const key = String(category?.key || '').trim()
-                    const label = String(category?.label || '').trim()
-                    if (!key) return null
-
-                    const count = Number(eventCountByCategoryKey[key] || 0)
-                    const isEditing = editingCategoryKey === key
-                    const isDeleting = deletingCategoryKey === key
-                    const fallbackOptions = categoryManagerKeys.filter(item => item !== key)
-
-                    return (
-                      <div key={key} className="rounded-xl border border-gray-200 bg-white p-4">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0 flex-1">
-                            {isEditing ? (
-                              <div>
-                                <label className="block text-xs font-medium text-gray-600 mb-1">Edit label</label>
-                                <input
-                                  type="text"
-                                  value={editedCategoryLabel}
-                                  onChange={e => setEditedCategoryLabel(e.target.value)}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                                />
-                              </div>
-                            ) : (
-                              <p className="font-semibold text-gray-900">{label || categoryLabelByKey[key] || titleCaseFromKey(key)}</p>
-                            )}
-                            <p className="mt-1 text-xs text-gray-500 break-all">
-                              Key: <span className="font-mono">{key}</span> • {count} event(s)
-                            </p>
-                          </div>
-
-                          <div className="flex items-center gap-2">
-                            {isEditing ? (
-                              <>
-                                <button
-                                  type="button"
-                                  onClick={cancelEditCategory}
-                                  className="px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-700 hover:bg-gray-50"
-                                >
-                                  Cancel
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={saveEditedCategory}
-                                  disabled={categoryManagerBusy}
-                                  className="px-3 py-2 rounded-lg bg-red-600 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60 disabled:cursor-not-allowed"
-                                >
-                                  Save
-                                </button>
-                              </>
-                            ) : isDeleting ? (
-                              <>
-                                <button
-                                  type="button"
-                                  onClick={cancelDeleteCategory}
-                                  className="px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-700 hover:bg-gray-50"
-                                >
-                                  Cancel
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={confirmDeleteCategory}
-                                  disabled={categoryManagerBusy}
-                                  className="px-3 py-2 rounded-lg bg-red-600 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60 disabled:cursor-not-allowed"
-                                >
-                                  Delete
-                                </button>
-                              </>
-                            ) : (
-                              <>
-                                <button
-                                  type="button"
-                                  onClick={() => startEditCategory(category)}
-                                  className="px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-700 hover:bg-gray-50"
-                                >
-                                  Edit
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => startDeleteCategory(key)}
-                                  className="px-3 py-2 rounded-lg border border-red-200 bg-red-50 text-sm text-red-700 hover:bg-red-100"
-                                >
-                                  Delete
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        </div>
-
-                        {isDeleting && (
-                          <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 space-y-2">
-                            <p className="text-sm text-red-700">
-                              {count > 0
-                                ? `This category is used by ${count} event(s). Select a fallback category to reassign them before deleting.`
-                                : 'Delete this category?'}
-                            </p>
-                            {count > 0 && (
-                              <div>
-                                <label className="block text-xs font-medium text-gray-700 mb-1">Fallback category</label>
-                                <select
-                                  value={deleteFallbackCategoryKey}
-                                  onChange={e => setDeleteFallbackCategoryKey(e.target.value)}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                                >
-                                  <option value="">Select fallback</option>
-                                  {fallbackOptions.map(optionKey => (
-                                    <option key={optionKey} value={optionKey}>
-                                      {categoryLabelByKey[optionKey] || titleCaseFromKey(optionKey)}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })
-                ) : (
-                  <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-600">
-                    No categories found. Ensure `public.event_categories` exists and is accessible.
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {canManageEvents && showEventForm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-3 sm:p-4">
           <div className="relative isolate w-full max-w-3xl animate-fade-in-up max-h-[92vh] overflow-y-auto rounded-2xl border border-transparent [background:linear-gradient(#ffffff,#ffffff)_padding-box,linear-gradient(135deg,rgba(248,113,113,.55),rgba(185,28,28,.28),rgba(15,23,42,.4))_border-box] shadow-2xl">
@@ -2847,21 +2485,16 @@ function Calendar({ listOnly = false }) {
 	                          onChange={e => setFormData({ ...formData, category: e.target.value })}
 	                          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
 	                          required
-	                        >
-	                          <option value="" disabled>
-	                            Select category
-	                          </option>
-		                          {CREATE_CATEGORY_KEYS.map(category => (
+		                        >
+		                          <option value="" disabled>
+		                            Select category
+		                          </option>
+		                          {createCategoryKeys.map(category => (
 		                            <option key={category} value={category}>
-		                              {categoryLabelByKey[category] || CATEGORY_CONFIG[category].label}
+		                              {categoryLabelByKey[category] || titleCaseFromKey(category)}
 		                            </option>
 		                          ))}
-		                          {additionalCategoryKeys.map(categoryKey => (
-		                            <option key={categoryKey} value={categoryKey}>
-		                              {categoryLabelByKey[categoryKey] || titleCaseFromKey(categoryKey)}
-		                            </option>
-		                          ))}
-		                          {!CREATE_CATEGORY_KEYS.includes(formData.category) &&
+		                          {!createCategoryKeys.includes(formData.category) &&
 		                            formData.category &&
 		                            (CATEGORY_CONFIG[formData.category] || categoryLabelByKey[formData.category]) && (
 		                              <option value={formData.category}>

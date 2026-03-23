@@ -75,7 +75,10 @@ function AdminAttendance() {
   }, [])
 
   useEffect(() => {
-    if (!supabaseEnabled) return
+    if (!supabaseEnabled || user?.role !== 'admin') {
+      setSupabaseLoginActivity([])
+      return
+    }
     let active = true
 
     const load = async () => {
@@ -108,20 +111,22 @@ function AdminAttendance() {
       }
     }
 
-    load()
-    const intervalId = window.setInterval(load, 8000)
+    void load()
 
     const channel = supabase
-      .channel('kusgan-login-activity-admin')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'login_activity' }, () => load())
+      .channel(`kusgan-login-activity-admin-${selectedDate}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'login_activity', filter: `date=eq.${selectedDate}` },
+        () => load()
+      )
       .subscribe()
 
     return () => {
       active = false
-      window.clearInterval(intervalId)
       supabase.removeChannel(channel)
     }
-  }, [supabaseEnabled, selectedDate])
+  }, [supabaseEnabled, selectedDate, user?.role])
 
   const members = useMemo(() => {
     return (users || [])

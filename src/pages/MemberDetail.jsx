@@ -3,13 +3,12 @@ import { ArrowLeft, Mail, Calendar, User, Trash2 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate, useParams } from 'react-router-dom'
 
-const DEFAULT_COMMITTEE = 'Environmental'
 const BLOOD_TYPE_OPTIONS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
 
 function MemberDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { user, loading: authLoading, authResolved, getAllMembers, getAdmins, deleteMembers, updateMember } = useAuth()
+  const { user, loading: authLoading, authResolved, getAllMembers, getAdmins, deleteMembers, updateMember, committees } = useAuth()
   
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showUpdateModal, setShowUpdateModal] = useState(false)
@@ -21,6 +20,7 @@ function MemberDetail() {
     address: '',
     contactNumber: '',
     bloodType: '',
+    committee: '',
     status: 'active',
     memberSince: '',
   })
@@ -47,6 +47,7 @@ function MemberDetail() {
       address: member.address || '',
       contactNumber: member.contactNumber || '',
       bloodType: member.bloodType || '',
+      committee: member.committee || '',
       status: member.status || 'active',
       memberSince: (member.memberSince || new Date().toISOString()).split('T')[0],
     })
@@ -75,6 +76,7 @@ function MemberDetail() {
       address: editForm.address,
       contactNumber: editForm.contactNumber,
       bloodType: editForm.bloodType,
+      committee: editForm.committee,
       status: editForm.status,
       memberSince: editForm.memberSince,
     })
@@ -174,7 +176,7 @@ function MemberDetail() {
                 </div>
                 <div className="flex flex-wrap gap-2 pt-1">
                   <span className="px-2 py-1 rounded bg-red-50 text-red-700 text-xs border border-red-200">
-                    Committee: {member.committee || DEFAULT_COMMITTEE}
+                    Committee: {member.committee || 'N/A'}
                   </span>
                   <span className="px-2 py-1 rounded bg-blue-50 text-blue-700 text-xs border border-blue-200">
                     Role: {member.role === 'admin' ? 'Admin' : 'Member'}
@@ -313,6 +315,21 @@ function MemberDetail() {
                   onChange={(e) => setEditForm({ ...editForm, contactNumber: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Committee</label>
+                <select
+                  value={editForm.committee}
+                  onChange={(e) => setEditForm({ ...editForm, committee: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                >
+                  <option value="">Select committee</option>
+                  {(Array.isArray(committees) ? committees : []).map(name => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Blood Type</label>
