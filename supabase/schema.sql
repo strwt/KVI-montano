@@ -262,8 +262,16 @@ create table if not exists public.login_activity (
   last_status_at timestamptz,
   is_present boolean not null default false,
   present_at timestamptz,
+  status text,
+  time_in timestamptz,
+  time_out timestamptz,
+  time_out_reason text,
   unique (user_id, date)
 );
+
+alter table public.login_activity
+  drop constraint if exists login_activity_status_not_blank,
+  add constraint login_activity_status_not_blank check (status is null or btrim(status) <> '');
 
 -- Fast lookup for today's present members (admin dashboard)
 create index if not exists login_activity_present_by_date_idx

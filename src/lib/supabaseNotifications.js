@@ -6,7 +6,7 @@ export const fetchMyNotifications = async (limit = 50) => {
   if (!isSupabaseEnabled()) return { data: [], error: null }
   const { data, error } = await supabase
     .from('notifications')
-    .select('*')
+    .select('id,user_id,type,event_id,title,category,date_time,details,assigned_by,created_at,read_at')
     .order('created_at', { ascending: false })
     .limit(limit)
   return { data: Array.isArray(data) ? data : [], error: error || null }
@@ -40,4 +40,3 @@ export const markNotificationRead = async (notificationId) => {
     .eq('id', notificationId)
   return { error: error || null }
 }
-

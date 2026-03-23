@@ -907,14 +907,8 @@ function Calendar({ listOnly = false }) {
 
     void load()
 
-    const channel = supabase
-      .channel('kusgan-events')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => load())
-      .subscribe()
-
     return () => {
       active = false
-      supabase.removeChannel(channel)
     }
   }, [supabaseEnabled, user?.id])
 

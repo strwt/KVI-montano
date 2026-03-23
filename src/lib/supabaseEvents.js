@@ -61,7 +61,9 @@ export const fetchSupabaseEvents = async () => {
 
   const { data, error } = await supabase
     .from('events')
-    .select('*')
+    .select(
+      'id,title,content,category,date_time,address,location,branch,members_involve,assigned_member_ids,status,category_data,viewed_by,created_by,created_by_name,created_at,updated_at,completed_at'
+    )
     .order('date_time', { ascending: false })
 
   if (error) return { data: [], error }

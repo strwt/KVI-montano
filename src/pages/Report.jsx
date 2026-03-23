@@ -227,16 +227,10 @@ function Report() {
       setEvents(data)
     }
 
-    load()
-
-    const channel = supabase
-      .channel('kusgan-events-report')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => load())
-      .subscribe()
+    void load()
 
     return () => {
       active = false
-      supabase.removeChannel(channel)
     }
   }, [supabaseEnabled, user?.id])
 
