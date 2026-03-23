@@ -269,56 +269,73 @@ function MemberDetail() {
             <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4">Update Member</h3>
             <form onSubmit={handleUpdateMember} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">ID Number</label>
+                <label htmlFor="update-member-id-number" className="block text-sm font-medium text-gray-700 mb-1">ID Number</label>
                 <input
+                  id="update-member-id-number"
+                  name="idNumber"
                   type="text"
                   required
                   value={editForm.idNumber}
                   onChange={(e) => setEditForm({ ...editForm, idNumber: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                  autoComplete="off"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                <label htmlFor="update-member-name" className="block text-sm font-medium text-gray-700 mb-1">Name</label>
                 <input
+                  id="update-member-name"
+                  name="name"
                   type="text"
                   required
                   value={editForm.name}
                   onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                  autoComplete="name"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <label htmlFor="update-member-email" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                 <input
+                  id="update-member-email"
+                  name="email"
                   type="email"
                   required
                   value={editForm.email}
                   onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                  autoComplete="email"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                <label htmlFor="update-member-address" className="block text-sm font-medium text-gray-700 mb-1">Address</label>
                 <input
+                  id="update-member-address"
+                  name="address"
                   type="text"
                   value={editForm.address}
                   onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                  autoComplete="street-address"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Contact Number</label>
+                <label htmlFor="update-member-contact-number" className="block text-sm font-medium text-gray-700 mb-1">Contact Number</label>
                 <input
+                  id="update-member-contact-number"
+                  name="contactNumber"
                   type="text"
                   value={editForm.contactNumber}
                   onChange={(e) => setEditForm({ ...editForm, contactNumber: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                  autoComplete="tel"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Committee</label>
+                <label htmlFor="update-member-committee" className="block text-sm font-medium text-gray-700 mb-1">Committee</label>
                 <select
+                  id="update-member-committee"
+                  name="committee"
                   value={editForm.committee}
                   onChange={(e) => setEditForm({ ...editForm, committee: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
@@ -332,8 +349,10 @@ function MemberDetail() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Blood Type</label>
+                <label htmlFor="update-member-blood-type" className="block text-sm font-medium text-gray-700 mb-1">Blood Type</label>
                 <select
+                  id="update-member-blood-type"
+                  name="bloodType"
                   value={editForm.bloodType}
                   onChange={(e) => setEditForm({ ...editForm, bloodType: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
@@ -348,8 +367,10 @@ function MemberDetail() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                  <label htmlFor="update-member-status" className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                   <select
+                    id="update-member-status"
+                    name="status"
                     value={editForm.status}
                     onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
@@ -359,8 +380,10 @@ function MemberDetail() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Member Since</label>
+                  <label htmlFor="update-member-since" className="block text-sm font-medium text-gray-700 mb-1">Member Since</label>
                   <input
+                    id="update-member-since"
+                    name="memberSince"
                     type="date"
                     value={editForm.memberSince}
                     onChange={(e) => setEditForm({ ...editForm, memberSince: e.target.value })}

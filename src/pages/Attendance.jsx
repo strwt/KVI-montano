@@ -92,12 +92,7 @@ function Attendance() {
   }
 
   useEffect(() => {
-
-    if (!supabaseEnabled) return
-    if (!user?.id) {
-      setSupabaseLoginActivity([])
-      return
-    }
+    if (!supabaseEnabled || !user?.id) return
     let active = true
 
     const load = async () => {
@@ -165,11 +160,7 @@ function Attendance() {
   }, [supabaseEnabled, user?.id])
 
   useEffect(() => {
-    if (!supabaseEnabled) return
-    if (!user?.id) {
-      setEvents([])
-      return
-    }
+    if (!supabaseEnabled || !user?.id) return
     let active = true
 
     const load = async () => {
@@ -192,10 +183,18 @@ function Attendance() {
   }, [supabaseEnabled, user?.id])
 
   const userId = String(user?.id || '')
+  const effectiveSupabaseLoginActivity = useMemo(
+    () => (userId ? supabaseLoginActivity : []),
+    [userId, supabaseLoginActivity]
+  )
+  const effectiveEvents = useMemo(
+    () => (userId ? events : []),
+    [userId, events]
+  )
 
   const mergedLoginActivity = useMemo(() => {
     const map = new Map()
-    ;(supabaseLoginActivity || []).forEach(entry => {
+    ;(effectiveSupabaseLoginActivity || []).forEach(entry => {
       if (!entry?.date || !entry?.userId) return
       map.set(`${entry.date}-${entry.userId}`, entry)
     })
@@ -204,7 +203,7 @@ function Attendance() {
       map.set(`${entry.date}-${entry.userId}`, entry)
     })
     return Array.from(map.values())
-  }, [localLoginActivity, supabaseLoginActivity])
+  }, [localLoginActivity, effectiveSupabaseLoginActivity])
 
   const attendanceRows = useMemo(() => {
     const monthStart = dayjs().startOf('month')
@@ -242,12 +241,12 @@ function Attendance() {
 
   const assignedEvents = useMemo(() => {
     if (!userId) return []
-    return events
+    return effectiveEvents
       .filter(event => Array.isArray(event.assignedMemberIds))
       .filter(event => event.assignedMemberIds.map(id => String(id)).includes(userId))
       .filter(event => event.dateTime && dayjs(event.dateTime).isValid())
       .sort((a, b) => dayjs(b.dateTime).valueOf() - dayjs(a.dateTime).valueOf())
-  }, [events, userId])
+  }, [effectiveEvents, userId])
 
   const todayKey = dayjs().format('YYYY-MM-DD')
   const todayEntry = useMemo(

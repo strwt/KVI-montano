@@ -91,15 +91,18 @@ function Register() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Full Name Input */}
             <div className="relative">
-              <label className="block text-gray-700 dark:text-gray-300 text-sm font-medium mb-2">Full Name</label>
+              <label htmlFor="register-name" className="block text-gray-700 dark:text-gray-300 text-sm font-medium mb-2">Full Name</label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                 <input
+                  id="register-name"
+                  name="name"
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 bg-white dark:bg-gray-900/50 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
                   placeholder="Enter your full name"
+                  autoComplete="name"
                   required
                 />
               </div>
@@ -107,15 +110,18 @@ function Register() {
 
             {/* Email Input */}
             <div className="relative">
-              <label className="block text-gray-700 dark:text-gray-300 text-sm font-medium mb-2">Email</label>
+              <label htmlFor="register-email" className="block text-gray-700 dark:text-gray-300 text-sm font-medium mb-2">Email</label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                 <input
+                  id="register-email"
+                  name="email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 bg-white dark:bg-gray-900/50 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
                   placeholder="Enter your email"
+                  autoComplete="email"
                   required
                 />
               </div>
@@ -123,15 +129,18 @@ function Register() {
 
             {/* ID Number Input */}
             <div className="relative">
-              <label className="block text-gray-700 dark:text-gray-300 text-sm font-medium mb-2">Enter your ID Number</label>
+              <label htmlFor="register-id-number" className="block text-gray-700 dark:text-gray-300 text-sm font-medium mb-2">Enter your ID Number</label>
               <div className="relative">
                 <Hash className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                 <input
+                  id="register-id-number"
+                  name="idNumber"
                   type="text"
                   value={idNumber}
                   onChange={(e) => setIdNumber(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 bg-white dark:bg-gray-900/50 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
                   placeholder="Enter your ID Number"
+                  autoComplete="username"
                   required
                 />
               </div>
@@ -139,15 +148,18 @@ function Register() {
 
             {/* Password Input */}
             <div className="relative">
-              <label className="block text-gray-700 dark:text-gray-300 text-sm font-medium mb-2">Password</label>
+              <label htmlFor="register-password" className="block text-gray-700 dark:text-gray-300 text-sm font-medium mb-2">Password</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                 <input
+                  id="register-password"
+                  name="password"
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full pl-10 pr-12 py-3 bg-white dark:bg-gray-900/50 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
                   placeholder="Create a password"
+                  autoComplete="new-password"
                   required
                 />
                 <button
@@ -162,15 +174,18 @@ function Register() {
 
             {/* Confirm Password Input */}
             <div className="relative">
-              <label className="block text-gray-700 dark:text-gray-300 text-sm font-medium mb-2">Confirm Password</label>
+              <label htmlFor="register-confirm-password" className="block text-gray-700 dark:text-gray-300 text-sm font-medium mb-2">Confirm Password</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                 <input
+                  id="register-confirm-password"
+                  name="confirmPassword"
                   type={showPassword ? 'text' : 'password'}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 bg-white dark:bg-gray-900/50 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
                   placeholder="Confirm your password"
+                  autoComplete="new-password"
                   required
                 />
               </div>

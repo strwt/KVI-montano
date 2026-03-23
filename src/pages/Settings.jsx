@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { CheckCircle2, Shield, Bell, SlidersHorizontal, Lock } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useI18n } from '../i18n/useI18n'
@@ -29,6 +29,28 @@ const createDefaultSettings = (name = '') => ({
   },
 })
 
+const mergeSettings = (name, savedSettings) => {
+  const defaults = createDefaultSettings(name || '')
+  const source = savedSettings && typeof savedSettings === 'object' ? savedSettings : {}
+  return {
+    ...defaults,
+    ...source,
+    profile: { ...defaults.profile, ...(source.profile || {}) },
+    security: { ...defaults.security, ...(source.security || {}) },
+    notifications: { ...defaults.notifications, ...(source.notifications || {}) },
+    preferences: { ...defaults.preferences, ...(source.preferences || {}) },
+    privacy: { ...defaults.privacy, ...(source.privacy || {}) },
+  }
+}
+
+const hashString = (value) => {
+  const str = String(value || '')
+  let hash = 0
+  for (let i = 0; i < str.length; i += 1) {
+    hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0
+  }
+  return Math.abs(hash).toString(36)
+}
 
 function ToggleSwitch({ checked, onChange, label, description }) {
   return (
@@ -56,25 +78,9 @@ function ToggleSwitch({ checked, onChange, label, description }) {
   )
 }
 
-function Settings() {
-  const { user, appLanguage, setAppLanguage, settings: savedSettings, saveSettings } = useAuth()
-  const { t } = useI18n()
-  const [settings, setSettings] = useState(() => createDefaultSettings(user?.name || ''))
+function SettingsForm({ initialSettings, appLanguage, setAppLanguage, saveSettings, t }) {
+  const [settings, setSettings] = useState(initialSettings)
   const [saveState, setSaveState] = useState('idle')
-
-  useEffect(() => {
-    const defaults = createDefaultSettings(user?.name || '')
-    const source = savedSettings && typeof savedSettings === 'object' ? savedSettings : {}
-    setSettings({
-      ...defaults,
-      ...source,
-      profile: { ...defaults.profile, ...(source.profile || {}) },
-      security: { ...defaults.security, ...(source.security || {}) },
-      notifications: { ...defaults.notifications, ...(source.notifications || {}) },
-      preferences: { ...defaults.preferences, ...(source.preferences || {}) },
-      privacy: { ...defaults.privacy, ...(source.privacy || {}) },
-    })
-  }, [savedSettings, user?.name])
 
   const handleSave = async () => {
     setSaveState('saving')
@@ -175,9 +181,11 @@ function Settings() {
           <p className="mb-4 text-[14px] text-neutral-600 dark:text-zinc-400">{t('Adjust your dashboard view and language options.')}</p>
           <div className="space-y-2">
             <div className="rounded-xl border border-neutral-200 bg-white p-3 dark:border-zinc-700 dark:bg-zinc-900">
-              <label className="mb-2 block text-[16px] font-medium text-black dark:text-zinc-100">{t('Language')}</label>
+              <label htmlFor="settings-language" className="mb-2 block text-[16px] font-medium text-black dark:text-zinc-100">{t('Language')}</label>
               <p className="mb-3 text-[14px] text-neutral-600 dark:text-zinc-400">{t('Select the language for your interface.')}</p>
               <select
+                id="settings-language"
+                name="language"
                 value={appLanguage}
                 onChange={e => {
                   const nextLanguage = e.target.value
@@ -228,6 +236,32 @@ function Settings() {
         </button>
       </div>
     </div>
+  )
+}
+
+function Settings() {
+  const { user, appLanguage, setAppLanguage, settings: savedSettings, saveSettings } = useAuth()
+  const { t } = useI18n()
+
+  const initialSettings = useMemo(
+    () => mergeSettings(user?.name || '', savedSettings),
+    [savedSettings, user?.name]
+  )
+
+  const initialSettingsKey = useMemo(() => {
+    const serialized = JSON.stringify(initialSettings)
+    return `${String(user?.id || 'anon')}-${hashString(serialized)}`
+  }, [initialSettings, user?.id])
+
+  return (
+    <SettingsForm
+      key={initialSettingsKey}
+      initialSettings={initialSettings}
+      appLanguage={appLanguage}
+      setAppLanguage={setAppLanguage}
+      saveSettings={saveSettings}
+      t={t}
+    />
   )
 }
 
