@@ -98,7 +98,7 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
               }}
               className={`w-full flex items-center justify-center p-2 rounded-lg transition-colors ${utilityBtnTone}`}
             >
-              <div className="w-14 h-14 rounded-full bg-red-600 border border-red-600 flex items-center justify-center overflow-hidden">
+              <div className="w-12 h-12 rounded-full bg-red-600 border border-red-600 flex items-center justify-center overflow-hidden">
                 <img
                   src={user?.profileImage || '/image-removebg-preview.png'}
                   alt={user?.name || 'User'}
@@ -202,7 +202,16 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
               </div>
             </div>
           ) : (
-            <div className="flex items-center justify-center gap-2">
+            <div className="flex flex-col items-center gap-3">
+              <button
+                type="button"
+                onClick={onToggleDarkMode}
+                className={`inline-flex h-9 w-9 items-center justify-center rounded-full border border-red-600/60 transition-all ${utilityBtnTone}`}
+                aria-label={darkMode ? t('Light Mode') : t('Dark Mode')}
+                title={darkMode ? t('Light Mode') : t('Dark Mode')}
+              >
+                {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+              </button>
               <div className="w-10 h-10 bg-white logo-no-dark rounded-full flex items-center justify-center overflow-hidden">
                 <img
                   src="/image-removebg-preview.png"
@@ -210,26 +219,15 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
                   className="w-8 h-8 object-contain"
                 />
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={onToggleDarkMode}
-                  className={`inline-flex h-9 w-9 items-center justify-center rounded-full border border-red-600/60 transition-all ${utilityBtnTone}`}
-                  aria-label={darkMode ? t('Light Mode') : t('Dark Mode')}
-                  title={darkMode ? t('Light Mode') : t('Dark Mode')}
-                >
-                  {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className={`inline-flex h-9 w-9 items-center justify-center rounded-full border border-red-600/60 transition-all ${utilityBtnTone}`}
-                  aria-label={t('Logout')}
-                  title={t('Logout')}
-                >
-                  <LogOut size={18} />
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className={`inline-flex h-9 w-9 items-center justify-center rounded-full border border-red-600/60 transition-all ${utilityBtnTone}`}
+                aria-label={t('Logout')}
+                title={t('Logout')}
+              >
+                <LogOut size={18} />
+              </button>
             </div>
           )}
         </div>
