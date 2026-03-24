@@ -7,6 +7,7 @@ import createUserHandler from './api/admin/create-user.js'
 import updateUserHandler from './api/admin/update-user.js'
 import deleteUsersHandler from './api/admin/delete-users.js'
 import healthHandler from './api/health.js'
+import uploadAvatarHandler from './api/storage/upload-avatar.js'
 
 const collectRawBody = async (req) => {
   if (req.method === 'GET' || req.method === 'HEAD') return undefined
@@ -44,6 +45,7 @@ const devApiPlugin = () => {
     ['/api/admin/create-user', createUserHandler],
     ['/api/admin/update-user', updateUserHandler],
     ['/api/admin/delete-users', deleteUsersHandler],
+    ['/api/storage/upload-avatar', uploadAvatarHandler],
   ])
 
   return {
@@ -80,6 +82,7 @@ export default defineConfig(({ mode }) => {
   // Vite loads `.env*` into `import.meta.env` for the browser bundle, but our dev API handlers
   // run in the Node dev server and expect `process.env.*` like Vercel serverless.
   const env = loadEnv(mode, process.cwd(), '')
+  const disableFastRefresh = String(env.VITE_DISABLE_FAST_REFRESH || '').trim().toLowerCase() === 'true'
 
   process.env.SUPABASE_URL = process.env.SUPABASE_URL || env.SUPABASE_URL || env.VITE_SUPABASE_URL || ''
   process.env.SUPABASE_SERVICE_ROLE_KEY =
@@ -87,6 +90,6 @@ export default defineConfig(({ mode }) => {
   process.env.BOOTSTRAP_SECRET = process.env.BOOTSTRAP_SECRET || env.BOOTSTRAP_SECRET || ''
 
   return {
-    plugins: [react(), tailwindcss(), devApiPlugin()],
+    plugins: [react({ fastRefresh: !disableFastRefresh }), tailwindcss(), devApiPlugin()],
   }
 })

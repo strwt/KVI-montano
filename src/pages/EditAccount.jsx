@@ -85,7 +85,14 @@ function EditAccount() {
       return
     }
 
-    let profileImageValue = form.profileImage
+    const payload = {
+      name: form.name,
+      email: form.email,
+      address: form.address,
+      contactNumber: phone,
+      bloodType: blood,
+    }
+
     if (selectedFile) {
       const uploaded = await uploadProfileImage(selectedFile)
       if (!uploaded?.success) {
@@ -93,16 +100,10 @@ function EditAccount() {
         setIsSaving(false)
         return
       }
-      profileImageValue = uploaded.path
-    }
-
-    const payload = {
-      name: form.name,
-      email: form.email,
-      address: form.address,
-      contactNumber: phone,
-      bloodType: blood,
-      profileImage: profileImageValue,
+      payload.profileImage = uploaded.path
+    } else if (!form.profileImage) {
+      // User removed their photo.
+      payload.profileImage = ''
     }
 
     try {

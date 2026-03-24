@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   User,
   Mail,
@@ -22,17 +22,41 @@ function Profile() {
   const navigate = useNavigate()
   const [showEditOptions, setShowEditOptions] = useState(false)
   const menuRef = useRef(null)
+  const triggerRef = useRef(null)
+  const panelRef = useRef(null)
+
+  const closeMenu = useCallback(({ restoreFocus = true } = {}) => {
+    if (restoreFocus) {
+      const active = typeof document !== 'undefined' ? document.activeElement : null
+      if (panelRef.current && active && panelRef.current.contains(active)) {
+        triggerRef.current?.focus?.()
+      }
+    }
+    setShowEditOptions(false)
+  }, [])
 
   useEffect(() => {
+    if (!showEditOptions) return undefined
+
     const handleOutsideClick = (event) => {
       if (!menuRef.current) return
       if (menuRef.current.contains(event.target)) return
-      setShowEditOptions(false)
+      closeMenu()
+    }
+
+    const handleKeyDown = (event) => {
+      if (event.key !== 'Escape') return
+      event.preventDefault()
+      closeMenu()
     }
 
     document.addEventListener('mousedown', handleOutsideClick)
-    return () => document.removeEventListener('mousedown', handleOutsideClick)
-  }, [])
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [closeMenu, showEditOptions])
 
   const profileFields = useMemo(() => ([
     { label: t('Full Name'), value: user?.name || 'N/A', icon: User },
@@ -93,39 +117,44 @@ function Profile() {
               <button
                 onClick={() => setShowEditOptions((prev) => !prev)}
                 aria-label={t('Profile actions')}
+                ref={triggerRef}
                 className="inline-flex items-center gap-2 px-4 py-2.5 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors border border-red-600/70 shadow-md shadow-red-900/25"
               >
                 <Edit2 size={16} />
                 <span className="text-sm font-semibold">{t('Manage')}</span>
               </button>
 
-              <div
-                aria-hidden={!showEditOptions}
-                className={`absolute right-0 top-12 z-30 w-56 rounded-xl border border-zinc-200 bg-white shadow-2xl p-2 transition-all duration-200 ${
-                  showEditOptions ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-1 pointer-events-none'
-                }`}
-              >
-                <button
-                  onClick={() => {
-                    setShowEditOptions(false)
-                    navigate('/account/edit')
-                  }}
-                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm text-zinc-700 hover:bg-zinc-100 transition-colors"
+              {showEditOptions && (
+                <div
+                  ref={panelRef}
+                  role="menu"
+                  aria-label={t('Profile actions')}
+                  className="absolute right-0 top-12 z-30 w-56 rounded-xl border border-zinc-200 bg-white shadow-2xl p-2"
                 >
-                  <span>{t('Account Info')}</span>
-                  <ChevronRight size={16} />
-                </button>
-                <button
-                  onClick={() => {
-                    setShowEditOptions(false)
-                    navigate('/change-password')
-                  }}
-                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm text-zinc-700 hover:bg-zinc-100 transition-colors"
-                >
-                  <span>{t('Change Password')}</span>
-                  <ChevronRight size={16} />
-                </button>
-              </div>
+                  <button
+                    role="menuitem"
+                    onClick={() => {
+                      closeMenu({ restoreFocus: false })
+                      navigate('/account/edit')
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm text-zinc-700 hover:bg-zinc-100 transition-colors"
+                  >
+                    <span>{t('Account Info')}</span>
+                    <ChevronRight size={16} />
+                  </button>
+                  <button
+                    role="menuitem"
+                    onClick={() => {
+                      closeMenu({ restoreFocus: false })
+                      navigate('/change-password')
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm text-zinc-700 hover:bg-zinc-100 transition-colors"
+                  >
+                    <span>{t('Change Password')}</span>
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
