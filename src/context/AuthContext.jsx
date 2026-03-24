@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import dayjs from 'dayjs'
-import { getSupabaseConfigError, isSupabaseConfigured, supabase, supabaseAnonKey, supabaseUrl } from '../lib/supabaseClient'
+import { clearSupabaseAuthLocalStorage, getSupabaseConfigError, isSupabaseConfigured, supabase, supabaseAnonKey, supabaseUrl } from '../lib/supabaseClient'
 
 const AuthContext = createContext(null)
 
@@ -82,12 +82,180 @@ const enrichUserWithProfileImage = (user = {}) => ({
 const isLikelyExternalUrl = (value) => /^https?:\/\//i.test(String(value || '').trim())
 const isLikelyDataUrl = (value) => /^data:image\//i.test(String(value || '').trim())
 
+const encodeStorageObjectPath = (value) =>
+  String(value || '')
+    .split('/')
+    .map(segment => encodeURIComponent(segment))
+    .join('/')
+
+const decodeJwtPayload = (token) => {
+  const raw = String(token || '').trim()
+  if (!raw) return null
+  const parts = raw.split('.')
+  if (parts.length < 2) return null
+  const payload = parts[1]
+  if (!payload) return null
+
+  try {
+    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/')
+    const padded = normalized + '='.repeat((4 - (normalized.length % 4)) % 4)
+    const decoded = typeof atob === 'function' ? atob(padded) : ''
+    return decoded ? JSON.parse(decoded) : null
+  } catch {
+    return null
+  }
+}
+
+const uploadStorageObjectViaRest = async ({ bucket, path, file, contentType, accessToken }) => {
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return { ok: false, status: 0, message: 'Supabase is not configured. Missing URL or anon key.' }
+  }
+
+  const bucketName = String(bucket || '').trim()
+  const objectPath = String(path || '').trim()
+  if (!bucketName || !objectPath) return { ok: false, status: 0, message: 'Missing storage path.' }
+
+  const encodedPath = encodeStorageObjectPath(objectPath)
+  const response = await fetch(`${supabaseUrl}/storage/v1/object/${bucketName}/${encodedPath}`, {
+    method: 'POST',
+    headers: {
+      apikey: supabaseAnonKey,
+      Authorization: `Bearer ${String(accessToken || '')}`,
+      'Content-Type': String(contentType || 'application/octet-stream'),
+      'x-upsert': 'true',
+    },
+    body: file,
+  })
+
+  const responseText = await response.text().catch(() => '')
+  const payload = (() => {
+    if (!responseText) return null
+    try {
+      return JSON.parse(responseText)
+    } catch {
+      return null
+    }
+  })()
+
+  if (response.ok) {
+    return { ok: true, status: response.status, payload }
+  }
+
+  const message =
+    payload?.message
+    || payload?.error_description
+    || payload?.error
+    || (typeof payload === 'string' ? payload : 'Upload failed.')
+    || (responseText ? responseText.slice(0, 300) : 'Upload failed.')
+
+  return { ok: false, status: response.status, message }
+}
+
+const uploadProfileImageViaApi = async ({ file, contentType, accessToken }) => {
+  const token = String(accessToken || '').trim()
+  if (!token) return { ok: false, status: 0, message: 'Missing access token.' }
+
+  const response = await fetch('/api/storage/upload-avatar', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': String(contentType || 'application/octet-stream'),
+    },
+    body: file,
+  })
+
+  const responseText = await response.text().catch(() => '')
+  const payload = (() => {
+    if (!responseText) return null
+    try {
+      return JSON.parse(responseText)
+    } catch {
+      return null
+    }
+  })()
+
+  if (response.ok && payload?.path) {
+    return { ok: true, status: response.status, path: String(payload.path) }
+  }
+
+  // If the route doesn't exist, fall back to direct Storage upload.
+  if (response.status === 404) return { ok: false, status: 404, message: 'Upload API not found.' }
+
+  const message =
+    payload?.message
+    || payload?.error_description
+    || payload?.error
+    || (typeof payload === 'string' ? payload : 'Upload failed.')
+    || (responseText ? responseText.slice(0, 300) : 'Upload failed.')
+
+  return { ok: false, status: response.status, message }
+}
+
+const normalizeSupabaseStoragePublicUrl = (url, bucket) => {
+  const raw = String(url || '').trim()
+  if (!raw || !isLikelyExternalUrl(raw) || !supabaseUrl) return null
+
+  const base = String(supabaseUrl).replace(/\/+$/, '')
+  const bucketName = String(bucket || '').trim()
+  if (!bucketName) return null
+
+  const expectedPrefix = `${base}/storage/v1/object/`
+  if (!raw.toLowerCase().startsWith(expectedPrefix.toLowerCase())) return null
+
+  const rest = raw.slice(expectedPrefix.length)
+  if (rest.toLowerCase().startsWith(`public/${bucketName.toLowerCase()}/`)) return raw
+  if (rest.toLowerCase().startsWith(`sign/${bucketName.toLowerCase()}/`)) return raw
+  if (rest.toLowerCase().startsWith(`${bucketName.toLowerCase()}/`)) {
+    return `${base}/storage/v1/object/public/${rest}`
+  }
+
+  return null
+}
+
+const normalizeProfileImageStorageValue = (value) => {
+  const raw = String(value || '').trim()
+  if (!raw) return null
+  if (raw === DEFAULT_PROFILE_IMAGE) return null
+  if (raw.startsWith('/')) return null
+  if (isLikelyDataUrl(raw)) return null
+
+  if (isLikelyExternalUrl(raw)) {
+    const normalizedPublic = normalizeSupabaseStoragePublicUrl(raw, PROFILE_IMAGE_BUCKET)
+    if (!normalizedPublic) return raw
+
+    try {
+      const url = new URL(normalizedPublic)
+      const marker = `/storage/v1/object/public/${PROFILE_IMAGE_BUCKET}/`
+      const idx = url.pathname.toLowerCase().indexOf(marker.toLowerCase())
+      if (idx >= 0) {
+        const objectPath = url.pathname.slice(idx + marker.length)
+        return decodeURIComponent(objectPath.replace(/^\/+/, ''))
+      }
+    } catch {
+      // Ignore and fall back to raw.
+    }
+
+    return raw
+  }
+
+  // If the bucket name was accidentally included, strip it.
+  const bucketPrefix = `${PROFILE_IMAGE_BUCKET}/`
+  if (raw.toLowerCase().startsWith(bucketPrefix.toLowerCase())) {
+    return raw.slice(bucketPrefix.length)
+  }
+
+  return raw
+}
+
 const resolveProfileImageSrc = (value) => {
   const raw = String(value || '').trim()
   if (!raw) return DEFAULT_PROFILE_IMAGE
   if (raw === DEFAULT_PROFILE_IMAGE) return raw
   if (raw.startsWith('/')) return raw
-  if (isLikelyExternalUrl(raw) || isLikelyDataUrl(raw)) return raw
+  if (isLikelyExternalUrl(raw)) {
+    return normalizeSupabaseStoragePublicUrl(raw, PROFILE_IMAGE_BUCKET) || raw
+  }
+  if (isLikelyDataUrl(raw)) return raw
 
   // Treat as Supabase Storage object path. This requires the bucket to be public.
   try {
@@ -857,6 +1025,7 @@ export function AuthProvider({ children }) {
           console.warn('Supabase signOut failed (state already cleared).', error)
         }
       } finally {
+        clearSupabaseAuthLocalStorage()
         isSigningOutRef.current = false
         if (logoutRequestRef.current === request) logoutRequestRef.current = null
       }
@@ -917,7 +1086,7 @@ export function AuthProvider({ children }) {
     const bloodType = (updates.bloodType ?? user.bloodType ?? '').toString().toUpperCase()
     const hasProfileImageUpdate = Object.prototype.hasOwnProperty.call(updates, 'profileImage')
     const nextProfileImageRaw = hasProfileImageUpdate ? (updates.profileImage ?? '').toString().trim() : null
-    const profileImageToStore = hasProfileImageUpdate ? (nextProfileImageRaw || null) : undefined
+    const profileImageToStore = hasProfileImageUpdate ? normalizeProfileImageStorageValue(nextProfileImageRaw) : undefined
 
     if (email !== (user.email || '').trim().toLowerCase()) {
       try {
@@ -1011,6 +1180,56 @@ export function AuthProvider({ children }) {
     if (!user?.id) return { success: false, message: 'User not found.' }
     if (!file) return { success: false, message: 'No file selected.' }
 
+    let accessToken = ''
+    let authUserId = ''
+    let jwtSub = ''
+    let jwtAppRole = ''
+    try {
+      const { data, error } = await supabase.auth.getSession()
+      if (error) {
+        if (debugSupabase) logSupabase('profile image session check failed', error)
+        return { success: false, message: error.message || 'Session check failed. Please log in again.' }
+      }
+      accessToken = data?.session?.access_token || ''
+      if (!accessToken) {
+        return { success: false, message: 'Session expired. Please log in again.' }
+      }
+
+      authUserId = data?.session?.user?.id ? String(data.session.user.id) : ''
+      const jwtPayload = decodeJwtPayload(accessToken)
+      jwtSub = jwtPayload?.sub ? String(jwtPayload.sub) : ''
+      jwtAppRole = jwtPayload?.app_metadata?.role ? String(jwtPayload.app_metadata.role) : ''
+      const jwtDbRole = jwtPayload?.role ? String(jwtPayload.role) : ''
+      const jwtAud = jwtPayload?.aud ? String(jwtPayload.aud) : ''
+      const jwtIss = jwtPayload?.iss ? String(jwtPayload.iss) : ''
+
+      if (debugSupabase) {
+        logSupabase('profile image session summary', {
+          authUserId: authUserId || null,
+          profileUserId: user?.id ? String(user.id) : null,
+          jwtSub: jwtSub || null,
+          jwtAppRole: jwtAppRole || null,
+          jwtDbRole: jwtDbRole || null,
+          jwtAud: jwtAud || null,
+          jwtIss: jwtIss || null,
+        })
+      }
+
+      const expectedId = String(user.id)
+      const tokenId = jwtSub || authUserId
+      if (tokenId && expectedId && tokenId !== expectedId) {
+        return {
+          success: false,
+          message:
+            `You are logged in as ${tokenId}, but the app is trying to upload to ${expectedId}. `
+            + 'Uploads are restricted to avatars/{your-user-id}/... by Storage RLS. '
+            + 'Please log out/in and try again.',
+        }
+      }
+    } catch {
+      // If the session check fails unexpectedly, continue; upload will surface auth errors anyway.
+    }
+
     const contentType = String(file.type || '').trim()
     if (!contentType.startsWith('image/')) return { success: false, message: 'Please select an image file.' }
 
@@ -1025,13 +1244,103 @@ export function AuthProvider({ children }) {
     const filename = safeExt ? `${uuid}.${safeExt}` : uuid
     const path = `${PROFILE_IMAGE_PREFIX}/${user.id}/${filename}`
 
-    const { error: uploadError } = await supabase.storage.from(PROFILE_IMAGE_BUCKET).upload(path, file, {
-      upsert: true,
-      contentType: contentType || undefined,
-      cacheControl: '3600',
-    })
+    if (debugSupabase) {
+      logSupabase('profile image upload attempt', {
+        bucket: PROFILE_IMAGE_BUCKET,
+        path,
+        authUserId: authUserId || null,
+        jwtSub: jwtSub || null,
+        jwtAppRole: jwtAppRole || null,
+      })
+    }
 
-    if (uploadError) return { success: false, message: uploadError.message || 'Unable to upload image.' }
+    // Preferred: upload via server route using service role (bypasses storage RLS safely).
+    if (accessToken) {
+      const apiResult = await uploadProfileImageViaApi({ file, contentType, accessToken })
+      if (apiResult.ok && apiResult.path) {
+        const uploadedPath = apiResult.path
+
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({ profile_image: uploadedPath })
+          .eq('id', user.id)
+
+        if (profileError) {
+          return { success: false, message: profileError.message || 'Unable to save profile image.' }
+        }
+
+        const { data } = supabase.storage.from(PROFILE_IMAGE_BUCKET).getPublicUrl(uploadedPath)
+        const resolvedImage = resolveProfileImageSrc(uploadedPath)
+        setUser(prev => (prev ? { ...prev, profileImage: resolvedImage } : prev))
+        setUsers(prev => prev.map(member => (member?.id === user.id ? { ...member, profileImage: resolvedImage } : member)))
+        if (user.role === 'admin') {
+          setAdmins(prev => prev.map(member => (member?.id === user.id ? { ...member, profileImage: resolvedImage } : member)))
+        } else {
+          setMembers(prev => prev.map(member => (member?.id === user.id ? { ...member, profileImage: resolvedImage } : member)))
+        }
+
+        clearProfileCache()
+        return { success: true, path: uploadedPath, publicUrl: data?.publicUrl || '' }
+      }
+
+      if (apiResult.status && apiResult.status !== 404) {
+        return { success: false, message: `${apiResult.message || 'Upload denied.'} (HTTP ${apiResult.status || 0})` }
+      }
+    }
+
+    let uploadResult
+    try {
+      uploadResult = await supabase.storage.from(PROFILE_IMAGE_BUCKET).upload(path, file, {
+        upsert: true,
+        contentType: contentType || undefined,
+        cacheControl: '3600',
+      })
+    } catch (error) {
+      if (debugSupabase) logSupabase('profile image upload exception', error)
+      return { success: false, message: error?.message || 'Unable to upload image.' }
+    }
+
+    const uploadError = uploadResult?.error || null
+    if (uploadError) {
+      if (debugSupabase) logSupabase('profile image upload error', uploadError)
+      const status = uploadError?.statusCode ? ` (HTTP ${uploadError.statusCode})` : ''
+      const details = uploadError?.error ? `: ${uploadError.error}` : ''
+
+      const message = String(uploadError.message || 'Unable to upload image.')
+      const looksLikeAuthOrRls =
+        /row[- ]level security/i.test(message)
+        || /permission denied/i.test(message)
+        || [400, 401, 403].includes(uploadError?.statusCode)
+
+      // Fallback: if the client didn’t attach the access token, force an authenticated upload via REST.
+      if (looksLikeAuthOrRls && accessToken) {
+        try {
+          const restResult = await uploadStorageObjectViaRest({
+            bucket: PROFILE_IMAGE_BUCKET,
+            path,
+            file,
+            contentType,
+            accessToken,
+          })
+
+          if (restResult.ok) {
+            uploadResult = { data: restResult.payload, error: null }
+          } else {
+            return {
+              success: false,
+              message: `${restResult.message || 'Upload denied.'} (HTTP ${restResult.status || 0})`,
+            }
+          }
+        } catch (error) {
+          if (debugSupabase) logSupabase('profile image upload REST fallback failed', error)
+          // Fall through to the original error.
+        }
+      }
+
+      if (uploadResult?.error) {
+        return { success: false, message: message + details + status }
+      }
+    }
 
     const { data } = supabase.storage.from(PROFILE_IMAGE_BUCKET).getPublicUrl(path)
     if (!data?.publicUrl) return { success: false, message: 'Upload succeeded but URL could not be generated.' }

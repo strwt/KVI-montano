@@ -53,26 +53,61 @@ returns boolean
 language sql
 stable
 as $$
+  select coalesce(auth.jwt()->'app_metadata'->>'role', '') = 'admin'
+  or exists (
+    select 1
+    from public.profiles p
+    where p.id = auth.uid()
+      and p.role = 'admin'
+  );
+$$;
+
+-- JWT-only helper for storage policies (recursion-safe).
+create or replace function public.is_admin_jwt()
+returns boolean
+language sql
+stable
+as $$
+  select coalesce(auth.jwt()->'app_metadata'->>'role', '') = 'admin';
+$$;
+
+-- Storage-safe admin helper: SECURITY DEFINER avoids RLS recursion and does not depend on `auth.jwt()` existing.
+create or replace function public.is_admin_storage()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
   select exists (
     select 1
     from public.profiles p
     where p.id = auth.uid()
       and p.role = 'admin'
-  )
-  or exists (
-    select 1
-    from public.profiles p
-    where lower(coalesce(p.email, '')) = lower(coalesce(auth.jwt()->>'email', ''))
-      and p.role = 'admin'
-  )
-  or exists (
-    select 1
-    from public.profiles p
-    where regexp_replace(lower(coalesce(p.id_number, '')), '[^a-z0-9]', '', 'g')
-        = regexp_replace(lower(coalesce(auth.jwt()->'user_metadata'->>'id_number', '')), '[^a-z0-9]', '', 'g')
-      and p.role = 'admin'
   );
 $$;
+
+-- Recursion-safe UID helper for storage policies.
+-- Storage can expose either `auth.uid()` or `auth.jwt()` depending on the request path/service.
+create or replace function public.storage_uid()
+returns text
+language sql
+stable
+as $$
+  select coalesce(
+    nullif(auth.uid()::text, ''),
+    nullif(auth.jwt() ->> 'sub', '')
+  );
+$$;
+
+revoke all on function public.is_admin_jwt() from public;
+grant execute on function public.is_admin_jwt() to anon, authenticated;
+
+revoke all on function public.is_admin_storage() from public;
+grant execute on function public.is_admin_storage() to anon, authenticated;
+
+revoke all on function public.storage_uid() from public;
+grant execute on function public.storage_uid() to anon, authenticated;
 
 -- Auto-create profile on signup
 create or replace function public.handle_new_user()
@@ -573,20 +608,20 @@ using (bucket_id = 'event-attachments');
 drop policy if exists "event_attachments_write_admin" on storage.objects;
 create policy "event_attachments_write_admin"
 on storage.objects for insert
-to authenticated
+to anon, authenticated
 with check (
   bucket_id = 'event-attachments'
-  and public.is_admin()
+  and (public.is_admin_jwt() or public.is_admin_storage())
 );
 
 -- Delete: admins only
 drop policy if exists "event_attachments_delete_admin" on storage.objects;
 create policy "event_attachments_delete_admin"
 on storage.objects for delete
-to authenticated
+to anon, authenticated
 using (
   bucket_id = 'event-attachments'
-  and public.is_admin()
+  and (public.is_admin_jwt() or public.is_admin_storage())
 );
 
 commit;
@@ -616,14 +651,16 @@ end $$;
 drop policy if exists "profile_images_insert_own_or_admin" on storage.objects;
 create policy "profile_images_insert_own_or_admin"
 on storage.objects for insert
-to authenticated
+to anon, authenticated
 with check (
   bucket_id = 'profile-images'
   and (
-    public.is_admin()
+    public.is_admin_jwt()
+    or public.is_admin_storage()
     or (
-      owner = auth.uid()
-      and name like ('avatars/' || auth.uid() || '/%')
+      public.storage_uid() is not null
+      and (storage.foldername(ltrim(name, '/')))[1] = 'avatars'
+      and (storage.foldername(ltrim(name, '/')))[2] = public.storage_uid()
     )
   )
 );
@@ -631,18 +668,28 @@ with check (
 drop policy if exists "profile_images_update_own_or_admin" on storage.objects;
 create policy "profile_images_update_own_or_admin"
 on storage.objects for update
-to authenticated
+to anon, authenticated
 using (
   bucket_id = 'profile-images'
-  and (public.is_admin() or owner = auth.uid())
+  and (
+    public.is_admin_jwt()
+    or public.is_admin_storage()
+    or (
+      public.storage_uid() is not null
+      and (storage.foldername(ltrim(name, '/')))[1] = 'avatars'
+      and (storage.foldername(ltrim(name, '/')))[2] = public.storage_uid()
+    )
+  )
 )
 with check (
   bucket_id = 'profile-images'
   and (
-    public.is_admin()
+    public.is_admin_jwt()
+    or public.is_admin_storage()
     or (
-      owner = auth.uid()
-      and name like ('avatars/' || auth.uid() || '/%')
+      public.storage_uid() is not null
+      and (storage.foldername(ltrim(name, '/')))[1] = 'avatars'
+      and (storage.foldername(ltrim(name, '/')))[2] = public.storage_uid()
     )
   )
 );
@@ -650,14 +697,16 @@ with check (
 drop policy if exists "profile_images_delete_own_or_admin" on storage.objects;
 create policy "profile_images_delete_own_or_admin"
 on storage.objects for delete
-to authenticated
+to anon, authenticated
 using (
   bucket_id = 'profile-images'
   and (
-    public.is_admin()
+    public.is_admin_jwt()
+    or public.is_admin_storage()
     or (
-      owner = auth.uid()
-      and name like ('avatars/' || auth.uid() || '/%')
+      public.storage_uid() is not null
+      and (storage.foldername(ltrim(name, '/')))[1] = 'avatars'
+      and (storage.foldername(ltrim(name, '/')))[2] = public.storage_uid()
     )
   )
 );
