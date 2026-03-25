@@ -59,7 +59,7 @@ function ProtectedRoute({ children }) {
   if (user && !user.role) return <AuthPendingState title="Loading account access..." />
 
   if (!user) {
-    return <Navigate to="/login" replace />
+    return <Navigate to="/landing" replace />
   }
 
   return children

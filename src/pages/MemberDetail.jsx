@@ -273,8 +273,9 @@ function MemberDetail() {
       )}
 
       {showUpdateModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-zinc-900 border border-red-600 rounded-xl shadow-xl p-6 max-w-md w-full mx-4 animate-fade-in">
+        <div className="fixed inset-0 bg-black/50 z-50 overflow-y-auto">
+          <div className="min-h-full w-full p-4 flex items-start justify-center">
+            <div className="bg-white dark:bg-zinc-900 border border-red-600 rounded-xl shadow-xl p-6 max-w-md w-full animate-fade-in max-h-[calc(100vh-2rem)] overflow-y-auto">
             <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4">Update Member</h3>
             <form onSubmit={handleUpdateMember} className="space-y-4">
               <div>
@@ -430,21 +431,21 @@ function MemberDetail() {
               <div className="flex flex-wrap justify-between gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowUpdateModal(false)
-                    setShowDeleteConfirm(true)
-                  }}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                  onClick={() => setShowUpdateModal(false)}
+                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
                 >
-                  Delete Member
+                  Cancel
                 </button>
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    onClick={() => setShowUpdateModal(false)}
-                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                    onClick={() => {
+                      setShowUpdateModal(false)
+                      setShowDeleteConfirm(true)
+                    }}
+                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
                   >
-                    Cancel
+                    Delete Member
                   </button>
                   <button
                     type="submit"
@@ -455,6 +456,7 @@ function MemberDetail() {
                 </div>
               </div>
             </form>
+            </div>
           </div>
         </div>
       )}

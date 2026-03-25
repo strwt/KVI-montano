@@ -646,7 +646,7 @@ function Landing() {
                 style={{ boxShadow: '0 8px 24px rgba(185,28,28,0.45)' }}
               >
                 <LogIn size={17} />
-                Member Login
+                Login
               </button>
               <button
                 type="button"
