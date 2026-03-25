@@ -75,6 +75,7 @@ function Members() {
   const [fallbackEventCategory, setFallbackEventCategory] = useState('')
   const [formError, setFormError] = useState('')
   const [recruitmentActionError, setRecruitmentActionError] = useState('')
+  const [enforceVolunteerList, setEnforceVolunteerList] = useState(true)
 
   useEffect(() => {
     if (user?.role !== 'admin') return
@@ -439,7 +440,7 @@ function Members() {
     setShowDeleteEventCategoryModal(false)
   }
 
-	  const handleCreateMember = async (e) => {
+ 	  const handleCreateMember = async (e) => {
     e.preventDefault()
     setFormError('')
 
@@ -448,7 +449,7 @@ function Members() {
       setFormError('Full name is required.')
       return
     }
-    if (!allowedVolunteerSet.has(normalizedName.toLowerCase())) {
+    if (enforceVolunteerList && !allowedVolunteerSet.has(normalizedName.toLowerCase())) {
       setFormError('Name must be in the KUSGAN volunteer list.')
       return
     }
@@ -459,10 +460,12 @@ function Members() {
     if (alreadyExists) {
       setFormError('Member already exists.')
       return
-    }const result = await createMember({
-	      ...newMember,
-	      recruitmentId: pendingApprovalRecruitmentId || undefined,
-	    })
+    }
+
+    const result = await createMember({
+ 	      ...newMember,
+ 	      recruitmentId: pendingApprovalRecruitmentId || undefined,
+ 	    })
     if (!result.success) {
       setFormError(result.message)
       return
@@ -555,6 +558,17 @@ function Members() {
                   required
                   autoComplete="name"
                 />
+              </div>
+              <div className="md:col-span-2">
+                <label className="inline-flex items-center gap-2 text-xs text-gray-600">
+                  <input
+                    type="checkbox"
+                    checked={enforceVolunteerList}
+                    onChange={e => setEnforceVolunteerList(e.target.checked)}
+                    className="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+                  />
+                  Require name in the KUSGAN volunteer list
+                </label>
               </div>
               <div>
                 <label htmlFor="create-member-id-number" className="block text-xs text-gray-500 mb-1">ID Number</label>
