@@ -904,6 +904,25 @@ export function AuthProvider({ children }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supabaseEnabled])
 
+  useEffect(() => {
+    if (!supabaseEnabled) return undefined
+
+    const channel = supabase
+      .channel('kusgan-committees')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'committees' },
+        () => {
+          void reloadCommittees()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [supabaseEnabled, reloadCommittees])
+
 		  const login = async (identifier, password) => {
         if (loginRequestRef.current) return loginRequestRef.current
 

@@ -66,6 +66,7 @@ function Members() {
   const [committeeToDelete, setCommitteeToDelete] = useState('')
   const [fallbackCommittee, setFallbackCommittee] = useState('')
   const [committeeError, setCommitteeError] = useState('')
+  const [showManagementPanel, setShowManagementPanel] = useState(true)
   const [eventCategoryName, setEventCategoryName] = useState('')
   const [eventCategoryActionBusy, setEventCategoryActionBusy] = useState(false)
   const [eventCategoryError, setEventCategoryError] = useState('')
