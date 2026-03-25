@@ -76,6 +76,11 @@ function Members() {
   const [fallbackEventCategory, setFallbackEventCategory] = useState('')
   const [formError, setFormError] = useState('')
   const [recruitmentActionError, setRecruitmentActionError] = useState('')
+  const [selectedMemberIds, setSelectedMemberIds] = useState(() => new Set())
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
+  const [bulkDeleteBusy, setBulkDeleteBusy] = useState(false)
+  const [bulkDeleteError, setBulkDeleteError] = useState('')
+  const selectAllRef = useRef(null)
   const [enforceVolunteerList, setEnforceVolunteerList] = useState(true)
 
   useEffect(() => {

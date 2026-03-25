@@ -236,7 +236,8 @@ function ChatbotWidget() {
       setPosition(prev => {
         if (!prev) return prev
         const buttonSize = 48
-        const nextX = Math.min(prev.x, Math.max(0, window.innerWidth - buttonSize))
+        const offset = 24
+        const nextX = Math.max(0, window.innerWidth - buttonSize - offset)
         const nextY = Math.min(prev.y, Math.max(0, window.innerHeight - buttonSize))
         return { x: nextX, y: nextY }
       })
