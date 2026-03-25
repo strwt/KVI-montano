@@ -77,6 +77,7 @@ function Members() {
   const [recruitmentActionError, setRecruitmentActionError] = useState('')
   const [showManagementPanel, setShowManagementPanel] = useState(false)
   const [newMemberImageFile, setNewMemberImageFile] = useState(null)
+  const [newMemberImagePreviewUrl, setNewMemberImagePreviewUrl] = useState('')
 
   useEffect(() => {
     if (user?.role !== 'admin') return
@@ -532,6 +533,24 @@ function Members() {
 
   const deletingCommitteeAssignedCount = committeeToDelete ? (userCountByCommittee[committeeToDelete] || 0) : 0
 
+  useEffect(() => {
+    if (!newMemberImageFile) {
+      setNewMemberImagePreviewUrl('')
+      return undefined
+    }
+
+    const nextUrl = URL.createObjectURL(newMemberImageFile)
+    setNewMemberImagePreviewUrl(nextUrl)
+
+    return () => {
+      try {
+        URL.revokeObjectURL(nextUrl)
+      } catch {
+        // ignore
+      }
+    }
+  }, [newMemberImageFile])
+
   return (
     <div className="animate-fade-in text-gray-900 dark:text-zinc-100">
       <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
@@ -561,9 +580,35 @@ function Members() {
                   placeholder="Full name"
                   value={newMember.name}
                   onChange={e => setNewMember({ ...newMember, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="w-full h-10 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                   required
                   autoComplete="name"
+                />
+              </div>
+              <div className="flex flex-col items-center md:row-span-2">
+                <div className="w-[150px] h-[150px] overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
+                  {newMemberImagePreviewUrl ? (
+                    <img
+                      src={newMemberImagePreviewUrl}
+                      alt="Selected profile preview"
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="h-full w-full flex items-center justify-center text-xs text-gray-400">
+                      No preview
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div>
+                <label htmlFor="create-member-image" className="block text-xs text-gray-500 mb-1">Profile Image (optional)</label>
+                <input
+                  id="create-member-image"
+                  name="profileImage"
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setNewMemberImageFile(e.target.files?.[0] || null)}
+                  className="w-full h-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 bg-white text-sm text-gray-700 file:mr-3 file:h-10 file:border-0 file:bg-gray-100 file:px-3 file:text-sm file:font-medium file:text-gray-700 hover:file:bg-gray-200"
                 />
               </div>
               <div>
@@ -575,7 +620,7 @@ function Members() {
                   placeholder="ID Number"
                   value={newMember.idNumber}
                   onChange={e => setNewMember({ ...newMember, idNumber: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="w-full h-10 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                   required
                   autoComplete="off"
                 />
@@ -590,7 +635,7 @@ function Members() {
                     placeholder="Temporary password"
                     value={newMember.password}
                     onChange={e => setNewMember({ ...newMember, password: e.target.value })}
-                    className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                    className="w-full h-10 px-3 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                     required
                     autoComplete="new-password"
                   />
@@ -614,7 +659,7 @@ function Members() {
                   placeholder="Address"
                   value={newMember.address}
                   onChange={e => setNewMember({ ...newMember, address: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="w-full h-10 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                   autoComplete="street-address"
                 />
               </div>
@@ -627,7 +672,7 @@ function Members() {
                   placeholder="Contact Number"
                   value={newMember.contactNumber}
                   onChange={e => setNewMember({ ...newMember, contactNumber: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="w-full h-10 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                   autoComplete="tel"
                 />
               </div>
@@ -638,7 +683,7 @@ function Members() {
                   name="bloodType"
                   value={newMember.bloodType}
                   onChange={e => setNewMember({ ...newMember, bloodType: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="w-full h-10 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                 >
                   <option value="">Select Blood Type</option>
                   {BLOOD_TYPE_OPTIONS.map(type => (
@@ -649,36 +694,13 @@ function Members() {
                 </select>
               </div>
               <div>
-                <label htmlFor="create-member-member-since" className="block text-xs text-gray-500 mb-1">Member Since</label>
-                <input
-                  id="create-member-member-since"
-                  name="memberSince"
-                  type="date"
-                  value={newMember.memberSince}
-                  onChange={e => setNewMember({ ...newMember, memberSince: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                  autoComplete="off"
-                />
-              </div>
-              <div className="md:col-span-2">
-                <label htmlFor="create-member-image" className="block text-xs text-gray-500 mb-1">Profile Image (optional)</label>
-                <input
-                  id="create-member-image"
-                  name="profileImage"
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setNewMemberImageFile(e.target.files?.[0] || null)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
-                />
-              </div>
-              <div>
                 <label htmlFor="create-member-status" className="block text-xs text-gray-500 mb-1">Status</label>
                 <select
                   id="create-member-status"
                   name="status"
                   value={newMember.status}
                   onChange={e => setNewMember({ ...newMember, status: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="w-full h-10 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                   required
                 >
                   <option value="active">Active</option>
@@ -692,7 +714,7 @@ function Members() {
                   name="role"
                   value={newMember.role}
                   onChange={e => setNewMember({ ...newMember, role: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="w-full h-10 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                   required
                 >
                   {ROLE_OPTIONS.map(roleOption => (
@@ -709,7 +731,7 @@ function Members() {
                   name="committee"
                   value={newMember.committee}
                   onChange={e => setNewMember({ ...newMember, committee: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="w-full h-10 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                   required
                 >
                   {committeeOptions.map(committee => (
@@ -718,6 +740,18 @@ function Members() {
                     </option>
                   ))}
                 </select>
+              </div>
+              <div>
+                <label htmlFor="create-member-member-since" className="block text-xs text-gray-500 mb-1">Member Since</label>
+                <input
+                  id="create-member-member-since"
+                  name="memberSince"
+                  type="date"
+                  value={newMember.memberSince}
+                  onChange={e => setNewMember({ ...newMember, memberSince: e.target.value })}
+                  className="w-full h-10 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                  autoComplete="off"
+                />
               </div>
               <button
                 type="submit"
