@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import { KUSGAN_VOLUNTEERS } from '../data/kusganVolunteers'
 import {
   Users,
   Search,
@@ -75,7 +74,6 @@ function Members() {
   const [fallbackEventCategory, setFallbackEventCategory] = useState('')
   const [formError, setFormError] = useState('')
   const [recruitmentActionError, setRecruitmentActionError] = useState('')
-  const [enforceVolunteerList, setEnforceVolunteerList] = useState(true)
 
   useEffect(() => {
     if (user?.role !== 'admin') return
@@ -97,20 +95,16 @@ function Members() {
   const [showTempPassword, setShowTempPassword] = useState(false)
   const membersPerPage = 9
 
-  const allowedVolunteerSet = useMemo(
-    () => new Set(KUSGAN_VOLUNTEERS.map(name => String(name).toLowerCase())),
-    []
-  )
+  const normalizeMemberName = (value) =>
+    String(value || '')
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, ' ')
+
   const allMembers = getAllMembers()
-  const members = useMemo(
-    () => (allMembers || []).filter(member => allowedVolunteerSet.has(String(member?.name || '').trim().toLowerCase())),
-    [allMembers, allowedVolunteerSet]
-  )
+  const members = Array.isArray(allMembers) ? allMembers : []
   const allAdmins = getAdmins()
-  const admins = useMemo(
-    () => (allAdmins || []).filter(admin => allowedVolunteerSet.has(String(admin?.name || '').trim().toLowerCase())),
-    [allAdmins, allowedVolunteerSet]
-  )
+  const admins = Array.isArray(allAdmins) ? allAdmins : []
   const isAdmin = user?.role === 'admin'
   const recruitments = getRecruitments()
 
@@ -444,18 +438,14 @@ function Members() {
     e.preventDefault()
     setFormError('')
 
-    const normalizedName = String(newMember.name || '').trim()
+    const normalizedName = String(newMember.name || '').trim().replace(/\s+/g, ' ')
     if (!normalizedName) {
       setFormError('Full name is required.')
       return
     }
-    if (enforceVolunteerList && !allowedVolunteerSet.has(normalizedName.toLowerCase())) {
-      setFormError('Name must be in the KUSGAN volunteer list.')
-      return
-    }
 
     const alreadyExists = [...admins, ...members].some(member =>
-      String(member?.name || '').trim().toLowerCase() === normalizedName.toLowerCase()
+      normalizeMemberName(member?.name) === normalizeMemberName(normalizedName)
     )
     if (alreadyExists) {
       setFormError('Member already exists.')
@@ -464,6 +454,7 @@ function Members() {
 
     const result = await createMember({
  	      ...newMember,
+        name: normalizedName,
  	      recruitmentId: pendingApprovalRecruitmentId || undefined,
  	    })
     if (!result.success) {
@@ -558,17 +549,6 @@ function Members() {
                   required
                   autoComplete="name"
                 />
-              </div>
-              <div className="md:col-span-2">
-                <label className="inline-flex items-center gap-2 text-xs text-gray-600">
-                  <input
-                    type="checkbox"
-                    checked={enforceVolunteerList}
-                    onChange={e => setEnforceVolunteerList(e.target.checked)}
-                    className="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
-                  />
-                  Require name in the KUSGAN volunteer list
-                </label>
               </div>
               <div>
                 <label htmlFor="create-member-id-number" className="block text-xs text-gray-500 mb-1">ID Number</label>

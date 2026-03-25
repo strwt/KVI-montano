@@ -1430,9 +1430,12 @@ export function AuthProvider({ children }) {
     if (!user?.id) return { success: false, message: 'User not found.' }
     if (user.role !== 'admin') return { success: false, message: 'Only admins can update members.' }
 
-    const hasIdentityEdits = Object.prototype.hasOwnProperty.call(updates, 'email') || Object.prototype.hasOwnProperty.call(updates, 'idNumber')
+    const requiresAdminEndpoint = Object.prototype.hasOwnProperty.call(updates, 'email')
+      || Object.prototype.hasOwnProperty.call(updates, 'idNumber')
+      || Object.prototype.hasOwnProperty.call(updates, 'password')
+      || Object.prototype.hasOwnProperty.call(updates, 'newPassword')
 
-    if (hasIdentityEdits) {
+    if (requiresAdminEndpoint) {
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
       const token = sessionData?.session?.access_token
       if (sessionError || !token) return { success: false, message: SESSION_EXPIRED_MESSAGE }
