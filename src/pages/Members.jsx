@@ -82,8 +82,9 @@ function Members() {
   const [bulkDeleteBusy, setBulkDeleteBusy] = useState(false)
   const [bulkDeleteError, setBulkDeleteError] = useState('')
   const selectAllRef = useRef(null)
-  const [enforceVolunteerList, setEnforceVolunteerList] = useState(true)
   const [newMemberImagePreviewUrl, setNewMemberImagePreviewUrl] = useState('')
+  const [newMemberImageFile, setNewMemberImageFile] = useState(null)
+  const [showManagementPanel, setShowManagementPanel] = useState(false)
 
   useEffect(() => {
     if (user?.role !== 'admin') return
