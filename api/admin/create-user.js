@@ -67,6 +67,10 @@ export default async function handler(req, res) {
     const idNumber = String(body.idNumber || body.id_number || '').trim()
     const password = String(body.password || '').trim()
     const name = String(body.name || '').trim()
+    const statusRaw = String(body.status || '').trim().toLowerCase()
+    const accountStatusRaw = String(body.accountStatus || body.account_status || '').trim()
+    const status = statusRaw === 'inactive' ? 'inactive' : 'active'
+    const accountStatus = accountStatusRaw ? accountStatusRaw : 'Active'
     const role = body.role === 'admin' ? 'admin' : 'member'
 
     if (!idNumber || !password) {
@@ -103,6 +107,8 @@ export default async function handler(req, res) {
       role,
       id_number: idNumber,
       email,
+      status,
+      account_status: accountStatus,
       committee: body.committee ? String(body.committee).trim() : null,
       address: body.address ? String(body.address).trim() : null,
       contact_number: body.contactNumber ? String(body.contactNumber).trim() : null,

@@ -8,11 +8,12 @@ const BLOOD_TYPE_OPTIONS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
 function MemberDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { user, loading: authLoading, authResolved, getAllMembers, getAdmins, deleteMembers, updateMember, committees } = useAuth()
+  const { user, loading: authLoading, authResolved, getAllMembers, getAdmins, deleteMembers, updateMember, uploadMemberProfileImage, committees } = useAuth()
   
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showUpdateModal, setShowUpdateModal] = useState(false)
   const [showNewPassword, setShowNewPassword] = useState(false)
+  const [newProfileImageFile, setNewProfileImageFile] = useState(null)
   const [actionError, setActionError] = useState('')
   const [editForm, setEditForm] = useState({
     idNumber: '',
@@ -43,6 +44,7 @@ function MemberDetail() {
     if (!member) return
     setActionError('')
     setShowNewPassword(false)
+    setNewProfileImageFile(null)
     setEditForm({
       idNumber: member.idNumber || '',
       name: member.name || '',
@@ -92,6 +94,14 @@ function MemberDetail() {
     if (!result.success) {
       setActionError(result.message || 'Unable to update member.')
       return
+    }
+
+    if (newProfileImageFile) {
+      const uploadResult = await uploadMemberProfileImage(member.id, newProfileImageFile)
+      if (!uploadResult.success) {
+        setActionError(uploadResult.message || 'Updated member but image upload failed.')
+        return
+      }
     }
     setShowUpdateModal(false)
   }
@@ -426,6 +436,20 @@ function MemberDetail() {
                     {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
+              </div>
+
+              <div>
+                <label htmlFor="update-member-image" className="block text-sm font-medium text-gray-700 mb-1">
+                  Profile Image (optional)
+                </label>
+                <input
+                  id="update-member-image"
+                  name="profileImage"
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setNewProfileImageFile(e.target.files?.[0] || null)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
+                />
               </div>
 
               <div className="flex flex-wrap justify-between gap-2 pt-2">
