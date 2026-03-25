@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { ClipboardCheck, Clock, Download, Pencil, Save, ShieldCheck, UserCheck, UserX, X } from 'lucide-react'
 import dayjs from 'dayjs'
 import { useAuth } from '../context/AuthContext'
+import { KUSGAN_VOLUNTEERS } from '../data/kusganVolunteers'
 import { supabase } from '../lib/supabaseClient'
 import { isSupabaseEnabled } from '../lib/supabaseEvents'
 
@@ -38,6 +39,7 @@ const getStoredLoginActivity = () => {
 
 function AdminAttendance() {
   const { user, users, ensureAdminDataLoaded } = useAuth()
+  const allowedVolunteerSet = useMemo(() => new Set(KUSGAN_VOLUNTEERS.map(name => String(name).toLowerCase())), [])
   const supabaseEnabled = isSupabaseEnabled()
   const isAdmin = user?.role === 'admin'
   const [localLoginActivity, setLocalLoginActivity] = useState(getStoredLoginActivity)
@@ -179,8 +181,9 @@ function AdminAttendance() {
   const members = useMemo(() => {
     return (users || [])
       .filter(member => member?.role !== 'admin')
+      .filter(member => allowedVolunteerSet.has(String(member?.name || '').trim().toLowerCase()))
       .sort((a, b) => (a?.name || '').localeCompare(b?.name || ''))
-  }, [users])
+  }, [users, allowedVolunteerSet])
 
   const activityByUser = useMemo(() => {
     const getActivityStamp = (entry) => {
@@ -723,3 +726,4 @@ function AdminAttendance() {
 }
 
 export default AdminAttendance
+

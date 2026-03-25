@@ -543,11 +543,20 @@ function Dashboard() {
       {isAdmin && (
         <section className="grid grid-cols-12 gap-4">
           <article className="col-span-12 rounded-2xl border border-red-600 bg-white p-5 md:p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] dark:border-red-600 dark:bg-zinc-900">
-            <div className="mb-3 flex items-center justify-between">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-[24px] font-semibold text-black dark:text-zinc-100">{t('Present Members')}</h2>
-              <span className="rounded-lg border border-red-600 bg-red-50 px-3 py-1 text-[14px] text-red-700 dark:bg-red-950/30 dark:text-red-300">
-                {recentLogins.length} {t('present')}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="rounded-lg border border-red-600 bg-red-50 px-3 py-1 text-[14px] text-red-700 dark:bg-red-950/30 dark:text-red-300">
+                  {recentLogins.length} {t('present')}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => navigate('/attendance-management')}
+                  className="cursor-pointer rounded-lg border border-red-600 bg-white px-3 py-1.5 text-[14px] font-medium text-red-600 transition-all duration-200 hover:scale-[1.02] hover:bg-red-50 dark:bg-zinc-900 dark:text-red-300 dark:hover:bg-red-950/30"
+                >
+                  {t('View All')}
+                </button>
+              </div>
             </div>
             <div className="max-h-[320px] space-y-2 overflow-y-auto pr-1">
               {recentLogins

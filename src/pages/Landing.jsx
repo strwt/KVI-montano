@@ -1,5 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { KUSGAN_VOLUNTEERS } from '../data/kusganVolunteers'
+import { supabase } from '../lib/supabaseClient'
+import { isSupabaseEnabled } from '../lib/supabaseEvents'
+import { useAuth } from '../context/AuthContext'
 import {
   LogIn,
   Handshake,
@@ -142,194 +146,6 @@ const CORE_VALUES = [
   },
 ]
 
-const KUSGAN_STRUCTURE = {
-  president: {
-    position: 'President',
-    name: 'Juan Dela Cruz',
-    committee: 'Executive Council',
-    icon: Crown,
-  },
-  vicePresident: {
-    position: 'Vice President',
-    name: 'Maria Santos',
-    committee: 'Executive Council',
-    icon: ShieldCheck,
-  },
-  committees: [
-    {
-      name: 'Environmental Committee',
-      head: {
-        name: 'Carlo Reyes',
-        position: 'Committee Head',
-        committee: 'Environmental Committee',
-      },
-      members: [
-        { name: 'Ana Lopez', position: 'Member', committee: 'Environmental Committee' },
-        { name: 'Mark Villanueva', position: 'Member', committee: 'Environmental Committee' },
-        { name: 'James Cruz', position: 'Member', committee: 'Environmental Committee' },
-      ],
-    },
-    {
-      name: 'Relief Operation Committee',
-      head: {
-        name: 'Sophia Ramos',
-        position: 'Committee Head',
-        committee: 'Relief Operation Committee',
-      },
-      members: [
-        { name: 'Kevin Torres', position: 'Member', committee: 'Relief Operation Committee' },
-        { name: 'Angelica Lim', position: 'Member', committee: 'Relief Operation Committee' },
-        { name: 'Brian Flores', position: 'Member', committee: 'Relief Operation Committee' },
-      ],
-    },
-    {
-      name: 'Fire Response Committee',
-      head: {
-        name: 'Michael Tan',
-        position: 'Committee Head',
-        committee: 'Fire Response Committee',
-      },
-      members: [
-        { name: 'David Garcia', position: 'Member', committee: 'Fire Response Committee' },
-        { name: 'Louie Mendoza', position: 'Member', committee: 'Fire Response Committee' },
-        { name: 'Patrick Sy', position: 'Member', committee: 'Fire Response Committee' },
-      ],
-    },
-    {
-      name: 'Medical Committee',
-      head: {
-        name: 'Angela Rivera',
-        position: 'Committee Head',
-        committee: 'Medical Committee',
-      },
-      members: [
-        { name: 'Paolo Dizon', position: 'Member', committee: 'Medical Committee' },
-        { name: 'Shane Ortega', position: 'Member', committee: 'Medical Committee' },
-        { name: 'Rico Medina', position: 'Member', committee: 'Medical Committee' },
-      ],
-    },
-    {
-      name: 'Community Outreach Committee',
-      head: {
-        name: 'Loren Santos',
-        position: 'Committee Head',
-        committee: 'Community Outreach Committee',
-      },
-      members: [
-        { name: 'Mia Alvarez', position: 'Member', committee: 'Community Outreach Committee' },
-        { name: 'Joel Navarro', position: 'Member', committee: 'Community Outreach Committee' },
-        { name: 'Nina Delgado', position: 'Member', committee: 'Community Outreach Committee' },
-      ],
-    },
-    {
-      name: 'Logistics Committee',
-      head: {
-        name: 'Carmina Lopez',
-        position: 'Committee Head',
-        committee: 'Logistics Committee',
-      },
-      members: [
-        { name: 'Troy Mendoza', position: 'Member', committee: 'Logistics Committee' },
-        { name: 'Ella Fernandez', position: 'Member', committee: 'Logistics Committee' },
-        { name: 'Ronel Castro', position: 'Member', committee: 'Logistics Committee' },
-      ],
-    },
-    {
-      name: 'Youth Engagement Committee',
-      head: {
-        name: 'Denise Salazar',
-        position: 'Committee Head',
-        committee: 'Youth Engagement Committee',
-      },
-      members: [
-        { name: 'Kyle Ramos', position: 'Member', committee: 'Youth Engagement Committee' },
-        { name: 'Faith Aquino', position: 'Member', committee: 'Youth Engagement Committee' },
-        { name: 'Ian Morales', position: 'Member', committee: 'Youth Engagement Committee' },
-      ],
-    },
-    {
-      name: 'Education Support Committee',
-      head: {
-        name: 'Marvin De Leon',
-        position: 'Committee Head',
-        committee: 'Education Support Committee',
-      },
-      members: [
-        { name: 'Jessa Cruz', position: 'Member', committee: 'Education Support Committee' },
-        { name: 'Paolo Reyes', position: 'Member', committee: 'Education Support Committee' },
-        { name: 'Grace Uy', position: 'Member', committee: 'Education Support Committee' },
-      ],
-    },
-  ],
-}
-
-const KUSGAN_VOLUNTEERS = [
-  'Albert Edralin',
-  'Antonitte Joy Liarasan',
-  'April Joy Rica',
-  'Balbina Cabanes Cuerquis',
-  'Brielle Jay Goabon',
-  'Chaplin Selaras',
-  'Dindo Rafael Namas',
-  'Donald Valmores',
-  'Elena S. Libot',
-  'Eric Art Bernardo',
-  'Ernisto L. Yting',
-  'Eugene Pajaron',
-  'Eva Agua',
-  'Gladys R. Nilugao',
-  'Ireneo P. Pancho jr.',
-  'Jabbar D. Lominog',
-  'Jayford Abalde',
-  'Jayson Gregorio',
-  'Jeliaca Macabinlar',
-  'Jennifer T. Quijano',
-  'Jennifer Valmores',
-  'Jeonarah Del Rosario',
-  'Jesse B. Valdehuaza',
-  'Jessidel C. Benidecto',
-  'Jesson Randiola',
-  'Jhunder T. Ebal',
-  'Jocelyn Q. Peñalosa',
-  'Jodelyn Turno',
-  'Joel Obrial',
-  'Jojo Abella',
-  'Jorel Earl A. Yamyamin',
-  'Joshua Peruda',
-  'Jovelyn A. Andaya',
-  'Jovelyn Abriol',
-  'Judith A. Lapa',
-  'Keith Campus',
-  'Kenneth Montaño',
-  'Kenny Jes Sy Pabua',
-  'Lorenzo Rosales',
-  'Loreto Calotes',
-  'Margie S. Nadal',
-  'Marina Jorja',
-  'Marisol M. Rosales',
-  'Maruin B. Paayas',
-  'Mary Faith ALthea P. Precillas',
-  'Mary Grace S. Gilbert',
-  'Mary Jean B. Nillas',
-  'Marygail Z. Bayson',
-  'Maureen A. Campus',
-  'Modessa S. Omondang',
-  'Myra B. Nob',
-  'Nely Dear Joy U. Gabasa',
-  'Niña A. Dinorog',
-  'Paturna J. Ursabia',
-  'Rey Naranjo',
-  'Richard Damalan',
-  'Rizal Bondoc',
-  'Rodel Garceniego',
-  'Rodel Predog',
-  'Romanito Delos Reyes',
-  'Rommel Benalayo',
-  'Ronald Jumamoy',
-  'Rowel Regodos',
-  'Rutchie John Friolo',
-]
-
 const BOARD_STRUCTURE = {
   chairperson: {
     name: 'Noel "Strong Doy" Danlag Raboy',
@@ -341,7 +157,6 @@ const BOARD_STRUCTURE = {
   viceChairperson: {
     name: 'Henry "Strong Arrow" Lopez',
     position: 'Vice Chairperson',
-    
     committee: 'Executive Board',
     image: '/Board Organizational Structure/Henry Lopez.png',
     icon: ShieldCheck,
@@ -359,7 +174,7 @@ const BOARD_STRUCTURE = {
     { name: 'Kusgan Joselyn Piñalosa', position: 'Board Member', committee: 'Board', image: '/Board Organizational Structure/KVI.png' },
     { name: 'Kusgan Niña Dinorog', position: 'Board Member', committee: 'Board', image: '/Board Organizational Structure/KVI.png' },
     { name: 'Kusgan Joel Marcaida', position: 'Board Member', committee: 'Board', image: '/Board Organizational Structure/KVI.png' },
-    { name: 'Kusgan Lord Ubod', position: 'Board Member', committee: 'Board', image: '/Board Organizational Structure/KVI.png' },
+    { name: 'Kusgan Lord Ubod', position: 'Board Member', committee: 'Board', image: '/Board Organizational Structure/Lord Ubod.png' },
   ],
   officers: [
     { name: 'Love Jhoye "Golden Jhoye" Raboy', position: 'Board Member', committee: 'Board', image: '/Board Organizational Structure/Love Jhoye Raboy.png' },
@@ -368,8 +183,8 @@ const BOARD_STRUCTURE = {
     { name: 'Kusgan Joselyn Pinalosa', position: 'Board Member', committee: 'Board', image: '/Board Organizational Structure/KVI.png' },
     { name: 'Kusgan Niña Dinorog', position: 'Board Member', committee: 'Board', image: '/Board Organizational Structure/KVI.png' },
     { name: 'Kusgan Joel Marcaida', position: 'Board Member', committee: 'Board', image: '/Board Organizational Structure/KVI.png' },
-    { name: 'Kusgan Lord Ubod', position: 'Board Member', committee: 'Board', image: '/Board Organizational Structure/KVI.png' },
-  ]
+    { name: 'Kusgan Lord Ubod', position: 'Board Member', committee: 'Board', image: '/Board Organizational Structure/Lord Ubod.png' },
+  ],
 }
 
 const ORGANIZATION_VIEWS = [
@@ -377,13 +192,11 @@ const ORGANIZATION_VIEWS = [
     key: 'board',
     label: 'Board Organizational Structure',
     subtitle: 'Board of Trustees and executive officers overseeing governance and strategy.',
-    data: BOARD_STRUCTURE,
   },
   {
     key: 'kusgan',
     label: 'KUSGAN Organizational Structure',
     subtitle: 'Committee teams of KUSGAN.',
-    data: KUSGAN_STRUCTURE,
   },
 ]
 
@@ -584,10 +397,25 @@ function OrgPersonCard({ person, large = false, size = 'normal' }) {
 
 function Landing() {
   const navigate = useNavigate()
+  const { user, getAllMembers, ensureAdminDataLoaded } = useAuth()
   const pageRef = useRef(null)
+  const [kusganVolunteerPeople, setKusganVolunteerPeople] = useState([])
   const [structureKey, setStructureKey] = useState('board')
   const activeStructure = ORGANIZATION_VIEWS.find(view => view.key === structureKey) || ORGANIZATION_VIEWS[0]
+  const [selectedPerson, setSelectedPerson] = useState(null)
 
+  const openPerson = (person) => {
+    if (!person?.name) return
+    const allMembers = getAllMembers ? getAllMembers() : []
+    const matched = (allMembers || []).find(
+      member => String(member?.name || '').trim().toLowerCase() === String(person.name || '').trim().toLowerCase()
+    )
+    const resolvedImage = matched?.profileImage || person.image || HERO_IMAGE
+    setSelectedPerson({
+      name: person.name,
+      image: resolvedImage,
+    })
+  }
   useEffect(() => {
     const root = pageRef.current
     if (!root) return
@@ -606,6 +434,126 @@ function Landing() {
     targets.forEach(t => observer.observe(t))
     return () => observer.disconnect()
   }, [])
+
+  useEffect(() => {
+    if (user?.role !== 'admin') return
+    void ensureAdminDataLoaded()
+  }, [ensureAdminDataLoaded, user?.role, user?.id])
+
+  const allowedVolunteerSet = useMemo(
+    () => new Set(KUSGAN_VOLUNTEERS.map(name => String(name || '').trim().toLowerCase()).filter(Boolean)),
+    []
+  )
+
+  const resolveProfileImage = (value) => {
+    const raw = String(value || '').trim()
+    if (!raw) return HERO_IMAGE
+    if (raw.startsWith('/') || raw.startsWith('http')) return raw
+    if (raw.startsWith('data:image/')) return raw
+    try {
+      const { data } = supabase?.storage?.from?.('profile-images')?.getPublicUrl?.(raw) || {}
+      return data?.publicUrl || HERO_IMAGE
+    } catch {
+      return HERO_IMAGE
+    }
+  }
+
+  const contextMemberPeople = useMemo(() => {
+    const members = getAllMembers ? getAllMembers() : []
+    const people = (members || [])
+      .filter(member => allowedVolunteerSet.has(String(member?.name || '').trim().toLowerCase()))
+      .map(member => ({
+        name: String(member?.name || '').trim(),
+        image: String(member?.profileImage || '').trim() || HERO_IMAGE,
+      }))
+      .filter(person => person.name)
+    const unique = new Map()
+    people.forEach(person => {
+      const key = person.name.toLowerCase()
+      if (!unique.has(key)) unique.set(key, person)
+    })
+    return [...unique.values()].sort((a, b) => a.name.localeCompare(b.name))
+  }, [getAllMembers, allowedVolunteerSet])
+
+  useEffect(() => {
+    let isMounted = true
+
+    const normalizePeople = (rows = []) => {
+      const people = rows
+        .map(row => ({
+          name: String(row?.name || '').trim(),
+          image: resolveProfileImage(row?.profile_image || row?.profileImage),
+        }))
+        .filter(person => person.name && allowedVolunteerSet.has(person.name.toLowerCase()))
+      const unique = new Map()
+      people.forEach(person => {
+        const key = person.name.toLowerCase()
+        if (!unique.has(key)) unique.set(key, person)
+      })
+      return [...unique.values()].sort((a, b) => a.name.localeCompare(b.name))
+    }
+
+    const loadMembers = async () => {
+      if (contextMemberPeople.length > 0) {
+        if (isMounted) setKusganVolunteerPeople(contextMemberPeople)
+        return
+      }
+
+      if (!isSupabaseEnabled()) {
+        if (isMounted) setKusganVolunteerPeople([])
+        return
+      }
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('name,profile_image,role,account_status,status')
+          .eq('role', 'member')
+          .order('name', { ascending: true })
+
+        if (error) {
+          console.warn('Failed to load members for landing page.', error)
+          if (isMounted) setKusganVolunteerPeople([])
+          return
+        }
+        if (isMounted) setKusganVolunteerPeople(normalizePeople(data))
+      } catch (err) {
+        console.warn('Failed to load members for landing page.', err)
+        if (isMounted) setKusganVolunteerPeople([])
+      }
+    }
+
+    void loadMembers()
+
+    if (!isSupabaseEnabled()) {
+      return () => {
+        isMounted = false
+      }
+    }
+
+    const channel = supabase
+      .channel('landing-members')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'profiles', filter: 'role=eq.member' },
+        () => {
+          void loadMembers()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      isMounted = false
+      if (channel) supabase.removeChannel(channel)
+    }
+  }, [contextMemberPeople, user?.role])
+
+  const displayVolunteerPeople = useMemo(() => {
+    if (contextMemberPeople.length > 0) return contextMemberPeople
+    if (kusganVolunteerPeople.length > 0) return kusganVolunteerPeople
+    return KUSGAN_VOLUNTEERS
+      .map(name => ({ name, image: HERO_IMAGE }))
+      .sort((a, b) => a.name.localeCompare(b.name))
+  }, [contextMemberPeople, kusganVolunteerPeople])
 
   return (
     <div ref={pageRef} className="min-h-screen text-white overflow-x-hidden" style={{ background: '#080808' }}>
@@ -662,9 +610,7 @@ function Landing() {
 
             <p className="text-base sm:text-lg text-gray-400 max-w-lg leading-relaxed">
               Building a better world through compassion, service, and unity. KUSGAN mobilizes people for meaningful community action that strengthens social inclusion.
-            </p>
-
-            {/* Stat chips */}
+            </p>            {/* Stat chips */}
             <div className="flex flex-wrap gap-2.5">
               {STATS.map(stat => {
                 const Icon = stat.icon
@@ -788,7 +734,7 @@ function Landing() {
           <p className="text-center text-[10px] tracking-[0.2em] uppercase text-gray-500 mb-4">Partnered by</p>
           <div className="space-y-3">
             <div className="sponsor-marquee">
-              <div
+                                          <div
                 className="sponsor-marquee-track sponsor-marquee-track--ltr"
                 style={{ '--sponsor-marquee-duration': '70s', '--sponsor-marquee-shift': SPONSOR_MARQUEE_SHIFT }}
               >
@@ -912,43 +858,41 @@ function Landing() {
 
           <div className="flex flex-col items-center">
             {activeStructure.key === 'kusgan' ? (
-              <>
-                <div className="w-full max-w-6xl">
-                  <div className="mt-8">
-                    <div className="w-full flex items-center gap-3 mb-4">
-                      <div className="flex-1 h-px" style={{ background: 'linear-gradient(to right, transparent, rgba(220,38,38,0.25))' }} />
-                      <span
-                        className="px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase border shrink-0"
-                        style={{ color: '#fca5a5', background: 'rgba(220,38,38,0.1)', borderColor: 'rgba(220,38,38,0.2)' }}
-                      >
-                        Kusgan Volunteers
-                      </span>
-                      <div className="flex-1 h-px" style={{ background: 'linear-gradient(to left, transparent, rgba(220,38,38,0.25))' }} />
-                    </div>
-
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
-                      {KUSGAN_VOLUNTEERS.map(name => (
-                        <div
-                          key={name}
-                          className="rounded-lg px-2.5 py-2 text-center text-[11px] sm:text-xs font-semibold text-white border"
-                          style={{
-                            background: 'rgba(12,12,12,0.85)',
-                            borderColor: 'rgba(255,255,255,0.12)',
-                            boxShadow: '0 6px 14px rgba(0,0,0,0.3)',
-                          }}
-                        >
-                          {name}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+              <div className="w-full max-w-6xl space-y-6">
+                <div className="w-full flex items-center gap-3 mb-2">
+                  <div className="flex-1 h-px" style={{ background: 'linear-gradient(to right, transparent, rgba(220,38,38,0.25))' }} />
+                  <span
+                    className="px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase border shrink-0"
+                    style={{ color: '#fca5a5', background: 'rgba(220,38,38,0.1)', borderColor: 'rgba(220,38,38,0.2)' }}
+                  >
+                    KUSGAN Volunteers
+                  </span>
+                  <div className="flex-1 h-px" style={{ background: 'linear-gradient(to left, transparent, rgba(220,38,38,0.25))' }} />
                 </div>
-              </>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+                  {displayVolunteerPeople.map(person => (
+                    <button
+                      key={person.name}
+                      type="button"
+                      onClick={() => openPerson(person)}
+                      className="rounded-lg px-2.5 py-2 text-center text-[11px] sm:text-xs font-semibold text-white border transition hover:border-red-500/40 hover:bg-red-600/10"
+                      style={{
+                        background: 'rgba(12,12,12,0.85)',
+                        borderColor: 'rgba(255,255,255,0.12)',
+                        boxShadow: '0 6px 14px rgba(0,0,0,0.3)',
+                      }}
+                    >
+                      {person.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
             ) : (
               <>
                 {/* Board Chairperson */}
                 <div className="w-full max-w-[180px]">
-                  <OrgPersonCard person={activeStructure.data.chairperson} size="board" />
+                  <OrgPersonCard person={BOARD_STRUCTURE.chairperson} size="board" />
                 </div>
 
                 {/* Connector */}
@@ -956,7 +900,7 @@ function Landing() {
 
                 {/* Vice Chairperson */}
                 <div className="w-full max-w-[180px]">
-                  <OrgPersonCard person={activeStructure.data.viceChairperson} size="board" />
+                  <OrgPersonCard person={BOARD_STRUCTURE.viceChairperson} size="board" />
                 </div>
 
                 {/* Connector to executive director */}
@@ -964,7 +908,7 @@ function Landing() {
 
                 {/* Executive Director */}
                 <div className="w-full max-w-[180px]">
-                  <OrgPersonCard person={activeStructure.data.executiveDirector} size="board" />
+                  <OrgPersonCard person={BOARD_STRUCTURE.executiveDirector} size="board" />
                 </div>
 
                 {/* Connector to members */}
@@ -983,13 +927,13 @@ function Landing() {
                 </div>
 
                 <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-5xl place-items-center">
-                  {activeStructure.data.officers.slice(0, 4).map(officer => (
+                  {BOARD_STRUCTURE.officers.slice(0, 4).map(officer => (
                     <OrgPersonCard key={officer.name} person={officer} size="board" />
                   ))}
                 </div>
 
                 <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-4xl mt-4 place-items-center">
-                  {activeStructure.data.officers.slice(4).map(officer => (
+                  {BOARD_STRUCTURE.officers.slice(4).map(officer => (
                     <OrgPersonCard key={officer.name} person={officer} size="board" />
                   ))}
                 </div>
@@ -1051,16 +995,7 @@ function Landing() {
                   To inspire inclusive and resilient communities through volunteerism and collective action.
                 </p>
               </article>
-            </div>
-
-            {/* Core Values heading */}
-            <div className="flex items-center gap-4 mb-6">
-              <div className="w-8 h-0.5 bg-red-600 rounded-full" />
-              <h3 className="text-xl font-bold text-white font-heading">Core Values</h3>
-              <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
-            </div>
-
-            {/* Core Values — image grid */}
+            </div>            {/* Core Values - image grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {CORE_VALUES.map(value => (
                 <article
@@ -1168,7 +1103,26 @@ function Landing() {
         </div>
       </section>
 
-      {/* ── FOOTER ── */}
+      {selectedPerson ? (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center px-4" style={{ background: 'rgba(0,0,0,0.7)' }}>
+          <div className="w-full max-w-md rounded-2xl border border-white/10 bg-black/90 p-6 text-center">
+            <div className="mx-auto mb-4 h-24 w-24 overflow-hidden rounded-2xl border border-white/10 bg-white">
+              <img src={selectedPerson.image} alt={selectedPerson.name} className="h-full w-full object-cover" />
+            </div>
+            <p className="text-xs font-semibold tracking-[0.2em] uppercase text-red-300">Profile</p>
+            <h3 className="mt-2 text-xl font-bold text-white font-heading">{selectedPerson.name}</h3>
+            <button
+              type="button"
+              onClick={() => setSelectedPerson(null)}
+              className="mt-5 w-full rounded-xl border border-white/15 bg-white/5 py-2 text-sm font-semibold text-white hover:bg-white/10"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {/* � FOOTER � */}
       <footer
         className="relative py-12 sm:py-14"
         style={{
@@ -1249,3 +1203,50 @@ function Landing() {
 }
 
 export default Landing
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

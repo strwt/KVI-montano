@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { KUSGAN_VOLUNTEERS } from '../data/kusganVolunteers'
 import {
   Users,
   Search,
@@ -95,8 +96,20 @@ function Members() {
   const [showTempPassword, setShowTempPassword] = useState(false)
   const membersPerPage = 9
 
-  const members = getAllMembers()
-  const admins = getAdmins()
+  const allowedVolunteerSet = useMemo(
+    () => new Set(KUSGAN_VOLUNTEERS.map(name => String(name).toLowerCase())),
+    []
+  )
+  const allMembers = getAllMembers()
+  const members = useMemo(
+    () => (allMembers || []).filter(member => allowedVolunteerSet.has(String(member?.name || '').trim().toLowerCase())),
+    [allMembers, allowedVolunteerSet]
+  )
+  const allAdmins = getAdmins()
+  const admins = useMemo(
+    () => (allAdmins || []).filter(admin => allowedVolunteerSet.has(String(admin?.name || '').trim().toLowerCase())),
+    [allAdmins, allowedVolunteerSet]
+  )
   const isAdmin = user?.role === 'admin'
   const recruitments = getRecruitments()
 
@@ -210,6 +223,7 @@ function Members() {
 
     setCommitteeName('')
   }
+
 
   const openEditCommittee = (name) => {
     if (!isAdmin) return
@@ -426,9 +440,26 @@ function Members() {
   }
 
 	  const handleCreateMember = async (e) => {
-	    e.preventDefault()
-	    setFormError('')
-	    const result = await createMember({
+    e.preventDefault()
+    setFormError('')
+
+    const normalizedName = String(newMember.name || '').trim()
+    if (!normalizedName) {
+      setFormError('Full name is required.')
+      return
+    }
+    if (!allowedVolunteerSet.has(normalizedName.toLowerCase())) {
+      setFormError('Name must be in the KUSGAN volunteer list.')
+      return
+    }
+
+    const alreadyExists = [...admins, ...members].some(member =>
+      String(member?.name || '').trim().toLowerCase() === normalizedName.toLowerCase()
+    )
+    if (alreadyExists) {
+      setFormError('Member already exists.')
+      return
+    }const result = await createMember({
 	      ...newMember,
 	      recruitmentId: pendingApprovalRecruitmentId || undefined,
 	    })
@@ -1351,3 +1382,7 @@ function Members() {
 }
 
 export default Members
+
+
+
+
