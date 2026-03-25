@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { KUSGAN_VOLUNTEERS } from '../data/kusganVolunteers'
 import {
   Users,
@@ -46,6 +46,7 @@ function Members() {
     addEventCategory,
     editEventCategory,
     deleteEventCategory,
+    deleteMembers,
     getRecruitments,
     rejectRecruitment,
     ensureAdminDataLoaded,
@@ -75,6 +76,11 @@ function Members() {
   const [fallbackEventCategory, setFallbackEventCategory] = useState('')
   const [formError, setFormError] = useState('')
   const [recruitmentActionError, setRecruitmentActionError] = useState('')
+  const [selectedMemberIds, setSelectedMemberIds] = useState(() => new Set())
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
+  const [bulkDeleteBusy, setBulkDeleteBusy] = useState(false)
+  const [bulkDeleteError, setBulkDeleteError] = useState('')
+  const selectAllRef = useRef(null)
 
   useEffect(() => {
     if (user?.role !== 'admin') return
@@ -173,6 +179,13 @@ function Members() {
   const indexOfFirstMember = indexOfLastMember - membersPerPage
   const currentMembers = filteredMembers.slice(indexOfFirstMember, indexOfLastMember)
   const totalPages = Math.ceil(filteredMembers.length / membersPerPage)
+  const currentMemberIds = useMemo(
+    () => currentMembers.map(member => String(member?.id || '').trim()).filter(Boolean),
+    [currentMembers]
+  )
+  const selectedCount = selectedMemberIds.size
+  const hasSelectedOnPage = currentMemberIds.some(id => selectedMemberIds.has(id))
+  const allSelectedOnPage = currentMemberIds.length > 0 && currentMemberIds.every(id => selectedMemberIds.has(id))
 
   const getRoleBadge = role => {
     return role === 'admin'
@@ -182,6 +195,51 @@ function Members() {
 
   const handleViewMember = memberId => {
     navigate(`/members/${memberId}`)
+  }
+
+  const toggleMemberSelection = (memberId) => {
+    const id = String(memberId || '').trim()
+    if (!id) return
+    setSelectedMemberIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }
+
+  const handleSelectAllOnPage = () => {
+    if (currentMemberIds.length === 0) return
+    setSelectedMemberIds(prev => {
+      const next = new Set(prev)
+      if (allSelectedOnPage) {
+        currentMemberIds.forEach(id => next.delete(id))
+      } else {
+        currentMemberIds.forEach(id => next.add(id))
+      }
+      return next
+    })
+  }
+
+  const clearSelection = () => {
+    setSelectedMemberIds(new Set())
+  }
+
+  const handleBulkDelete = async () => {
+    if (!isAdmin || selectedMemberIds.size === 0) return
+    setBulkDeleteError('')
+    setBulkDeleteBusy(true)
+    const result = await deleteMembers([...selectedMemberIds])
+    setBulkDeleteBusy(false)
+    if (!result.success) {
+      setBulkDeleteError(result.message || 'Unable to delete members.')
+      return
+    }
+    setShowBulkDeleteModal(false)
+    setSelectedMemberIds(new Set())
   }
 
   const userCountByCommittee = (() => {
@@ -194,6 +252,23 @@ function Members() {
     })
     return map
   })()
+
+  const allUserIdSet = useMemo(() => {
+    const ids = [...admins, ...members].map(member => String(member?.id || '').trim()).filter(Boolean)
+    return new Set(ids)
+  }, [admins, members])
+
+  useEffect(() => {
+    setSelectedMemberIds(prev => {
+      const next = new Set([...prev].filter(id => allUserIdSet.has(id)))
+      return next.size === prev.size ? prev : next
+    })
+  }, [allUserIdSet])
+
+  useEffect(() => {
+    if (!selectAllRef.current) return
+    selectAllRef.current.indeterminate = hasSelectedOnPage && !allSelectedOnPage
+  }, [hasSelectedOnPage, allSelectedOnPage])
 
   const handleCommitteeAdd = async (e) => {
     e.preventDefault()
@@ -1276,6 +1351,101 @@ function Members() {
         </div>
       </div>
 
+      {isAdmin && (
+        <div className="bg-white rounded-2xl border border-red-600 shadow-md p-4 mb-4">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+              <input
+                ref={selectAllRef}
+                type="checkbox"
+                checked={allSelectedOnPage}
+                onChange={handleSelectAllOnPage}
+                className="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+              />
+              Select all on this page
+            </label>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-gray-500">Selected: {selectedCount}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setBulkDeleteError('')
+                  setShowBulkDeleteModal(true)
+                }}
+                disabled={selectedCount === 0}
+                className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                Delete selected
+              </button>
+              <button
+                type="button"
+                onClick={clearSelection}
+                disabled={selectedCount === 0}
+                className="px-3 py-2 rounded-lg bg-gray-100 text-gray-700 text-sm hover:bg-gray-200 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isAdmin && showBulkDeleteModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="w-full max-w-lg bg-white dark:bg-zinc-900 rounded-xl shadow-2xl p-5 space-y-4 animate-fade-in-up">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-gray-800 dark:text-zinc-100">Delete Selected Members</h3>
+              <button
+                type="button"
+                onClick={() => {
+                  if (bulkDeleteBusy) return
+                  setShowBulkDeleteModal(false)
+                  setBulkDeleteError('')
+                }}
+                className="px-3 py-1.5 bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-100 rounded-lg hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                disabled={bulkDeleteBusy}
+              >
+                Close
+              </button>
+            </div>
+
+            {bulkDeleteError && <p className="text-sm text-red-600">{bulkDeleteError}</p>}
+
+            <div className="rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/30 p-4 space-y-2">
+              <p className="text-sm text-red-700 dark:text-red-200">
+                You are about to delete <span className="font-semibold">{selectedCount}</span> member{selectedCount === 1 ? '' : 's'}.
+              </p>
+              <p className="text-xs text-red-700 dark:text-red-200">
+                This action permanently removes the selected accounts and cannot be undone.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  if (bulkDeleteBusy) return
+                  setShowBulkDeleteModal(false)
+                  setBulkDeleteError('')
+                }}
+                className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-100 hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                disabled={bulkDeleteBusy}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleBulkDelete}
+                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                disabled={bulkDeleteBusy || selectedCount === 0}
+              >
+                Confirm Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {currentMembers.length === 0 ? (
           <div className="col-span-full bg-white rounded-xl border border-red-600 shadow-md p-12 text-center">
@@ -1289,6 +1459,20 @@ function Members() {
               className="bg-white rounded-xl border border-red-600 shadow-md p-6 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 animate-fade-in relative"
               style={{ animationDelay: `${index * 0.1}s` }}
             >
+              {isAdmin && (
+                <div className="absolute top-4 right-4">
+                  <label className="inline-flex items-center gap-2 text-xs text-gray-600">
+                    <input
+                      type="checkbox"
+                      checked={selectedMemberIds.has(String(member?.id || '').trim())}
+                      onChange={() => toggleMemberSelection(member.id)}
+                      onClick={(event) => event.stopPropagation()}
+                      className="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+                      aria-label={`Select ${member.name}`}
+                    />
+                  </label>
+                </div>
+              )}
               <div className={isAdmin ? 'cursor-pointer' : ''} onClick={() => isAdmin && handleViewMember(member.id)}>
                 <div className="flex items-center gap-4 mb-4">
                   {member.profileImage && member.profileImage !== '/image-removebg-preview.png' ? (
