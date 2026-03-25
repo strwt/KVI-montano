@@ -15,6 +15,7 @@ const SESSION_EXPIRED_MESSAGE = 'Session expired. Please log in again.'
 const LOADING_FALLBACK_MS = 3_000
 const PROFILE_CACHE_TTL_MS = 30_000
 const PROFILE_NEGATIVE_CACHE_TTL_MS = 2_000
+const IDLE_LOGOUT_MS = 10 * 60_000
 const PROFILE_IMAGE_BUCKET = 'profile-images'
 const PROFILE_IMAGE_PREFIX = 'avatars'
 
@@ -189,6 +190,47 @@ const uploadProfileImageViaApi = async ({ file, contentType, accessToken }) => {
     || (responseText ? responseText.slice(0, 300) : 'Upload failed.')
 
   return { ok: false, status: response.status, message }
+}
+
+const uploadMemberProfileImageViaAdminApi = async ({ memberId, file, contentType, accessToken }) => {
+  const token = String(accessToken || '').trim()
+  if (!token) return { ok: false, status: 0, message: 'Missing access token.' }
+
+  const userId = String(memberId || '').trim()
+  if (!userId) return { ok: false, status: 0, message: 'Missing member id.' }
+
+  const response = await fetch('/api/admin/upload-user-avatar', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': String(contentType || 'application/octet-stream'),
+      'x-user-id': userId,
+    },
+    body: file,
+  })
+
+  const responseText = await response.text().catch(() => '')
+  const payload = (() => {
+    if (!responseText) return null
+    try {
+      return JSON.parse(responseText)
+    } catch {
+      return responseText
+    }
+  })()
+
+  if (response.ok) {
+    return { ok: true, status: response.status, path: payload?.path ? String(payload.path) : '' }
+  }
+
+  const message =
+    payload?.message
+    || payload?.error_description
+    || payload?.error
+    || (typeof payload === 'string' ? payload : 'Upload failed.')
+    || 'Upload failed.'
+
+  return { ok: false, status: response.status, message: String(message).slice(0, 300) }
 }
 
 const normalizeSupabaseStoragePublicUrl = (url, bucket) => {
@@ -1371,6 +1413,44 @@ export function AuthProvider({ children }) {
     return { success: true, path, publicUrl: data.publicUrl }
   }
 
+  const uploadMemberProfileImage = async (memberId, file) => {
+    if (!user?.id) return { success: false, message: 'User not found.' }
+    if (user.role !== 'admin') return { success: false, message: 'Only admins can upload member images.' }
+
+    const targetId = String(memberId || '').trim()
+    if (!targetId) return { success: false, message: 'Member not found.' }
+    if (!file) return { success: false, message: 'No file selected.' }
+
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+    const token = sessionData?.session?.access_token || ''
+    if (sessionError || !token) return { success: false, message: SESSION_EXPIRED_MESSAGE }
+
+    const contentType = String(file.type || '').trim()
+    if (!contentType.startsWith('image/')) return { success: false, message: 'Please select an image file.' }
+
+    const apiResult = await uploadMemberProfileImageViaAdminApi({ memberId: targetId, file, contentType, accessToken: token })
+    if (!apiResult.ok || !apiResult.path) {
+      return {
+        success: false,
+        message: apiResult.message || `Unable to upload image (HTTP ${apiResult.status || 0}).`,
+      }
+    }
+
+    const path = apiResult.path
+    const { data } = supabase.storage.from(PROFILE_IMAGE_BUCKET).getPublicUrl(path)
+    const resolvedImage = resolveProfileImageSrc(path)
+
+    setUsers(prev => prev.map(member => (member?.id === targetId ? { ...member, profileImage: resolvedImage } : member)))
+    setAdmins(prev => prev.map(member => (member?.id === targetId ? { ...member, profileImage: resolvedImage } : member)))
+    setMembers(prev => prev.map(member => (member?.id === targetId ? { ...member, profileImage: resolvedImage } : member)))
+    if (String(user.id) === targetId) {
+      setUser(prev => (prev ? { ...prev, profileImage: resolvedImage } : prev))
+    }
+
+    clearProfileCache()
+    return { success: true, path, publicUrl: data?.publicUrl || '' }
+  }
+
   const changeCurrentUserPassword = async (currentPassword, newPassword) => {
     if (!user?.email) return { success: false, message: 'User not found' }
 
@@ -1430,9 +1510,12 @@ export function AuthProvider({ children }) {
     if (!user?.id) return { success: false, message: 'User not found.' }
     if (user.role !== 'admin') return { success: false, message: 'Only admins can update members.' }
 
-    const hasIdentityEdits = Object.prototype.hasOwnProperty.call(updates, 'email') || Object.prototype.hasOwnProperty.call(updates, 'idNumber')
+    const requiresAdminEndpoint = Object.prototype.hasOwnProperty.call(updates, 'email')
+      || Object.prototype.hasOwnProperty.call(updates, 'idNumber')
+      || Object.prototype.hasOwnProperty.call(updates, 'password')
+      || Object.prototype.hasOwnProperty.call(updates, 'newPassword')
 
-    if (hasIdentityEdits) {
+    if (requiresAdminEndpoint) {
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
       const token = sessionData?.session?.access_token
       if (sessionError || !token) return { success: false, message: SESSION_EXPIRED_MESSAGE }
@@ -1784,6 +1867,8 @@ export function AuthProvider({ children }) {
 	          idNumber,
 	          password,
 	          role,
+            status: memberData.status || 'active',
+            accountStatus: memberData.accountStatus || 'Active',
 	          committee: memberData.committee || null,
 	          address: memberData.address || null,
 	          contactNumber: memberData.contactNumber || null,
@@ -1894,6 +1979,38 @@ export function AuthProvider({ children }) {
     document.documentElement.setAttribute('lang', appLanguage === 'Filipino' ? 'fil' : appLanguage === 'Bisaya' ? 'ceb' : 'en')
   }, [appLanguage])
 
+  const logoutFnRef = useRef(null)
+  logoutFnRef.current = logout
+
+  useEffect(() => {
+    if (!supabaseEnabled) return undefined
+    if (!user?.id) return undefined
+
+    let timeoutId = null
+
+    const scheduleLogout = () => {
+      if (timeoutId) window.clearTimeout(timeoutId)
+      timeoutId = window.setTimeout(() => {
+        void logoutFnRef.current?.()
+      }, IDLE_LOGOUT_MS)
+    }
+
+    const handleActivity = () => scheduleLogout()
+    const events = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click']
+
+    scheduleLogout()
+    for (const event of events) {
+      window.addEventListener(event, handleActivity, { passive: true })
+    }
+
+    return () => {
+      if (timeoutId) window.clearTimeout(timeoutId)
+      for (const event of events) {
+        window.removeEventListener(event, handleActivity)
+      }
+    }
+  }, [supabaseEnabled, user?.id])
+
   const value = {
     supabaseEnabled,
     supabaseConfigError,
@@ -1916,6 +2033,7 @@ export function AuthProvider({ children }) {
     register,
     updateCurrentUser,
     uploadProfileImage,
+    uploadMemberProfileImage,
  	    changeCurrentUserPassword,
  	    getAllMembers,
       getAdmins,

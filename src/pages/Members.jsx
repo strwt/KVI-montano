@@ -38,6 +38,7 @@ function Members() {
     getAllMembers,
     getAdmins,
     createMember,
+    uploadMemberProfileImage,
     committees,
     eventCategories,
     addCommittee,
@@ -97,26 +98,23 @@ function Members() {
 	    contactNumber: '',
     bloodType: '',
     memberSince: dayjs().format('YYYY-MM-DD'),
+    status: 'active',
     role: ROLE_OPTIONS[0].value,
     committee: committees[0] || '',
   })
   const [showTempPassword, setShowTempPassword] = useState(false)
   const membersPerPage = 9
 
-  const allowedVolunteerSet = useMemo(
-    () => new Set(KUSGAN_VOLUNTEERS.map(name => String(name).toLowerCase())),
-    []
-  )
+  const normalizeMemberName = (value) =>
+    String(value || '')
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, ' ')
+
   const allMembers = getAllMembers()
-  const members = useMemo(
-    () => (allMembers || []).filter(member => allowedVolunteerSet.has(String(member?.name || '').trim().toLowerCase())),
-    [allMembers, allowedVolunteerSet]
-  )
+  const members = Array.isArray(allMembers) ? allMembers : []
   const allAdmins = getAdmins()
-  const admins = useMemo(
-    () => (allAdmins || []).filter(admin => allowedVolunteerSet.has(String(admin?.name || '').trim().toLowerCase())),
-    [allAdmins, allowedVolunteerSet]
-  )
+  const admins = Array.isArray(allAdmins) ? allAdmins : []
   const isAdmin = user?.role === 'admin'
   const recruitments = getRecruitments()
 
@@ -519,18 +517,14 @@ function Members() {
     e.preventDefault()
     setFormError('')
 
-    const normalizedName = String(newMember.name || '').trim()
+    const normalizedName = String(newMember.name || '').trim().replace(/\s+/g, ' ')
     if (!normalizedName) {
       setFormError('Full name is required.')
       return
     }
-    if (enforceVolunteerList && !allowedVolunteerSet.has(normalizedName.toLowerCase())) {
-      setFormError('Name must be in the KUSGAN volunteer list.')
-      return
-    }
 
     const alreadyExists = [...admins, ...members].some(member =>
-      String(member?.name || '').trim().toLowerCase() === normalizedName.toLowerCase()
+      normalizeMemberName(member?.name) === normalizeMemberName(normalizedName)
     )
     if (alreadyExists) {
       setFormError('Member already exists.')
@@ -539,12 +533,21 @@ function Members() {
 
     const result = await createMember({
  	      ...newMember,
+        name: normalizedName,
  	      recruitmentId: pendingApprovalRecruitmentId || undefined,
  	    })
     if (!result.success) {
       setFormError(result.message)
       return
     }
+
+    if (newMemberImageFile && result.userId) {
+      const uploadResult = await uploadMemberProfileImage(result.userId, newMemberImageFile)
+      if (!uploadResult.success) {
+        setFormError(uploadResult.message || 'Member created but image upload failed.')
+      }
+    }
+
 	    setNewMember({
 	      name: '',
 	      idNumber: '',
@@ -553,9 +556,11 @@ function Members() {
 	      contactNumber: '',
       bloodType: '',
       memberSince: dayjs().format('YYYY-MM-DD'),
+      status: 'active',
       role: ROLE_OPTIONS[0].value,
       committee: committeeOptions[0] || '',
     })
+    setNewMemberImageFile(null)
     setPendingApprovalRecruitmentId(null)
     setRecruitmentActionError('')
   }
@@ -577,9 +582,11 @@ function Members() {
 	      contactNumber: recruitment.contactNumber || '',
       bloodType: recruitment.bloodType || '',
       memberSince: dayjs().format('YYYY-MM-DD'),
+      status: 'active',
       role: ROLE_OPTIONS[0].value,
       committee: committeeOptions[0] || '',
     })
+    setNewMemberImageFile(null)
     const createMemberSection = document.getElementById('create-member-form')
     if (createMemberSection) {
       createMemberSection.scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -633,17 +640,6 @@ function Members() {
                   required
                   autoComplete="name"
                 />
-              </div>
-              <div className="md:col-span-2">
-                <label className="inline-flex items-center gap-2 text-xs text-gray-600">
-                  <input
-                    type="checkbox"
-                    checked={enforceVolunteerList}
-                    onChange={e => setEnforceVolunteerList(e.target.checked)}
-                    className="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
-                  />
-                  Require name in the KUSGAN volunteer list
-                </label>
               </div>
               <div>
                 <label htmlFor="create-member-id-number" className="block text-xs text-gray-500 mb-1">ID Number</label>
@@ -739,6 +735,31 @@ function Members() {
                   autoComplete="off"
                 />
               </div>
+              <div className="md:col-span-2">
+                <label htmlFor="create-member-image" className="block text-xs text-gray-500 mb-1">Profile Image (optional)</label>
+                <input
+                  id="create-member-image"
+                  name="profileImage"
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setNewMemberImageFile(e.target.files?.[0] || null)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
+                />
+              </div>
+              <div>
+                <label htmlFor="create-member-status" className="block text-xs text-gray-500 mb-1">Status</label>
+                <select
+                  id="create-member-status"
+                  name="status"
+                  value={newMember.status}
+                  onChange={e => setNewMember({ ...newMember, status: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                  required
+                >
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </div>
               <div>
                 <label htmlFor="create-member-role" className="block text-xs text-gray-500 mb-1">Type</label>
                 <select
@@ -782,145 +803,143 @@ function Members() {
             </form>
           </div>
 
-          <div className="bg-white dark:bg-zinc-900 border border-red-600 rounded-2xl shadow-md p-5 xl:col-span-2">
-            <div className="flex items-center justify-between gap-3 mb-3">
-              <h3 className="font-semibold text-gray-800 dark:text-zinc-100">Committee Management</h3>
-              <button
-                type="button"
-                onClick={() => {
-                  const el = document.getElementById('event-category-management')
-                  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-                }}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-colors dark:bg-zinc-900 dark:text-zinc-300 dark:border-zinc-700 dark:hover:bg-zinc-800"
-              >
-                Categories
-              </button>
-            </div>
-            {committeeError && <p className="text-sm text-red-600 mb-3">{committeeError}</p>}
-
-            <form onSubmit={handleCommitteeAdd} className="flex flex-col sm:flex-row gap-2 mb-4">
-              <input
-                id="committee-new-name"
-                name="committeeName"
-                type="text"
-                value={committeeName}
-                onChange={e => setCommitteeName(e.target.value)}
-                placeholder="New committee name"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                disabled={committeeActionBusy}
-                autoComplete="off"
-              />
-              <button
-                type="submit"
-                className="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                disabled={committeeActionBusy}
-              >
-                Add
-              </button>
-            </form>
-
-            <div className="space-y-2 max-h-[420px] overflow-auto pr-1">
-              {committeeOptions.length === 0 ? (
-                <p className="text-sm text-gray-500 dark:text-zinc-400">No committees available.</p>
-              ) : (
-                committeeOptions.map(name => (
-                  <div
-                    key={name}
-                    className="flex items-start justify-between gap-3 rounded-xl border border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-gray-800 dark:text-zinc-100 truncate">{name}</p>
-                      <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5">
-                        {userCountByCommittee[name] || 0} assigned
-                      </p>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => openEditCommittee(name)}
-                        className="px-3 py-1.5 rounded-lg text-sm bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                        disabled={committeeActionBusy}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => openDeleteCommittee(name)}
-                        className="px-3 py-1.5 rounded-lg text-sm bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                        disabled={committeeActionBusy}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {isAdmin && (
-        <div
-          id="event-category-management"
-          className="bg-white dark:bg-zinc-900 border border-red-600 rounded-2xl shadow-md p-5 mb-6"
-        >
-          <h3 className="font-semibold text-gray-800 dark:text-zinc-100 mb-3">Event Category Management</h3>
-          {eventCategoryError && <p className="text-sm text-red-600 mb-3">{eventCategoryError}</p>}
-
-          <form onSubmit={handleEventCategoryAdd} className="flex flex-col sm:flex-row gap-2 mb-4">
-            <input
-              type="text"
-              value={eventCategoryName}
-              onChange={e => setEventCategoryName(e.target.value)}
-              placeholder="New event category (e.g. Water Distribution)"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-              disabled={eventCategoryActionBusy}
-            />
+          <div className="xl:col-span-2">
             <button
-              type="submit"
-              className="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-              disabled={eventCategoryActionBusy}
+              type="button"
+              onClick={() => setShowManagementPanel(prev => !prev)}
+              className="w-full inline-flex items-center justify-between gap-3 rounded-2xl border border-green-200 bg-green-100 px-5 py-4 text-left text-green-900 shadow-sm hover:bg-green-200 transition-colors"
             >
-              Add
+              <span className="text-lg font-semibold">Management</span>
+              <span className="text-sm font-medium">{showManagementPanel ? 'Hide' : 'Show'}</span>
             </button>
-          </form>
 
-          <div className="space-y-2 max-h-[420px] overflow-auto pr-1">
-            {eventCategoryOptions.length === 0 ? (
-              <p className="text-sm text-gray-500 dark:text-zinc-400">No categories available.</p>
-            ) : (
-              eventCategoryOptions.map(name => (
-                <div
-                  key={name}
-                  className="flex items-start justify-between gap-3 rounded-xl border border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2"
-                >
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-gray-800 dark:text-zinc-100 truncate">{titleCaseFromKey(name)}</p>
-                    <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5 break-all">
-                      Key: <span className="font-mono">{name}</span>
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-2">
+            {showManagementPanel && (
+              <div className="mt-4 grid grid-cols-1 xl:grid-cols-2 gap-6">
+                <div className="bg-white dark:bg-zinc-900 border border-red-600 rounded-2xl shadow-md p-5">
+                  <h3 className="font-semibold text-gray-800 dark:text-zinc-100 mb-3">Committee Management</h3>
+                  {committeeError && <p className="text-sm text-red-600 mb-3">{committeeError}</p>}
+
+                  <form onSubmit={handleCommitteeAdd} className="flex flex-col sm:flex-row gap-2 mb-4">
+                    <input
+                      id="committee-new-name"
+                      name="committeeName"
+                      type="text"
+                      value={committeeName}
+                      onChange={e => setCommitteeName(e.target.value)}
+                      placeholder="New committee name"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                      disabled={committeeActionBusy}
+                      autoComplete="off"
+                    />
                     <button
-                      type="button"
-                      onClick={() => openEditEventCategory(name)}
-                      className="px-3 py-1.5 rounded-lg text-sm bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                      disabled={eventCategoryActionBusy}
+                      type="submit"
+                      className="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                      disabled={committeeActionBusy}
                     >
-                      Edit
+                      Add
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => openDeleteEventCategory(name)}
-                      className="px-3 py-1.5 rounded-lg text-sm bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                      disabled={eventCategoryActionBusy}
-                    >
-                      Delete
-                    </button>
+                  </form>
+
+                  <div className="space-y-2 max-h-[420px] overflow-auto pr-1">
+                    {committeeOptions.length === 0 ? (
+                      <p className="text-sm text-gray-500 dark:text-zinc-400">No committees available.</p>
+                    ) : (
+                      committeeOptions.map(name => (
+                        <div
+                          key={name}
+                          className="flex items-start justify-between gap-3 rounded-xl border border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2"
+                        >
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-gray-800 dark:text-zinc-100 truncate">{name}</p>
+                            <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5">
+                              {userCountByCommittee[name] || 0} assigned
+                            </p>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => openEditCommittee(name)}
+                              className="px-3 py-1.5 rounded-lg text-sm bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                              disabled={committeeActionBusy}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => openDeleteCommittee(name)}
+                              className="px-3 py-1.5 rounded-lg text-sm bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                              disabled={committeeActionBusy}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
-              ))
+
+                <div className="bg-white dark:bg-zinc-900 border border-red-600 rounded-2xl shadow-md p-5">
+                  <h3 className="font-semibold text-gray-800 dark:text-zinc-100 mb-3">Event Category Management</h3>
+                  {eventCategoryError && <p className="text-sm text-red-600 mb-3">{eventCategoryError}</p>}
+
+                  <form onSubmit={handleEventCategoryAdd} className="flex flex-col sm:flex-row gap-2 mb-4">
+                    <input
+                      type="text"
+                      value={eventCategoryName}
+                      onChange={e => setEventCategoryName(e.target.value)}
+                      placeholder="New event category (e.g. Water Distribution)"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                      disabled={eventCategoryActionBusy}
+                    />
+                    <button
+                      type="submit"
+                      className="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                      disabled={eventCategoryActionBusy}
+                    >
+                      Add
+                    </button>
+                  </form>
+
+                  <div className="space-y-2 max-h-[420px] overflow-auto pr-1">
+                    {eventCategoryOptions.length === 0 ? (
+                      <p className="text-sm text-gray-500 dark:text-zinc-400">No categories available.</p>
+                    ) : (
+                      eventCategoryOptions.map(name => (
+                        <div
+                          key={name}
+                          className="flex items-start justify-between gap-3 rounded-xl border border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2"
+                        >
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-gray-800 dark:text-zinc-100 truncate">{titleCaseFromKey(name)}</p>
+                            <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5 break-all">
+                              Key: <span className="font-mono">{name}</span>
+                            </p>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => openEditEventCategory(name)}
+                              className="px-3 py-1.5 rounded-lg text-sm bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                              disabled={eventCategoryActionBusy}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => openDeleteEventCategory(name)}
+                              className="px-3 py-1.5 rounded-lg text-sm bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                              disabled={eventCategoryActionBusy}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
             )}
           </div>
         </div>

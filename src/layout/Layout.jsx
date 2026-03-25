@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { Outlet } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import { Menu, X } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
@@ -12,6 +12,43 @@ const getInitialSidebarOpen = () => {
 function Layout() {
   const { darkMode, setDarkMode, loading } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(getInitialSidebarOpen)
+  const location = useLocation()
+  const navigate = useNavigate()
+  const restoredRouteRef = useRef(false)
+
+  useEffect(() => {
+    if (restoredRouteRef.current) return
+    restoredRouteRef.current = true
+
+    if (location.pathname !== '/') return
+
+    try {
+      const lastRoute = window.localStorage.getItem('kusgan:last_route') || ''
+      if (!lastRoute || lastRoute === '/' || !lastRoute.startsWith('/')) return
+      navigate(lastRoute, { replace: true })
+    } catch {
+      // ignore
+    }
+  }, [location.pathname, navigate])
+
+  useEffect(() => {
+    const fullPath = `${location.pathname || '/'}${location.search || ''}${location.hash || ''}`
+
+    if (fullPath === '/') {
+      try {
+        const existing = window.localStorage.getItem('kusgan:last_route') || ''
+        if (existing && existing !== '/') return
+      } catch {
+        // ignore
+      }
+    }
+
+    try {
+      window.localStorage.setItem('kusgan:last_route', fullPath)
+    } catch {
+      // ignore
+    }
+  }, [location.hash, location.pathname, location.search])
 
   useEffect(() => {
     // Deterministic theme application avoids stale dark class state.

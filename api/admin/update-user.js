@@ -61,6 +61,15 @@ const buildProfilePatch = (updates = {}) => {
   return patch
 }
 
+const getPasswordUpdate = (updates = {}) => {
+  if (!updates || typeof updates !== 'object') return ''
+  const raw =
+    Object.prototype.hasOwnProperty.call(updates, 'password') ? updates.password
+      : Object.prototype.hasOwnProperty.call(updates, 'newPassword') ? updates.newPassword
+        : ''
+  return normalizeText(raw)
+}
+
 const isCallerAdmin = async (supabaseAdmin, caller) => {
   const callerId = caller?.id ? String(caller.id) : ''
   const callerEmail = normalizeEmail(caller?.email || '')
@@ -131,6 +140,17 @@ export default async function handler(req, res) {
 
     if (!userId) return res.status(400).json({ message: 'userId is required.' })
 
+    const nextPassword = getPasswordUpdate(updates)
+    if (nextPassword) {
+      if (nextPassword.length < 8) {
+        return res.status(400).json({ message: 'Password must be at least 8 characters.' })
+      }
+      const { error: authPasswordError } = await supabaseAdmin.auth.admin.updateUserById(userId, { password: nextPassword })
+      if (authPasswordError) {
+        return res.status(400).json({ message: authPasswordError.message || 'Unable to update auth password.' })
+      }
+    }
+
     const patch = buildProfilePatch(updates)
 
     if (Object.prototype.hasOwnProperty.call(patch, 'email') && patch.email) {
@@ -147,9 +167,11 @@ export default async function handler(req, res) {
       }
     }
 
-    const { error: profileError } = await supabaseAdmin.from('profiles').update(patch).eq('id', userId)
-    if (profileError) {
-      return res.status(400).json({ message: profileError.message || 'Unable to update profile.' })
+    if (Object.keys(patch).length > 0) {
+      const { error: profileError } = await supabaseAdmin.from('profiles').update(patch).eq('id', userId)
+      if (profileError) {
+        return res.status(400).json({ message: profileError.message || 'Unable to update profile.' })
+      }
     }
 
     return res.status(200).json({ success: true })
