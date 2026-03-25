@@ -56,13 +56,9 @@ const parseArrayLiteralStrings = (source) => {
 }
 
 const loadVolunteerNames = () => {
-  const landingPath = resolveProjectPath('src', 'pages', 'Landing.jsx')
-  const landingSource = fs.readFileSync(landingPath, 'utf8')
-  const volunteerArrayBlock = parseBlock(
-    landingSource,
-    'const KUSGAN_VOLUNTEERS = [',
-    ']'
-  )
+  const listPath = resolveProjectPath('src', 'data', 'kusganVolunteers.js')
+  const listSource = fs.readFileSync(listPath, 'utf8')
+  const volunteerArrayBlock = parseBlock(listSource, 'export const KUSGAN_VOLUNTEERS = [', ']')
   const volunteerNames = parseArrayLiteralStrings(volunteerArrayBlock)
   if (!volunteerNames.length) {
     throw new Error('No volunteers found in KUSGAN_VOLUNTEERS.')
