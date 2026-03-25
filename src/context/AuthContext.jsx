@@ -1581,8 +1581,15 @@ export function AuthProvider({ children }) {
       await supabase.from('profiles').update({ committee: fallbackCommittee }).eq('committee', committee)
     }
 
-    const { error } = await supabase.from('committees').delete().eq('name', committee)
+    const { data: deletedRows, error } = await supabase
+      .from('committees')
+      .delete()
+      .eq('name', committee)
+      .select('name')
     if (error) return { success: false, message: error.message || 'Unable to delete committee.' }
+    if (!Array.isArray(deletedRows) || deletedRows.length === 0) {
+      return { success: false, message: 'Committee was not deleted (no matching record in Supabase).' }
+    }
 
     setCommittees(prev => (Array.isArray(prev) ? prev : []).filter(name => name !== committee))
     const nextCommittee = fallbackCommittee || ''
@@ -1656,8 +1663,15 @@ export function AuthProvider({ children }) {
       await supabase.from('notifications').update({ category: fallback }).eq('category', key)
     }
 
-    const { error } = await supabase.from('event_categories').delete().eq('name', key)
+    const { data: deletedRows, error } = await supabase
+      .from('event_categories')
+      .delete()
+      .eq('name', key)
+      .select('name')
     if (error) return { success: false, message: error.message || 'Unable to delete event category.' }
+    if (!Array.isArray(deletedRows) || deletedRows.length === 0) {
+      return { success: false, message: 'Category was not deleted (no matching record in Supabase).' }
+    }
 
     setEventCategories(prev => (Array.isArray(prev) ? prev : []).filter(name => name !== key))
     return { success: true, reassignedTo: fallback || null }

@@ -404,16 +404,51 @@ function Landing() {
   const activeStructure = ORGANIZATION_VIEWS.find(view => view.key === structureKey) || ORGANIZATION_VIEWS[0]
   const [selectedPerson, setSelectedPerson] = useState(null)
 
+  function resolveProfileImage(value) {
+    const raw = String(value || '').trim()
+    if (!raw) return HERO_IMAGE
+    if (raw.startsWith('/') || raw.startsWith('http')) return raw
+    if (raw.startsWith('data:image/')) return raw
+    try {
+      const { data } = supabase?.storage?.from?.('profile-images')?.getPublicUrl?.(raw) || {}
+      return data?.publicUrl || HERO_IMAGE
+    } catch {
+      return HERO_IMAGE
+    }
+  }
+
+  const formatMemberSince = (value) => {
+    if (!value) return ''
+    if (value instanceof Date && !Number.isNaN(value.getTime())) {
+      return value.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+    }
+
+    const raw = String(value).trim()
+    if (!raw) return ''
+
+    const parsed = new Date(raw)
+    if (Number.isNaN(parsed.getTime())) return raw
+    return parsed.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+  }
+
+  const coerceString = (value) => String(value ?? '').trim()
+
   const openPerson = (person) => {
     if (!person?.name) return
     const allMembers = getAllMembers ? getAllMembers() : []
     const matched = (allMembers || []).find(
       member => String(member?.name || '').trim().toLowerCase() === String(person.name || '').trim().toLowerCase()
     )
-    const resolvedImage = matched?.profileImage || person.image || HERO_IMAGE
+    const resolvedImage = resolveProfileImage(matched?.profileImage || person.image)
     setSelectedPerson({
       name: person.name,
       image: resolvedImage,
+      contactNumber: coerceString(matched?.contactNumber || person.contactNumber),
+      bloodType: coerceString(matched?.bloodType || person.bloodType),
+      committee: coerceString(matched?.committee || person.committee),
+      memberSince: formatMemberSince(matched?.memberSince || person.memberSince),
+      status: coerceString(matched?.status || person.status),
+      accountStatus: coerceString(matched?.accountStatus || person.accountStatus),
     })
   }
   useEffect(() => {
@@ -445,26 +480,13 @@ function Landing() {
     []
   )
 
-  const resolveProfileImage = (value) => {
-    const raw = String(value || '').trim()
-    if (!raw) return HERO_IMAGE
-    if (raw.startsWith('/') || raw.startsWith('http')) return raw
-    if (raw.startsWith('data:image/')) return raw
-    try {
-      const { data } = supabase?.storage?.from?.('profile-images')?.getPublicUrl?.(raw) || {}
-      return data?.publicUrl || HERO_IMAGE
-    } catch {
-      return HERO_IMAGE
-    }
-  }
-
   const contextMemberPeople = useMemo(() => {
     const members = getAllMembers ? getAllMembers() : []
     const people = (members || [])
       .filter(member => allowedVolunteerSet.has(String(member?.name || '').trim().toLowerCase()))
       .map(member => ({
         name: String(member?.name || '').trim(),
-        image: String(member?.profileImage || '').trim() || HERO_IMAGE,
+        image: resolveProfileImage(String(member?.profileImage || '').trim()),
       }))
       .filter(person => person.name)
     const unique = new Map()
@@ -483,6 +505,12 @@ function Landing() {
         .map(row => ({
           name: String(row?.name || '').trim(),
           image: resolveProfileImage(row?.profile_image || row?.profileImage),
+          contactNumber: String(row?.contact_number || row?.contactNumber || '').trim(),
+          bloodType: String(row?.blood_type || row?.bloodType || '').trim(),
+          committee: String(row?.committee || '').trim(),
+          memberSince: row?.member_since || row?.memberSince || '',
+          status: String(row?.status || '').trim(),
+          accountStatus: String(row?.account_status || row?.accountStatus || '').trim(),
         }))
         .filter(person => person.name && allowedVolunteerSet.has(person.name.toLowerCase()))
       const unique = new Map()
@@ -504,11 +532,8 @@ function Landing() {
         return
       }
       try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('name,profile_image,role,account_status,status')
-          .eq('role', 'member')
-          .order('name', { ascending: true })
+        const rpcClient = typeof supabase?.schema === 'function' ? supabase.schema('public') : supabase
+        const { data, error } = await rpcClient.rpc('get_landing_volunteers', { p_names: KUSGAN_VOLUNTEERS })
 
         if (error) {
           console.warn('Failed to load members for landing page.', error)
@@ -524,28 +549,10 @@ function Landing() {
 
     void loadMembers()
 
-    if (!isSupabaseEnabled()) {
-      return () => {
-        isMounted = false
-      }
-    }
-
-    const channel = supabase
-      .channel('landing-members')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'profiles', filter: 'role=eq.member' },
-        () => {
-          void loadMembers()
-        }
-      )
-      .subscribe()
-
     return () => {
       isMounted = false
-      if (channel) supabase.removeChannel(channel)
     }
-  }, [contextMemberPeople, user?.role])
+  }, [allowedVolunteerSet, contextMemberPeople, user?.role])
 
   const displayVolunteerPeople = useMemo(() => {
     if (contextMemberPeople.length > 0) return contextMemberPeople
@@ -1111,6 +1118,36 @@ function Landing() {
             </div>
             <p className="text-xs font-semibold tracking-[0.2em] uppercase text-red-300">Profile</p>
             <h3 className="mt-2 text-xl font-bold text-white font-heading">{selectedPerson.name}</h3>
+
+            <div className="mt-5 rounded-xl border border-white/10 bg-white/5 p-4 text-left">
+              <div className="grid grid-cols-1 gap-3 text-sm">
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-white/60">Contact</span>
+                  <span className="text-white tabular-nums">{selectedPerson.contactNumber || '—'}</span>
+                </div>
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-white/60">Blood type</span>
+                  <span className="text-white">{selectedPerson.bloodType || '—'}</span>
+                </div>
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-white/60">Member since</span>
+                  <span className="text-white">{selectedPerson.memberSince || '—'}</span>
+                </div>
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-white/60">Committee</span>
+                  <span className="text-white">{selectedPerson.committee || '—'}</span>
+                </div>
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-white/60">Status</span>
+                  <span className="text-white">{selectedPerson.status || '—'}</span>
+                </div>
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-white/60">Account</span>
+                  <span className="text-white">{selectedPerson.accountStatus || '—'}</span>
+                </div>
+              </div>
+            </div>
+
             <button
               type="button"
               onClick={() => setSelectedPerson(null)}

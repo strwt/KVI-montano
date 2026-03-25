@@ -29,28 +29,28 @@ const createDefaultSettings = (name = '') => ({
   },
 })
 
-const mergeSettings = (name, savedSettings) => {
-  const defaults = createDefaultSettings(name || '')
-  const source = savedSettings && typeof savedSettings === 'object' ? savedSettings : {}
+const mergeSettings = (defaults, source, overrides, appLanguage) => {
+  const safeDefaults = defaults && typeof defaults === 'object' ? defaults : createDefaultSettings('')
+  const safeSource = source && typeof source === 'object' ? source : {}
+  const safeOverrides = overrides && typeof overrides === 'object' ? overrides : {}
+
   return {
-    ...defaults,
-    ...source,
-    profile: { ...defaults.profile, ...(source.profile || {}) },
-    security: { ...defaults.security, ...(source.security || {}) },
-    notifications: { ...defaults.notifications, ...(source.notifications || {}) },
-    preferences: { ...defaults.preferences, ...(source.preferences || {}) },
-    privacy: { ...defaults.privacy, ...(source.privacy || {}) },
+    ...safeDefaults,
+    ...safeSource,
+    ...safeOverrides,
+    profile: { ...safeDefaults.profile, ...(safeSource.profile || {}), ...(safeOverrides.profile || {}) },
+    security: { ...safeDefaults.security, ...(safeSource.security || {}), ...(safeOverrides.security || {}) },
+    notifications: { ...safeDefaults.notifications, ...(safeSource.notifications || {}), ...(safeOverrides.notifications || {}) },
+    preferences: {
+      ...safeDefaults.preferences,
+      ...(safeSource.preferences || {}),
+      ...(safeOverrides.preferences || {}),
+      language: appLanguage || safeDefaults.preferences.language,
+    },
+    privacy: { ...safeDefaults.privacy, ...(safeSource.privacy || {}), ...(safeOverrides.privacy || {}) },
   }
 }
 
-const hashString = (value) => {
-  const str = String(value || '')
-  let hash = 0
-  for (let i = 0; i < str.length; i += 1) {
-    hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0
-  }
-  return Math.abs(hash).toString(36)
-}
 
 function ToggleSwitch({ checked, onChange, label, description }) {
   return (
@@ -78,8 +78,17 @@ function ToggleSwitch({ checked, onChange, label, description }) {
   )
 }
 
-function SettingsForm({ initialSettings, appLanguage, setAppLanguage, saveSettings, t }) {
-  const [settings, setSettings] = useState(initialSettings)
+function Settings() {
+  const { user, appLanguage, setAppLanguage, settings: savedSettings, saveSettings } = useAuth()
+  const { t } = useI18n()
+  const defaults = useMemo(() => createDefaultSettings(user?.name || ''), [user?.name])
+  const sourceSettings = useMemo(() => {
+    return savedSettings && typeof savedSettings === 'object' ? savedSettings : {}
+  }, [savedSettings])
+  const [overrides, setOverrides] = useState({})
+  const settings = useMemo(() => {
+    return mergeSettings(defaults, sourceSettings, overrides, appLanguage)
+  }, [defaults, sourceSettings, overrides, appLanguage])
   const [saveState, setSaveState] = useState('idle')
 
   const handleSave = async () => {
@@ -98,6 +107,7 @@ function SettingsForm({ initialSettings, appLanguage, setAppLanguage, saveSettin
       return
     }
 
+    setOverrides({})
     setSaveState('success')
     window.setTimeout(() => setSaveState('idle'), 1800)
   }
@@ -132,13 +142,23 @@ function SettingsForm({ initialSettings, appLanguage, setAppLanguage, saveSettin
           <div className="space-y-2">
             <ToggleSwitch
               checked={settings.security.twoFactorAuth}
-              onChange={() => setSettings(prev => ({ ...prev, security: { ...prev.security, twoFactorAuth: !prev.security.twoFactorAuth } }))}
+              onChange={() => {
+                setOverrides(prev => ({
+                  ...prev,
+                  security: { ...(prev.security || {}), twoFactorAuth: !settings.security.twoFactorAuth },
+                }))
+              }}
               label={t('Two-Factor Authentication')}
               description={t('Add an extra verification step at sign in.')}
             />
             <ToggleSwitch
               checked={settings.security.loginAlerts}
-              onChange={() => setSettings(prev => ({ ...prev, security: { ...prev.security, loginAlerts: !prev.security.loginAlerts } }))}
+              onChange={() => {
+                setOverrides(prev => ({
+                  ...prev,
+                  security: { ...(prev.security || {}), loginAlerts: !settings.security.loginAlerts },
+                }))
+              }}
               label={t('Login Alerts')}
               description={t('Notify you about new sign-ins.')}
             />
@@ -154,19 +174,34 @@ function SettingsForm({ initialSettings, appLanguage, setAppLanguage, saveSettin
           <div className="space-y-2">
             <ToggleSwitch
               checked={settings.notifications.email}
-              onChange={() => setSettings(prev => ({ ...prev, notifications: { ...prev.notifications, email: !prev.notifications.email } }))}
+              onChange={() => {
+                setOverrides(prev => ({
+                  ...prev,
+                  notifications: { ...(prev.notifications || {}), email: !settings.notifications.email },
+                }))
+              }}
               label={t('Email Notifications')}
               description={t('Receive event and assignment updates by email.')}
             />
             <ToggleSwitch
               checked={settings.notifications.sms}
-              onChange={() => setSettings(prev => ({ ...prev, notifications: { ...prev.notifications, sms: !prev.notifications.sms } }))}
+              onChange={() => {
+                setOverrides(prev => ({
+                  ...prev,
+                  notifications: { ...(prev.notifications || {}), sms: !settings.notifications.sms },
+                }))
+              }}
               label={t('SMS Notifications')}
               description={t('Get urgent updates by text message.')}
             />
             <ToggleSwitch
               checked={settings.notifications.inApp}
-              onChange={() => setSettings(prev => ({ ...prev, notifications: { ...prev.notifications, inApp: !prev.notifications.inApp } }))}
+              onChange={() => {
+                setOverrides(prev => ({
+                  ...prev,
+                  notifications: { ...(prev.notifications || {}), inApp: !settings.notifications.inApp },
+                }))
+              }}
               label={t('In-App Notifications')}
               description={t('Show reminders while using the dashboard.')}
             />
@@ -181,15 +216,12 @@ function SettingsForm({ initialSettings, appLanguage, setAppLanguage, saveSettin
           <p className="mb-4 text-[14px] text-neutral-600 dark:text-zinc-400">{t('Adjust your dashboard view and language options.')}</p>
           <div className="space-y-2">
             <div className="rounded-xl border border-neutral-200 bg-white p-3 dark:border-zinc-700 dark:bg-zinc-900">
-              <label htmlFor="settings-language" className="mb-2 block text-[16px] font-medium text-black dark:text-zinc-100">{t('Language')}</label>
+              <label className="mb-2 block text-[16px] font-medium text-black dark:text-zinc-100">{t('Language')}</label>
               <p className="mb-3 text-[14px] text-neutral-600 dark:text-zinc-400">{t('Select the language for your interface.')}</p>
               <select
-                id="settings-language"
-                name="language"
                 value={appLanguage}
                 onChange={e => {
                   const nextLanguage = e.target.value
-                  setSettings(prev => ({ ...prev, preferences: { ...prev.preferences, language: nextLanguage } }))
                   setAppLanguage(nextLanguage)
                 }}
                 className="w-full cursor-pointer rounded-xl border border-neutral-300 bg-white px-4 py-2 text-[14px] text-black transition-all duration-200 focus:border-red-600 focus:outline-none dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
@@ -211,13 +243,23 @@ function SettingsForm({ initialSettings, appLanguage, setAppLanguage, saveSettin
           <div className="space-y-2">
             <ToggleSwitch
               checked={settings.privacy.showProfileToVolunteers}
-              onChange={() => setSettings(prev => ({ ...prev, privacy: { ...prev.privacy, showProfileToVolunteers: !prev.privacy.showProfileToVolunteers } }))}
+              onChange={() => {
+                setOverrides(prev => ({
+                  ...prev,
+                  privacy: { ...(prev.privacy || {}), showProfileToVolunteers: !settings.privacy.showProfileToVolunteers },
+                }))
+              }}
               label={t('Show Profile')}
               description={t('Allow other volunteers to view your profile.')}
             />
             <ToggleSwitch
               checked={settings.privacy.shareActivityStatus}
-              onChange={() => setSettings(prev => ({ ...prev, privacy: { ...prev.privacy, shareActivityStatus: !prev.privacy.shareActivityStatus } }))}
+              onChange={() => {
+                setOverrides(prev => ({
+                  ...prev,
+                  privacy: { ...(prev.privacy || {}), shareActivityStatus: !settings.privacy.shareActivityStatus },
+                }))
+              }}
               label={t('Share Activity')}
               description={t('Display your participation status in reports.')}
             />
@@ -236,32 +278,6 @@ function SettingsForm({ initialSettings, appLanguage, setAppLanguage, saveSettin
         </button>
       </div>
     </div>
-  )
-}
-
-function Settings() {
-  const { user, appLanguage, setAppLanguage, settings: savedSettings, saveSettings } = useAuth()
-  const { t } = useI18n()
-
-  const initialSettings = useMemo(
-    () => mergeSettings(user?.name || '', savedSettings),
-    [savedSettings, user?.name]
-  )
-
-  const initialSettingsKey = useMemo(() => {
-    const serialized = JSON.stringify(initialSettings)
-    return `${String(user?.id || 'anon')}-${hashString(serialized)}`
-  }, [initialSettings, user?.id])
-
-  return (
-    <SettingsForm
-      key={initialSettingsKey}
-      initialSettings={initialSettings}
-      appLanguage={appLanguage}
-      setAppLanguage={setAppLanguage}
-      saveSettings={saveSettings}
-      t={t}
-    />
   )
 }
 
