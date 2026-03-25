@@ -173,7 +173,7 @@ const BOARD_STRUCTURE = {
     { name: 'Renan Diaz', position: 'Board Member', committee: 'Board', image: '/Board Organizational Structure/Renan P. Diaz.png' },
     { name: 'Kusgan Joselyn Piñalosa', position: 'Board Member', committee: 'Board', image: '/Board Organizational Structure/KVI.png' },
     { name: 'Kusgan Niña Dinorog', position: 'Board Member', committee: 'Board', image: '/Board Organizational Structure/KVI.png' },
-    { name: 'Kusgan Joel Marcaida', position: 'Board Member', committee: 'Board', image: '/Board Organizational Structure/KVI.png' },
+    { name: 'Kusgan Joel Marcaida', position: 'Board Member', committee: 'Board', image: '/Board Organizational Structure/Joel Marcaida.jpg' },
     { name: 'Kusgan Lord Ubod', position: 'Board Member', committee: 'Board', image: '/Board Organizational Structure/Lord Ubod.png' },
   ],
   officers: [
@@ -182,7 +182,7 @@ const BOARD_STRUCTURE = {
     { name: 'Renan Diaz', position: 'Board Member', committee: 'Board', image: '/Board Organizational Structure/Renan P. Diaz.png' },
     { name: 'Kusgan Joselyn Pinalosa', position: 'Board Member', committee: 'Board', image: '/Board Organizational Structure/KVI.png' },
     { name: 'Kusgan Niña Dinorog', position: 'Board Member', committee: 'Board', image: '/Board Organizational Structure/KVI.png' },
-    { name: 'Kusgan Joel Marcaida', position: 'Board Member', committee: 'Board', image: '/Board Organizational Structure/KVI.png' },
+    { name: 'Kusgan Joel Marcaida', position: 'Board Member', committee: 'Board', image: '/Board Organizational Structure/Joel Marcaida.jpg' },
     { name: 'Kusgan Lord Ubod', position: 'Board Member', committee: 'Board', image: '/Board Organizational Structure/Lord Ubod.png' },
   ],
 }
@@ -397,7 +397,7 @@ function OrgPersonCard({ person, large = false, size = 'normal' }) {
 
 function Landing() {
   const navigate = useNavigate()
-  const { user, getAllMembers, ensureAdminDataLoaded } = useAuth()
+  const { user, getAllMembers, ensureAdminDataLoaded, committees } = useAuth()
   const pageRef = useRef(null)
   const [kusganVolunteerPeople, setKusganVolunteerPeople] = useState([])
   const [structureKey, setStructureKey] = useState('board')
@@ -559,6 +559,55 @@ function Landing() {
       .map(name => ({ name, image: HERO_IMAGE }))
       .sort((a, b) => a.name.localeCompare(b.name))
   }, [contextMemberPeople, kusganVolunteerPeople])
+
+  const committeeOptions = useMemo(() => {
+    const list = Array.isArray(committees) ? committees : []
+    const normalized = list.map(name => String(name || '').trim()).filter(Boolean)
+    const unique = [...new Set(normalized)]
+    unique.sort((a, b) => a.localeCompare(b))
+    return unique
+  }, [committees])
+
+  const committeeGroups = useMemo(() => {
+    const grouped = new Map()
+    const unassigned = []
+
+    displayVolunteerPeople.forEach(person => {
+      const committee = String(person?.committee || '').trim()
+      if (!committee) {
+        unassigned.push(person)
+        return
+      }
+      const key = committee.toLowerCase()
+      if (!grouped.has(key)) {
+        grouped.set(key, { committee, members: [] })
+      }
+      grouped.get(key).members.push(person)
+    })
+
+    committeeOptions.forEach(name => {
+      const key = String(name || '').trim().toLowerCase()
+      if (!key) return
+      if (!grouped.has(key)) {
+        grouped.set(key, { committee: String(name).trim(), members: [] })
+      }
+    })
+
+    const groups = [...grouped.values()].map(group => ({
+      ...group,
+      members: [...group.members].sort((a, b) => a.name.localeCompare(b.name)),
+    }))
+    groups.sort((a, b) => a.committee.localeCompare(b.committee))
+
+    if (unassigned.length > 0) {
+      groups.push({
+        committee: 'Unassigned',
+        members: [...unassigned].sort((a, b) => a.name.localeCompare(b.name)),
+      })
+    }
+
+    return groups
+  }, [committeeOptions, displayVolunteerPeople])
 
   return (
     <div ref={pageRef} className="min-h-screen text-white overflow-x-hidden" style={{ background: '#080808' }}>
@@ -875,22 +924,60 @@ function Landing() {
                   <div className="flex-1 h-px" style={{ background: 'linear-gradient(to left, transparent, rgba(220,38,38,0.25))' }} />
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
-                  {displayVolunteerPeople.map(person => (
-                    <button
-                      key={person.name}
-                      type="button"
-                      onClick={() => openPerson(person)}
-                      className="rounded-lg px-2.5 py-2 text-center text-[11px] sm:text-xs font-semibold text-white border transition hover:border-red-500/40 hover:bg-red-600/10"
-                      style={{
-                        background: 'rgba(12,12,12,0.85)',
-                        borderColor: 'rgba(255,255,255,0.12)',
-                        boxShadow: '0 6px 14px rgba(0,0,0,0.3)',
-                      }}
+                <div
+                  className="flex gap-6 overflow-x-auto pb-2 justify-center landing-scrollbar"
+                  style={{ scrollbarGutter: 'stable' }}
+                >
+                  {committeeGroups.length === 0 ? (
+                    <div
+                      className="w-full rounded-2xl border border-white/10 bg-black/60 p-6 text-center text-sm text-gray-400"
+                      style={{ boxShadow: '0 8px 24px rgba(0,0,0,0.35)' }}
                     >
-                      {person.name}
-                    </button>
-                  ))}
+                      No volunteer data available yet.
+                    </div>
+                  ) : (
+                    committeeGroups.map(group => (
+                      <div
+                        key={group.committee}
+                        className="shrink-0 text-center"
+                        style={{ minWidth: '220px', maxWidth: '220px', width: '100%' }}
+                      >
+                        <div className="flex items-center justify-center gap-2 mb-3">
+                          <span
+                            className="px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase border shrink-0"
+                            style={{
+                              color: '#fca5a5',
+                              background: 'rgba(220,38,38,0.1)',
+                              borderColor: 'rgba(220,38,38,0.2)',
+                            }}
+                          >
+                            {group.committee}
+                          </span>
+                        </div>
+                        {group.members.length === 0 ? (
+                          <p className="text-xs text-gray-400">No members assigned yet.</p>
+                        ) : (
+                          <div className="flex flex-col gap-2 items-center">
+                            {group.members.map(person => (
+                              <button
+                                key={person.name}
+                                type="button"
+                                onClick={() => openPerson(person)}
+                                className="w-full rounded-lg px-2.5 py-2 text-center text-[11px] sm:text-xs font-semibold text-white border transition hover:border-red-500/40 hover:bg-red-600/10"
+                                style={{
+                                  background: 'rgba(12,12,12,0.85)',
+                                  borderColor: 'rgba(255,255,255,0.12)',
+                                  boxShadow: '0 6px 14px rgba(0,0,0,0.3)',
+                                }}
+                              >
+                                {person.name}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             ) : (
