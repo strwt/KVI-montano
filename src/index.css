@@ -610,6 +610,32 @@ body {
   background: #555;
 }
 
+/* Landing page scrollbars */
+.landing-scrollbar {
+  scrollbar-color: rgba(248, 113, 113, 0.7) rgba(12, 12, 12, 0.8);
+  scrollbar-width: thin;
+}
+
+.landing-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.landing-scrollbar::-webkit-scrollbar-track {
+  background: rgba(12, 12, 12, 0.8);
+  border-radius: 999px;
+}
+
+.landing-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(248, 113, 113, 0.55);
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.landing-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(248, 113, 113, 0.85);
+}
+
 /* Focus styles */
 *:focus-visible {
   outline: 2px solid #dc2626;
