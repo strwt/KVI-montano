@@ -448,7 +448,6 @@ function Landing() {
       committee: coerceString(matched?.committee || person.committee),
       memberSince: formatMemberSince(matched?.memberSince || person.memberSince),
       status: coerceString(matched?.status || person.status),
-      accountStatus: coerceString(matched?.accountStatus || person.accountStatus),
     })
   }
   useEffect(() => {
@@ -510,7 +509,6 @@ function Landing() {
           committee: String(row?.committee || '').trim(),
           memberSince: row?.member_since || row?.memberSince || '',
           status: String(row?.status || '').trim(),
-          accountStatus: String(row?.account_status || row?.accountStatus || '').trim(),
         }))
         .filter(person => person.name && allowedVolunteerSet.has(person.name.toLowerCase()))
       const unique = new Map()
@@ -1140,10 +1138,6 @@ function Landing() {
                 <div className="flex items-baseline justify-between gap-3">
                   <span className="text-white/60">Status</span>
                   <span className="text-white">{selectedPerson.status || '—'}</span>
-                </div>
-                <div className="flex items-baseline justify-between gap-3">
-                  <span className="text-white/60">Account</span>
-                  <span className="text-white">{selectedPerson.accountStatus || '—'}</span>
                 </div>
               </div>
             </div>

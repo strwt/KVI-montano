@@ -16,7 +16,8 @@ returns table(
   contact_number text,
   blood_type text,
   member_since date,
-  committee text
+  committee text,
+  status text
 )
 language sql
 stable
@@ -35,7 +36,8 @@ as $$
     p.contact_number,
     p.blood_type,
     p.member_since,
-    p.committee
+    p.committee,
+    p.status
   from public.profiles p
   join wanted w
     on regexp_replace(lower(btrim(p.name)), '\s+', ' ', 'g') = w.wanted_name
@@ -48,4 +50,3 @@ revoke all on function public.get_landing_volunteers(text[]) from public;
 grant execute on function public.get_landing_volunteers(text[]) to anon, authenticated;
 
 commit;
-
