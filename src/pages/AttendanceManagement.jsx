@@ -10,6 +10,7 @@ const LOGIN_ACTIVITY_KEY = 'kusgan_login_activity'
 const LOGIN_ACTIVITY_UPDATED_EVENT = 'kusgan-login-activity-updated'
 const LOGIN_ACTIVITY_CHANNEL = 'kusgan-attendance-sync'
 const ADMIN_ATTENDANCE_CACHE_KEY = 'kusgan_admin_attendance_cache'
+const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 const getAdminAttendanceCache = () => {
   const stored = localStorage.getItem(ADMIN_ATTENDANCE_CACHE_KEY)
@@ -54,6 +55,11 @@ function AdminAttendance() {
     timeOut: '',
     timeOutReason: '',
   })
+  const [historyMember, setHistoryMember] = useState(null)
+  const [historyMonth, setHistoryMonth] = useState(() => dayjs().format('YYYY-MM'))
+  const [historySupabaseActivity, setHistorySupabaseActivity] = useState([])
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [historyError, setHistoryError] = useState('')
 
   useEffect(() => {
     if (user?.role !== 'admin') return
@@ -177,6 +183,58 @@ function AdminAttendance() {
       supabase.removeChannel(channel)
     }
   }, [supabaseEnabled, selectedDate, isAdmin])
+
+  useEffect(() => {
+    if (!supabaseEnabled || !isAdmin) return
+    const memberId = historyMember?.id
+    if (!memberId || !historyMonth) return
+
+    let active = true
+    const load = async () => {
+      setHistoryLoading(true)
+      setHistoryError('')
+      const monthStart = dayjs(`${historyMonth}-01`).startOf('month')
+      const monthEnd = monthStart.endOf('month')
+
+      const { data, error } = await supabase
+        .from('login_activity')
+        .select('date,user_id,is_present,status,present_at,time_in,time_out,time_out_reason')
+        .eq('user_id', memberId)
+        .gte('date', monthStart.format('YYYY-MM-DD'))
+        .lte('date', monthEnd.format('YYYY-MM-DD'))
+        .order('date', { ascending: false })
+
+      if (!active) return
+
+      if (error) {
+        console.warn('Unable to load attendance history.', error)
+        setHistorySupabaseActivity([])
+        setHistoryError(error.message || 'Unable to load attendance history.')
+      } else {
+        const mapped = Array.isArray(data)
+          ? data.map(row => ({
+              date: row.date,
+              userId: row.user_id,
+              isPresent: Boolean(row.is_present),
+              status: row.status || (row.is_present ? 'Present' : 'Absent'),
+              presentAt: row.present_at || null,
+              timeIn: row.time_in || row.present_at || null,
+              timeOut: row.time_out || null,
+              timeOutReason: row.time_out_reason || '',
+            }))
+          : []
+        setHistorySupabaseActivity(mapped)
+      }
+
+      setHistoryLoading(false)
+    }
+
+    void load()
+
+    return () => {
+      active = false
+    }
+  }, [supabaseEnabled, isAdmin, historyMember?.id, historyMonth])
 
   const members = useMemo(() => {
     return (users || [])
@@ -306,6 +364,82 @@ function AdminAttendance() {
       timeOutReason: '',
     })
   }
+
+  const openHistory = (member) => {
+    if (!member) return
+    setHistoryMember(member)
+    setHistoryMonth(dayjs(selectedDate).format('YYYY-MM'))
+    setHistoryError('')
+  }
+
+  const closeHistory = () => {
+    setHistoryMember(null)
+    setHistorySupabaseActivity([])
+    setHistoryLoading(false)
+    setHistoryError('')
+  }
+
+  const historyRows = useMemo(() => {
+    const memberId = String(historyMember?.id || '')
+    if (!memberId || !historyMonth) return []
+
+    const monthStart = dayjs(`${historyMonth}-01`).startOf('month')
+    const daysInMonth = monthStart.daysInMonth()
+    const monthStartKey = monthStart.format('YYYY-MM-DD')
+    const monthEndKey = monthStart.endOf('month').format('YYYY-MM-DD')
+
+    const activityByDate = new Map()
+
+    ;(historySupabaseActivity || []).forEach(entry => {
+      if (!entry?.date) return
+      if (String(entry?.userId || '') !== memberId) return
+      activityByDate.set(entry.date, entry)
+    })
+
+    ;(localLoginActivity || []).forEach(entry => {
+      if (!entry?.date) return
+      if (String(entry?.userId || '') !== memberId) return
+      if (entry.date < monthStartKey || entry.date > monthEndKey) return
+      activityByDate.set(entry.date, entry)
+    })
+
+    return Array.from({ length: daysInMonth }, (_, idx) => {
+      const date = monthStart.add(idx, 'day')
+      const dateKey = date.format('YYYY-MM-DD')
+      const entry = activityByDate.get(dateKey)
+
+      return {
+        dateKey,
+        label: date.format('MMM D, YYYY'),
+        status: entry?.status || (entry?.isPresent ? 'Present' : 'Absent'),
+        timeIn: entry?.timeIn || entry?.presentAt || null,
+        timeOut: entry?.timeOut || null,
+      }
+    })
+  }, [historyMember?.id, historyMonth, historySupabaseActivity, localLoginActivity])
+
+  const historyPresentCount = useMemo(
+    () => historyRows.filter(row => row.status === 'Present').length,
+    [historyRows]
+  )
+
+  const historyAbsentCount = useMemo(
+    () => historyRows.filter(row => row.status === 'Absent').length,
+    [historyRows]
+  )
+
+  const historyHalfdayCount = useMemo(
+    () => historyRows.filter(row => row.status === 'Halfday').length,
+    [historyRows]
+  )
+
+  const historyCalendarCells = useMemo(() => {
+    const monthStart = historyMonth ? dayjs(`${historyMonth}-01`).startOf('month') : null
+    const offset = monthStart?.isValid?.() ? monthStart.day() : 0
+    const blanks = Array.from({ length: offset }, (_, idx) => ({ key: `blank-${idx}`, blank: true }))
+    const days = historyRows.map(row => ({ ...row, blank: false }))
+    return [...blanks, ...days]
+  }, [historyRows, historyMonth])
 
   const resolveDateTime = (timeValue) => {
     if (!timeValue) return null
@@ -577,7 +711,14 @@ function AdminAttendance() {
                   <tr key={row.memberId} className="text-neutral-700">
                     <td className="py-3">
                       <div>
-                        <p className="font-semibold text-neutral-900">{row.member?.name || 'Member'}</p>
+                        <button
+                          type="button"
+                          onClick={() => openHistory(row.member)}
+                          className="text-left font-semibold text-neutral-900 hover:underline"
+                          title="View monthly attendance"
+                        >
+                          {row.member?.name || 'Member'}
+                        </button>
                         <p className="text-xs text-neutral-500">{row.member?.committee || 'Unassigned'}</p>
                       </div>
                     </td>
@@ -721,6 +862,159 @@ function AdminAttendance() {
           </table>
         </div>
       </section>
+
+      {historyMember && (
+        <div
+          className="fixed inset-y-0 right-0 left-0 md:left-64 z-50 flex items-center justify-center bg-black/50 p-4"
+          role="dialog"
+          aria-modal="true"
+          onClick={closeHistory}
+        >
+          <div
+            className="w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-2xl border border-red-600 bg-white p-4 sm:p-6 shadow-2xl dark:border-red-600 dark:bg-zinc-900"
+            onClick={event => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs uppercase tracking-[0.14em] text-neutral-500 dark:text-neutral-400">Attendance History</p>
+                <h3 className="mt-1 text-[20px] font-semibold text-neutral-900 dark:text-zinc-100">
+                  {historyMember?.name || 'Member'}
+                </h3>
+                <p className="text-sm text-neutral-500 dark:text-neutral-300">{historyMember?.committee || 'Unassigned'}</p>
+              </div>
+              <button
+                type="button"
+                onClick={closeHistory}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-neutral-200 text-neutral-600 hover:border-neutral-300 hover:text-neutral-900 dark:border-zinc-700 dark:text-zinc-200"
+                aria-label="Close"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div className="flex items-center gap-2">
+                <label htmlFor="history-month" className="text-sm font-medium text-neutral-600 dark:text-neutral-300">
+                  Month
+                </label>
+                <input
+                  id="history-month"
+                  type="month"
+                  value={historyMonth}
+                  onChange={event => setHistoryMonth(event.target.value)}
+                  className="rounded-lg border border-neutral-200 px-3 py-2 text-sm text-neutral-700 shadow-sm focus:border-red-500 focus:outline-none dark:border-neutral-700 dark:bg-zinc-900 dark:text-neutral-100"
+                />
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-2 rounded-full border border-green-200 bg-green-50 px-3 py-1 text-xs font-semibold text-green-700">
+                  <UserCheck size={14} />
+                  Present: {historyPresentCount}
+                </span>
+                <span className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-semibold text-gray-700">
+                  <UserX size={14} />
+                  Absent: {historyAbsentCount}
+                </span>
+                <span className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">
+                  <ShieldCheck size={14} />
+                  Halfday: {historyHalfdayCount}
+                </span>
+              </div>
+            </div>
+
+            {historyError && (
+              <p className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {historyError}
+              </p>
+            )}
+
+            <div className="mt-4 rounded-2xl border border-neutral-200 bg-white/60 p-3 sm:p-4 dark:border-zinc-700 dark:bg-zinc-950/20">
+              <div className="overflow-x-auto">
+                <div className="min-w-[560px] sm:min-w-[720px] md:min-w-[840px] lg:min-w-[980px]">
+                  <div className="grid grid-cols-7 gap-2 sm:gap-2.5 lg:gap-3 text-center text-[11px] sm:text-xs lg:text-sm font-semibold text-neutral-500 dark:text-neutral-400">
+                    {WEEKDAY_LABELS.map(label => (
+                      <div key={label}>{label}</div>
+                    ))}
+                  </div>
+
+                  <div className="mt-2 sm:mt-3 max-h-[320px] sm:max-h-[420px] lg:max-h-[560px] overflow-y-auto pr-1">
+                {historyLoading ? (
+                  <p className="text-sm text-neutral-500 dark:text-neutral-300">Loading attendance...</p>
+                ) : (
+                  <div className="grid grid-cols-7 gap-2 sm:gap-2.5 lg:gap-3">
+                    {historyCalendarCells.map((cell, index) => {
+                      if (cell.blank) {
+                        return <div key={cell.key || `blank-${index}`} className="h-[84px] sm:h-[100px] lg:h-[120px] rounded-xl" />
+                      }
+
+                      const isToday = cell.dateKey === dayjs().format('YYYY-MM-DD')
+                      const dayNumber = dayjs(cell.dateKey).date()
+                      const timeInLabel = cell.timeIn && dayjs(cell.timeIn).isValid()
+                        ? dayjs(cell.timeIn).format('h:mm A')
+                        : null
+                      const timeOutLabel = cell.timeOut && dayjs(cell.timeOut).isValid()
+                        ? dayjs(cell.timeOut).format('h:mm A')
+                        : null
+
+                      const tone = cell.status === 'Present'
+                        ? 'border-emerald-200 bg-emerald-50/70 dark:border-emerald-800/50 dark:bg-emerald-950/30'
+                        : cell.status === 'Halfday'
+                          ? 'border-purple-200 bg-purple-50/70 dark:border-purple-800/50 dark:bg-purple-950/30'
+                          : 'border-neutral-200 bg-neutral-50/70 dark:border-zinc-700 dark:bg-zinc-950/20'
+
+                      const badgeTone = cell.status === 'Present'
+                        ? 'border-emerald-200 bg-emerald-100 text-emerald-700 dark:border-emerald-800/50 dark:bg-emerald-900/40 dark:text-emerald-200'
+                        : cell.status === 'Halfday'
+                          ? 'border-purple-200 bg-purple-100 text-purple-700 dark:border-purple-800/50 dark:bg-purple-900/40 dark:text-purple-200'
+                          : 'border-neutral-200 bg-neutral-100 text-neutral-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200'
+
+                      const titleParts = [`${cell.label}: ${cell.status}`]
+                      if (timeInLabel) titleParts.push(`In: ${timeInLabel}`)
+                      if (timeOutLabel) titleParts.push(`Out: ${timeOutLabel}`)
+
+                      return (
+                        <div
+                          key={cell.dateKey || `day-${index}`}
+                          className={`flex h-[84px] sm:h-[100px] lg:h-[120px] min-w-0 flex-col justify-between overflow-hidden rounded-xl border p-2 sm:p-2.5 lg:p-3 ${tone} ${
+                            isToday ? 'ring-2 ring-red-600 ring-offset-2 ring-offset-white dark:ring-offset-zinc-900' : ''
+                          }`}
+                          title={titleParts.join(' | ')}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <span className="text-xs sm:text-sm font-semibold text-neutral-900 dark:text-zinc-100">{dayNumber}</span>
+                            <span className={`inline-flex max-w-[64px] sm:max-w-[80px] lg:max-w-[92px] truncate rounded-full border px-2 py-0.5 text-[10px] sm:text-xs font-semibold ${badgeTone}`}>
+                              {cell.status}
+                            </span>
+                          </div>
+                          {(timeInLabel || timeOutLabel) ? (
+                            <div className="min-w-0 space-y-0.5 sm:space-y-1 text-[10px] sm:text-xs text-neutral-600 dark:text-neutral-300">
+                              {timeInLabel && (
+                                <div className="flex min-w-0 items-center gap-1">
+                                  <Clock size={12} className="shrink-0" />
+                                  <span className="truncate">In {timeInLabel}</span>
+                                </div>
+                              )}
+                              {timeOutLabel && (
+                                <div className="flex min-w-0 items-center gap-1">
+                                  <Clock size={12} className="shrink-0" />
+                                  <span className="truncate">Out {timeOutLabel}</span>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-[10px] sm:text-xs text-neutral-500 dark:text-neutral-400">No record</span>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
