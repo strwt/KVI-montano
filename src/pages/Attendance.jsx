@@ -9,6 +9,7 @@ const LOGIN_ACTIVITY_KEY = 'kusgan_login_activity'
 const LOGIN_ACTIVITY_UPDATED_EVENT = 'kusgan-login-activity-updated'
 const LOGIN_ACTIVITY_CHANNEL = 'kusgan-attendance-sync'
 const LOGIN_ACTIVITY_OUTBOX_KEY = 'kusgan_login_activity_outbox'
+const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 const getStoredLoginActivity = () => {
   const stored = localStorage.getItem(LOGIN_ACTIVITY_KEY)
@@ -230,6 +231,15 @@ function Attendance() {
     })
   }, [mergedLoginActivity, userId])
 
+  const calendarCells = useMemo(() => {
+    const monthKey = dayjs().format('YYYY-MM')
+    const monthStart = dayjs(`${monthKey}-01`).startOf('month')
+    const offset = monthStart.isValid() ? monthStart.day() : 0
+    const blanks = Array.from({ length: offset }, (_, idx) => ({ key: `blank-${idx}`, blank: true }))
+    const days = attendanceRows.map(row => ({ ...row, blank: false }))
+    return [...blanks, ...days]
+  }, [attendanceRows])
+
   const presentCount = useMemo(
     () => attendanceRows.filter(row => row.status === 'Present').length,
     [attendanceRows]
@@ -435,34 +445,89 @@ function Attendance() {
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <section className="grid grid-cols-1 gap-4">
         <article className="rounded-2xl border border-red-600 bg-white p-5 shadow-[0_10px_20px_rgba(0,0,0,0.08)] dark:border-red-600 dark:bg-zinc-900">
           <div className="mb-4 flex items-center gap-2">
             <ClipboardList size={18} className="text-red-600" />
             <h2 className="text-[20px] font-semibold text-neutral-900 dark:text-zinc-100">Monthly Attendance</h2>
           </div>
-          <div className="max-h-[420px] overflow-y-auto space-y-2 pr-1">
-            {attendanceRows.map(row => (
-              <div
-                key={row.dateKey}
-                className={`flex items-center justify-between rounded-xl border px-3 py-2 text-sm ${
-                  row.status === 'Present'
-                    ? 'border-green-200 bg-green-50 text-green-700'
-                    : 'border-gray-200 bg-gray-50 text-gray-600'
-                }`}
-              >
-                <span>{row.label}</span>
-                <div className="flex items-center gap-2">
-                  {row.presentAt && (
-                    <span className="flex items-center gap-1 text-xs text-neutral-500">
-                      <Clock size={12} />
-                      {dayjs(row.presentAt).format('h:mm A')}
-                    </span>
-                  )}
-                  <span className="text-xs font-semibold">{row.status}</span>
+          <div className="rounded-2xl border border-neutral-200 bg-white/60 p-3 sm:p-4 dark:border-zinc-700 dark:bg-zinc-950/20">
+            <div className="overflow-x-auto">
+              <div className="min-w-[560px] sm:min-w-[720px] md:min-w-[840px] lg:min-w-[980px]">
+                <div className="grid grid-cols-7 gap-2 sm:gap-2.5 lg:gap-3 text-center text-[11px] sm:text-xs lg:text-sm font-semibold text-neutral-500 dark:text-neutral-400">
+                  {WEEKDAY_LABELS.map(label => (
+                    <div key={label}>{label}</div>
+                  ))}
+                </div>
+                <div className="mt-2 sm:mt-3 grid grid-cols-7 gap-2 sm:gap-2.5 lg:gap-3">
+                  {calendarCells.map((cell, index) => {
+                if (cell.blank) {
+                  return <div key={cell.key || `blank-${index}`} className="h-[84px] sm:h-[100px] lg:h-[120px] rounded-xl" />
+                }
+
+                const isToday = cell.dateKey === dayjs().format('YYYY-MM-DD')
+                const dayNumber = dayjs(cell.dateKey).date()
+                const timeInLabel = cell.presentAt && dayjs(cell.presentAt).isValid()
+                  ? dayjs(cell.presentAt).format('h:mm A')
+                  : null
+                const timeOutLabel = cell.timeOut && dayjs(cell.timeOut).isValid()
+                  ? dayjs(cell.timeOut).format('h:mm A')
+                  : null
+
+                const tone = cell.status === 'Present'
+                  ? 'border-emerald-200 bg-emerald-50/70 dark:border-emerald-800/50 dark:bg-emerald-950/30'
+                  : cell.status === 'Halfday'
+                    ? 'border-purple-200 bg-purple-50/70 dark:border-purple-800/50 dark:bg-purple-950/30'
+                    : 'border-neutral-200 bg-neutral-50/70 dark:border-zinc-700 dark:bg-zinc-950/20'
+
+                const badgeTone = cell.status === 'Present'
+                  ? 'border-emerald-200 bg-emerald-100 text-emerald-700 dark:border-emerald-800/50 dark:bg-emerald-900/40 dark:text-emerald-200'
+                  : cell.status === 'Halfday'
+                    ? 'border-purple-200 bg-purple-100 text-purple-700 dark:border-purple-800/50 dark:bg-purple-900/40 dark:text-purple-200'
+                    : 'border-neutral-200 bg-neutral-100 text-neutral-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200'
+
+                const titleParts = [`${cell.label}: ${cell.status}`]
+                if (timeInLabel) titleParts.push(`In: ${timeInLabel}`)
+                if (timeOutLabel) titleParts.push(`Out: ${timeOutLabel}`)
+
+                return (
+                  <div
+                    key={cell.dateKey || `day-${index}`}
+                    className={`flex h-[84px] sm:h-[100px] lg:h-[120px] min-w-0 flex-col justify-between overflow-hidden rounded-xl border p-2 sm:p-2.5 lg:p-3 ${tone} ${
+                      isToday ? 'ring-2 ring-red-600 ring-offset-2 ring-offset-white dark:ring-offset-zinc-900' : ''
+                    }`}
+                    title={titleParts.join(' | ')}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="text-xs sm:text-sm font-semibold text-neutral-900 dark:text-zinc-100">{dayNumber}</span>
+                      <span className={`inline-flex max-w-[64px] sm:max-w-[80px] lg:max-w-[92px] truncate rounded-full border px-2 py-0.5 text-[10px] sm:text-xs font-semibold ${badgeTone}`}>
+                        {cell.status}
+                      </span>
+                    </div>
+                    {(timeInLabel || timeOutLabel) ? (
+                      <div className="min-w-0 space-y-0.5 sm:space-y-1 text-[10px] sm:text-xs text-neutral-600 dark:text-neutral-300">
+                        {timeInLabel && (
+                          <div className="flex min-w-0 items-center gap-1">
+                            <Clock size={12} className="shrink-0" />
+                            <span className="truncate">In {timeInLabel}</span>
+                          </div>
+                        )}
+                        {timeOutLabel && (
+                          <div className="flex min-w-0 items-center gap-1">
+                            <Clock size={12} className="shrink-0" />
+                            <span className="truncate">Out {timeOutLabel}</span>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-[10px] sm:text-xs text-neutral-500 dark:text-neutral-400">No record</span>
+                    )}
+                  </div>
+                )
+                  })}
                 </div>
               </div>
-            ))}
+            </div>
           </div>
         </article>
 
