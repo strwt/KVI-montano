@@ -223,6 +223,14 @@ const uploadMemberProfileImageViaAdminApi = async ({ memberId, file, contentType
     return { ok: true, status: response.status, path: payload?.path ? String(payload.path) : '' }
   }
 
+  if (response.status === 404) {
+    return {
+      ok: false,
+      status: 404,
+      message: 'Upload API not found. If you are running locally, start the app with `npm run dev:vercel` so `/api/*` routes are available.',
+    }
+  }
+
   const message =
     payload?.message
     || payload?.error_description

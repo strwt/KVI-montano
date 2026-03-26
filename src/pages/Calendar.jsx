@@ -844,7 +844,7 @@ function AssignMembersPicker({ allMembers, selectedIds, onChange, label = 'Assig
 }
 
 function Calendar({ listOnly = false }) {
-  const { user, getAllMembers, eventCategories } = useAuth()
+  const { user, getAllMembers, getAdmins, ensureAdminDataLoaded, eventCategories } = useAuth()
   const canManageEvents = user?.role === 'admin'
   const supabaseEnabled = isSupabaseEnabled()
   const routerLocation = useLocation()
@@ -863,6 +863,8 @@ function Calendar({ listOnly = false }) {
   const [doneFormError, setDoneFormError] = useState('')
   const [currentYear, setCurrentYear] = useState(dayjs().year())
   const [formError, setFormError] = useState('')
+  const [selectedMember, setSelectedMember] = useState(null)
+  const [involvedProfilesById, setInvolvedProfilesById] = useState({})
   const [formData, setFormData] = useState({
     title: '',
     content: '',
@@ -918,10 +920,36 @@ function Calendar({ listOnly = false }) {
     }
   }, [supabaseEnabled, user?.id])
 
-  const assignableMembers = useMemo(
-    () => getAllMembers(),
-    [getAllMembers]
-  )
+  useEffect(() => {
+    if (user?.role !== 'admin') return
+    void ensureAdminDataLoaded()
+  }, [ensureAdminDataLoaded, user?.role, user?.id])
+
+  const resolveProfileImage = (value) => {
+    const raw = String(value || '').trim()
+    if (!raw) return ''
+    if (raw.startsWith('/') || raw.startsWith('http')) return raw
+    if (raw.startsWith('data:image/')) return raw
+    try {
+      const { data } = supabase?.storage?.from?.('profile-images')?.getPublicUrl?.(raw) || {}
+      return data?.publicUrl || ''
+    } catch {
+      return ''
+    }
+  }
+
+  const assignableMembers = useMemo(() => {
+    const members = typeof getAllMembers === 'function' ? getAllMembers() : []
+    const admins = typeof getAdmins === 'function' ? getAdmins() : []
+    const combined = [...(members || []), ...(admins || [])]
+    const unique = new Map()
+    combined.forEach(member => {
+      const id = String(member?.id || '').trim()
+      if (!id) return
+      if (!unique.has(id)) unique.set(id, member)
+    })
+    return [...unique.values()]
+  }, [getAllMembers, getAdmins])
 
   const categoryKeysFromDb = useMemo(() => {
     const entries = Array.isArray(eventCategories) ? eventCategories : []
@@ -979,6 +1007,14 @@ function Calendar({ listOnly = false }) {
     return map
   }, [assignableMembers])
 
+  const memberIdNumberById = useMemo(() => {
+    const map = {}
+    assignableMembers.forEach(member => {
+      map[String(member.id)] = String(member?.idNumber || '').trim()
+    })
+    return map
+  }, [assignableMembers])
+
   const memberById = useMemo(() => {
     const map = {}
     assignableMembers.forEach(member => {
@@ -986,6 +1022,87 @@ function Calendar({ listOnly = false }) {
     })
     return map
   }, [assignableMembers])
+
+  const missingAssignedMemberIds = useMemo(() => {
+    const ids = new Set()
+    const items = Array.isArray(events) ? events : []
+    items.forEach(item => {
+      if (!Array.isArray(item?.assignedMemberIds)) return
+      item.assignedMemberIds.forEach(memberId => {
+        const id = String(memberId || '').trim()
+        if (!id) return
+        if (memberById[id]) return
+        if (involvedProfilesById[id]) return
+        ids.add(id)
+      })
+    })
+    return [...ids]
+  }, [events, memberById, involvedProfilesById])
+
+  useEffect(() => {
+    if (!supabaseEnabled) return undefined
+    if (missingAssignedMemberIds.length === 0) return undefined
+
+    let active = true
+
+    const load = async () => {
+      try {
+        const batch = missingAssignedMemberIds.slice(0, 200)
+        const rpcClient = typeof supabase?.schema === 'function' ? supabase.schema('public') : supabase
+        const { data, error } = await rpcClient.rpc('get_profile_summaries', { p_ids: batch })
+
+        if (!active) return
+        if (error) {
+          console.warn(
+            'Calendar: failed to load profile summaries. Apply the Supabase migration for get_profile_summaries and confirm it runs for authenticated users.',
+            error
+          )
+          return
+        }
+        const next = {}
+        ;(data || []).forEach(row => {
+          const id = String(row?.id || '').trim()
+          if (!id) return
+          next[id] = {
+            id,
+            name: row?.name || '',
+            idNumber: row?.id_number || '',
+            contactNumber: row?.contact_number || '',
+            bloodType: row?.blood_type || '',
+            committee: row?.committee || '',
+            memberSince: row?.member_since || '',
+            profileImage: resolveProfileImage(row?.profile_image),
+            status: row?.status || '',
+            accountStatus: row?.account_status || '',
+          }
+        })
+        if (Object.keys(next).length === 0) return
+        setInvolvedProfilesById(prev => ({ ...prev, ...next }))
+      } catch {
+        // Ignore (RLS/network) and keep fallbacks.
+      }
+    }
+
+    void load()
+
+    return () => {
+      active = false
+    }
+  }, [missingAssignedMemberIds, supabaseEnabled])
+
+  const formatMemberSince = (value) => {
+    if (!value) return ''
+    if (value instanceof Date && !Number.isNaN(value.getTime())) {
+      return value.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+    }
+
+    const raw = String(value).trim()
+    if (!raw) return ''
+
+    const parsed = new Date(raw)
+    if (Number.isNaN(parsed.getTime())) return raw
+    return parsed.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+  }
 
   const contributorMembers = useMemo(() => {
     const query = String(doneContributorSearch || '').trim().toLowerCase()
@@ -1347,6 +1464,9 @@ function Calendar({ listOnly = false }) {
     const involvedMemberNames = Array.isArray(formData.assignedMemberIds)
       ? formData.assignedMemberIds.map(memberId => memberNameById[memberId]).filter(Boolean)
       : []
+    const involvedMemberIdNumbers = Array.isArray(formData.assignedMemberIds)
+      ? formData.assignedMemberIds.map(memberId => memberIdNumberById[String(memberId)]).filter(Boolean)
+      : []
     const existingEvent = editingEventId ? events.find(item => item.id === editingEventId) : null
     const existingCategoryData = existingEvent?.categoryData && typeof existingEvent.categoryData === 'object'
       ? existingEvent.categoryData
@@ -1358,7 +1478,7 @@ function Calendar({ listOnly = false }) {
       address: formData.address.trim(),
       // Type is no longer collected in the create/update form; preserve existing value if present.
       branch: existingEvent?.branch || '',
-      membersInvolve: formData.category === 'notes' ? involvedMemberNames.join(', ') : '',
+      membersInvolve: (involvedMemberIdNumbers.length > 0 ? involvedMemberIdNumbers : involvedMemberNames).join(', '),
       assignedMemberIds: formData.assignedMemberIds,
       viewedBy: [],
       location: formData.location,
@@ -1660,7 +1780,9 @@ function Calendar({ listOnly = false }) {
   const markEventSeen = async (eventId) => {
     if (!user?.id) return
     if (supabaseEnabled) {
-      await supabase.from('event_views').insert({ event_id: eventId, user_id: user.id })
+      await supabase
+        .from('event_views')
+        .upsert({ event_id: eventId, user_id: user.id }, { onConflict: 'event_id,user_id', ignoreDuplicates: true })
     }
     setEvents(prev =>
       prev.map(event => {
@@ -1898,10 +2020,21 @@ function Calendar({ listOnly = false }) {
             <div className="space-y-3 max-h-[68vh] overflow-y-auto pr-1">
               {allFilteredItems.map(item => {
                 const isExpanded = expandedItemId === item.id
-                const involvedMemberNames = Array.isArray(item.assignedMemberIds)
-                  ? item.assignedMemberIds.map(memberId => memberNameById[memberId] || `Member ${memberId}`)
+                const storedMemberLabels = String(item.membersInvolve || '')
+                  .split(',')
+                  .map(value => value.trim())
+                  .filter(Boolean)
+                const involvedMembers = Array.isArray(item.assignedMemberIds)
+                  ? item.assignedMemberIds.map((memberId, index) => {
+                      const id = String(memberId)
+                      const member = memberById[id] || involvedProfilesById[id] || null
+                      const storedLabel = storedMemberLabels[index] || ''
+                      const label = String(member?.idNumber || '').trim() || member?.name || storedLabel || 'Unknown member'
+                      return { id, member, label }
+                    })
                   : []
-                const membersInvolveText = involvedMemberNames.length > 0 ? involvedMemberNames.join(', ') : (item.membersInvolve || '')
+                const membersInvolveText =
+                  involvedMembers.length > 0 ? involvedMembers.map(entry => entry.label).join(', ') : (item.membersInvolve || '')
                 return (
                   <div
                     key={item.id}
@@ -1981,19 +2114,34 @@ function Calendar({ listOnly = false }) {
                                 <span>{item.address}</span>
                               </div>
                             )}
-                            {membersInvolveText && (
+                            {involvedMembers.length === 0 && membersInvolveText ? (
                               <div className="flex items-start gap-2 text-gray-600">
                                 <Users size={14} className="mt-0.5" />
-                                <span>Members Involve: {membersInvolveText}</span>
+                                <span className="min-w-0 truncate">Members Involve: {membersInvolveText}</span>
                               </div>
-                            )}
+                            ) : null}
                             {Array.isArray(item.assignedMemberIds) && item.assignedMemberIds.length > 0 && (
                               <div className="flex flex-wrap gap-2">
-                                {item.assignedMemberIds.map(memberId => (
-                                  <span key={memberId} className="px-2 py-1 bg-red-50 border border-red-200 rounded-full text-xs text-red-700">
-                                    {memberNameById[memberId] || `Member ${memberId}`}
-                                  </span>
-                                ))}
+                                {involvedMembers.map(entry =>
+                                  entry.member ? (
+                                    <button
+                                      key={entry.id}
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        setSelectedMember(entry.member)
+                                      }}
+                                      className="px-2 py-1 bg-red-50 border border-red-200 rounded-full text-xs text-red-700 hover:bg-red-100 transition-colors"
+                                      title={entry.member.name || entry.label}
+                                    >
+                                      {entry.label}
+                                    </button>
+                                  ) : (
+                                    <span key={entry.id} className="px-2 py-1 bg-red-50 border border-red-200 rounded-full text-xs text-red-700">
+                                      {entry.label}
+                                    </span>
+                                  )
+                                )}
                               </div>
                             )}
                             <div className="pt-1">
@@ -2299,10 +2447,21 @@ function Calendar({ listOnly = false }) {
             <div className="space-y-3 max-h-[62vh] overflow-y-auto pr-1">
             {filteredItems.map(item => {
               const isExpanded = expandedItemId === item.id
-              const involvedMemberNames = Array.isArray(item.assignedMemberIds)
-                ? item.assignedMemberIds.map(memberId => memberNameById[memberId] || `Member ${memberId}`)
+              const storedMemberLabels = String(item.membersInvolve || '')
+                .split(',')
+                .map(value => value.trim())
+                .filter(Boolean)
+              const involvedMembers = Array.isArray(item.assignedMemberIds)
+                ? item.assignedMemberIds.map((memberId, index) => {
+                    const id = String(memberId)
+                    const member = memberById[id] || involvedProfilesById[id] || null
+                    const storedLabel = storedMemberLabels[index] || ''
+                    const label = String(member?.idNumber || '').trim() || member?.name || storedLabel || 'Unknown member'
+                    return { id, member, label }
+                  })
                 : []
-              const membersInvolveText = involvedMemberNames.length > 0 ? involvedMemberNames.join(', ') : (item.membersInvolve || '')
+              const membersInvolveText =
+                involvedMembers.length > 0 ? involvedMembers.map(entry => entry.label).join(', ') : (item.membersInvolve || '')
               return (
                   <div
                     key={item.id}
@@ -2372,19 +2531,34 @@ function Calendar({ listOnly = false }) {
                                 <span>{item.address}</span>
                               </div>
                             )}
-                            {membersInvolveText && (
+                            {involvedMembers.length === 0 && membersInvolveText ? (
                               <div className="flex items-start gap-2 text-gray-600">
                                 <Users size={14} className="mt-0.5" />
-                                <span>Members Involve: {membersInvolveText}</span>
+                                <span className="min-w-0 truncate">Members Involve: {membersInvolveText}</span>
                               </div>
-                            )}
+                            ) : null}
                             {Array.isArray(item.assignedMemberIds) && item.assignedMemberIds.length > 0 && (
                               <div className="flex flex-wrap gap-2">
-                                {item.assignedMemberIds.map(memberId => (
-                                  <span key={memberId} className="px-2 py-1 bg-red-50 border border-red-200 rounded-full text-xs text-red-700">
-                                    {memberNameById[memberId] || `Member ${memberId}`}
-                                  </span>
-                                ))}
+                                {involvedMembers.map(entry =>
+                                  entry.member ? (
+                                    <button
+                                      key={entry.id}
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        setSelectedMember(entry.member)
+                                      }}
+                                      className="px-2 py-1 bg-red-50 border border-red-200 rounded-full text-xs text-red-700 hover:bg-red-100 transition-colors"
+                                      title={entry.member.name || entry.label}
+                                    >
+                                      {entry.label}
+                                    </button>
+                                  ) : (
+                                    <span key={entry.id} className="px-2 py-1 bg-red-50 border border-red-200 rounded-full text-xs text-red-700">
+                                      {entry.label}
+                                    </span>
+                                  )
+                                )}
                               </div>
                             )}
                             <div className="pt-1">
@@ -2912,6 +3086,76 @@ function Calendar({ listOnly = false }) {
 	          </div>
 	        </div>
 	      )}
+
+      {selectedMember ? (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[70] p-4">
+          <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-gray-200 p-6">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold tracking-[0.2em] uppercase text-red-600">Member</p>
+                <h3 className="mt-2 text-xl font-bold text-gray-900 truncate">{selectedMember.name || '—'}</h3>
+                <p className="mt-1 text-sm text-gray-500 truncate">{selectedMember.idNumber || '—'}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedMember(null)}
+                className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+                aria-label="Close member"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="mt-4 flex justify-center">
+              <div className="h-24 w-24 overflow-hidden rounded-2xl border border-gray-200 bg-gray-50">
+                {selectedMember.profileImage ? (
+                  <img
+                    src={selectedMember.profileImage}
+                    alt={selectedMember.name || 'Member'}
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="h-full w-full flex items-center justify-center text-xs text-gray-400">No image</div>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-5 rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <div className="grid grid-cols-1 gap-3 text-sm">
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-gray-500">Contact</span>
+                  <span className="text-gray-900 tabular-nums">{selectedMember.contactNumber || '—'}</span>
+                </div>
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-gray-500">Blood type</span>
+                  <span className="text-gray-900">{selectedMember.bloodType || '—'}</span>
+                </div>
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-gray-500">Member since</span>
+                  <span className="text-gray-900">{formatMemberSince(selectedMember.memberSince) || '—'}</span>
+                </div>
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-gray-500">Committee</span>
+                  <span className="text-gray-900">{selectedMember.committee || '—'}</span>
+                </div>
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-gray-500">Status</span>
+                  <span className="text-gray-900">{selectedMember.status || selectedMember.accountStatus || '—'}</span>
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setSelectedMember(null)}
+              className="mt-5 w-full rounded-xl border border-gray-300 bg-white py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {pendingConfirmation && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4">

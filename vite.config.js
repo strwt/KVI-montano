@@ -6,6 +6,7 @@ import bootstrapHandler from './api/admin/bootstrap.js'
 import createUserHandler from './api/admin/create-user.js'
 import updateUserHandler from './api/admin/update-user.js'
 import deleteUsersHandler from './api/admin/delete-users.js'
+import uploadUserAvatarHandler from './api/admin/upload-user-avatar.js'
 import healthHandler from './api/health.js'
 import uploadAvatarHandler from './api/storage/upload-avatar.js'
 
@@ -45,6 +46,7 @@ const devApiPlugin = () => {
     ['/api/admin/create-user', createUserHandler],
     ['/api/admin/update-user', updateUserHandler],
     ['/api/admin/delete-users', deleteUsersHandler],
+    ['/api/admin/upload-user-avatar', uploadUserAvatarHandler],
     ['/api/storage/upload-avatar', uploadAvatarHandler],
   ])
 

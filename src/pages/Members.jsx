@@ -32,6 +32,12 @@ const ROLE_OPTIONS = [
 ]
 const BLOOD_TYPE_OPTIONS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
 
+const titleCaseFromKey = (key) =>
+  String(key || '')
+    .trim()
+    .replace(/_/g, ' ')
+    .replace(/\w\S*/g, word => word.charAt(0).toUpperCase() + word.slice(1))
+
 function Members() {
   const {
     user,
@@ -137,12 +143,6 @@ function Members() {
     return unique
   }, [committees])
 
-  const titleCaseFromKey = (key) =>
-    String(key || '')
-      .trim()
-      .replace(/_/g, ' ')
-      .replace(/\w\S*/g, word => word.charAt(0).toUpperCase() + word.slice(1))
-
   const eventCategoryOptions = useMemo(() => {
     const list = Array.isArray(eventCategories) ? eventCategories : []
     const normalized = list.map(name => String(name || '').trim()).filter(Boolean)
@@ -180,10 +180,7 @@ function Members() {
   const indexOfFirstMember = indexOfLastMember - membersPerPage
   const currentMembers = filteredMembers.slice(indexOfFirstMember, indexOfLastMember)
   const totalPages = Math.ceil(filteredMembers.length / membersPerPage)
-  const currentMemberIds = useMemo(
-    () => currentMembers.map(member => String(member?.id || '').trim()).filter(Boolean),
-    [currentMembers]
-  )
+  const currentMemberIds = currentMembers.map(member => String(member?.id || '').trim()).filter(Boolean)
   const selectedCount = selectedMemberIds.size
   const hasSelectedOnPage = currentMemberIds.some(id => selectedMemberIds.has(id))
   const allSelectedOnPage = currentMemberIds.length > 0 && currentMemberIds.every(id => selectedMemberIds.has(id))
@@ -254,17 +251,14 @@ function Members() {
     return map
   })()
 
-  const allUserIdSet = useMemo(() => {
-    const ids = [...admins, ...members].map(member => String(member?.id || '').trim()).filter(Boolean)
-    return new Set(ids)
-  }, [admins, members])
-
   useEffect(() => {
+    const ids = [...admins, ...members].map(member => String(member?.id || '').trim()).filter(Boolean)
+    const allUserIdSet = new Set(ids)
     setSelectedMemberIds(prev => {
       const next = new Set([...prev].filter(id => allUserIdSet.has(id)))
       return next.size === prev.size ? prev : next
     })
-  }, [allUserIdSet])
+  }, [admins, members])
 
   useEffect(() => {
     if (!selectAllRef.current) return
