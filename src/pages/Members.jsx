@@ -85,7 +85,6 @@ function Members() {
   const selectAllRef = useRef(null)
   const [newMemberImagePreviewUrl, setNewMemberImagePreviewUrl] = useState('')
   const [newMemberImageFile, setNewMemberImageFile] = useState(null)
-  const [showManagementPanel, setShowManagementPanel] = useState(false)
 
   useEffect(() => {
     if (user?.role !== 'admin') return
