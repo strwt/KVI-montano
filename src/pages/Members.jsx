@@ -72,6 +72,7 @@ function Members() {
   const [committeeToDelete, setCommitteeToDelete] = useState('')
   const [fallbackCommittee, setFallbackCommittee] = useState('')
   const [committeeError, setCommitteeError] = useState('')
+  const [showManagementPanel, setShowManagementPanel] = useState(true)
   const [eventCategoryName, setEventCategoryName] = useState('')
   const [eventCategoryActionBusy, setEventCategoryActionBusy] = useState(false)
   const [eventCategoryError, setEventCategoryError] = useState('')
@@ -90,7 +91,6 @@ function Members() {
   const selectAllRef = useRef(null)
   const [newMemberImagePreviewUrl, setNewMemberImagePreviewUrl] = useState('')
   const [newMemberImageFile, setNewMemberImageFile] = useState(null)
-  const [showManagementPanel, setShowManagementPanel] = useState(false)
 
   useEffect(() => {
     if (user?.role !== 'admin') return
