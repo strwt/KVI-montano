@@ -82,6 +82,23 @@ function AdminRoute({ children }) {
   return children
 }
 
+function MemberRoute({ children }) {
+  const { user, authResolved } = useAuth()
+
+  if (!authResolved && !user) return <AuthPendingState title="Checking member access..." />
+  if (user && !user.role) return <AuthPendingState title="Loading account access..." />
+
+  if (!user) {
+    return <Navigate to="/landing" replace />
+  }
+
+  if (user.role === 'admin') {
+    return <Navigate to="/attendance-management" replace />
+  }
+
+  return children
+}
+
 // Public Route - Redirects to dashboard if already logged in
 function PublicRoute({ children }) {
   const { user } = useAuth()
@@ -106,7 +123,7 @@ function AppRoutes() {
       <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route index element={<Dashboard />} />
         <Route path="calendar" element={<Calendar />} />
-        <Route path="attendance" element={<Attendance />} />
+        <Route path="attendance" element={<MemberRoute><Attendance /></MemberRoute>} />
         <Route path="attendance-management" element={<AdminRoute><AttendanceManagement /></AdminRoute>} />
         <Route path="events" element={<Calendar listOnly />} />
         <Route path="report" element={<AdminRoute><Report /></AdminRoute>} />

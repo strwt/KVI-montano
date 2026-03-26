@@ -162,7 +162,7 @@ const buildResponse = (input) => {
     return 'Toggle the theme using the sun/moon button in the sidebar footer.'
   }
   if (text.includes('attendance')) {
-    return 'Open Attendance to time in/out and view your stats. Admins can manage attendance in Attendance Management.'
+    return 'Members can open Attendance to time in/out and view stats. Admins manage attendance in Attendance Management.'
   }
   if (text.includes('event') || text.includes('calendar')) {
     return 'Open Calendar to create, edit, and review events. Use the Event List view for a list-only format.'
