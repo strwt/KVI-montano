@@ -53,7 +53,6 @@ function Attendance() {
   const [localLoginActivity, setLocalLoginActivity] = useState(getStoredLoginActivity)
   const [supabaseLoginActivity, setSupabaseLoginActivity] = useState([])
   const [events, setEvents] = useState([])
-  const [offlineMenuOpen, setOfflineMenuOpen] = useState(false)
 
   useEffect(() => {
     const refresh = () => setLocalLoginActivity(getStoredLoginActivity())
@@ -99,9 +98,8 @@ function Attendance() {
     const load = async () => {
       const { data } = await supabase
         .from('login_activity')
-        .select('date,is_present,present_at,status,time_in,time_out,time_out_reason')
+        .select('date,is_present,present_at,status,time_in,time_out')
         .eq('user_id', user.id)
-        .eq('is_present', true)
         .order('date', { ascending: true })
 
       if (!active) return
@@ -109,13 +107,12 @@ function Attendance() {
         ? data.map(row => ({
             date: row.date,
             userId: user.id,
-          isPresent: Boolean(row.is_present),
-          status: row.status || null,
-          presentAt: row.present_at || null,
-          timeIn: row.time_in || null,
-          timeOut: row.time_out || null,
-          timeOutReason: row.time_out_reason || '',
-        }))
+            isPresent: Boolean(row.is_present),
+            status: row.status === 'Halfday' ? 'Present' : (row.status || null),
+            presentAt: row.present_at || null,
+            timeIn: row.time_in || null,
+            timeOut: row.time_out || null,
+          }))
         : []
       setSupabaseLoginActivity(mapped)
     }
@@ -223,10 +220,11 @@ function Attendance() {
       return {
         dateKey,
         label: date.format('MMM D, YYYY'),
-        status: entry?.status || (entry?.isPresent ? 'Present' : 'Absent'),
+        status: entry?.status === 'Halfday'
+          ? 'Present'
+          : (entry?.status || (entry?.isPresent ? 'Present' : 'Absent')),
         presentAt: entry?.timeIn || entry?.presentAt || null,
         timeOut: entry?.timeOut || null,
-        timeOutReason: entry?.timeOutReason || '',
       }
     })
   }, [mergedLoginActivity, userId])
@@ -279,7 +277,6 @@ function Attendance() {
   const markOnline = async () => {
     if (!user?.id) return
     const nowIso = dayjs().toISOString()
-    const wasLunch = todayEntry?.timeOutReason === 'Lunch'
     const patch = {
       date: todayKey,
       userId: user.id,
@@ -287,8 +284,7 @@ function Attendance() {
       status: 'Present',
       presentAt: nowIso,
       timeIn: todayEntry?.timeIn || nowIso,
-      timeOut: wasLunch ? null : (todayEntry?.timeOut || null),
-      timeOutReason: wasLunch ? '' : (todayEntry?.timeOutReason || ''),
+      timeOut: todayEntry?.timeOut || null,
     }
 
     updateLocalEntry(patch)
@@ -302,8 +298,8 @@ function Attendance() {
       present_at: patch.timeIn,
       status: 'Present',
       time_in: patch.timeIn,
-      time_out: wasLunch ? null : (todayEntry?.timeOut || null),
-      time_out_reason: wasLunch ? null : (todayEntry?.timeOutReason || null),
+      time_out: todayEntry?.timeOut || null,
+      time_out_reason: null,
     }
 
     const { error } = await supabase
@@ -317,20 +313,18 @@ function Attendance() {
     }
   }
 
-  const markOffline = async (reason) => {
+  const markOffline = async () => {
     if (!user?.id) return
     const nowIso = dayjs().toISOString()
-    const nextStatus = reason === 'Halfday' ? 'Halfday' : 'Present'
     const baseTimeIn = todayEntry?.timeIn || todayEntry?.presentAt || nowIso
     const patch = {
       date: todayKey,
       userId: user.id,
       isPresent: false,
-      status: nextStatus,
+      status: 'Present',
       presentAt: baseTimeIn,
       timeIn: baseTimeIn,
       timeOut: nowIso,
-      timeOutReason: reason,
     }
 
     updateLocalEntry(patch)
@@ -342,10 +336,10 @@ function Attendance() {
       date: todayKey,
       is_present: false,
       present_at: baseTimeIn,
-      status: nextStatus,
+      status: 'Present',
       time_in: baseTimeIn,
       time_out: nowIso,
-      time_out_reason: reason,
+      time_out_reason: null,
     }
 
     const { error } = await supabase
@@ -380,52 +374,16 @@ function Attendance() {
               className="inline-flex items-center gap-2 rounded-xl border border-emerald-600 bg-emerald-600 px-5 py-2 text-[14px] font-semibold text-white transition-all duration-200 hover:scale-[1.02] hover:bg-emerald-700"
             >
               <CalendarCheck size={16} />
-              I'm Online
+              Time In
             </button>
           ) : (
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setOfflineMenuOpen(prev => !prev)}
-                className="inline-flex items-center gap-2 rounded-xl border border-slate-500 bg-slate-700 px-4 py-2 text-[13px] font-semibold text-white transition-all duration-200 hover:bg-slate-800"
-              >
-                I'm Offline
-              </button>
-              {offlineMenuOpen && (
-                <div className="absolute right-0 mt-2 w-44 rounded-xl border border-neutral-200 bg-white p-2 shadow-lg">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setOfflineMenuOpen(false)
-                      markOffline('End of Work')
-                    }}
-                    className="w-full rounded-lg px-3 py-2 text-left text-[13px] font-semibold text-slate-700 hover:bg-slate-100"
-                  >
-                    End of Work
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setOfflineMenuOpen(false)
-                      markOffline('Lunch')
-                    }}
-                    className="w-full rounded-lg px-3 py-2 text-left text-[13px] font-semibold text-amber-600 hover:bg-amber-50"
-                  >
-                    Lunch
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setOfflineMenuOpen(false)
-                      markOffline('Halfday')
-                    }}
-                    className="w-full rounded-lg px-3 py-2 text-left text-[13px] font-semibold text-purple-700 hover:bg-purple-50"
-                  >
-                    Halfday
-                  </button>
-                </div>
-              )}
-            </div>
+            <button
+              type="button"
+              onClick={markOffline}
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-500 bg-slate-700 px-4 py-2 text-[13px] font-semibold text-white transition-all duration-200 hover:bg-slate-800"
+            >
+              Time Out
+            </button>
           )}
         </div>
       </section>
@@ -476,15 +434,11 @@ function Attendance() {
 
                 const tone = cell.status === 'Present'
                   ? 'border-emerald-200 bg-emerald-50/70 dark:border-emerald-800/50 dark:bg-emerald-950/30'
-                  : cell.status === 'Halfday'
-                    ? 'border-purple-200 bg-purple-50/70 dark:border-purple-800/50 dark:bg-purple-950/30'
-                    : 'border-neutral-200 bg-neutral-50/70 dark:border-zinc-700 dark:bg-zinc-950/20'
+                  : 'border-neutral-200 bg-neutral-50/70 dark:border-zinc-700 dark:bg-zinc-950/20'
 
                 const badgeTone = cell.status === 'Present'
                   ? 'border-emerald-200 bg-emerald-100 text-emerald-700 dark:border-emerald-800/50 dark:bg-emerald-900/40 dark:text-emerald-200'
-                  : cell.status === 'Halfday'
-                    ? 'border-purple-200 bg-purple-100 text-purple-700 dark:border-purple-800/50 dark:bg-purple-900/40 dark:text-purple-200'
-                    : 'border-neutral-200 bg-neutral-100 text-neutral-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200'
+                  : 'border-neutral-200 bg-neutral-100 text-neutral-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200'
 
                 const titleParts = [`${cell.label}: ${cell.status}`]
                 if (timeInLabel) titleParts.push(`In: ${timeInLabel}`)
