@@ -10,7 +10,7 @@ const logSupabase = (...args) => {
   console.info('[supabase]', ...args)
 }
 
-const DEFAULT_PROFILE_IMAGE = '/image-removebg-preview.png'
+const DEFAULT_PROFILE_IMAGE = '/kvi.png'
 const SESSION_EXPIRED_MESSAGE = 'Session expired. Please log in again.'
 const LOADING_FALLBACK_MS = 3_000
 const PROFILE_CACHE_TTL_MS = 30_000

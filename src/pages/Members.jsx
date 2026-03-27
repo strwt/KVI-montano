@@ -1537,7 +1537,7 @@ function Members() {
               )}
               <div className={isAdmin ? 'cursor-pointer' : ''} onClick={() => isAdmin && handleViewMember(member.id)}>
                 <div className="flex items-center gap-4 mb-4">
-                  {member.profileImage && member.profileImage !== '/image-removebg-preview.png' ? (
+                  {member.profileImage && member.profileImage !== '/kvi.png' ? (
                     <img 
                       src={member.profileImage} 
                       alt={`${member.name}'s profile`} 

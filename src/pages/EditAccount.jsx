@@ -166,7 +166,7 @@ function EditAccount() {
                   <div className="rounded-2xl border border-red-100 bg-white p-4 shadow-md shadow-red-900/10">
                     <div className="mx-auto w-44 h-44 rounded-2xl overflow-hidden border-2 border-zinc-200 bg-zinc-100 flex items-center justify-center">
                       <img
-                        src={previewUrl || form.profileImage || '/image-removebg-preview.png'}
+                        src={previewUrl || form.profileImage || '/kvi.png'}
                         alt="Avatar Preview"
                         className="w-full h-full object-cover"
                       />
