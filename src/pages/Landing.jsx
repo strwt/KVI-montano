@@ -399,11 +399,17 @@ function Landing() {
   const navigate = useNavigate()
   const { user, getAllMembers, ensureAdminDataLoaded, committees } = useAuth()
   const pageRef = useRef(null)
+  const committeeScrollRef = useRef(null)
+  const committeeDragStartXRef = useRef(0)
+  const committeeDragStartScrollLeftRef = useRef(0)
+  const committeeDragMovedRef = useRef(false)
   const [kusganVolunteerPeople, setKusganVolunteerPeople] = useState([])
   const [landingCommittees, setLandingCommittees] = useState([])
   const [structureKey, setStructureKey] = useState('board')
   const activeStructure = ORGANIZATION_VIEWS.find(view => view.key === structureKey) || ORGANIZATION_VIEWS[0]
   const [selectedPerson, setSelectedPerson] = useState(null)
+  const [publicCommittees, setPublicCommittees] = useState([])
+  const [committeeDragging, setCommitteeDragging] = useState(false)
 
   function resolveProfileImage(value) {
     const raw = String(value || '').trim()
@@ -503,6 +509,47 @@ function Landing() {
     void ensureAdminDataLoaded()
   }, [ensureAdminDataLoaded, user?.role, user?.id])
 
+  useEffect(() => {
+    if (!isSupabaseEnabled()) return undefined
+
+    let active = true
+
+    const load = async () => {
+      try {
+        const queryClient = typeof supabase?.schema === 'function' ? supabase.schema('public') : supabase
+        const pageSize = 1000
+        const names = []
+        for (let offset = 0; offset < 10_000; offset += pageSize) {
+          const { data, error } = await queryClient
+            .from('committees')
+            .select('name')
+            .order('name', { ascending: true })
+            .range(offset, offset + pageSize - 1)
+
+          if (!active) return
+          if (error) {
+            console.warn('Landing: failed to load committees from Supabase.', error)
+            return
+          }
+
+          const page = Array.isArray(data) ? data.map(row => row?.name).filter(Boolean) : []
+          names.push(...page)
+          if (page.length < pageSize) break
+        }
+
+        setPublicCommittees(names)
+      } catch {
+        // ignore
+      }
+    }
+
+    void load()
+
+    return () => {
+      active = false
+    }
+  }, [committees])
+
   const allowedVolunteerSet = useMemo(
     () => new Set(KUSGAN_VOLUNTEERS.map(name => String(name || '').trim().toLowerCase()).filter(Boolean)),
     []
@@ -515,6 +562,7 @@ function Landing() {
       .map(member => ({
         name: String(member?.name || '').trim(),
         image: resolveProfileImage(String(member?.profileImage || '').trim()),
+        committee: String(member?.committee || '').trim(),
       }))
       .filter(person => person.name)
     const unique = new Map()
@@ -634,19 +682,68 @@ function Landing() {
   }, [contextMemberPeople, kusganVolunteerPeople])
 
   const committeeOptions = useMemo(() => {
+<<<<<<< HEAD
+    const list =
+      Array.isArray(committees) && committees.length > 0
+        ? committees
+        : Array.isArray(publicCommittees)
+          ? publicCommittees
+          : []
+=======
     const list = Array.isArray(committees) && committees.length > 0
       ? committees
       : landingCommittees
+>>>>>>> 1dd81c421d3f0a2382983fa209bea8d8b4701822
     const normalized = list.map(name => String(name || '').trim()).filter(Boolean)
     const unique = [...new Set(normalized)]
     unique.sort((a, b) => a.localeCompare(b))
     return unique
+<<<<<<< HEAD
+  }, [committees, publicCommittees])
+
+  const committeeGroups = useMemo(() => {
+    const trimmedOptions = committeeOptions.map(name => String(name || '').trim()).filter(Boolean)
+
+    if (trimmedOptions.length === 0) {
+      const grouped = new Map()
+      const unassigned = []
+
+      displayVolunteerPeople.forEach(person => {
+        const committee = String(person?.committee || '').trim()
+        if (!committee) {
+          unassigned.push(person)
+          return
+        }
+        if (!grouped.has(committee)) grouped.set(committee, { committee, members: [] })
+        grouped.get(committee).members.push(person)
+      })
+
+      const groups = [...grouped.values()].map(group => ({
+        ...group,
+        members: [...group.members].sort((a, b) => a.name.localeCompare(b.name)),
+      }))
+      groups.sort((a, b) => a.committee.localeCompare(b.committee))
+
+      if (unassigned.length > 0) {
+        groups.push({
+          committee: 'Unassigned',
+          members: [...unassigned].sort((a, b) => a.name.localeCompare(b.name)),
+        })
+      }
+
+      return groups
+    }
+
+    const grouped = new Map(trimmedOptions.map(name => [name, { committee: name, members: [] }]))
+    const unassigned = []
+=======
   }, [committees, landingCommittees])
 
   const committeeGroups = useMemo(() => {
     if (committeeOptions.length === 0) {
       const grouped = new Map()
       const unassigned = []
+>>>>>>> 1dd81c421d3f0a2382983fa209bea8d8b4701822
 
       displayVolunteerPeople.forEach(person => {
         const committee = String(person?.committee || '').trim()
@@ -691,10 +788,19 @@ function Landing() {
     const unassigned = []
     displayVolunteerPeople.forEach(person => {
       const committee = String(person?.committee || '').trim()
-      if (!committee) {
-        unassigned.push(person)
+      if (committee && grouped.has(committee)) {
+        grouped.get(committee).members.push(person)
         return
       }
+<<<<<<< HEAD
+      unassigned.push(person)
+    })
+
+    const groups = trimmedOptions.map(name => ({
+      committee: name,
+      members: [...(grouped.get(name)?.members || [])].sort((a, b) => a.name.localeCompare(b.name)),
+    }))
+=======
       const key = committee.toLowerCase()
       if (groups.has(key)) {
         groups.get(key).members.push(person)
@@ -708,6 +814,7 @@ function Landing() {
       members: [...group.members].sort((a, b) => a.name.localeCompare(b.name)),
     }))
     sortedGroups.sort((a, b) => a.committee.localeCompare(b.committee))
+>>>>>>> 1dd81c421d3f0a2382983fa209bea8d8b4701822
 
     if (unassigned.length > 0) {
       sortedGroups.push({
@@ -718,6 +825,47 @@ function Landing() {
 
     return sortedGroups
   }, [committeeOptions, displayVolunteerPeople])
+
+  const onCommitteePointerDown = (event) => {
+    const scroller = committeeScrollRef.current
+    if (!scroller) return
+    if (event.pointerType && event.pointerType !== 'mouse') return
+    if (event.button !== undefined && event.button !== 0) return
+
+    committeeDragMovedRef.current = false
+    setCommitteeDragging(true)
+    committeeDragStartXRef.current = event.clientX
+    committeeDragStartScrollLeftRef.current = scroller.scrollLeft
+
+    try {
+      scroller.setPointerCapture?.(event.pointerId)
+    } catch {
+      // ignore
+    }
+  }
+
+  const onCommitteePointerMove = (event) => {
+    const scroller = committeeScrollRef.current
+    if (!scroller) return
+    if (!committeeDragging) return
+    if (event.pointerType && event.pointerType !== 'mouse') return
+
+    const deltaX = event.clientX - committeeDragStartXRef.current
+    if (Math.abs(deltaX) > 5) committeeDragMovedRef.current = true
+    scroller.scrollLeft = committeeDragStartScrollLeftRef.current - deltaX
+  }
+
+  const endCommitteeDrag = (event) => {
+    const scroller = committeeScrollRef.current
+    if (scroller) {
+      try {
+        scroller.releasePointerCapture?.(event.pointerId)
+      } catch {
+        // ignore
+      }
+    }
+    setCommitteeDragging(false)
+  }
 
   return (
     <div ref={pageRef} className="min-h-screen text-white overflow-x-hidden" style={{ background: '#080808' }}>
@@ -930,7 +1078,7 @@ function Landing() {
       </div>
 
       {/* ── SERVICES ── */}
-      <section id="services" data-reveal className="reveal-on-scroll relative py-20 sm:py-24">
+      <section id="services" data-reveal className="reveal-on-scroll relative pt-20 pb-28 sm:pt-24 sm:pb-36">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <SectionHeader
             title="Our Services"
@@ -1022,7 +1170,7 @@ function Landing() {
 
           <div className="flex flex-col items-center">
             {activeStructure.key === 'kusgan' ? (
-              <div className="w-full max-w-6xl space-y-6">
+              <div className="w-full max-w-none space-y-6">
                 <div className="w-full flex items-center gap-3 mb-2">
                   <div className="flex-1 h-px" style={{ background: 'linear-gradient(to right, transparent, rgba(220,38,38,0.25))' }} />
                   <span
@@ -1035,8 +1183,28 @@ function Landing() {
                 </div>
 
                 <div
-                  className="flex gap-6 overflow-x-auto pb-2 justify-center landing-scrollbar"
-                  style={{ scrollbarGutter: 'stable' }}
+                  className="flex gap-6 overflow-x-auto pb-2 landing-scrollbar"
+                  style={{
+                    scrollbarGutter: 'stable',
+                    cursor: committeeDragging ? 'grabbing' : 'grab',
+                    userSelect: committeeDragging ? 'none' : 'auto',
+                    touchAction: 'pan-y',
+                    paddingInline: '16px',
+                    scrollPaddingInline: '16px',
+                  }}
+                  ref={committeeScrollRef}
+                  onPointerDown={onCommitteePointerDown}
+                  onPointerMove={onCommitteePointerMove}
+                  onPointerUp={endCommitteeDrag}
+                  onPointerCancel={endCommitteeDrag}
+                  onPointerLeave={committeeDragging ? endCommitteeDrag : undefined}
+                  onClickCapture={(event) => {
+                    if (committeeDragMovedRef.current) {
+                      event.preventDefault()
+                      event.stopPropagation()
+                      committeeDragMovedRef.current = false
+                    }
+                  }}
                 >
                   {committeeGroups.length === 0 ? (
                     <div

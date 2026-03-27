@@ -41,7 +41,7 @@ const CATEGORY_COLORS = {
   medical: '#ec4899',
 }
 
-const REPORT_COLUMNS = [
+const BASE_REPORT_COLUMNS = [
   { key: 'title', label: 'Event Title' },
   { key: 'content', label: 'Content' },
   { key: 'category', label: 'Category' },
@@ -49,27 +49,31 @@ const REPORT_COLUMNS = [
   { key: 'membersInvolve', label: 'Members Involve' },
   { key: 'dateTime', label: 'Date and Time' },
   { key: 'address', label: 'Address' },
-  { key: 'partners', label: 'Partners' },
-  { key: 'tuli_children_count', label: 'Tuli Children Count' },
-  { key: 'tuli_residing_doctors', label: 'Tuli Residing Doctors' },
-  { key: 'blood_bags_count', label: 'Blood Bags Count' },
-  { key: 'blood_successful_donors', label: 'Successful Donors' },
-  { key: 'blood_token', label: 'Blood Token' },
-  { key: 'donation_request', label: 'Donation Request' },
-  { key: 'env_trees_planted', label: 'Trees Planted' },
-  { key: 'relief_families_count', label: 'Relief Families Count' },
-  { key: 'relief_items', label: 'Relief Items' },
-  { key: 'fire_alarm_status', label: 'Fire Alarm Status' },
-  { key: 'fire_affected_families', label: 'Affected Families' },
-  { key: 'fire_estimated_cost', label: 'Estimated Cost' },
-  { key: 'fire_liters', label: 'Fire Liters' },
-  { key: 'water_liters', label: 'Water Liters' },
-  { key: 'water_households', label: 'Water Households' },
-  { key: 'water_employees', label: 'Water Employees' },
-  { key: 'water_engine', label: 'Water Engine' },
-  { key: 'medicalEquipmentUsed', label: 'Medical Equipment Used' },
-  { key: 'expenses', label: 'Expenses' },
 ]
+
+const FIELD_LABELS = {
+  partners: 'Partners',
+  tuli_children_count: 'Tuli Children Count',
+  tuli_residing_doctors: 'Tuli Residing Doctors',
+  blood_bags_count: 'Blood Bags Count',
+  blood_successful_donors: 'Successful Donors',
+  blood_token: 'Blood Token',
+  donation_request: 'Donation Request',
+  env_trees_planted: 'Trees Planted',
+  relief_families_count: 'Relief Families Count',
+  relief_items: 'Relief Items',
+  fire_alarm_status: 'Fire Alarm Status',
+  fire_affected_families: 'Affected Families',
+  fire_estimated_cost: 'Estimated Cost',
+  fire_liters: 'Fire Liters',
+  water_liters: 'Water Liters',
+  water_households: 'Water Households',
+  water_employees: 'Water Employees',
+  water_engine: 'Water Engine',
+  medicalEquipmentUsed: 'Medical Equipment Used',
+  medicalEquipmentsUsed: 'Medical Equipment Used',
+  expenses: 'Expenses',
+}
 
 const CURRENCY = new Intl.NumberFormat('en-US', {
   style: 'currency',
@@ -98,6 +102,8 @@ const titleCaseFromKey = key =>
     .trim()
     .replace(/_/g, ' ')
     .replace(/\w\S*/g, word => word.charAt(0).toUpperCase() + word.slice(1))
+
+const getFieldLabel = (key) => FIELD_LABELS[key] || titleCaseFromKey(key)
 
 const hashColor = key => {
   const input = String(key || '')
@@ -402,37 +408,47 @@ function Report() {
 
   const chartCategoryKeys = availableCategoryKeys
 
+  const dynamicFieldKeys = useMemo(() => {
+    const keys = new Set()
+    filteredEvents.forEach(event => {
+      const data = event?.categoryData && typeof event.categoryData === 'object' ? event.categoryData : null
+      if (!data) return
+      Object.keys(data).forEach(key => {
+        const normalized = String(key || '').trim()
+        if (!normalized) return
+        keys.add(normalized)
+      })
+    })
+
+    const list = [...keys]
+    list.sort((a, b) => getFieldLabel(a).localeCompare(getFieldLabel(b)))
+    return list
+  }, [filteredEvents])
+
+  const reportColumns = useMemo(() => {
+    const dynamic = dynamicFieldKeys.map(key => ({ key, label: getFieldLabel(key) }))
+    return [...BASE_REPORT_COLUMNS, ...dynamic]
+  }, [dynamicFieldKeys])
+
   const reportRows = useMemo(() => {
-    return filteredEvents.map(event => ({
-      title: event.title || '',
-      content: event.content || '',
-      category: categoryLabelByKey[event._category] || titleCaseFromKey(event._category) || 'Uncategorized',
-      branch: event.branch || '',
-      membersInvolve: event.membersInvolve || '',
-      dateTime: event._date.format('YYYY-MM-DD HH:mm'),
-      address: event.address || '',
-      partners: getFieldValue(event, 'partners'),
-      tuli_children_count: getFieldValue(event, 'tuli_children_count'),
-      tuli_residing_doctors: getFieldValue(event, 'tuli_residing_doctors'),
-      blood_bags_count: getFieldValue(event, 'blood_bags_count'),
-      blood_successful_donors: getFieldValue(event, 'blood_successful_donors'),
-      blood_token: getFieldValue(event, 'blood_token'),
-      donation_request: getFieldValue(event, 'donation_request'),
-      env_trees_planted: getFieldValue(event, 'env_trees_planted'),
-      relief_families_count: getFieldValue(event, 'relief_families_count'),
-      relief_items: getFieldValue(event, 'relief_items'),
-      fire_alarm_status: getFieldValue(event, 'fire_alarm_status'),
-      fire_affected_families: getFieldValue(event, 'fire_affected_families'),
-      fire_estimated_cost: getFieldValue(event, 'fire_estimated_cost'),
-      fire_liters: getFieldValue(event, 'fire_liters'),
-      water_liters: getFieldValue(event, 'water_liters'),
-      water_households: getFieldValue(event, 'water_households'),
-      water_employees: getFieldValue(event, 'water_employees'),
-      water_engine: getFieldValue(event, 'water_engine'),
-      medicalEquipmentUsed: getFieldValue(event, 'medicalEquipmentUsed', ['medicalEquipmentsUsed']),
-      expenses: getFieldValue(event, 'expenses', ['expenses']),
-    }))
-  }, [filteredEvents, categoryLabelByKey])
+    return filteredEvents.map(event => {
+      const row = {
+        title: event.title || '',
+        content: event.content || '',
+        category: categoryLabelByKey[event._category] || titleCaseFromKey(event._category) || 'Uncategorized',
+        branch: event.branch || '',
+        membersInvolve: event.membersInvolve || '',
+        dateTime: event._date.format('YYYY-MM-DD HH:mm'),
+        address: event.address || '',
+      }
+
+      dynamicFieldKeys.forEach(key => {
+        row[key] = getFieldValue(event, key)
+      })
+
+      return row
+    })
+  }, [filteredEvents, categoryLabelByKey, dynamicFieldKeys])
 
   const totalEvents = chartCategoryKeys.reduce((sum, key) => sum + (eventCountByCategory[key] || 0), 0)
   const maxBarValue = useMemo(() => {
@@ -496,9 +512,9 @@ function Report() {
     lines.push('Summary Statistics')
     summaryLines.forEach(line => lines.push(escapeCsv(line)))
     lines.push('')
-    lines.push(REPORT_COLUMNS.map(col => escapeCsv(col.label)).join(','))
+    lines.push(reportColumns.map(col => escapeCsv(col.label)).join(','))
     reportRows.forEach(row => {
-      lines.push(REPORT_COLUMNS.map(col => escapeCsv(row[col.key])).join(','))
+      lines.push(reportColumns.map(col => escapeCsv(row[col.key])).join(','))
     })
 
     const csv = lines.join('\n')
@@ -508,11 +524,11 @@ function Report() {
   const downloadDoc = async () => {
     const filename = `kusgan_report_${dayjs().format('YYYYMMDD_HHmmss')}.doc`
     const summaryHtml = summaryLines.map(line => `<li>${line}</li>`).join('')
-    const headerHtml = REPORT_COLUMNS.map(col => `<th style="border:1px solid #ddd;padding:8px;background:#f5f5f5;">${col.label}</th>`).join('')
+    const headerHtml = reportColumns.map(col => `<th style="border:1px solid #ddd;padding:8px;background:#f5f5f5;">${col.label}</th>`).join('')
     const rowsHtml = reportRows
       .map(
         row =>
-          `<tr>${REPORT_COLUMNS.map(col => `<td style="border:1px solid #ddd;padding:8px;vertical-align:top;">${String(row[col.key] ?? '')}</td>`).join('')}</tr>`
+          `<tr>${reportColumns.map(col => `<td style="border:1px solid #ddd;padding:8px;vertical-align:top;">${String(row[col.key] ?? '')}</td>`).join('')}</tr>`
       )
       .join('')
 
@@ -586,20 +602,17 @@ function Report() {
     })
     y += 22
 
+    const detailFieldColumns = reportColumns.filter(col => !BASE_REPORT_COLUMNS.some(base => base.key === col.key))
+
     reportRows.forEach(row => {
-      const catFields = [
-        row.seedlingsUsed ? `Seedlings:${row.seedlingsUsed}` : '',
-        row.foodPacks ? `FoodPacks:${row.foodPacks}` : '',
-        row.familiesAccommodated ? `Families:${row.familiesAccommodated}` : '',
-        row.gallons ? `Gallons:${row.gallons}` : '',
-        row.tank ? `Tank:${row.tank}` : '',
-        row.cubicWater ? `Cubic:${row.cubicWater}` : '',
-        row.respondedFireAccident ? `Fire:${row.respondedFireAccident}` : '',
-        row.trainings ? `Trainings:${row.trainings}` : '',
-        row.membersInvolve ? `Members:${row.membersInvolve}` : '',
-        row.medicalEquipmentUsed ? `Medical:${row.medicalEquipmentUsed}` : '',
-        row.expenses ? `Expenses:${row.expenses}` : '',
-      ]
+      const catFields = detailFieldColumns
+        .map(col => {
+          const value = row[col.key]
+          if (value === undefined || value === null) return ''
+          const raw = String(value).trim()
+          if (!raw) return ''
+          return `${col.label}:${raw}`
+        })
         .filter(Boolean)
         .join(' | ')
 
