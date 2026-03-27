@@ -915,6 +915,24 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     if (!supabaseEnabled) return undefined
 
+    const realtimeEnabled = String(import.meta.env.VITE_SUPABASE_ENABLE_REALTIME || '').toLowerCase() !== 'false'
+    if (!realtimeEnabled) {
+      const intervalId = window.setInterval(() => {
+        void reloadCommittees()
+      }, 15000)
+      return () => window.clearInterval(intervalId)
+    }
+
+    let fallbackIntervalId
+    let disposed = false
+
+    const startFallbackPolling = () => {
+      if (disposed || fallbackIntervalId) return
+      fallbackIntervalId = window.setInterval(() => {
+        void reloadCommittees()
+      }, 15000)
+    }
+
     const channel = supabase
       .channel('kusgan-committees')
       .on(
@@ -924,9 +942,22 @@ export function AuthProvider({ children }) {
           void reloadCommittees()
         }
       )
-      .subscribe()
+      .subscribe(status => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          startFallbackPolling()
+          supabase.removeChannel(channel)
+        }
+      })
+
+    const timeoutId = window.setTimeout(() => {
+      startFallbackPolling()
+      supabase.removeChannel(channel)
+    }, 8000)
 
     return () => {
+      disposed = true
+      window.clearTimeout(timeoutId)
+      if (fallbackIntervalId) window.clearInterval(fallbackIntervalId)
       supabase.removeChannel(channel)
     }
   }, [supabaseEnabled, reloadCommittees])
