@@ -25,6 +25,11 @@ function Login() {
   useEffect(() => {
     if (!user) return
     // If a user session is already present, go straight to the app.
+    try {
+      window.sessionStorage.setItem('kusgan:skip_last_route_restore', '1')
+    } catch {
+      // ignore
+    }
     navigate('/', { replace: true })
   }, [navigate, user])
 
@@ -65,6 +70,11 @@ function Login() {
 
       if (result.success) {
         setInfo('Signed in. Redirecting...')
+        try {
+          window.sessionStorage.setItem('kusgan:skip_last_route_restore', '1')
+        } catch {
+          // ignore
+        }
         navigate('/', { replace: true })
       } else {
         setError(result.message || 'Login failed.')

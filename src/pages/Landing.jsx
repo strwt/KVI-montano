@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { KUSGAN_VOLUNTEERS } from '../data/kusganVolunteers'
 import { supabase } from '../lib/supabaseClient'
@@ -404,7 +404,6 @@ function Landing() {
   const committeeDragStartScrollLeftRef = useRef(0)
   const committeeDragMovedRef = useRef(false)
   const [kusganVolunteerPeople, setKusganVolunteerPeople] = useState([])
-  const [landingCommittees, setLandingCommittees] = useState([])
   const [structureKey, setStructureKey] = useState('board')
   const activeStructure = ORGANIZATION_VIEWS.find(view => view.key === structureKey) || ORGANIZATION_VIEWS[0]
   const [selectedPerson, setSelectedPerson] = useState(null)
@@ -439,34 +438,6 @@ function Landing() {
   }
 
   const coerceString = (value) => String(value ?? '').trim()
-
-  const loadCommittees = useCallback(async () => {
-    if (Array.isArray(committees) && committees.length > 0) {
-      setLandingCommittees(committees)
-      return
-    }
-
-    if (!isSupabaseEnabled()) {
-      setLandingCommittees([])
-      return
-    }
-
-    try {
-      const { data, error } = await supabase.from('committees').select('name').order('name', { ascending: true })
-      if (error) {
-        console.warn('Failed to load committees for landing page.', error)
-        setLandingCommittees([])
-        return
-      }
-      const names = Array.isArray(data)
-        ? data.map(row => String(row?.name || '').trim()).filter(Boolean)
-        : []
-      setLandingCommittees(names)
-    } catch (err) {
-      console.warn('Failed to load committees for landing page.', err)
-      setLandingCommittees([])
-    }
-  }, [committees])
 
   const openPerson = (person) => {
     if (!person?.name) return
@@ -629,50 +600,6 @@ function Landing() {
     }
   }, [allowedVolunteerSet, contextMemberPeople, user?.role])
 
-  useEffect(() => {
-    void loadCommittees()
-  }, [loadCommittees])
-
-  useEffect(() => {
-    if (!isSupabaseEnabled()) return undefined
-
-    const channel = supabase
-      .channel('landing-committees')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'committees' },
-        () => {
-          void loadCommittees()
-        }
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [loadCommittees])
-
-  useEffect(() => {
-    if (!isSupabaseEnabled()) return undefined
-
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') {
-        void loadCommittees()
-      }
-    }
-
-    const intervalId = window.setInterval(() => {
-      void loadCommittees()
-    }, 15000)
-
-    document.addEventListener('visibilitychange', onVisible)
-
-    return () => {
-      window.clearInterval(intervalId)
-      document.removeEventListener('visibilitychange', onVisible)
-    }
-  }, [loadCommittees])
-
   const displayVolunteerPeople = useMemo(() => {
     if (contextMemberPeople.length > 0) return contextMemberPeople
     if (kusganVolunteerPeople.length > 0) return kusganVolunteerPeople
@@ -682,139 +609,70 @@ function Landing() {
   }, [contextMemberPeople, kusganVolunteerPeople])
 
   const committeeOptions = useMemo(() => {
-<<<<<<< HEAD
     const list =
       Array.isArray(committees) && committees.length > 0
         ? committees
         : Array.isArray(publicCommittees)
           ? publicCommittees
           : []
-=======
-    const list = Array.isArray(committees) && committees.length > 0
-      ? committees
-      : landingCommittees
->>>>>>> 1dd81c421d3f0a2382983fa209bea8d8b4701822
     const normalized = list.map(name => String(name || '').trim()).filter(Boolean)
     const unique = [...new Set(normalized)]
     unique.sort((a, b) => a.localeCompare(b))
     return unique
-<<<<<<< HEAD
   }, [committees, publicCommittees])
 
   const committeeGroups = useMemo(() => {
-    const trimmedOptions = committeeOptions.map(name => String(name || '').trim()).filter(Boolean)
-
-    if (trimmedOptions.length === 0) {
-      const grouped = new Map()
-      const unassigned = []
-
-      displayVolunteerPeople.forEach(person => {
-        const committee = String(person?.committee || '').trim()
-        if (!committee) {
-          unassigned.push(person)
-          return
-        }
-        if (!grouped.has(committee)) grouped.set(committee, { committee, members: [] })
-        grouped.get(committee).members.push(person)
-      })
-
-      const groups = [...grouped.values()].map(group => ({
-        ...group,
-        members: [...group.members].sort((a, b) => a.name.localeCompare(b.name)),
-      }))
-      groups.sort((a, b) => a.committee.localeCompare(b.committee))
-
-      if (unassigned.length > 0) {
-        groups.push({
-          committee: 'Unassigned',
-          members: [...unassigned].sort((a, b) => a.name.localeCompare(b.name)),
-        })
-      }
-
-      return groups
-    }
-
-    const grouped = new Map(trimmedOptions.map(name => [name, { committee: name, members: [] }]))
-    const unassigned = []
-=======
-  }, [committees, landingCommittees])
-
-  const committeeGroups = useMemo(() => {
-    if (committeeOptions.length === 0) {
-      const grouped = new Map()
-      const unassigned = []
->>>>>>> 1dd81c421d3f0a2382983fa209bea8d8b4701822
-
-      displayVolunteerPeople.forEach(person => {
-        const committee = String(person?.committee || '').trim()
-        if (!committee) {
-          unassigned.push(person)
-          return
-        }
-        const key = committee.toLowerCase()
-        if (!grouped.has(key)) {
-          grouped.set(key, { committee, members: [] })
-        }
-        grouped.get(key).members.push(person)
-      })
-
-      const groups = [...grouped.values()].map(group => ({
-        ...group,
-        members: [...group.members].sort((a, b) => a.name.localeCompare(b.name)),
-      }))
-      groups.sort((a, b) => a.committee.localeCompare(b.committee))
-
-      if (unassigned.length > 0) {
-        groups.push({
-          committee: 'Unassigned',
-          members: [...unassigned].sort((a, b) => a.name.localeCompare(b.name)),
-        })
-      }
-
-      return groups
-    }
-
-    const optionMap = new Map()
+    const optionLabelByLower = new Map()
     committeeOptions.forEach(name => {
       const trimmed = String(name || '').trim()
       if (!trimmed) return
-      optionMap.set(trimmed.toLowerCase(), trimmed)
+      optionLabelByLower.set(trimmed.toLowerCase(), trimmed)
     })
 
-    const groups = new Map(
-      [...optionMap.values()].map(name => [name.toLowerCase(), { committee: name, members: [] }])
-    )
-
+    const hasOptions = optionLabelByLower.size > 0
+    const groupsByLower = new Map()
     const unassigned = []
+
+    if (hasOptions) {
+      for (const [lower, label] of optionLabelByLower.entries()) {
+        groupsByLower.set(lower, { committee: label, members: [] })
+      }
+    }
+
     displayVolunteerPeople.forEach(person => {
-      const committee = String(person?.committee || '').trim()
-      if (committee && grouped.has(committee)) {
-        grouped.get(committee).members.push(person)
+      const committeeRaw = String(person?.committee || '').trim()
+      if (!committeeRaw) {
+        unassigned.push(person)
         return
       }
-<<<<<<< HEAD
-      unassigned.push(person)
-    })
 
-    const groups = trimmedOptions.map(name => ({
-      committee: name,
-      members: [...(grouped.get(name)?.members || [])].sort((a, b) => a.name.localeCompare(b.name)),
-    }))
-=======
-      const key = committee.toLowerCase()
-      if (groups.has(key)) {
-        groups.get(key).members.push(person)
-      } else {
-        unassigned.push(person)
+      const lower = committeeRaw.toLowerCase()
+      if (hasOptions) {
+        const label = optionLabelByLower.get(lower)
+        if (!label) {
+          unassigned.push(person)
+          return
+        }
+        groupsByLower.get(lower).members.push(person)
+        return
       }
+
+      if (!groupsByLower.has(lower)) groupsByLower.set(lower, { committee: committeeRaw, members: [] })
+      groupsByLower.get(lower).members.push(person)
     })
 
-    const sortedGroups = [...groups.values()].map(group => ({
+    const sortMembers = (group) => ({
       ...group,
       members: [...group.members].sort((a, b) => a.name.localeCompare(b.name)),
-    }))
-    sortedGroups.sort((a, b) => a.committee.localeCompare(b.committee))
->>>>>>> 1dd81c421d3f0a2382983fa209bea8d8b4701822
+    })
+
+    let sortedGroups
+    if (hasOptions) {
+      sortedGroups = [...optionLabelByLower.entries()].map(([lower]) => sortMembers(groupsByLower.get(lower)))
+    } else {
+      sortedGroups = [...groupsByLower.values()].map(sortMembers)
+      sortedGroups.sort((a, b) => a.committee.localeCompare(b.committee))
+    }
 
     if (unassigned.length > 0) {
       sortedGroups.push({
