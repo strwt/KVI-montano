@@ -1294,17 +1294,6 @@ function Landing() {
         />
 
         <div className="relative max-w-4xl mx-auto px-4 sm:px-6 text-center">
-          <span
-            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold tracking-wider border mb-6"
-            style={{
-              background: 'rgba(255,255,255,0.1)',
-              borderColor: 'rgba(255,255,255,0.2)',
-              color: '#fecaca',
-            }}
-          >
-            <Sparkles size={12} />
-            Be The Change
-          </span>
 
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white font-heading leading-tight mb-4">
             Ready to Make a<br />
