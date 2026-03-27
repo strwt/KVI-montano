@@ -17,18 +17,6 @@ import {
 import { useAuth } from '../context/AuthContext'
 import { fetchSupabaseEvents, isSupabaseEnabled } from '../lib/supabaseEvents'
 
-const CATEGORY_META = {
-  tuli: { label: 'Tuli', icon: HeartPulse, light: 'bg-red-50', text: 'text-red-700' },
-  blood_letting: { label: 'Blood Letting', icon: Activity, light: 'bg-red-50', text: 'text-red-700' },
-  donations: { label: 'Donations', icon: FileText, light: 'bg-red-50', text: 'text-red-700' },
-  environmental: { label: 'Environmental', icon: Leaf, light: 'bg-green-50', text: 'text-green-700' },
-  relief_operation: { label: 'Relief Operation', icon: Activity, light: 'bg-blue-50', text: 'text-blue-700' },
-  fire_response: { label: 'Fire Response', icon: Flame, light: 'bg-orange-50', text: 'text-orange-700' },
-  water_distribution: { label: 'Water Distribution', icon: Droplets, light: 'bg-red-50', text: 'text-red-700' },
-  notes: { label: 'Notes', icon: FileText, light: 'bg-indigo-50', text: 'text-indigo-700' },
-  medical: { label: 'Medical', icon: HeartPulse, light: 'bg-pink-50', text: 'text-pink-700' },
-}
-
 const CATEGORY_COLORS = {
   tuli: '#ef4444',
   blood_letting: '#dc2626',
@@ -218,6 +206,27 @@ function Report() {
   const isAdmin = user?.role === 'admin'
   const { start, end } = getDateWindow(datePreset)
 
+  const categoriesFromDb = useMemo(() => {
+    const entries = Array.isArray(eventCategories) ? eventCategories : []
+    const map = new Map()
+    entries.forEach(name => {
+      const label = String(name || '').trim()
+      if (!label) return
+      const key = canonicalizeOperationKey(normalizeCategory(label))
+      if (!key) return
+      if (!map.has(key)) map.set(key, label)
+    })
+    return map
+  }, [eventCategories])
+
+  const categoryKeysFromDb = useMemo(() => {
+    return [...categoriesFromDb.keys()]
+  }, [categoriesFromDb])
+
+  const categoryKeySetFromDb = useMemo(() => {
+    return new Set(categoryKeysFromDb)
+  }, [categoryKeysFromDb])
+
   useEffect(() => {
     if (!user?.id) {
       setEvents([])
@@ -244,7 +253,12 @@ function Report() {
       .map(event => ({
         ...event,
         _date: resolveEventDate(event),
-        _category: canonicalizeOperationKey(normalizeCategory(event.category)),
+        _category: (() => {
+          const key = canonicalizeOperationKey(normalizeCategory(event.category))
+          if (!key) return 'uncategorized'
+          if (categoryKeySetFromDb.size > 0 && !categoryKeySetFromDb.has(key)) return 'uncategorized'
+          return key
+        })(),
       }))
       .filter(event => event.status === 'done')
       .filter(event => {
@@ -252,36 +266,34 @@ function Report() {
         if (end && event._date.isAfter(end)) return false
         return true
       })
-  }, [events, start, end])
+  }, [categoryKeySetFromDb, events, start, end])
 
   const categoryLabelByKey = useMemo(() => {
     const map = {}
-    Object.keys(CATEGORY_META).forEach(key => {
-      map[key] = CATEGORY_META[key]?.label || titleCaseFromKey(key)
-    })
-    const entries = Array.isArray(eventCategories) ? eventCategories : []
-    entries.forEach(name => {
-      const key = canonicalizeOperationKey(normalizeCategory(name))
-      if (!key) return
-      if (!map[key]) map[key] = titleCaseFromKey(key)
-    })
+    for (const [key, label] of categoriesFromDb.entries()) {
+      map[key] = label
+    }
+    map.uncategorized = 'Uncategorized'
     return map
-  }, [eventCategories])
+  }, [categoriesFromDb])
 
   const getCategoryLabel = (value) => {
     const key = canonicalizeOperationKey(normalizeCategory(value))
-    if (!key) return 'Uncategorized'
-    return categoryLabelByKey[key] || titleCaseFromKey(key) || 'Uncategorized'
+    if (!key) return categoryLabelByKey.uncategorized || 'Uncategorized'
+    return categoryLabelByKey[key] || categoryLabelByKey.uncategorized || 'Uncategorized'
   }
 
   const availableCategoryKeys = useMemo(() => {
-    const set = new Set(Object.keys(categoryLabelByKey))
-    baseEvents.forEach(event => {
-      if (event._category) set.add(event._category)
-    })
-    const getLabel = (key) => categoryLabelByKey[key] || titleCaseFromKey(key) || 'Uncategorized'
-    return Array.from(set).sort((a, b) => getLabel(a).localeCompare(getLabel(b)))
-  }, [baseEvents, categoryLabelByKey])
+    const keys = [...categoryKeysFromDb]
+
+    const hasUncategorized = baseEvents.some(event => event._category === 'uncategorized')
+    if (hasUncategorized) keys.push('uncategorized')
+
+    const unique = [...new Set(keys)]
+    const getLabel = (key) => categoryLabelByKey[key] || categoryLabelByKey.uncategorized || 'Uncategorized'
+    unique.sort((a, b) => getLabel(a).localeCompare(getLabel(b)))
+    return unique
+  }, [baseEvents, categoryKeysFromDb, categoryLabelByKey])
 
   useEffect(() => {
     if (selectedCategory === 'all') return
@@ -407,6 +419,13 @@ function Report() {
   }, [filteredEvents, availableCategoryKeys])
 
   const chartCategoryKeys = availableCategoryKeys
+
+  const additionalCategoryKeys = useMemo(() => {
+    return availableCategoryKeys.filter(key => {
+      if (!key || key === 'uncategorized') return false
+      return !Object.prototype.hasOwnProperty.call(stats, key)
+    })
+  }, [availableCategoryKeys, stats])
 
   const dynamicFieldKeys = useMemo(() => {
     const keys = new Set()
@@ -756,92 +775,123 @@ function Report() {
       </div>
 
 	      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-	        <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
-	          <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><HeartPulse size={18} className="text-red-600" />Tuli Statistics</h3>
-	          <div className="space-y-2 text-sm">
-	            <div className="flex flex-wrap justify-between gap-2"><span>Total Tuli Activities</span><strong>{stats.tuli.eventCount}</strong></div>
-	            <div className="flex flex-wrap justify-between gap-2"><span>Total Children Count</span><strong>{stats.tuli.tuliChildrenCount}</strong></div>
-	          </div>
-	        </div>
-
-	        <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
-	          <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><Activity size={18} className="text-red-600" />Blood Letting Statistics</h3>
-	          <div className="space-y-2 text-sm">
-	            <div className="flex flex-wrap justify-between gap-2"><span>Total Blood Letting Activities</span><strong>{stats.blood_letting.eventCount}</strong></div>
-	            <div className="flex flex-wrap justify-between gap-2"><span>Total Blood Bags</span><strong>{stats.blood_letting.bloodBagsCount}</strong></div>
-	            <div className="flex flex-wrap justify-between gap-2"><span>Total Successful Donors</span><strong>{stats.blood_letting.bloodSuccessfulDonors}</strong></div>
-	            <div className="flex flex-wrap justify-between gap-2"><span>Total Tokens</span><strong>{stats.blood_letting.bloodTokenCount}</strong></div>
-	            <div className="pt-2 border-t border-gray-200 dark:border-zinc-700">
-	              <p className="text-xs font-semibold text-gray-700 dark:text-zinc-300 mb-2">Token Totals</p>
-	              {bloodTokenRows.length > 0 ? (
-	                <div className="space-y-1">
-	                  {bloodTokenRows.map(row => (
-	                    <div key={row.token} className="flex flex-wrap justify-between gap-2">
-	                      <span className="capitalize">{row.token}</span>
-	                      <strong>{row.count}</strong>
-	                    </div>
-	                  ))}
-	                </div>
-	              ) : (
-	                <p className="text-xs text-gray-500 dark:text-zinc-400">No tokens recorded for this filter.</p>
-	              )}
+          {availableCategoryKeys.includes('tuli') && (
+	          <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
+	            <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><HeartPulse size={18} className="text-red-600" />Tuli Statistics</h3>
+	            <div className="space-y-2 text-sm">
+	              <div className="flex flex-wrap justify-between gap-2"><span>Total Tuli Activities</span><strong>{stats.tuli.eventCount}</strong></div>
+	              <div className="flex flex-wrap justify-between gap-2"><span>Total Children Count</span><strong>{stats.tuli.tuliChildrenCount}</strong></div>
 	            </div>
 	          </div>
-	        </div>
+          )}
 
-	        <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
-	          <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><FileText size={18} className="text-red-600" />Donations Statistics</h3>
-	          <div className="space-y-2 text-sm">
-	            <div className="flex flex-wrap justify-between gap-2"><span>Total Donation Activities</span><strong>{stats.donations.eventCount}</strong></div>
+          {availableCategoryKeys.includes('blood_letting') && (
+	          <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
+	            <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><Activity size={18} className="text-red-600" />Blood Letting Statistics</h3>
+	            <div className="space-y-2 text-sm">
+	              <div className="flex flex-wrap justify-between gap-2"><span>Total Blood Letting Activities</span><strong>{stats.blood_letting.eventCount}</strong></div>
+	              <div className="flex flex-wrap justify-between gap-2"><span>Total Blood Bags</span><strong>{stats.blood_letting.bloodBagsCount}</strong></div>
+	              <div className="flex flex-wrap justify-between gap-2"><span>Total Successful Donors</span><strong>{stats.blood_letting.bloodSuccessfulDonors}</strong></div>
+	              <div className="flex flex-wrap justify-between gap-2"><span>Total Tokens</span><strong>{stats.blood_letting.bloodTokenCount}</strong></div>
+	              <div className="pt-2 border-t border-gray-200 dark:border-zinc-700">
+	                <p className="text-xs font-semibold text-gray-700 dark:text-zinc-300 mb-2">Token Totals</p>
+	                {bloodTokenRows.length > 0 ? (
+	                  <div className="space-y-1">
+	                    {bloodTokenRows.map(row => (
+	                      <div key={row.token} className="flex flex-wrap justify-between gap-2">
+	                        <span className="capitalize">{row.token}</span>
+	                        <strong>{row.count}</strong>
+	                      </div>
+	                    ))}
+	                  </div>
+	                ) : (
+	                  <p className="text-xs text-gray-500 dark:text-zinc-400">No tokens recorded for this filter.</p>
+	                )}
+	              </div>
+	            </div>
 	          </div>
-	        </div>
+          )}
 
-	        <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
-	          <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><Leaf size={18} className="text-green-600" />Environmental Statistics</h3>
-	          <div className="space-y-2 text-sm">
-	            <div className="flex flex-wrap justify-between gap-2"><span>Total Environmental Activities</span><strong>{stats.environmental.eventCount}</strong></div>
-	            <div className="flex flex-wrap justify-between gap-2"><span>Total Trees Planted</span><strong>{stats.environmental.envTreesPlanted}</strong></div>
+          {availableCategoryKeys.includes('donations') && (
+	          <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
+	            <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><FileText size={18} className="text-red-600" />Donations Statistics</h3>
+	            <div className="space-y-2 text-sm">
+	              <div className="flex flex-wrap justify-between gap-2"><span>Total Donation Activities</span><strong>{stats.donations.eventCount}</strong></div>
+	            </div>
 	          </div>
-	        </div>
+          )}
 
-	        <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
-	          <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><Activity size={18} className="text-blue-600" />Relief Operation Statistics</h3>
-	          <div className="space-y-2 text-sm">
-	            <div className="flex flex-wrap justify-between gap-2"><span>Total Relief Operations</span><strong>{stats.relief_operation.eventCount}</strong></div>
-	            <div className="flex flex-wrap justify-between gap-2"><span>Total Families Count</span><strong>{stats.relief_operation.reliefFamiliesCount}</strong></div>
-	            <div className="flex flex-wrap justify-between gap-2"><span>Items: Grocery</span><strong>{stats.relief_operation.reliefItems.grocery}</strong></div>
-	            <div className="flex flex-wrap justify-between gap-2"><span>Items: Hygiene Kit</span><strong>{stats.relief_operation.reliefItems.hygiene_kit}</strong></div>
-	            <div className="flex flex-wrap justify-between gap-2"><span>Items: Both</span><strong>{stats.relief_operation.reliefItems.both}</strong></div>
+          {availableCategoryKeys.includes('environmental') && (
+	          <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
+	            <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><Leaf size={18} className="text-green-600" />Environmental Statistics</h3>
+	            <div className="space-y-2 text-sm">
+	              <div className="flex flex-wrap justify-between gap-2"><span>Total Environmental Activities</span><strong>{stats.environmental.eventCount}</strong></div>
+	              <div className="flex flex-wrap justify-between gap-2"><span>Total Trees Planted</span><strong>{stats.environmental.envTreesPlanted}</strong></div>
+	            </div>
 	          </div>
-	        </div>
+          )}
 
-	        <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
-	          <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><Flame size={18} className="text-orange-600" />Fire Response Statistics</h3>
-	          <div className="space-y-2 text-sm">
-	            <div className="flex flex-wrap justify-between gap-2"><span>Total Fire Responses</span><strong>{stats.fire_response.eventCount}</strong></div>
-	            <div className="flex flex-wrap justify-between gap-2"><span>Total Affected Families</span><strong>{stats.fire_response.fireAffectedFamilies}</strong></div>
-	            <div className="flex flex-wrap justify-between gap-2"><span>Total Estimated Cost</span><strong>{stats.fire_response.fireEstimatedCost}</strong></div>
-	            <div className="flex flex-wrap justify-between gap-2"><span>Total Liters Used</span><strong>{stats.fire_response.fireLiters}</strong></div>
+          {availableCategoryKeys.includes('relief_operation') && (
+	          <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
+	            <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><Activity size={18} className="text-blue-600" />Relief Operation Statistics</h3>
+	            <div className="space-y-2 text-sm">
+	              <div className="flex flex-wrap justify-between gap-2"><span>Total Relief Operations</span><strong>{stats.relief_operation.eventCount}</strong></div>
+	              <div className="flex flex-wrap justify-between gap-2"><span>Total Families Count</span><strong>{stats.relief_operation.reliefFamiliesCount}</strong></div>
+	              <div className="flex flex-wrap justify-between gap-2"><span>Items: Grocery</span><strong>{stats.relief_operation.reliefItems.grocery}</strong></div>
+	              <div className="flex flex-wrap justify-between gap-2"><span>Items: Hygiene Kit</span><strong>{stats.relief_operation.reliefItems.hygiene_kit}</strong></div>
+	              <div className="flex flex-wrap justify-between gap-2"><span>Items: Both</span><strong>{stats.relief_operation.reliefItems.both}</strong></div>
+	            </div>
 	          </div>
-	        </div>
+          )}
 
-	        <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
-	          <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><Droplets size={18} className="text-red-600" />Water Distribution Statistics</h3>
-	          <div className="space-y-2 text-sm">
-	            <div className="flex flex-wrap justify-between gap-2"><span>Total Water Distributions</span><strong>{stats.water_distribution.eventCount}</strong></div>
-	            <div className="flex flex-wrap justify-between gap-2"><span>Total Liters</span><strong>{stats.water_distribution.waterLiters}</strong></div>
-	            <div className="flex flex-wrap justify-between gap-2"><span>Total Households</span><strong>{stats.water_distribution.waterHouseholds}</strong></div>
+          {availableCategoryKeys.includes('fire_response') && (
+	          <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
+	            <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><Flame size={18} className="text-orange-600" />Fire Response Statistics</h3>
+	            <div className="space-y-2 text-sm">
+	              <div className="flex flex-wrap justify-between gap-2"><span>Total Fire Responses</span><strong>{stats.fire_response.eventCount}</strong></div>
+	              <div className="flex flex-wrap justify-between gap-2"><span>Total Affected Families</span><strong>{stats.fire_response.fireAffectedFamilies}</strong></div>
+	              <div className="flex flex-wrap justify-between gap-2"><span>Total Estimated Cost</span><strong>{stats.fire_response.fireEstimatedCost}</strong></div>
+	              <div className="flex flex-wrap justify-between gap-2"><span>Total Liters Used</span><strong>{stats.fire_response.fireLiters}</strong></div>
+	            </div>
 	          </div>
-	        </div>
+          )}
 
-	        <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
-	          <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><HeartPulse size={18} className="text-pink-600" />Medical Statistics</h3>
-	          <div className="space-y-2 text-sm">
-	            <div className="flex flex-wrap justify-between gap-2"><span>Total Medical Events</span><strong>{stats.medical.eventCount}</strong></div>
-	            <div className="flex flex-wrap justify-between gap-2"><span>Total Medical Equipment Used</span><strong>{stats.medical.medicalEquipmentUsed}</strong></div>
-	            <div className="flex flex-wrap justify-between gap-2"><span>Total Expenses</span><strong>{CURRENCY.format(stats.medical.expenses)}</strong></div>
+          {availableCategoryKeys.includes('water_distribution') && (
+	          <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
+	            <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><Droplets size={18} className="text-red-600" />Water Distribution Statistics</h3>
+	            <div className="space-y-2 text-sm">
+	              <div className="flex flex-wrap justify-between gap-2"><span>Total Water Distributions</span><strong>{stats.water_distribution.eventCount}</strong></div>
+	              <div className="flex flex-wrap justify-between gap-2"><span>Total Liters</span><strong>{stats.water_distribution.waterLiters}</strong></div>
+	              <div className="flex flex-wrap justify-between gap-2"><span>Total Households</span><strong>{stats.water_distribution.waterHouseholds}</strong></div>
+	            </div>
 	          </div>
-	        </div>
+          )}
+
+          {availableCategoryKeys.includes('medical') && (
+	          <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
+	            <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><HeartPulse size={18} className="text-pink-600" />Medical Statistics</h3>
+	            <div className="space-y-2 text-sm">
+	              <div className="flex flex-wrap justify-between gap-2"><span>Total Medical Events</span><strong>{stats.medical.eventCount}</strong></div>
+	              <div className="flex flex-wrap justify-between gap-2"><span>Total Medical Equipment Used</span><strong>{stats.medical.medicalEquipmentUsed}</strong></div>
+	              <div className="flex flex-wrap justify-between gap-2"><span>Total Expenses</span><strong>{CURRENCY.format(stats.medical.expenses)}</strong></div>
+	            </div>
+	          </div>
+          )}
+
+          {additionalCategoryKeys.map(key => (
+            <div key={key} className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
+              <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2">
+                <FileText size={18} className="text-red-600" />
+                {getCategoryLabel(key)} Statistics
+              </h3>
+              <div className="space-y-2 text-sm">
+                <div className="flex flex-wrap justify-between gap-2">
+                  <span>Total Activities</span>
+                  <strong>{eventCountByCategory[key] || 0}</strong>
+                </div>
+              </div>
+            </div>
+          ))}
 	      </div>
 
       {!isAdmin && <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-sm text-yellow-800">Export feature is available to Admin users only.</div>}
