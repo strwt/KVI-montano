@@ -28,7 +28,7 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
     { to: '/', icon: LayoutDashboard, label: t('Dashboard') },
     { to: '/calendar', icon: Calendar, label: t('Calendar') },
     ...(!isAdmin ? [{ to: '/attendance', icon: ClipboardCheck, label: 'Attendance' }] : []),
-    ...(isAdmin ? [{ to: '/attendance-management', icon: ClipboardCheck, label: 'Attendance' }] : []),
+    ...(isAdmin ? [{ to: '/attendance-management', icon: ClipboardCheck, label: 'Attendance Management' }] : []),
     ...(isAdmin ? [{ to: '/report', icon: FileText, label: t('Report') }] : []),
   ]
 

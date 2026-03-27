@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ClipboardCheck, Clock, Download, Pencil, Save, ShieldCheck, UserCheck, UserX, X } from 'lucide-react'
+import { ClipboardCheck, Clock, Download, Pencil, Save, UserCheck, UserX, X } from 'lucide-react'
 import dayjs from 'dayjs'
 import { useAuth } from '../context/AuthContext'
 import { KUSGAN_VOLUNTEERS } from '../data/kusganVolunteers'
@@ -48,13 +48,7 @@ function AdminAttendance() {
   const [adminAttendanceCache, setAdminAttendanceCache] = useState(getAdminAttendanceCache)
   const [selectedDate, setSelectedDate] = useState(dayjs().format('YYYY-MM-DD'))
   const [editingUserId, setEditingUserId] = useState(null)
-  const [editingAttendance, setEditingAttendance] = useState({
-    status: 'Present',
-    isOnline: false,
-    timeIn: '',
-    timeOut: '',
-    timeOutReason: '',
-  })
+  const [editingAttendance, setEditingAttendance] = useState({ timeIn: '', timeOut: '' })
   const [historyMember, setHistoryMember] = useState(null)
   const [historyMonth, setHistoryMonth] = useState(() => dayjs().format('YYYY-MM'))
   const [historySupabaseActivity, setHistorySupabaseActivity] = useState([])
@@ -95,7 +89,7 @@ function AdminAttendance() {
     const load = async () => {
       const { data } = await supabase
         .from('login_activity')
-        .select('date,user_id,is_present,status,present_at,time_in,time_out,time_out_reason')
+        .select('date,user_id,is_present,status,present_at,time_in,time_out')
         .eq('date', selectedDate)
 
       if (!active) return
@@ -104,11 +98,10 @@ function AdminAttendance() {
             date: row.date,
             userId: row.user_id,
             isOnline: Boolean(row.is_present),
-            status: row.status || 'Present',
+            status: row.status === 'Halfday' ? 'Present' : (row.status || 'Present'),
             presentAt: row.present_at || null,
             timeIn: row.time_in || row.present_at || null,
             timeOut: row.time_out || null,
-            timeOutReason: row.time_out_reason || '',
           }))
         : []
       setSupabaseLoginActivity(mapped)
@@ -139,11 +132,10 @@ function AdminAttendance() {
             date: row.date,
             userId: row.user_id,
             isOnline: Boolean(row.is_present),
-            status: row.status || 'Present',
+            status: row.status === 'Halfday' ? 'Present' : (row.status || 'Present'),
             presentAt: row.present_at || null,
             timeIn: row.time_in || row.present_at || null,
             timeOut: row.time_out || null,
-            timeOutReason: row.time_out_reason || '',
           })
 
           if ((eventType === 'INSERT' || eventType === 'UPDATE') && nextRow?.user_id) {
@@ -198,7 +190,7 @@ function AdminAttendance() {
 
       const { data, error } = await supabase
         .from('login_activity')
-        .select('date,user_id,is_present,status,present_at,time_in,time_out,time_out_reason')
+        .select('date,user_id,is_present,status,present_at,time_in,time_out')
         .eq('user_id', memberId)
         .gte('date', monthStart.format('YYYY-MM-DD'))
         .lte('date', monthEnd.format('YYYY-MM-DD'))
@@ -216,11 +208,10 @@ function AdminAttendance() {
               date: row.date,
               userId: row.user_id,
               isPresent: Boolean(row.is_present),
-              status: row.status || (row.is_present ? 'Present' : 'Absent'),
+              status: (row.status === 'Halfday' ? 'Present' : row.status) || (row.is_present ? 'Present' : 'Absent'),
               presentAt: row.present_at || null,
               timeIn: row.time_in || row.present_at || null,
               timeOut: row.time_out || null,
-              timeOutReason: row.time_out_reason || '',
             }))
           : []
         setHistorySupabaseActivity(mapped)
@@ -298,71 +289,47 @@ function AdminAttendance() {
     return members.map(member => {
       const memberId = String(member.id)
       const activity = activityByUser[memberId]
-      const isHalfday = activity?.status === 'Halfday' || activity?.timeOutReason === 'Halfday'
-      const hasTimeIn = Boolean(
-        activity?.timeIn || activity?.presentAt || activity?.firstLoginAt || activity?.lastLoginAt
-      )
-      const hasTimeOut = Boolean(
-        activity?.timeOut || activity?.lastLogoutAt || activity?.lastStatusAt
-      )
-      const status = activity
-        ? (isHalfday
-          ? 'Halfday'
-          : (activity?.status && activity?.status !== 'Absent'
-            ? activity.status
-            : (hasTimeIn || hasTimeOut ? 'Present' : 'Absent')))
-        : 'Absent'
       const isOnline = activity?.isOnline !== undefined
         ? Boolean(activity?.isOnline)
         : Boolean(activity?.isPresent)
 
       const timeInRaw = activity?.timeIn || activity?.presentAt || activity?.firstLoginAt || activity?.lastLoginAt || null
-      const timeOutRaw = activity?.isOnline
+      const timeOutRaw = isOnline
         ? null
         : (activity?.timeOut || activity?.lastLogoutAt || activity?.lastStatusAt || null)
-      const timeOutReason = activity?.timeOutReason || ''
+      const normalizedStatus = activity?.status === 'Halfday' ? 'Present' : activity?.status
+      const isPresent = normalizedStatus && normalizedStatus !== 'Absent'
+        ? true
+        : Boolean(timeInRaw || timeOutRaw || isOnline)
+      const status = isPresent ? 'Present' : 'Absent'
 
       return {
         member,
         memberId,
         status,
-        isOnline,
         timeInRaw,
         timeOutRaw,
-        timeOutReason,
       }
     })
   }, [members, activityByUser])
 
   const presentCount = rows.filter(row => row.status === 'Present').length
   const absentCount = rows.filter(row => row.status === 'Absent').length
-  const halfdayCount = rows.filter(row => row.status === 'Halfday').length
 
   const startEditing = (memberId) => {
     const existing = activityByUser[String(memberId)]
-    const isOnline = Boolean(existing?.isOnline ?? existing?.isPresent)
     const timeInValue = existing?.timeIn || existing?.presentAt || existing?.firstLoginAt || existing?.lastLoginAt || ''
     const timeOutValue = existing?.timeOut || existing?.lastLogoutAt || existing?.lastStatusAt || ''
-    const status = existing?.status || (existing ? 'Present' : 'Absent')
     setEditingUserId(memberId)
     setEditingAttendance({
-      status,
-      isOnline,
       timeIn: timeInValue && dayjs(timeInValue).isValid() ? dayjs(timeInValue).format('HH:mm') : '',
       timeOut: timeOutValue && dayjs(timeOutValue).isValid() ? dayjs(timeOutValue).format('HH:mm') : '',
-      timeOutReason: existing?.timeOutReason || '',
     })
   }
 
   const cancelEditing = () => {
     setEditingUserId(null)
-    setEditingAttendance({
-      status: 'Present',
-      isOnline: false,
-      timeIn: '',
-      timeOut: '',
-      timeOutReason: '',
-    })
+    setEditingAttendance({ timeIn: '', timeOut: '' })
   }
 
   const openHistory = (member) => {
@@ -411,7 +378,9 @@ function AdminAttendance() {
       return {
         dateKey,
         label: date.format('MMM D, YYYY'),
-        status: entry?.status || (entry?.isPresent ? 'Present' : 'Absent'),
+        status: entry?.status === 'Halfday'
+          ? 'Present'
+          : (entry?.status || (entry?.isPresent ? 'Present' : 'Absent')),
         timeIn: entry?.timeIn || entry?.presentAt || null,
         timeOut: entry?.timeOut || null,
       }
@@ -425,11 +394,6 @@ function AdminAttendance() {
 
   const historyAbsentCount = useMemo(
     () => historyRows.filter(row => row.status === 'Absent').length,
-    [historyRows]
-  )
-
-  const historyHalfdayCount = useMemo(
-    () => historyRows.filter(row => row.status === 'Halfday').length,
     [historyRows]
   )
 
@@ -448,22 +412,22 @@ function AdminAttendance() {
   }
 
   const saveAttendanceFor = async (memberId) => {
-    const status = editingAttendance.status || 'Present'
-    const isPresent = status !== 'Absent'
-    const timeInIso = resolveDateTime(editingAttendance.timeIn)
-    const timeOutIso = resolveDateTime(editingAttendance.timeOut)
-    const timeOutReason = editingAttendance.timeOutReason || ''
+    const timeInIsoRaw = resolveDateTime(editingAttendance.timeIn)
+    const timeOutIsoRaw = resolveDateTime(editingAttendance.timeOut)
+    const timeInIso = timeInIsoRaw || timeOutIsoRaw
+    const timeOutIso = timeOutIsoRaw
+    const status = (timeInIso || timeOutIso) ? 'Present' : 'Absent'
+    const isOnline = Boolean(timeInIso) && !timeOutIso && status !== 'Absent'
 
     const payload = {
       date: selectedDate,
       userId: memberId,
-      isPresent,
-      isOnline: Boolean(editingAttendance.isOnline),
+      isPresent: isOnline,
+      isOnline,
       status,
       presentAt: timeInIso,
       timeIn: timeInIso,
       timeOut: timeOutIso,
-      timeOutReason,
       updatedBy: user?.name || 'Admin',
       updatedAt: new Date().toISOString(),
     }
@@ -484,12 +448,12 @@ function AdminAttendance() {
       const dbPayload = {
         user_id: memberId,
         date: selectedDate,
-        is_present: isPresent,
+        is_present: isOnline,
         present_at: timeInIso,
         status,
         time_in: timeInIso,
         time_out: timeOutIso,
-        time_out_reason: timeOutReason || null,
+        time_out_reason: null,
       }
       const { error } = await supabase
         .from('login_activity')
@@ -504,12 +468,11 @@ function AdminAttendance() {
       const cachedEntry = {
         date: selectedDate,
         userId: memberId,
-        isOnline: Boolean(editingAttendance.isOnline),
+        isOnline,
         status,
         presentAt: timeInIso,
         timeIn: timeInIso,
         timeOut: timeOutIso,
-        timeOutReason,
       }
       if (idx >= 0) current[idx] = { ...current[idx], ...cachedEntry }
       else current.push(cachedEntry)
@@ -534,16 +497,13 @@ function AdminAttendance() {
     const rowsHtml = rows.map(row => {
       const timeIn = formatTime(row.timeInRaw)
       const timeOut = formatTime(row.timeOutRaw)
-      const timeOutReason = row.timeOutReason || '-'
       return `
         <tr>
           <td>${row.member?.name || 'Member'}</td>
           <td>${row.member?.idNumber || row.memberId}</td>
           <td>${row.member?.committee || ''}</td>
-          <td>${row.status}</td>
           <td>${timeIn}</td>
           <td>${timeOut}</td>
-          <td>${timeOutReason}</td>
         </tr>
       `
     }).join('')
@@ -597,10 +557,8 @@ function AdminAttendance() {
                 <th>Member</th>
                 <th>ID</th>
                 <th>Committee</th>
-                <th>Status</th>
                 <th>Time In</th>
                 <th>Time Out</th>
-                <th>Time Out Reason</th>
               </tr>
             </thead>
             <tbody>
@@ -655,7 +613,7 @@ function AdminAttendance() {
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="rounded-2xl border border-green-200 bg-green-50 p-4 shadow-sm">
           <div className="flex items-center gap-2 text-green-700">
             <UserCheck size={18} />
@@ -670,13 +628,6 @@ function AdminAttendance() {
           </div>
           <p className="mt-2 text-2xl font-semibold text-gray-900">{absentCount}</p>
         </div>
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
-          <div className="flex items-center gap-2 text-amber-700">
-            <ShieldCheck size={18} />
-            <p className="text-sm font-semibold">Halfday</p>
-          </div>
-          <p className="mt-2 text-2xl font-semibold text-amber-900">{halfdayCount}</p>
-        </div>
       </section>
 
       <section className="rounded-2xl border border-red-600 bg-white p-5 shadow-[0_10px_20px_rgba(0,0,0,0.08)] dark:border-red-600 dark:bg-zinc-900">
@@ -685,15 +636,12 @@ function AdminAttendance() {
           <h2 className="text-[20px] font-semibold text-neutral-900 dark:text-zinc-100">Daily Attendance Table</h2>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[880px] text-sm">
+          <table className="w-full min-w-[640px] text-sm">
             <thead>
               <tr className="text-left text-xs uppercase tracking-[0.14em] text-neutral-500">
                 <th className="pb-3">Member</th>
-                <th className="pb-3">Status</th>
                 <th className="pb-3">Time In</th>
                 <th className="pb-3">Time Out</th>
-                <th className="pb-3">Time Out Reason</th>
-                <th className="pb-3">Online</th>
                 <th className="pb-3">Action</th>
               </tr>
             </thead>
@@ -721,31 +669,6 @@ function AdminAttendance() {
                         </button>
                         <p className="text-xs text-neutral-500">{row.member?.committee || 'Unassigned'}</p>
                       </div>
-                    </td>
-                    <td className="py-3">
-                      {isEditing ? (
-                        <select
-                          value={editingAttendance.status}
-                          onChange={event =>
-                            setEditingAttendance(prev => ({ ...prev, status: event.target.value }))
-                          }
-                          className="w-full rounded-lg border border-neutral-200 bg-white px-2 py-1 text-xs text-neutral-700 focus:border-red-500 focus:outline-none"
-                        >
-                          <option value="Present">Present</option>
-                          <option value="Halfday">Halfday</option>
-                          <option value="Absent">Absent</option>
-                        </select>
-                      ) : (
-                        <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${
-                          row.status === 'Present'
-                            ? 'border-green-200 bg-green-50 text-green-700'
-                            : row.status === 'Halfday'
-                              ? 'border-purple-200 bg-purple-50 text-purple-700'
-                              : 'border-gray-200 bg-gray-50 text-gray-700'
-                        }`}>
-                          {row.status}
-                        </span>
-                      )}
                     </td>
                     <td className="py-3">
                       {isEditing ? (
@@ -778,49 +701,6 @@ function AdminAttendance() {
                         <span className="inline-flex items-center gap-1 text-neutral-600">
                           <Clock size={12} />
                           {timeOut}
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-3">
-                      {isEditing ? (
-                        <select
-                          value={editingAttendance.timeOutReason}
-                          onChange={event =>
-                            setEditingAttendance(prev => ({ ...prev, timeOutReason: event.target.value }))
-                          }
-                          className="w-full rounded-lg border border-neutral-200 bg-white px-2 py-1 text-xs text-neutral-700 focus:border-red-500 focus:outline-none"
-                        >
-                          <option value="">None</option>
-                          <option value="End of Work">End of Work</option>
-                          <option value="Lunch">Lunch</option>
-                          <option value="Halfday">Halfday</option>
-                        </select>
-                      ) : (
-                        <span className="inline-flex rounded-full border border-neutral-200 bg-neutral-50 px-2 py-0.5 text-xs font-semibold text-neutral-600">
-                          {row.timeOutReason || '-'}
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-3">
-                      {isEditing ? (
-                        <label className="inline-flex items-center gap-2 text-xs text-neutral-600">
-                          <input
-                            type="checkbox"
-                            checked={editingAttendance.isOnline}
-                            onChange={event =>
-                              setEditingAttendance(prev => ({ ...prev, isOnline: event.target.checked }))
-                            }
-                            className="h-4 w-4 rounded border-neutral-300 text-red-600 focus:ring-red-500"
-                          />
-                          Online
-                        </label>
-                      ) : (
-                        <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold ${
-                          row.isOnline
-                            ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                            : 'border-neutral-200 bg-neutral-50 text-neutral-500'
-                        }`}>
-                          {row.isOnline ? 'Online' : 'Offline'}
                         </span>
                       )}
                     </td>
@@ -914,10 +794,6 @@ function AdminAttendance() {
                   <UserX size={14} />
                   Absent: {historyAbsentCount}
                 </span>
-                <span className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">
-                  <ShieldCheck size={14} />
-                  Halfday: {historyHalfdayCount}
-                </span>
               </div>
             </div>
 
@@ -957,15 +833,11 @@ function AdminAttendance() {
 
                       const tone = cell.status === 'Present'
                         ? 'border-emerald-200 bg-emerald-50/70 dark:border-emerald-800/50 dark:bg-emerald-950/30'
-                        : cell.status === 'Halfday'
-                          ? 'border-purple-200 bg-purple-50/70 dark:border-purple-800/50 dark:bg-purple-950/30'
-                          : 'border-neutral-200 bg-neutral-50/70 dark:border-zinc-700 dark:bg-zinc-950/20'
+                        : 'border-neutral-200 bg-neutral-50/70 dark:border-zinc-700 dark:bg-zinc-950/20'
 
                       const badgeTone = cell.status === 'Present'
                         ? 'border-emerald-200 bg-emerald-100 text-emerald-700 dark:border-emerald-800/50 dark:bg-emerald-900/40 dark:text-emerald-200'
-                        : cell.status === 'Halfday'
-                          ? 'border-purple-200 bg-purple-100 text-purple-700 dark:border-purple-800/50 dark:bg-purple-900/40 dark:text-purple-200'
-                          : 'border-neutral-200 bg-neutral-100 text-neutral-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200'
+                        : 'border-neutral-200 bg-neutral-100 text-neutral-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200'
 
                       const titleParts = [`${cell.label}: ${cell.status}`]
                       if (timeInLabel) titleParts.push(`In: ${timeInLabel}`)
