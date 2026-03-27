@@ -23,6 +23,11 @@ function Layout() {
     if (location.pathname !== '/') return
 
     try {
+      const skipRestore = window.sessionStorage.getItem('kusgan:skip_last_route_restore') || ''
+      if (skipRestore) {
+        window.sessionStorage.removeItem('kusgan:skip_last_route_restore')
+        return
+      }
       const lastRoute = window.localStorage.getItem('kusgan:last_route') || ''
       if (!lastRoute || lastRoute === '/' || !lastRoute.startsWith('/')) return
       navigate(lastRoute, { replace: true })
