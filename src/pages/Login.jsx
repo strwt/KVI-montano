@@ -100,7 +100,7 @@ function Login() {
         <div className="text-center mb-8 animate-fade-in">
           <div className="w-20 h-20 mx-auto mb-4 bg-white rounded-full shadow-lg flex items-center justify-center">
             <img
-              src="/image-removebg-preview.png"
+              src="/kvi.png"
               alt="KUSGAN logo"
               className="w-16 h-16 object-contain"
             />

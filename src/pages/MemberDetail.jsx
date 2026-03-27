@@ -171,7 +171,7 @@ function MemberDetail() {
           <div className="flex items-start gap-6">
             <div className="w-24 h-24 rounded-full bg-gradient-to-r from-red-600 to-red-700 flex items-center justify-center flex-shrink-0 overflow-hidden">
               <img
-                src={member.profileImage || '/image-removebg-preview.png'}
+                src={member.profileImage || '/kvi.png'}
                 alt={member.name}
                 className="w-full h-full object-cover"
               />

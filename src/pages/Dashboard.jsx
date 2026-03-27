@@ -568,7 +568,7 @@ function Dashboard() {
                     >
                       <div className="col-span-12 flex items-center gap-3 md:col-span-5">
                         <img
-                          src={entry.profileImage || '/image-removebg-preview.png'}
+                          src={entry.profileImage || '/kvi.png'}
                           alt={entry.name || t('Member')}
                           className="h-9 w-9 rounded-full border border-neutral-300 object-cover dark:border-zinc-700"
                         />

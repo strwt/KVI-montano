@@ -23,7 +23,7 @@ import {
   ArrowRight,
 } from 'lucide-react'
 
-const HERO_IMAGE = '/image-removebg-preview.png'
+const HERO_IMAGE = '/kvi.png'
 
 const NAV_LINKS = [
   { label: 'Home', href: '#home' },

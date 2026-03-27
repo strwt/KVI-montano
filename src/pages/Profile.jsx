@@ -86,7 +86,7 @@ function Profile() {
             <div className="flex items-start gap-4">
               <div className="w-24 h-24 rounded-2xl overflow-hidden border border-red-100 shadow-lg shadow-red-900/20 bg-white">
                 <img
-                  src={user?.profileImage || '/image-removebg-preview.png'}
+                  src={user?.profileImage || '/kvi.png'}
                   alt={user?.name || 'User'}
                   className="w-full h-full object-cover"
                 />

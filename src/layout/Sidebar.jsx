@@ -76,7 +76,7 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
                   title={t('Profile')}
                 >
                   <img
-                    src={user?.profileImage || '/image-removebg-preview.png'}
+                    src={user?.profileImage || '/kvi.png'}
                     alt={user?.name || 'User'}
                     className="w-full h-full object-cover"
                   />
@@ -100,7 +100,7 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
             >
               <div className="w-12 h-12 rounded-full bg-red-600 border border-red-600 flex items-center justify-center overflow-hidden">
                 <img
-                  src={user?.profileImage || '/image-removebg-preview.png'}
+                  src={user?.profileImage || '/kvi.png'}
                   alt={user?.name || 'User'}
                   className="w-full h-full object-cover"
                 />
@@ -155,7 +155,7 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-white logo-no-dark rounded-full flex items-center justify-center overflow-hidden">
                   <img
-                    src="/image-removebg-preview.png"
+                    src="/kvi.png"
                     alt="KUSGAN logo"
                     className="w-8 h-8 object-contain"
                   />
@@ -199,7 +199,7 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
               </button>
               <div className="w-10 h-10 bg-white logo-no-dark rounded-full flex items-center justify-center overflow-hidden">
                 <img
-                  src="/image-removebg-preview.png"
+                  src="/kvi.png"
                   alt="KUSGAN logo"
                   className="w-8 h-8 object-contain"
                 />

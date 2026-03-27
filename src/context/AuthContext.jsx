@@ -10,7 +10,7 @@ const logSupabase = (...args) => {
   console.info('[supabase]', ...args)
 }
 
-const DEFAULT_PROFILE_IMAGE = '/image-removebg-preview.png'
+const DEFAULT_PROFILE_IMAGE = '/kvi.png'
 const SESSION_EXPIRED_MESSAGE = 'Session expired. Please log in again.'
 const LOADING_FALLBACK_MS = 3_000
 const PROFILE_CACHE_TTL_MS = 30_000
@@ -915,6 +915,24 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     if (!supabaseEnabled) return undefined
 
+    const realtimeEnabled = String(import.meta.env.VITE_SUPABASE_ENABLE_REALTIME || '').toLowerCase() !== 'false'
+    if (!realtimeEnabled) {
+      const intervalId = window.setInterval(() => {
+        void reloadCommittees()
+      }, 15000)
+      return () => window.clearInterval(intervalId)
+    }
+
+    let fallbackIntervalId
+    let disposed = false
+
+    const startFallbackPolling = () => {
+      if (disposed || fallbackIntervalId) return
+      fallbackIntervalId = window.setInterval(() => {
+        void reloadCommittees()
+      }, 15000)
+    }
+
     const channel = supabase
       .channel('kusgan-committees')
       .on(
@@ -924,9 +942,22 @@ export function AuthProvider({ children }) {
           void reloadCommittees()
         }
       )
-      .subscribe()
+      .subscribe(status => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          startFallbackPolling()
+          supabase.removeChannel(channel)
+        }
+      })
+
+    const timeoutId = window.setTimeout(() => {
+      startFallbackPolling()
+      supabase.removeChannel(channel)
+    }, 8000)
 
     return () => {
+      disposed = true
+      window.clearTimeout(timeoutId)
+      if (fallbackIntervalId) window.clearInterval(fallbackIntervalId)
       supabase.removeChannel(channel)
     }
   }, [supabaseEnabled, reloadCommittees])
