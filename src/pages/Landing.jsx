@@ -117,32 +117,32 @@ const CORE_VALUES = [
   {
     title: 'Kindness',
     description: 'Serve every person with empathy and respect.',
-    image: 'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?auto=format&fit=crop&w=900&q=80',
+    image: '/Kindness.jpg',
   },
   {
     title: 'Unity',
     description: 'Collaborate as one team to achieve shared goals.',
-    image: 'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=900&q=80',
+    image: '/Unity.jpg',
   },
   {
     title: 'Service',
     description: 'Deliver practical help where communities need it most.',
-    image: 'https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?auto=format&fit=crop&w=900&q=80',
+    image: '/Service.jpg',
   },
   {
     title: 'Generosity',
     description: 'Give time, care, and effort with sincere commitment.',
-    image: 'https://images.unsplash.com/photo-1511632765486-a01980e01a18?auto=format&fit=crop&w=900&q=80',
+    image: '/Generosity.jpg',
   },
   {
     title: 'Aspiration',
     description: 'Pursue continuous growth and meaningful impact.',
-    image: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=900&q=80',
+    image: '/Aspiration.jpg',
   },
   {
     title: 'Nurture',
     description: 'Support people and communities with lasting care.',
-    image: 'https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?auto=format&fit=crop&w=900&q=80',
+    image: '/Nurture.jpg',
   },
 ]
 
@@ -622,66 +622,75 @@ function Landing() {
   }, [committees, publicCommittees])
 
   const committeeGroups = useMemo(() => {
-    const optionLabelByLower = new Map()
-    committeeOptions.forEach(name => {
-      const trimmed = String(name || '').trim()
-      if (!trimmed) return
-      optionLabelByLower.set(trimmed.toLowerCase(), trimmed)
-    })
+    const trimmedOptions = committeeOptions.map(name => String(name || '').trim()).filter(Boolean)
 
-    const hasOptions = optionLabelByLower.size > 0
-    const groupsByLower = new Map()
-    const unassigned = []
+    if (trimmedOptions.length === 0) {
+      const grouped = new Map()
+      const unassigned = []
 
-    if (hasOptions) {
-      for (const [lower, label] of optionLabelByLower.entries()) {
-        groupsByLower.set(lower, { committee: label, members: [] })
-      }
-    }
-
-    displayVolunteerPeople.forEach(person => {
-      const committeeRaw = String(person?.committee || '').trim()
-      if (!committeeRaw) {
-        unassigned.push(person)
-        return
-      }
-
-      const lower = committeeRaw.toLowerCase()
-      if (hasOptions) {
-        const label = optionLabelByLower.get(lower)
-        if (!label) {
+      displayVolunteerPeople.forEach(person => {
+        const committee = String(person?.committee || '').trim()
+        if (!committee) {
           unassigned.push(person)
           return
         }
-        groupsByLower.get(lower).members.push(person)
-        return
+        const key = committee.toLowerCase()
+        if (!grouped.has(key)) grouped.set(key, { committee, members: [] })
+        grouped.get(key).members.push(person)
+      })
+
+      const groups = [...grouped.values()].map(group => ({
+        ...group,
+        members: [...group.members].sort((a, b) => a.name.localeCompare(b.name)),
+      }))
+      groups.sort((a, b) => a.committee.localeCompare(b.committee))
+
+      if (unassigned.length > 0) {
+        groups.push({
+          committee: 'Unassigned',
+          members: [...unassigned].sort((a, b) => a.name.localeCompare(b.name)),
+        })
       }
 
-      if (!groupsByLower.has(lower)) groupsByLower.set(lower, { committee: committeeRaw, members: [] })
-      groupsByLower.get(lower).members.push(person)
-    })
-
-    const sortMembers = (group) => ({
-      ...group,
-      members: [...group.members].sort((a, b) => a.name.localeCompare(b.name)),
-    })
-
-    let sortedGroups
-    if (hasOptions) {
-      sortedGroups = [...optionLabelByLower.entries()].map(([lower]) => sortMembers(groupsByLower.get(lower)))
-    } else {
-      sortedGroups = [...groupsByLower.values()].map(sortMembers)
-      sortedGroups.sort((a, b) => a.committee.localeCompare(b.committee))
+      return groups
     }
 
+    const grouped = new Map(
+      trimmedOptions.map(name => {
+        const committee = String(name || '').trim()
+        return [committee.toLowerCase(), { committee, members: [] }]
+      })
+    )
+    const unassigned = []
+
+    displayVolunteerPeople.forEach(person => {
+      const committee = String(person?.committee || '').trim()
+      if (!committee) {
+        unassigned.push(person)
+        return
+      }
+      const key = committee.toLowerCase()
+      if (!grouped.has(key)) {
+        unassigned.push(person)
+        return
+      }
+      grouped.get(key).members.push(person)
+    })
+
+    const groups = [...grouped.values()].map(group => ({
+      ...group,
+      members: [...group.members].sort((a, b) => a.name.localeCompare(b.name)),
+    }))
+    groups.sort((a, b) => a.committee.localeCompare(b.committee))
+
     if (unassigned.length > 0) {
-      sortedGroups.push({
+      groups.push({
         committee: 'Unassigned',
         members: [...unassigned].sort((a, b) => a.name.localeCompare(b.name)),
       })
     }
 
-    return sortedGroups
+    return groups
   }, [committeeOptions, displayVolunteerPeople])
 
   const onCommitteePointerDown = (event) => {
