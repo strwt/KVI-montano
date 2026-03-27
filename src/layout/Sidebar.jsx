@@ -34,7 +34,7 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
 
   const handleLogout = async () => {
     await logout()
-    navigate('/login')
+    navigate('/landing', { replace: true })
   }
 
   return (
