@@ -123,6 +123,62 @@ function Attendance() {
       active = false
     }
   }, [supabaseEnabled, user?.id])
+
+  useEffect(() => {
+    if (!supabaseEnabled || !user?.id) return undefined
+
+    let disposed = false
+
+    const refresh = async () => {
+      try {
+        const { data } = await supabase
+          .from('login_activity')
+          .select('date,is_present,present_at,status,time_in,time_out')
+          .eq('user_id', user.id)
+          .order('date', { ascending: true })
+        if (disposed) return
+        const mapped = Array.isArray(data)
+          ? data.map(row => ({
+              date: row.date,
+              userId: user.id,
+              isPresent: Boolean(row.is_present),
+              status: row.status === 'Halfday' ? 'Present' : (row.status || null),
+              presentAt: row.present_at || null,
+              timeIn: row.time_in || null,
+              timeOut: row.time_out || null,
+            }))
+          : []
+        setSupabaseLoginActivity(mapped)
+      } catch {
+        // ignore
+      }
+    }
+
+    const channel = supabase
+      .channel(`attendance-${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'login_activity', filter: `user_id=eq.${user.id}` },
+        () => {
+          void refresh()
+        }
+      )
+      .subscribe()
+
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        void refresh()
+      }
+    }
+
+    document.addEventListener('visibilitychange', onVisible)
+
+    return () => {
+      disposed = true
+      document.removeEventListener('visibilitychange', onVisible)
+      supabase.removeChannel(channel)
+    }
+  }, [supabaseEnabled, user?.id])
   useEffect(() => {
 
     if (!supabaseEnabled || !user?.id) return
@@ -192,11 +248,11 @@ function Attendance() {
 
   const mergedLoginActivity = useMemo(() => {
     const map = new Map()
-    ;(effectiveSupabaseLoginActivity || []).forEach(entry => {
+    ;(localLoginActivity || []).forEach(entry => {
       if (!entry?.date || !entry?.userId) return
       map.set(`${entry.date}-${entry.userId}`, entry)
     })
-    ;(localLoginActivity || []).forEach(entry => {
+    ;(effectiveSupabaseLoginActivity || []).forEach(entry => {
       if (!entry?.date || !entry?.userId) return
       map.set(`${entry.date}-${entry.userId}`, entry)
     })
