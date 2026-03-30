@@ -39,8 +39,10 @@ const canonicalizeOperationKey = key => OPERATION_KEY_ALIASES[key] || key
 const titleCaseFromKey = key =>
   String(key || '')
     .trim()
-    .replace(/_/g, ' ')
-    .replace(/\w\S*/g, word => word.charAt(0).toUpperCase() + word.slice(1))
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .toUpperCase()
 
 const OPERATION_META = {
   tuli: { label: 'Tuli', icon: HeartPulse },
@@ -69,8 +71,6 @@ const DEFAULT_OPERATION_ORDER = [
 const resolveEventDate = event => event.dateTime || event.date || null
 const getEventsCategoryRoute = categoryKey => `/events?category=${encodeURIComponent(categoryKey)}`
 const RECENT_ACTIVITY_LIMIT = 5
-const LOGIN_ACTIVITY_LIMIT = 8
-const LOGIN_ACTIVITY_UPDATED_EVENT = 'kusgan-login-activity-updated'
 
 const getEventMatchKey = event => {
   const baseId = event?.id
@@ -98,7 +98,6 @@ function Dashboard() {
   const supabaseEnabled = isSupabaseEnabled()
   const [animatedStats, setAnimatedStats] = useState(false)
   const [events, setEvents] = useState([])
-  const [recentLogins, setRecentLogins] = useState([])
   const [notifications, setNotifications] = useState([])
   const [notificationsOpen, setNotificationsOpen] = useState(false)
 
@@ -127,47 +126,6 @@ function Dashboard() {
       active = false
     }
   }, [supabaseEnabled, user?.id])
-
-  useEffect(() => {
-    if (!user?.id || !isAdmin) {
-      setRecentLogins([])
-      return
-    }
-
-    let active = true
-    const todayKey = dayjs().format('YYYY-MM-DD')
-
-    const load = async () => {
-      const { data } = await supabase
-        .from('login_activity')
-        .select('date,present_at,user_id,profiles(name,email,role,profile_image)')
-        .eq('date', todayKey)
-        .eq('is_present', true)
-        .eq('profiles.role', 'member')
-        .order('present_at', { ascending: false })
-        .limit(LOGIN_ACTIVITY_LIMIT)
-
-      if (!active) return
-      const mapped = Array.isArray(data)
-        ? data.map(row => ({
-            date: row.date,
-            userId: row.user_id,
-            name: row.profiles?.name || '',
-            email: row.profiles?.email || '',
-            role: row.profiles?.role || '',
-            profileImage: row.profiles?.profile_image || '',
-            presentAt: row.present_at || null,
-          }))
-        : []
-      setRecentLogins(mapped)
-    }
-
-    void load()
-
-    return () => {
-      active = false
-    }
-  }, [supabaseEnabled, user?.id, isAdmin])
 
   useEffect(() => {
     if (!notificationsOpen) return
@@ -538,64 +496,6 @@ function Dashboard() {
           </div>
           </div> 
 	      </section>
-
-
-      {isAdmin && (
-        <section className="grid grid-cols-12 gap-4">
-          <article className="col-span-12 rounded-2xl border border-red-600 bg-white p-5 md:p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] dark:border-red-600 dark:bg-zinc-900">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-[24px] font-semibold text-black dark:text-zinc-100">{t('Present Members')}</h2>
-              <div className="flex items-center gap-2">
-                <span className="rounded-lg border border-red-600 bg-red-50 px-3 py-1 text-[14px] text-red-700 dark:bg-red-950/30 dark:text-red-300">
-                  {recentLogins.length} {t('present')}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => navigate('/attendance-management')}
-                  className="cursor-pointer rounded-lg border border-red-600 bg-white px-3 py-1.5 text-[14px] font-medium text-red-600 transition-all duration-200 hover:scale-[1.02] hover:bg-red-50 dark:bg-zinc-900 dark:text-red-300 dark:hover:bg-red-950/30"
-                >
-                  {t('View All')}
-                </button>
-              </div>
-            </div>
-            <div className="max-h-[320px] space-y-2 overflow-y-auto pr-1">
-              {recentLogins
-                .map((entry, index) => {
-                  return (
-                    <div
-                      key={`${entry.userId}-${entry.presentAt}-${index}`}
-                      className="grid grid-cols-12 items-center gap-3 rounded-xl border border-red-600 bg-white p-3 dark:border-red-600 dark:bg-zinc-950"
-                    >
-                      <div className="col-span-12 flex items-center gap-3 md:col-span-5">
-                        <img
-                          src={entry.profileImage || '/kvi.png'}
-                          alt={entry.name || t('Member')}
-                          className="h-9 w-9 rounded-full border border-neutral-300 object-cover dark:border-zinc-700"
-                        />
-                        <div className="min-w-0">
-                          <p className="truncate text-[18px] font-medium text-black dark:text-zinc-100">{entry.name || t('Unknown Member')}</p>
-                          <p className="truncate text-[14px] capitalize text-neutral-500 dark:text-zinc-400">{entry.role || 'member'}</p>
-                        </div>
-                      </div>
-                      <div className="col-span-12 md:col-span-5">
-                        <p className="text-[14px] text-neutral-700 dark:text-zinc-300">{entry.presentAt ? dayjs(entry.presentAt).format('MMM D, YYYY h:mm A') : t('No timestamp')}</p>
-                      </div>
-                      <div className="col-span-12 md:col-span-2">
-                        <span className="inline-flex rounded-lg border border-emerald-300 bg-emerald-50 px-2 py-1 text-[14px] text-emerald-700 dark:border-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-300">
-                          {t('Present')}
-                        </span>
-                      </div>
-                    </div>
-                  )
-                })}
-              {recentLogins.length === 0 && (
-                 <p className="py-2 text-[14px] text-neutral-500 dark:text-zinc-400">{t('No present members yet.')}</p>
-              )}
-            </div>
-          </article>
-        </section>
-      )}
-
       <section className="grid grid-cols-12 gap-4">
         <article className="col-span-12 rounded-2xl border border-red-600 bg-white p-5 md:p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] dark:border-red-600 dark:bg-zinc-900">
           <div className="mb-3 flex items-center justify-between">

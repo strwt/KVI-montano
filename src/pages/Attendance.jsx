@@ -71,8 +71,10 @@ function Attendance() {
   const titleCaseFromKey = key =>
     String(key || '')
       .trim()
-      .replace(/_/g, ' ')
-      .replace(/\w\S*/g, word => word.charAt(0).toUpperCase() + word.slice(1))
+      .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+      .replace(/[_-]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .toUpperCase()
 
   const categoryLabelByKey = useMemo(() => {
     const map = {}
