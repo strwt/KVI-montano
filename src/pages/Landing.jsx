@@ -40,7 +40,7 @@ const SPONSOR_LOGOS = [
   'CityMall.png',
   'CLIFSA.png',
   'Climbs.jpg',
-  'COCPO.webp',
+  'COCPO.png',
   'Golden Dream.png',
   'JNT.png',
   'Knorr.png',
