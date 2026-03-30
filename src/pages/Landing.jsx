@@ -449,6 +449,7 @@ function Landing() {
     setSelectedPerson({
       name: person.name,
       image: resolvedImage,
+      idNumber: coerceString(matched?.idNumber || matched?.id_number || person.idNumber),
       contactNumber: coerceString(matched?.contactNumber || person.contactNumber),
       bloodType: coerceString(matched?.bloodType || person.bloodType),
       committee: coerceString(matched?.committee || person.committee),
@@ -552,6 +553,7 @@ function Landing() {
         .map(row => ({
           name: String(row?.name || '').trim(),
           image: resolveProfileImage(row?.profile_image || row?.profileImage),
+          idNumber: String(row?.id_number || row?.idNumber || '').trim(),
           contactNumber: String(row?.contact_number || row?.contactNumber || '').trim(),
           bloodType: String(row?.blood_type || row?.bloodType || '').trim(),
           committee: String(row?.committee || '').trim(),
@@ -698,6 +700,11 @@ function Landing() {
     if (!scroller) return
     if (event.pointerType && event.pointerType !== 'mouse') return
     if (event.button !== undefined && event.button !== 0) return
+
+    const target = event.target
+    if (target instanceof Element) {
+      if (target.closest('button, a, input, select, textarea, [role="button"]')) return
+    }
 
     committeeDragMovedRef.current = false
     setCommitteeDragging(true)
@@ -1333,13 +1340,24 @@ function Landing() {
         <div className="fixed inset-0 z-[60] flex items-center justify-center px-4" style={{ background: 'rgba(0,0,0,0.7)' }}>
           <div className="w-full max-w-md rounded-2xl border border-white/10 bg-black/90 p-6 text-center">
             <div className="mx-auto mb-4 h-24 w-24 overflow-hidden rounded-2xl border border-white/10 bg-white">
-              <img src={selectedPerson.image} alt={selectedPerson.name} className="h-full w-full object-cover" />
+              <img
+                src={selectedPerson.image || HERO_IMAGE}
+                alt={selectedPerson.name}
+                className="h-full w-full object-cover"
+                onError={(event) => {
+                  if (event.currentTarget.src !== HERO_IMAGE) event.currentTarget.src = HERO_IMAGE
+                }}
+              />
             </div>
             <p className="text-xs font-semibold tracking-[0.2em] uppercase text-red-300">Profile</p>
             <h3 className="mt-2 text-xl font-bold text-white font-heading">{selectedPerson.name}</h3>
 
             <div className="mt-5 rounded-xl border border-white/10 bg-white/5 p-4 text-left">
               <div className="grid grid-cols-1 gap-3 text-sm">
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-white/60">ID number</span>
+                  <span className="text-white tabular-nums">{selectedPerson.idNumber || '-'}</span>
+                </div>
                 <div className="flex items-baseline justify-between gap-3">
                   <span className="text-white/60">Contact</span>
                   <span className="text-white tabular-nums">{selectedPerson.contactNumber || '—'}</span>
@@ -1349,7 +1367,7 @@ function Landing() {
                   <span className="text-white">{selectedPerson.bloodType || '—'}</span>
                 </div>
                 <div className="flex items-baseline justify-between gap-3">
-                  <span className="text-white/60">Member since</span>
+                  <span className="text-white/60">Joined</span>
                   <span className="text-white">{selectedPerson.memberSince || '—'}</span>
                 </div>
                 <div className="flex items-baseline justify-between gap-3">
