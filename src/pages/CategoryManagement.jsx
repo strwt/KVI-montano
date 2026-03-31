@@ -1,8 +1,33 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Plus, Trash2, Save, Tags } from 'lucide-react'
+import { Plus, Trash2, Save, Tags, Pencil, X as CloseIcon } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useI18n } from '../i18n/useI18n'
 import { supabase } from '../lib/supabaseClient'
+
+const normalizeCategoryKey = value =>
+  String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+
+const OPERATION_KEY_ALIASES = {
+  relief_operations: 'relief_operation',
+  fire_responses: 'fire_response',
+  water_distributions: 'water_distribution',
+  blood_lettings: 'blood_letting',
+}
+
+const canonicalizeCategoryKey = key => OPERATION_KEY_ALIASES[key] || key
+const toCategoryKey = value => canonicalizeCategoryKey(normalizeCategoryKey(value))
+
+const titleCaseFromKey = key =>
+  String(key || '')
+    .trim()
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .toUpperCase()
 
 const FIELD_TYPES = [
   { value: 'text', label: 'Text' },
@@ -19,7 +44,7 @@ const normalizeName = (value) =>
 const normalizeFieldKey = (value) => normalizeName(value).toLowerCase()
 
 function CategoryManagement() {
-  const { user } = useAuth()
+  const { user, reloadCategories } = useAuth()
   const { t } = useI18n()
   const isAdmin = user?.role === 'admin'
 
@@ -27,7 +52,9 @@ function CategoryManagement() {
   const [loadingCategories, setLoadingCategories] = useState(false)
 
   const [categoryName, setCategoryName] = useState('')
-  const [fields, setFields] = useState([{ fieldName: '', fieldType: '' }])
+  const [fields, setFields] = useState([{ fieldId: null, fieldName: '', fieldType: '' }])
+  const [editingCategory, setEditingCategory] = useState(null)
+  const [originalFields, setOriginalFields] = useState([])
   const [formError, setFormError] = useState('')
   const [saveState, setSaveState] = useState('idle')
 
@@ -35,9 +62,46 @@ function CategoryManagement() {
 
   const resetForm = () => {
     setCategoryName('')
-    setFields([{ fieldName: '', fieldType: '' }])
+    setFields([{ fieldId: null, fieldName: '', fieldType: '' }])
+    setEditingCategory(null)
+    setOriginalFields([])
     setFormError('')
     setSaveState('idle')
+  }
+
+  const loadCategoryFields = async (categoryId) => {
+    if (!canUseSupabase) return []
+    const id = String(categoryId || '').trim()
+    if (!id) return []
+    const { data, error } = await supabase
+      .from('category_fields')
+      .select('id,field_name,field_type,created_at')
+      .eq('category_id', id)
+      .order('created_at', { ascending: true })
+    if (error) throw error
+    return Array.isArray(data) ? data : []
+  }
+
+  const handleSelectCategory = async (category) => {
+    if (!category?.id) return
+    setFormError('')
+    setSaveState('idle')
+    setEditingCategory({ id: category.id, name: category.name })
+    setCategoryName(category.name)
+    try {
+      const loaded = await loadCategoryFields(category.id)
+      const mapped = loaded.map(row => ({
+        fieldId: row.id,
+        fieldName: row.field_name,
+        fieldType: row.field_type,
+      }))
+      setFields(mapped.length ? mapped : [{ fieldId: null, fieldName: '', fieldType: '' }])
+      setOriginalFields(mapped)
+    } catch (error) {
+      setFormError(error?.message ? String(error.message) : 'Unable to load category fields.')
+      setFields([{ fieldId: null, fieldName: '', fieldType: '' }])
+      setOriginalFields([])
+    }
   }
 
   const loadCategories = async () => {
@@ -71,11 +135,12 @@ function CategoryManagement() {
 
   const validatedPayload = useMemo(() => {
     if (!isAdmin) return { ok: false, message: 'Only admins can manage categories.' }
-    const name = normalizeName(categoryName)
-    if (!name) return { ok: false, message: 'Category name is required.' }
+    const key = toCategoryKey(categoryName)
+    if (!key) return { ok: false, message: 'Category name is required.' }
 
     const cleanedFields = (Array.isArray(fields) ? fields : [])
       .map(entry => ({
+        fieldId: entry?.fieldId || null,
         fieldName: normalizeName(entry?.fieldName),
         fieldType: String(entry?.fieldType || '').trim(),
       }))
@@ -98,18 +163,18 @@ function CategoryManagement() {
       seen.add(key)
     }
 
-    return { ok: true, name, fields: cleanedFields }
+    return { ok: true, key, fields: cleanedFields }
   }, [categoryName, fields, isAdmin])
 
   const handleAddFieldRow = () => {
-    setFields(prev => [...(Array.isArray(prev) ? prev : []), { fieldName: '', fieldType: '' }])
+    setFields(prev => [...(Array.isArray(prev) ? prev : []), { fieldId: null, fieldName: '', fieldType: '' }])
   }
 
   const handleRemoveFieldRow = (index) => {
     setFields(prev => {
       const next = Array.isArray(prev) ? [...prev] : []
       next.splice(index, 1)
-      return next.length ? next : [{ fieldName: '', fieldType: '' }]
+      return next.length ? next : [{ fieldId: null, fieldName: '', fieldType: '' }]
     })
   }
 
@@ -132,10 +197,96 @@ function CategoryManagement() {
 
     setSaveState('saving')
     try {
+      if (editingCategory?.id) {
+        const categoryId = String(editingCategory.id || '').trim()
+        if (!categoryId) {
+          setFormError('Missing category ID.')
+          setSaveState('idle')
+          return
+        }
+
+        // Keep category key stable during edits to avoid breaking existing events/reporting references.
+        const stableKey = String(editingCategory.name || '').trim()
+        if (validatedPayload.key !== stableKey) {
+          setFormError('Renaming a category key is not supported yet. Create a new category instead.')
+          setSaveState('idle')
+          return
+        }
+
+        const nextFieldsById = new Map(
+          validatedPayload.fields
+            .filter(entry => entry.fieldId)
+            .map(entry => [String(entry.fieldId), entry])
+        )
+
+        const originalById = new Map(
+          (Array.isArray(originalFields) ? originalFields : [])
+            .filter(entry => entry.fieldId)
+            .map(entry => [String(entry.fieldId), entry])
+        )
+
+        const removedFieldIds = []
+        originalById.forEach((value, fieldId) => {
+          if (!nextFieldsById.has(fieldId)) removedFieldIds.push(fieldId)
+        })
+
+        const ensureFieldNotUsed = async (fieldId) => {
+          const { count, error } = await supabase
+            .from('activity_values')
+            .select('id', { count: 'exact', head: true })
+            .eq('field_id', fieldId)
+          if (error) throw error
+          const usedCount = Number(count || 0)
+          if (usedCount > 0) throw new Error('Cannot modify or delete a field that already has saved activity values.')
+        }
+
+        // Delete removed fields (only if not used).
+        for (const fieldId of removedFieldIds) {
+          await ensureFieldNotUsed(fieldId)
+          const { error } = await supabase.from('category_fields').delete().eq('id', fieldId)
+          if (error) throw error
+        }
+
+        // Update existing fields (name/type changes only if not used).
+        for (const entry of validatedPayload.fields.filter(item => item.fieldId)) {
+          const fieldId = String(entry.fieldId)
+          const original = originalById.get(fieldId)
+          if (!original) continue
+          const changed =
+            normalizeFieldKey(original.fieldName) !== normalizeFieldKey(entry.fieldName) ||
+            String(original.fieldType) !== String(entry.fieldType)
+          if (!changed) continue
+          await ensureFieldNotUsed(fieldId)
+          const { error } = await supabase
+            .from('category_fields')
+            .update({ field_name: entry.fieldName, field_type: entry.fieldType })
+            .eq('id', fieldId)
+          if (error) throw error
+        }
+
+        // Insert new fields.
+        const newFields = validatedPayload.fields.filter(item => !item.fieldId)
+        if (newFields.length > 0) {
+          const { error } = await supabase.from('category_fields').insert(
+            newFields.map(entry => ({
+              category_id: categoryId,
+              field_name: entry.fieldName,
+              field_type: entry.fieldType,
+            }))
+          )
+          if (error) throw error
+        }
+
+        setSaveState('success')
+        await loadCategories()
+        await handleSelectCategory({ id: categoryId, name: stableKey })
+        return
+      }
+
       const { data: insertedCategory, error: categoryError } = await supabase
         .from('categories')
         .insert({
-          name: validatedPayload.name,
+          name: validatedPayload.key,
           created_by: user?.id || null,
         })
         .select('id,name')
@@ -171,11 +322,50 @@ function CategoryManagement() {
         return
       }
 
+      if (typeof reloadCategories === 'function') await reloadCategories()
+
       setSaveState('success')
       await loadCategories()
       window.setTimeout(() => resetForm(), 900)
     } catch (error) {
       setFormError(error?.message ? String(error.message) : 'Unable to save category.')
+      setSaveState('idle')
+    }
+  }
+
+  const handleDeleteCategory = async () => {
+    if (!editingCategory?.id) return
+    setFormError('')
+    setSaveState('saving')
+    try {
+      const categoryId = String(editingCategory.id || '').trim()
+      const categoryKey = String(editingCategory.name || '').trim()
+      if (!categoryId || !categoryKey) throw new Error('Missing category.')
+
+      const { count: eventCount, error: eventCountError } = await supabase
+        .from('events')
+        .select('id', { count: 'exact', head: true })
+        .eq('category', categoryKey)
+      if (eventCountError) throw eventCountError
+      if (Number(eventCount || 0) > 0) throw new Error('Reassign events to another category before deleting this category.')
+
+      const { count: recordCount, error: recordCountError } = await supabase
+        .from('activity_records')
+        .select('id', { count: 'exact', head: true })
+        .eq('category_id', categoryId)
+      if (recordCountError) throw recordCountError
+      if (Number(recordCount || 0) > 0) throw new Error('This category has activity records and cannot be deleted.')
+
+      const { error: deleteTypedError } = await supabase.from('categories').delete().eq('id', categoryId)
+      if (deleteTypedError) throw deleteTypedError
+
+      if (typeof reloadCategories === 'function') await reloadCategories()
+
+      setSaveState('success')
+      await loadCategories()
+      window.setTimeout(() => resetForm(), 700)
+    } catch (error) {
+      setFormError(error?.message ? String(error.message) : 'Unable to delete category.')
       setSaveState('idle')
     }
   }
@@ -216,13 +406,23 @@ function CategoryManagement() {
           className="rounded-2xl border border-red-600 bg-white p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] dark:border-red-600 dark:bg-zinc-900"
         >
           <div className="mb-4 flex items-center justify-between gap-3">
-            <h2 className="text-[20px] font-semibold text-black dark:text-zinc-100">{t('New Category')}</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-[20px] font-semibold text-black dark:text-zinc-100">
+                {editingCategory ? t('Edit Category') : t('New Category')}
+              </h2>
+              {editingCategory && (
+                <span className="rounded-full border border-red-600 bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-700 dark:bg-red-950/30 dark:text-red-300">
+                  {t('Editing')}
+                </span>
+              )}
+            </div>
             <button
               type="button"
               onClick={resetForm}
-              className="rounded-xl border border-neutral-300 bg-white px-3 py-1.5 text-[13px] text-neutral-700 hover:bg-neutral-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-900"
+              className="inline-flex items-center gap-2 rounded-xl border border-neutral-300 bg-white px-3 py-1.5 text-[13px] text-neutral-700 hover:bg-neutral-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-900"
             >
-              {t('Reset')}
+              <CloseIcon size={14} />
+              {editingCategory ? t('Close') : t('Reset')}
             </button>
           </div>
 
@@ -243,8 +443,14 @@ function CategoryManagement() {
               value={categoryName}
               onChange={e => setCategoryName(e.target.value)}
               placeholder={t('e.g., Mangrove Planting')}
+              disabled={Boolean(editingCategory)}
               className="w-full rounded-xl border border-neutral-300 bg-white px-4 py-2 text-[14px] text-black focus:border-red-600 focus:outline-none dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
             />
+            {editingCategory && (
+              <p className="text-[12px] text-neutral-500 dark:text-zinc-400">
+                {t('Category key renaming is disabled to prevent breaking existing events.')}
+              </p>
+            )}
           </div>
 
           <div className="mt-6 flex items-center justify-between">
@@ -312,14 +518,27 @@ function CategoryManagement() {
             <div className="text-[13px] text-neutral-600 dark:text-zinc-400">
               {t('Each field must have a required data type (text, number, date, boolean).')}
             </div>
-            <button
-              type="submit"
-              disabled={saveState === 'saving'}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-600 bg-red-600 px-5 py-2.5 text-[14px] font-semibold text-white transition-all duration-200 hover:scale-[1.01] hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-70"
-            >
-              <Save size={16} />
-              {saveState === 'saving' ? t('Saving...') : t('Save Category')}
-            </button>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+              {editingCategory && (
+                <button
+                  type="button"
+                  onClick={handleDeleteCategory}
+                  disabled={saveState === 'saving'}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-600 bg-white px-5 py-2.5 text-[14px] font-semibold text-red-700 transition-all duration-200 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-70 dark:bg-zinc-950 dark:text-red-300 dark:hover:bg-red-950/30"
+                >
+                  <Trash2 size={16} />
+                  {t('Delete')}
+                </button>
+              )}
+              <button
+                type="submit"
+                disabled={saveState === 'saving'}
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-600 bg-red-600 px-5 py-2.5 text-[14px] font-semibold text-white transition-all duration-200 hover:scale-[1.01] hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                <Save size={16} />
+                {saveState === 'saving' ? t('Saving...') : editingCategory ? t('Update Category') : t('Save Category')}
+              </button>
+            </div>
           </div>
         </form>
 
@@ -342,28 +561,34 @@ function CategoryManagement() {
                 {t('No categories yet.')}
               </p>
             ) : (
-              categories.map(category => (
-                <div
-                  key={category.id}
-                  className="flex items-center justify-between gap-3 rounded-xl border border-neutral-200 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate text-[14px] font-semibold text-black dark:text-zinc-100">{category.name}</p>
-                    <p className="text-[12px] text-neutral-500 dark:text-zinc-400">{t('Configured')}</p>
-                  </div>
-                </div>
-              ))
+              categories.map(category => {
+                const isSelected = String(editingCategory?.id || '') === String(category.id || '')
+                return (
+                  <button
+                    key={category.id}
+                    type="button"
+                    onClick={() => handleSelectCategory(category)}
+                    className={`flex w-full items-center justify-between gap-3 rounded-xl border px-3 py-2 text-left transition-colors ${
+                      isSelected
+                        ? 'border-red-600 bg-red-50 dark:bg-red-950/20'
+                        : 'border-neutral-200 bg-white hover:bg-neutral-50 dark:border-zinc-700 dark:bg-zinc-950 dark:hover:bg-zinc-900'
+                    }`}
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-[14px] font-semibold text-black dark:text-zinc-100">
+                        {titleCaseFromKey(category.name) || category.name}
+                      </p>
+                      <p className="text-[12px] text-neutral-500 dark:text-zinc-400">
+                        {t('Key')}: <span className="font-mono">{category.name}</span>
+                      </p>
+                    </div>
+                    <div className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-neutral-200 bg-white text-neutral-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200">
+                      <Pencil size={14} />
+                    </div>
+                  </button>
+                )
+              })
             )}
-          </div>
-
-          <div className="mt-4 rounded-xl border border-neutral-200 bg-neutral-50 p-3 text-[13px] text-neutral-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-300">
-            <p className="font-semibold">{t('Example')}</p>
-            <p className="mt-1">{t('Mangrove Planting')}</p>
-            <ul className="mt-2 list-disc space-y-1 pl-5">
-              <li>{t('Seedling Count')} ({t('Number')})</li>
-              <li>{t('Planting Date')} ({t('Date')})</li>
-              <li>{t('Verified')} ({t('Boolean')})</li>
-            </ul>
           </div>
         </aside>
       </section>
@@ -372,4 +597,3 @@ function CategoryManagement() {
 }
 
 export default CategoryManagement
-

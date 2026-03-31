@@ -65,11 +65,12 @@ export const mapEventRowToEvent = (row) => {
   }
 }
 
-export const fetchSupabaseEvents = async () => {
+export const fetchSupabaseEvents = async (options = {}) => {
   if (!isSupabaseEnabled()) return { data: [], error: null }
 
+  const { force = false } = options || {}
   const now = Date.now()
-  if (eventsCache.at && now - eventsCache.at < EVENTS_CACHE_TTL_MS) {
+  if (!force && eventsCache.at && now - eventsCache.at < EVENTS_CACHE_TTL_MS) {
     return { data: Array.isArray(eventsCache.data) ? eventsCache.data : [], error: null }
   }
 

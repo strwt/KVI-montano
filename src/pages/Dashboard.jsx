@@ -91,7 +91,7 @@ const getIconThemeClass = categoryKey => {
 }
 
 function Dashboard() {
-  const { user, eventCategories } = useAuth()
+  const { user, categories } = useAuth()
   const { t } = useI18n()
   const navigate = useNavigate()
   const isAdmin = user?.role === 'admin'
@@ -240,14 +240,14 @@ function Dashboard() {
 
   const categoryLabelByKey = useMemo(() => {
     const map = {}
-    const entries = Array.isArray(eventCategories) ? eventCategories : []
+    const entries = Array.isArray(categories) ? categories : []
     entries.forEach(name => {
       const key = canonicalizeOperationKey(normalizeCategoryKey(name))
       if (!key) return
       map[key] = titleCaseFromKey(key)
     })
     return map
-  }, [eventCategories])
+  }, [categories])
 
   const getCategoryLabel = (value) => {
     const key = canonicalizeOperationKey(normalizeCategoryKey(value))

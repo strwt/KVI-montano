@@ -410,10 +410,8 @@ const emptyContext = (configError) => ({
   addCommittee: async () => ({ success: false, message: configError || 'Supabase not configured.' }),
   editCommittee: async () => ({ success: false, message: configError || 'Supabase not configured.' }),
   deleteCommittee: async () => ({ success: false, message: configError || 'Supabase not configured.' }),
-  eventCategories: [],
-  addEventCategory: async () => ({ success: false, message: configError || 'Supabase not configured.' }),
-  editEventCategory: async () => ({ success: false, message: configError || 'Supabase not configured.' }),
-  deleteEventCategory: async () => ({ success: false, message: configError || 'Supabase not configured.' }),
+  categories: [],
+  reloadCategories: async () => [],
   submitRecruitmentApplication: async () => ({ success: false, message: configError || 'Supabase not configured.' }),
   rejectRecruitment: async () => ({ success: false, message: configError || 'Supabase not configured.' }),
   getRecruitments: () => [],
@@ -430,7 +428,7 @@ export function AuthProvider({ children }) {
   const [members, setMembers] = useState([])
   const [admins, setAdmins] = useState([])
   const [committees, setCommittees] = useState([])
-  const [eventCategories, setEventCategories] = useState([])
+  const [categories, setCategories] = useState([])
   const [recruitments, setRecruitments] = useState([])
   const authEpochRef = useRef(0)
   const initialSessionHandledRef = useRef(false)
@@ -495,7 +493,7 @@ export function AuthProvider({ children }) {
     setMembers([])
     setAdmins([])
     setCommittees([])
-    setEventCategories([])
+    setCategories([])
     setRecruitments([])
     setLoading(false)
     setAuthResolved(true)
@@ -726,37 +724,39 @@ export function AuthProvider({ children }) {
     return all.filter(entry => entry?.role === 'member')
   }
 
-  	  const reloadCommittees = async () => {
-  	    if (!supabaseEnabled) return []
-  	    let data = []
-  	    try {
-	      const res = await supabase.from('committees').select('name').order('name', { ascending: true })
-	      if (res.error) console.warn('Failed to load committees from Supabase.', res.error)
-	      data = res.data
-  	    } catch (error) {
-	      console.warn('Failed to load committees from Supabase.', error)
-  	    }
-  	    const names = sortCommittees(Array.isArray(data) ? data.map(row => row.name) : [])
-  	    setCommittees(names)
-  	    return names
-  	  }
+  const reloadCommittees = useCallback(async () => {
+    if (!supabaseEnabled) return []
+    let data = []
+    try {
+      const res = await supabase.from('committees').select('name').order('name', { ascending: true })
+      if (res.error) console.warn('Failed to load committees from Supabase.', res.error)
+      data = res.data
+    } catch (error) {
+      console.warn('Failed to load committees from Supabase.', error)
+    }
+    const names = sortCommittees(Array.isArray(data) ? data.map(row => row.name) : [])
+    setCommittees(names)
+    return names
+  }, [supabaseEnabled])
 
-    const reloadEventCategories = async () => {
+    const reloadCategories = async () => {
       if (!supabaseEnabled) return []
-      let data = []
+      let typedCategories = []
       try {
         const res = await supabase
-          .from('event_categories')
+          .from('categories')
           .select('name')
           .order('name', { ascending: true })
-        if (res.error) console.warn('Failed to load event categories from Supabase.', res.error)
-        data = res.data
+        if (res.error) console.warn('Failed to load categories from Supabase.', res.error)
+        typedCategories = res.data
       } catch (error) {
-        console.warn('Failed to load event categories from Supabase.', error)
+        console.warn('Failed to load categories from Supabase.', error)
       }
-      const categories = sortEventCategories(Array.isArray(data) ? data.map(row => row.name) : [])
-      setEventCategories(categories)
-      return categories
+
+      const merged = Array.isArray(typedCategories) ? typedCategories.map(row => row.name) : []
+      const next = sortEventCategories(merged.map(name => toEventCategoryKey(name)).filter(Boolean))
+      setCategories(next)
+      return next
     }
 
   	  const reloadRecruitments = async (asAdmin) => {
@@ -828,21 +828,21 @@ export function AuthProvider({ children }) {
 
     let disposed = false
 
-    const applySignedOut = () => {
-      authEpochRef.current += 1
-      clearProfileCache()
-      setUser(null)
-      setUsers([])
-      setMembers([])
-      setAdmins([])
-      setCommittees([])
-      setEventCategories([])
-      setRecruitments([])
-      setAuthResolved(true)
-      setLoading(false)
-      lookupsUserIdRef.current = ''
-      lookupsLoadedRef.current = false
-    }
+      const applySignedOut = () => {
+        authEpochRef.current += 1
+        clearProfileCache()
+        setUser(null)
+        setUsers([])
+        setMembers([])
+        setAdmins([])
+        setCommittees([])
+        setCategories([])
+        setRecruitments([])
+        setAuthResolved(true)
+        setLoading(false)
+        lookupsUserIdRef.current = ''
+        lookupsLoadedRef.current = false
+      }
 
     const hydrateForUser = async (authUser, epoch) => {
       setLoading(true)
@@ -855,11 +855,11 @@ export function AuthProvider({ children }) {
           lookupsLoadedRef.current = false
         }
 
-        if (!lookupsLoadedRef.current) {
-          await reloadCommittees()
-          await reloadEventCategories()
-          lookupsLoadedRef.current = true
-        }
+         if (!lookupsLoadedRef.current) {
+           await reloadCommittees()
+           await reloadCategories()
+           lookupsLoadedRef.current = true
+         }
       } finally {
         if (!disposed && epoch === authEpochRef.current) setLoading(false)
       }
@@ -1744,79 +1744,7 @@ export function AuthProvider({ children }) {
     return { success: true }
   }
 
-  const addEventCategory = async (categoryName) => {
-    if (user?.role !== 'admin') return { success: false, message: 'Only admins can add event categories.' }
-    const normalizedKey = toEventCategoryKey(categoryName)
-    if (!normalizedKey) return { success: false, message: 'Category name is required.' }
-
-    const { error } = await supabase.from('event_categories').insert({
-      name: normalizedKey,
-      created_by: user?.id || null,
-    })
-
-    if (error) return { success: false, message: error.message || 'Unable to add event category.' }
-    setEventCategories(prev => sortEventCategories([...(Array.isArray(prev) ? prev : []), normalizedKey]))
-    return { success: true, name: normalizedKey }
-  }
-
-  const editEventCategory = async (currentName, nextName) => {
-    if (user?.role !== 'admin') return { success: false, message: 'Only admins can update event categories.' }
-    const source = toEventCategoryKey(currentName)
-    const target = toEventCategoryKey(nextName)
-    if (!source) return { success: false, message: 'Category not found.' }
-    if (!target) return { success: false, message: 'Category name is required.' }
-    if (source === target) return { success: true }
-
-    const { error } = await supabase.from('event_categories').update({ name: target }).eq('name', source)
-    if (error) return { success: false, message: error.message || 'Unable to update event category.' }
-
-    await supabase.from('events').update({ category: target }).eq('category', source)
-    await supabase.from('notifications').update({ category: target }).eq('category', source)
-
-    setEventCategories(prev => sortEventCategories((Array.isArray(prev) ? prev : []).map(name => (name === source ? target : name))))
-    return { success: true }
-  }
-
-  const deleteEventCategory = async (categoryName, fallbackCategoryName) => {
-    if (user?.role !== 'admin') return { success: false, message: 'Only admins can delete event categories.' }
-    const key = toEventCategoryKey(categoryName)
-    if (!key) return { success: false, message: 'Category not found.' }
-
-    const fallback = fallbackCategoryName ? toEventCategoryKey(fallbackCategoryName) : ''
-    if (fallback && fallback === key) return { success: false, message: 'Fallback category must be different.' }
-
-    const { count, error: countError } = await supabase
-      .from('events')
-      .select('id', { count: 'exact', head: true })
-      .eq('category', key)
-
-    if (countError) {
-      console.warn('Failed to count events for category.', countError)
-    }
-
-    const assignedCount = Number(count || 0)
-    if (assignedCount > 0 && !fallback) {
-      return { success: false, message: 'Reassign events to another category before deleting this category.' }
-    }
-
-    if (assignedCount > 0 && fallback) {
-      await supabase.from('events').update({ category: fallback }).eq('category', key)
-      await supabase.from('notifications').update({ category: fallback }).eq('category', key)
-    }
-
-    const { data: deletedRows, error } = await supabase
-      .from('event_categories')
-      .delete()
-      .eq('name', key)
-      .select('name')
-    if (error) return { success: false, message: error.message || 'Unable to delete event category.' }
-    if (!Array.isArray(deletedRows) || deletedRows.length === 0) {
-      return { success: false, message: 'Category was not deleted (no matching record in Supabase).' }
-    }
-
-    setEventCategories(prev => (Array.isArray(prev) ? prev : []).filter(name => name !== key))
-    return { success: true, reassignedTo: fallback || null }
-  }
+  // Legacy event categories removed: use `public.categories` + `public.category_fields` instead.
 
   const submitRecruitmentApplication = async (applicationData = {}) => {
     const fullName = applicationData.fullName?.trim()
@@ -2076,7 +2004,8 @@ export function AuthProvider({ children }) {
     authResolved,
     loading,
     committees,
-    eventCategories,
+    categories,
+    reloadCategories,
     appLanguage,
     setAppLanguage,
     darkMode,
@@ -2102,9 +2031,6 @@ export function AuthProvider({ children }) {
     addCommittee,
     editCommittee,
     deleteCommittee,
-    addEventCategory,
-    editEventCategory,
-    deleteEventCategory,
     submitRecruitmentApplication,
     rejectRecruitment,
     getRecruitments,

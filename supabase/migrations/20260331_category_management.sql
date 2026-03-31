@@ -33,6 +33,10 @@ alter table public.category_fields
   drop constraint if exists category_fields_name_not_blank,
   add constraint category_fields_name_not_blank check (btrim(field_name) <> '');
 
+-- Prevent case-only duplicates (e.g. "Seedling Count" vs "seedling count").
+create unique index if not exists category_fields_unique_lower_name_idx
+on public.category_fields (category_id, lower(field_name));
+
 -- Activity records (one record per category occurrence)
 create table if not exists public.activity_records (
   id uuid primary key default gen_random_uuid(),
@@ -232,4 +236,3 @@ to authenticated
 using (public.is_admin());
 
 commit;
-

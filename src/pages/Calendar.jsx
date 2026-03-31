@@ -37,6 +37,7 @@ import {
   updateSupabaseEvent,
 } from '../lib/supabaseEvents'
 import { insertAssignmentNotifications } from '../lib/supabaseNotifications'
+import { buildActivityValueRow } from '../lib/activityValues'
 
 const CATEGORY_CONFIG = {
   tuli: {
@@ -846,7 +847,7 @@ function AssignMembersPicker({ allMembers, selectedIds, onChange, label = 'Assig
 }
 
 function Calendar({ listOnly = false }) {
-  const { user, getAllMembers, getAdmins, ensureAdminDataLoaded, eventCategories } = useAuth()
+  const { user, getAllMembers, getAdmins, ensureAdminDataLoaded, categories } = useAuth()
   const canManageEvents = user?.role === 'admin'
   const supabaseEnabled = isSupabaseEnabled()
   const routerLocation = useLocation()
@@ -884,6 +885,13 @@ function Calendar({ listOnly = false }) {
   const [doneBloodTokens, setDoneBloodTokens] = useState([''])
   const [doneContributorMemberIds, setDoneContributorMemberIds] = useState([])
   const [doneContributorSearch, setDoneContributorSearch] = useState('')
+  const [doneTypedCategoryId, setDoneTypedCategoryId] = useState('')
+  const [doneTypedCategoryFields, setDoneTypedCategoryFields] = useState([])
+  const [doneTypedFieldValues, setDoneTypedFieldValues] = useState({})
+  const [doneTypedFieldsLoading, setDoneTypedFieldsLoading] = useState(false)
+  const [showDoneTypedFieldPicker, setShowDoneTypedFieldPicker] = useState(false)
+  const [doneTypedFieldToAdd, setDoneTypedFieldToAdd] = useState('')
+  const [visibleDoneTypedFieldIds, setVisibleDoneTypedFieldIds] = useState([])
   const eventRefs = useRef({})
   const handledRedirectRef = useRef(false)
   const routeCategory = searchParams.get('category') || ''
@@ -954,12 +962,12 @@ function Calendar({ listOnly = false }) {
   }, [getAllMembers, getAdmins])
 
   const categoryKeysFromDb = useMemo(() => {
-    const entries = Array.isArray(eventCategories) ? eventCategories : []
+    const entries = Array.isArray(categories) ? categories : []
     const normalized = entries
       .map(name => canonicalizeOperationKey(normalizeCategoryKey(name)))
       .filter(Boolean)
     return [...new Set(normalized)]
-  }, [eventCategories])
+  }, [categories])
 
   const categoryLabelByKey = useMemo(() => {
     const map = {}
@@ -1557,7 +1565,7 @@ function Calendar({ listOnly = false }) {
     })
   }
 
-  const openMarkDoneForm = event => {
+  const openMarkDoneForm = async (event) => {
     if (!canManageEvents) return
     const categoryKey = canonicalizeOperationKey(normalizeCategoryKey(event?.category)) || 'notes'
     const categoryData =
@@ -1612,14 +1620,123 @@ function Calendar({ listOnly = false }) {
     setDoneContributorMemberIds(Array.from(new Set(existingContributorIds)).filter(Boolean))
     setDoneContributorSearch('')
     setDoneFormError('')
+    setDoneTypedCategoryId('')
+    setDoneTypedCategoryFields([])
+    setDoneTypedFieldValues({})
+    setDoneTypedFieldsLoading(false)
+    setShowDoneTypedFieldPicker(false)
+    setDoneTypedFieldToAdd('')
+    setVisibleDoneTypedFieldIds([])
     setMarkDoneEventId(event.id)
     setShowDoneForm(true)
+
+    if (!supabaseEnabled) return
+
+    // Load typed fields from Category Management (if configured for this category key).
+    setDoneTypedFieldsLoading(true)
+    try {
+      const { data: categoryRows, error: categoryError } = await supabase
+        .from('categories')
+        .select('id,name')
+        .limit(500)
+
+      if (categoryError) throw categoryError
+      const match = (Array.isArray(categoryRows) ? categoryRows : []).find(row => {
+        const name = String(row?.name || '').trim()
+        if (!name) return false
+        if (name === categoryKey) return true
+        const normalized = canonicalizeOperationKey(normalizeCategoryKey(name))
+        return normalized === categoryKey
+      })
+
+      if (!match?.id) return
+
+      const categoryId = String(match.id || '').trim()
+      if (!categoryId) return
+      setDoneTypedCategoryId(categoryId)
+
+      const { data: fieldRows, error: fieldsError } = await supabase
+        .from('category_fields')
+        .select('id,field_name,field_type')
+        .eq('category_id', categoryId)
+        .order('created_at', { ascending: true })
+
+      if (fieldsError) throw fieldsError
+
+      const typedFields = Array.isArray(fieldRows) ? fieldRows : []
+      setDoneTypedCategoryFields(typedFields)
+
+      const recordId = String(categoryData.activity_record_id || '').trim()
+      const valuesByFieldId = {}
+
+      if (recordId) {
+        const { data: valueRows, error: valueError } = await supabase
+          .from('activity_values')
+          .select('field_id,value_text,value_number,value_date,value_boolean')
+          .eq('record_id', recordId)
+        if (valueError) throw valueError
+
+        ;(Array.isArray(valueRows) ? valueRows : []).forEach(row => {
+          const fieldId = String(row.field_id || '').trim()
+          if (!fieldId) return
+          if (row.value_text !== null && row.value_text !== undefined) valuesByFieldId[fieldId] = String(row.value_text)
+          else if (row.value_number !== null && row.value_number !== undefined) valuesByFieldId[fieldId] = String(row.value_number)
+          else if (row.value_date) valuesByFieldId[fieldId] = dayjs(row.value_date).format('YYYY-MM-DD')
+          else if (row.value_boolean !== null && row.value_boolean !== undefined) valuesByFieldId[fieldId] = Boolean(row.value_boolean)
+        })
+      }
+
+      const initial = typedFields.reduce((acc, field) => {
+        const fieldId = String(field?.id || '').trim()
+        if (!fieldId) return acc
+        const fieldType = String(field?.field_type || '').trim()
+        if (Object.prototype.hasOwnProperty.call(valuesByFieldId, fieldId)) {
+          acc[fieldId] = valuesByFieldId[fieldId]
+          return acc
+        }
+        if (fieldType === 'boolean') acc[fieldId] = false
+        else acc[fieldId] = ''
+        return acc
+      }, {})
+
+      setDoneTypedFieldValues(initial)
+
+      const typedFieldIds = typedFields
+        .map(field => String(field?.id || '').trim())
+        .filter(Boolean)
+      const existingValueFieldIds = Object.keys(valuesByFieldId || {}).filter(id => typedFieldIds.includes(id))
+      setVisibleDoneTypedFieldIds(existingValueFieldIds)
+    } catch (error) {
+      console.warn('Failed to load typed category fields for done form.', error)
+    } finally {
+      setDoneTypedFieldsLoading(false)
+    }
+  }
+
+  const handleAddVisibleDoneTypedField = () => {
+    const fieldId = String(doneTypedFieldToAdd || '').trim()
+    if (!fieldId) return
+
+    setVisibleDoneTypedFieldIds(prev => {
+      const next = Array.isArray(prev) ? [...prev] : []
+      if (next.includes(fieldId)) return next
+      next.push(fieldId)
+      return next
+    })
+
+    setDoneTypedFieldToAdd('')
+    setShowDoneTypedFieldPicker(false)
   }
 
 		const handleMarkDone = async (e) => {
 		  e.preventDefault()
 		  if (!markDoneEvent || !markDoneCategoryConfig) return
 		  const values = doneFields[markDoneCategoryKey] || {}
+      const allTypedFields = Array.isArray(doneTypedCategoryFields) ? doneTypedCategoryFields : []
+      const visibleFieldIds = new Set((Array.isArray(visibleDoneTypedFieldIds) ? visibleDoneTypedFieldIds : []).map(id => String(id)))
+      const typedFields = allTypedFields.filter(field => visibleFieldIds.has(String(field?.id || '')))
+      const hasTypedFields = typedFields.length > 0
+      const typedValues = doneTypedFieldValues && typeof doneTypedFieldValues === 'object' ? doneTypedFieldValues : {}
 
 	  const isFieldVisible = field => {
 	    if (!field?.showWhen) return true
@@ -1629,51 +1746,180 @@ function Calendar({ listOnly = false }) {
 	    return String(actual ?? '') === String(expected ?? '')
 	  }
 
-	  for (const field of (markDoneCategoryConfig.fields || [])) {
-	    if (!isFieldVisible(field)) continue
-	    const value = values[field.key]
-	    if (field.type === 'list_text' || field.type === 'list_select') {
-	      const rows = Array.isArray(value) ? value : []
-	      const normalized = rows.map(item => String(item || '').trim()).filter(Boolean)
-	      if (normalized.length === 0) {
-	        setDoneFormError(`${field.label} is required.`)
-	        return
-	      }
-	      continue
-	    }
-	    if (field.key === 'blood_token') {
-	      // Backwards-compatible validation for older events; new UI stores `blood_token` in `doneFields`.
-	      const tokenValue = Array.isArray(doneBloodTokens)
-	        ? doneBloodTokens.map(item => String(item || '').trim()).filter(Boolean).join('|')
-	        : ''
-	      const nextValue = Array.isArray(value) ? value.map(item => String(item || '').trim()).filter(Boolean).join('|') : ''
-	      if (!tokenValue && !nextValue) {
-	        setDoneFormError(`${field.label} is required.`)
-	        return
-	      }
-	      continue
-	    }
-	    if (String(value).trim() === '') {
-	      setDoneFormError(`${field.label} is required.`)
-	      return
-	    }
-	    if (field.type === 'number' && Number.isNaN(Number(value))) {
-	      setDoneFormError(`${field.label} must be a valid number.`)
-	      return
-	    }
-	  }
-	  const nextCategoryData = (markDoneCategoryConfig.fields || []).reduce((acc, field) => {
-	    if (!isFieldVisible(field)) return acc
-	    const raw = values[field.key]
-	    if (field.type === 'list_text' || field.type === 'list_select') {
-	      const rows = Array.isArray(raw) ? raw : []
-	      acc[field.key] = rows.map(item => String(item || '').trim()).filter(Boolean).join('|')
-	      return acc
-	    }
-	    if (field.type === 'number') acc[field.key] = Number(raw)
-	    else acc[field.key] = raw
-	    return acc
-	  }, {})
+      let nextCategoryData = {}
+
+      if (allTypedFields.length > 0 && !hasTypedFields) {
+        setDoneFormError('Please add at least one activity field.')
+        return
+      }
+
+      if (hasTypedFields) {
+        for (const field of typedFields) {
+          const fieldId = String(field?.id || '').trim()
+          const fieldName = String(field?.field_name || '').trim()
+          const fieldType = String(field?.field_type || '').trim()
+          if (!fieldId || !fieldName || !fieldType) continue
+          const raw = typedValues[fieldId]
+
+          if (fieldType === 'text') {
+            if (String(raw ?? '').trim() === '') {
+              setDoneFormError(`${fieldName} is required.`)
+              return
+            }
+          } else if (fieldType === 'number') {
+            if (String(raw ?? '').trim() === '' || Number.isNaN(Number(raw))) {
+              setDoneFormError(`${fieldName} must be a valid number.`)
+              return
+            }
+          } else if (fieldType === 'date') {
+            const v = String(raw ?? '').trim()
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) {
+              setDoneFormError(`${fieldName} must be a valid date.`)
+              return
+            }
+          } else if (fieldType === 'boolean') {
+            if (typeof raw !== 'boolean') {
+              setDoneFormError(`${fieldName} is required.`)
+              return
+            }
+          }
+        }
+
+        if (supabaseEnabled) {
+          let activityRecordId = String(markDoneEvent.categoryData?.activity_record_id || '').trim()
+
+          if (!activityRecordId) {
+            const categoryId = String(doneTypedCategoryId || '').trim()
+            if (!categoryId) {
+              setDoneFormError('This category is missing a typed category ID.')
+              return
+            }
+
+            const { data: insertedRecord, error: recordError } = await supabase
+              .from('activity_records')
+              .insert({
+                category_id: categoryId,
+                created_by: user?.id || null,
+              })
+              .select('id')
+              .single()
+
+            if (recordError) {
+              setDoneFormError(recordError.message || 'Unable to save activity record.')
+              return
+            }
+
+            activityRecordId = String(insertedRecord?.id || '').trim()
+            if (!activityRecordId) {
+              setDoneFormError('Activity record created but no ID was returned.')
+              return
+            }
+          }
+
+          const typedRows = typedFields
+            .map(field => {
+              const fieldId = String(field?.id || '').trim()
+              const fieldName = String(field?.field_name || '').trim()
+              const fieldType = String(field?.field_type || '').trim()
+              if (!fieldId || !fieldName || !fieldType) return null
+              const raw = typedValues[fieldId]
+              try {
+                const row = buildActivityValueRow({
+                  recordId: activityRecordId,
+                  fieldId,
+                  fieldType,
+                  value: raw,
+                })
+                return {
+                  record_id: activityRecordId,
+                  field_id: fieldId,
+                  value_text: null,
+                  value_number: null,
+                  value_date: null,
+                  value_boolean: null,
+                  ...row,
+                }
+              } catch (error) {
+                throw new Error(error?.message ? String(error.message) : `Invalid value for ${fieldName}.`)
+              }
+            })
+            .filter(Boolean)
+
+          try {
+            const { error: valuesError } = await supabase
+              .from('activity_values')
+              .upsert(typedRows, { onConflict: 'record_id,field_id' })
+            if (valuesError) {
+              setDoneFormError(valuesError.message || 'Unable to save activity values.')
+              return
+            }
+          } catch (error) {
+            setDoneFormError(error?.message ? String(error.message) : 'Unable to save activity values.')
+            return
+          }
+
+          nextCategoryData = typedFields.reduce((acc, field) => {
+            const fieldId = String(field?.id || '').trim()
+            const fieldName = String(field?.field_name || '').trim()
+            const fieldType = String(field?.field_type || '').trim()
+            if (!fieldId || !fieldName || !fieldType) return acc
+            const key = normalizeCategoryKey(fieldName)
+            const raw = typedValues[fieldId]
+            if (!key) return acc
+            if (fieldType === 'number') acc[key] = Number(raw)
+            else acc[key] = raw
+            return acc
+          }, {})
+
+          nextCategoryData.activity_record_id = activityRecordId
+        }
+      } else {
+        for (const field of (markDoneCategoryConfig.fields || [])) {
+          if (!isFieldVisible(field)) continue
+          const value = values[field.key]
+          if (field.type === 'list_text' || field.type === 'list_select') {
+            const rows = Array.isArray(value) ? value : []
+            const normalized = rows.map(item => String(item || '').trim()).filter(Boolean)
+            if (normalized.length === 0) {
+              setDoneFormError(`${field.label} is required.`)
+              return
+            }
+            continue
+          }
+          if (field.key === 'blood_token') {
+            // Backwards-compatible validation for older events; new UI stores `blood_token` in `doneFields`.
+            const tokenValue = Array.isArray(doneBloodTokens)
+              ? doneBloodTokens.map(item => String(item || '').trim()).filter(Boolean).join('|')
+              : ''
+            const nextValue = Array.isArray(value) ? value.map(item => String(item || '').trim()).filter(Boolean).join('|') : ''
+            if (!tokenValue && !nextValue) {
+              setDoneFormError(`${field.label} is required.`)
+              return
+            }
+            continue
+          }
+          if (String(value).trim() === '') {
+            setDoneFormError(`${field.label} is required.`)
+            return
+          }
+          if (field.type === 'number' && Number.isNaN(Number(value))) {
+            setDoneFormError(`${field.label} must be a valid number.`)
+            return
+          }
+        }
+        nextCategoryData = (markDoneCategoryConfig.fields || []).reduce((acc, field) => {
+          if (!isFieldVisible(field)) return acc
+          const raw = values[field.key]
+          if (field.type === 'list_text' || field.type === 'list_select') {
+            const rows = Array.isArray(raw) ? raw : []
+            acc[field.key] = rows.map(item => String(item || '').trim()).filter(Boolean).join('|')
+            return acc
+          }
+          if (field.type === 'number') acc[field.key] = Number(raw)
+          else acc[field.key] = raw
+          return acc
+        }, {})
+      }
     const partnersValue = Array.isArray(donePartners)
       ? donePartners.map(item => String(item || '').trim()).filter(Boolean).join('|')
       : ''
@@ -1729,6 +1975,13 @@ function Calendar({ listOnly = false }) {
 	    setShowDoneForm(false)
 	    setMarkDoneEventId(null)
 	    setDoneFormError('')
+      setDoneTypedCategoryId('')
+      setDoneTypedCategoryFields([])
+      setDoneTypedFieldValues({})
+      setDoneTypedFieldsLoading(false)
+      setShowDoneTypedFieldPicker(false)
+      setDoneTypedFieldToAdd('')
+      setVisibleDoneTypedFieldIds([])
 	  }
 
   const handleConfirmAction = async () => {
@@ -2146,33 +2399,11 @@ function Calendar({ listOnly = false }) {
                                 )}
                               </div>
                             )}
-                            <div className="pt-1">
-                              <div className="flex items-center gap-2 text-gray-600 mb-1">
-                                <Eye size={14} />
-                                <span className="text-xs font-medium">
-                                  Seen by {Array.isArray(item.viewedBy) ? item.viewedBy.length : 0}
-                                </span>
-                              </div>
-                              {Array.isArray(item.viewedBy) && item.viewedBy.length > 0 ? (
-                                <div className="flex flex-wrap gap-2">
-                                  {item.viewedBy.map(viewer => (
-                                    <span
-                                      key={`${viewer.userId}-${viewer.viewedAt}`}
-                                      className="px-2 py-1 bg-gray-100 border border-gray-200 rounded-full text-xs text-gray-700"
-                                    >
-                                      {viewer.userName}
-                                    </span>
-                                  ))}
-                                </div>
-                              ) : (
-                                <p className="text-xs text-gray-500">No viewers yet.</p>
-                              )}
-                            </div>
                             {canManageEvents && (
                               <div className="pt-2 flex items-center gap-2">
                                 <button
                                   type="button"
-                                  onClick={() => openMarkDoneForm(item)}
+                                  onClick={() => void openMarkDoneForm(item)}
                                   className={`px-3 py-1.5 rounded-md text-white text-xs font-medium transition-colors ${
                                     item.status === 'done' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700'
                                   }`}
@@ -2563,33 +2794,11 @@ function Calendar({ listOnly = false }) {
                                 )}
                               </div>
                             )}
-                            <div className="pt-1">
-                              <div className="flex items-center gap-2 text-gray-600 mb-1">
-                                <Eye size={14} />
-                                <span className="text-xs font-medium">
-                                  Seen by {Array.isArray(item.viewedBy) ? item.viewedBy.length : 0}
-                                </span>
-                              </div>
-                              {Array.isArray(item.viewedBy) && item.viewedBy.length > 0 ? (
-                                <div className="flex flex-wrap gap-2">
-                                  {item.viewedBy.map(viewer => (
-                                    <span
-                                      key={`${viewer.userId}-${viewer.viewedAt}`}
-                                      className="px-2 py-1 bg-gray-100 border border-gray-200 rounded-full text-xs text-gray-700"
-                                    >
-                                      {viewer.userName}
-                                    </span>
-                                  ))}
-                                </div>
-                              ) : (
-                                <p className="text-xs text-gray-500">No viewers yet.</p>
-                              )}
-                            </div>
                             {canManageEvents && (
                               <div className="pt-2 flex items-center gap-2">
                                 <button
                                   type="button"
-                                  onClick={() => openMarkDoneForm(item)}
+                                  onClick={() => void openMarkDoneForm(item)}
                                   className={`px-3 py-1.5 rounded-md text-white text-xs font-medium transition-colors ${
                                     item.status === 'done' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700'
                                   }`}
@@ -2792,6 +3001,13 @@ function Calendar({ listOnly = false }) {
                   setShowDoneForm(false)
                   setMarkDoneEventId(null)
                   setDoneFormError('')
+                  setDoneTypedCategoryId('')
+                  setDoneTypedCategoryFields([])
+                  setDoneTypedFieldValues({})
+                  setDoneTypedFieldsLoading(false)
+                  setShowDoneTypedFieldPicker(false)
+                  setDoneTypedFieldToAdd('')
+                  setVisibleDoneTypedFieldIds([])
                 }}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
               >
@@ -2896,10 +3112,178 @@ function Calendar({ listOnly = false }) {
 	                    </div>
 	                  ))}
 	                </div>
-	                <p className="text-xs text-gray-500">Saved as pipe-separated values.</p>
-	              </div>
+ 	                <p className="text-xs text-gray-500">Saved as pipe-separated values.</p>
+ 	              </div>
 
-		              {markDoneCategoryConfig && markDoneCategoryConfig.fields.length > 0 ? (
+                  {Array.isArray(doneTypedCategoryFields) && doneTypedCategoryFields.length > 0 && (
+                    <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-semibold text-gray-800">Activity Fields</p>
+                        <div className="flex items-center gap-2">
+                          {doneTypedFieldsLoading && <span className="text-xs text-gray-500">Loading...</span>}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowDoneTypedFieldPicker(prev => !prev)
+                              setDoneFormError('')
+                            }}
+                            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                            disabled={!supabaseEnabled}
+                          >
+                            + Add field
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const allIds = (Array.isArray(doneTypedCategoryFields) ? doneTypedCategoryFields : [])
+                                .map(field => String(field?.id || '').trim())
+                                .filter(Boolean)
+                              setVisibleDoneTypedFieldIds(allIds)
+                              setDoneFormError('')
+                            }}
+                            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                            disabled={!supabaseEnabled}
+                          >
+                            Add all
+                          </button>
+                        </div>
+                      </div>
+
+                      {showDoneTypedFieldPicker && (
+                        <div className="grid grid-cols-1 md:grid-cols-[1fr_140px] gap-3 rounded-lg border border-gray-200 bg-white p-3">
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Saved inputs</label>
+                            <select
+                              value={doneTypedFieldToAdd}
+                              onChange={e => setDoneTypedFieldToAdd(e.target.value)}
+                              className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              <option value="">Select a field</option>
+                              {doneTypedCategoryFields.map(field => {
+                                const fieldId = String(field?.id || '').trim()
+                                const fieldName = String(field?.field_name || '').trim()
+                                const fieldType = String(field?.field_type || '').trim()
+                                if (!fieldId || !fieldName || !fieldType) return null
+                                return (
+                                  <option key={fieldId} value={fieldId}>
+                                    {fieldName} ({fieldType})
+                                  </option>
+                                )
+                              })}
+                            </select>
+                          </div>
+                          <div className="flex items-end justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowDoneTypedFieldPicker(false)
+                                setDoneTypedFieldToAdd('')
+                              }}
+                              className="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleAddVisibleDoneTypedField}
+                              className="px-3 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                              disabled={!doneTypedFieldToAdd}
+                            >
+                              Add
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {doneTypedCategoryFields
+                          .filter(field => {
+                            const fieldId = String(field?.id || '').trim()
+                            if (!fieldId) return false
+                            return (Array.isArray(visibleDoneTypedFieldIds) ? visibleDoneTypedFieldIds : []).includes(fieldId)
+                          })
+                          .map(field => {
+                          const fieldId = String(field?.id || '').trim()
+                          const fieldName = String(field?.field_name || '').trim()
+                          const fieldType = String(field?.field_type || '').trim()
+                          if (!fieldId || !fieldName || !fieldType) return null
+                          const value = doneTypedFieldValues?.[fieldId]
+                          const inputId = `done-typed-${fieldId}`
+                          const colSpan = ''
+
+                          return (
+                            <div key={fieldId} className={colSpan}>
+                              <label htmlFor={inputId} className="block text-sm font-medium text-gray-700 mb-2">
+                                {fieldName}
+                              </label>
+                              {fieldType === 'boolean' ? (
+                                <label className="flex h-10 w-full items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900">
+                                  <input
+                                    id={inputId}
+                                    type="checkbox"
+                                    checked={Boolean(value)}
+                                    className="h-4 w-4"
+                                    onChange={e =>
+                                      setDoneTypedFieldValues(prev => ({
+                                        ...(prev && typeof prev === 'object' ? prev : {}),
+                                        [fieldId]: Boolean(e.target.checked),
+                                      }))
+                                    }
+                                  />
+                                  <span>Yes</span>
+                                </label>
+                              ) : fieldType === 'date' ? (
+                                <Input
+                                  id={inputId}
+                                  type="date"
+                                  value={String(value ?? '')}
+                                  onChange={e =>
+                                    setDoneTypedFieldValues(prev => ({
+                                      ...(prev && typeof prev === 'object' ? prev : {}),
+                                      [fieldId]: e.target.value,
+                                    }))
+                                  }
+                                  required
+                                />
+                              ) : fieldType === 'number' ? (
+                                <Input
+                                  id={inputId}
+                                  type="number"
+                                  value={String(value ?? '')}
+                                  onChange={e =>
+                                    setDoneTypedFieldValues(prev => ({
+                                      ...(prev && typeof prev === 'object' ? prev : {}),
+                                      [fieldId]: e.target.value,
+                                    }))
+                                  }
+                                  required
+                                />
+                              ) : (
+                                <Input
+                                  id={inputId}
+                                  value={String(value ?? '')}
+                                  onChange={e =>
+                                    setDoneTypedFieldValues(prev => ({
+                                      ...(prev && typeof prev === 'object' ? prev : {}),
+                                      [fieldId]: e.target.value,
+                                    }))
+                                  }
+                                  required
+                                />
+                              )}
+                            </div>
+                          )
+                        })}
+                        {(Array.isArray(visibleDoneTypedFieldIds) ? visibleDoneTypedFieldIds : []).length === 0 && (
+                          <p className="text-xs text-gray-500 md:col-span-2">
+                            Click &quot;+ Add field&quot; to show one of the saved inputs for this category.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+		              {(!Array.isArray(doneTypedCategoryFields) || doneTypedCategoryFields.length === 0) && markDoneCategoryConfig && markDoneCategoryConfig.fields.length > 0 ? (
 		                <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3">
 		                  <p className="text-sm font-semibold text-gray-800">Activity Fields</p>
 		                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -2993,7 +3377,7 @@ function Calendar({ listOnly = false }) {
 		                                        return next
 		                                      })
 		                                    }
-		                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-red-500"
+		                                    className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:cursor-not-allowed disabled:opacity-50"
 		                                  >
 		                                    <option value="">Select</option>
 		                                    {(field.options || []).map(optionValue => (
@@ -3026,7 +3410,7 @@ function Calendar({ listOnly = false }) {
                                 name={fieldNameBase}
 		                            value={doneFields[markDoneCategoryKey]?.[field.key] ?? ''}
 		                            onChange={e => handleDoneFieldChange(markDoneCategoryKey, field.key, e.target.value)}
-		                            className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-red-500"
+		                            className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:cursor-not-allowed disabled:opacity-50"
 		                            required
 		                          >
 		                            <option value="">Select</option>
@@ -3070,6 +3454,13 @@ function Calendar({ listOnly = false }) {
                     setShowDoneForm(false)
                     setMarkDoneEventId(null)
                     setDoneFormError('')
+                    setDoneTypedCategoryId('')
+                    setDoneTypedCategoryFields([])
+                    setDoneTypedFieldValues({})
+                    setDoneTypedFieldsLoading(false)
+                    setShowDoneTypedFieldPicker(false)
+                    setDoneTypedFieldToAdd('')
+                    setVisibleDoneTypedFieldIds([])
                   }}
                   className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
                 >

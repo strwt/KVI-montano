@@ -545,8 +545,8 @@ function Landing() {
     return [...unique.values()].sort((a, b) => a.name.localeCompare(b.name))
   }, [getAllMembers, allowedVolunteerSet])
 
-  useEffect(() => {
-    let isMounted = true
+	  useEffect(() => {
+	    let isMounted = true
 
     const normalizePeople = (rows = []) => {
       const people = rows
@@ -597,10 +597,10 @@ function Landing() {
 
     void loadMembers()
 
-    return () => {
-      isMounted = false
-    }
-  }, [allowedVolunteerSet, contextMemberPeople, user?.role])
+	    return () => {
+	      isMounted = false
+	    }
+	  }, [allowedVolunteerSet, committees, contextMemberPeople, user?.role])
 
   const displayVolunteerPeople = useMemo(() => {
     if (contextMemberPeople.length > 0) return contextMemberPeople

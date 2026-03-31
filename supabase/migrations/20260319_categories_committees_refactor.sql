@@ -1,4 +1,4 @@
--- Refactor: separate event categories (events) vs committees (users)
+-- Refactor: committees (users)
 -- IMPORTANT: no default/demo seeding; admins create records via UI.
 
 begin;
@@ -82,52 +82,6 @@ end $$;
 alter table public.committees
   drop constraint if exists committees_name_not_blank,
   add constraint committees_name_not_blank check (btrim(name) <> '') not valid;
-
--- EVENT CATEGORIES
-create table if not exists public.event_categories (
-  id uuid primary key default gen_random_uuid(),
-  name text not null unique,
-  created_by uuid references public.profiles(id),
-  created_at timestamptz not null default now()
-);
-
-alter table public.event_categories enable row level security;
-
--- If an older schema exists (key/label), migrate in-place without seeding.
-do $$
-begin
-  if exists (
-    select 1
-    from information_schema.columns
-    where table_schema = 'public'
-      and table_name = 'event_categories'
-      and column_name = 'key'
-  )
-  and not exists (
-    select 1
-    from information_schema.columns
-    where table_schema = 'public'
-      and table_name = 'event_categories'
-      and column_name = 'name'
-  ) then
-    alter table public.event_categories rename column key to name;
-  end if;
-end $$;
-
-alter table public.event_categories add column if not exists created_by uuid references public.profiles(id);
-alter table public.event_categories add column if not exists created_at timestamptz not null default now();
-
-alter table public.event_categories add column if not exists id uuid;
-alter table public.event_categories alter column id set default gen_random_uuid();
-update public.event_categories set id = gen_random_uuid() where id is null;
-
-alter table public.event_categories drop constraint if exists event_categories_pkey;
-alter table public.event_categories add constraint event_categories_pkey primary key (id);
-create unique index if not exists event_categories_name_key on public.event_categories (name);
-
-alter table public.event_categories
-  drop constraint if exists event_categories_name_not_blank,
-  add constraint event_categories_name_not_blank check (btrim(name) <> '') not valid;
 
 -- EVENTS / NOTIFICATIONS: remove default category so UI must pick from DB
 do $$

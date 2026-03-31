@@ -7,15 +7,14 @@ import {
   HeartPulse,
   Leaf,
   FileText,
-  Droplets,
-  Filter,
-  BarChart3,
-  PieChart,
-  Download,
-  Loader2,
-} from 'lucide-react'
+	  Droplets,
+	  Filter,
+	  BarChart3,
+	  PieChart,
+	} from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { fetchSupabaseEvents, isSupabaseEnabled } from '../lib/supabaseEvents'
+import { fetchSupabaseEvents, invalidateSupabaseEventsCache, isSupabaseEnabled } from '../lib/supabaseEvents'
+import { supabase } from '../lib/supabaseClient'
 
 const CATEGORY_COLORS = {
   tuli: '#ef4444',
@@ -113,7 +112,7 @@ const splitPipe = value =>
     .filter(Boolean)
 
 const resolveEventDate = event => {
-  const raw = event.dateTime || event.date || null
+  const raw = event.completedAt || event.dateTime || event.date || null
   if (!raw || !dayjs(raw).isValid()) return null
   return dayjs(raw)
 }
@@ -135,81 +134,95 @@ const getFieldValue = (event, key, fallbackKeys = []) => {
   return ''
 }
 
-const getDateWindow = preset => {
-  const now = dayjs()
-  if (preset === 'monthly') return { start: now.startOf('month'), end: now.endOf('month') }
-  if (preset === 'quarterly') {
-    const quarterStartMonth = Math.floor(now.month() / 3) * 3
-    const start = now.month(quarterStartMonth).startOf('month')
-    const end = start.add(2, 'month').endOf('month')
-    return { start, end }
-  }
-  if (preset === 'annually') return { start: now.startOf('year'), end: now.endOf('year') }
-  return { start: null, end: null }
-}
+		const getDateWindow = (preset, monthValue) => {
+		  const now = dayjs()
+		  if (preset === 'monthly') {
+	    const baseMonth = typeof monthValue === 'string' && /^\d{4}-\d{2}$/.test(monthValue)
+	      ? dayjs(`${monthValue}-01`)
+	      : now
+	    return { start: baseMonth.startOf('month'), end: baseMonth.endOf('month'), label: baseMonth.format('MMMM YYYY') }
+	  }
+	  if (preset === 'quarterly') {
+	    const quarterStartMonth = Math.floor(now.month() / 3) * 3
+	    const start = now.month(quarterStartMonth).startOf('month')
+	    const end = start.add(2, 'month').endOf('month')
+	    return { start, end, label: `${start.format('MMM YYYY')} - ${end.format('MMM YYYY')}` }
+	  }
+	  if (preset === 'annually') {
+	    const start = now.startOf('year')
+	    const end = now.endOf('year')
+	    return { start, end, label: start.format('YYYY') }
+		  }
+		  return { start: null, end: null, label: '' }
+		}
 
-const escapeCsv = value => {
-  const safe = String(value ?? '')
-  if (safe.includes('"') || safe.includes(',') || safe.includes('\n')) {
-    return `"${safe.replace(/"/g, '""')}"`
-  }
-  return safe
-}
+		const escapeCsv = value => {
+		  const safe = String(value ?? '')
+		  if (safe.includes('"') || safe.includes(',') || safe.includes('\n')) {
+		    return `"${safe.replace(/"/g, '""')}"`
+		  }
+		  return safe
+		}
 
-const downloadBlob = (blob, filename) => {
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  document.body.appendChild(link)
-  link.click()
-  link.remove()
-  setTimeout(() => URL.revokeObjectURL(url), 2000)
-}
+		const downloadBlob = (blob, filename) => {
+		  const url = URL.createObjectURL(blob)
+		  const link = document.createElement('a')
+		  link.href = url
+		  link.download = filename
+		  document.body.appendChild(link)
+		  link.click()
+		  link.remove()
+		  setTimeout(() => URL.revokeObjectURL(url), 2000)
+		}
 
-let jsPdfLoaderPromise = null
-const loadJsPdf = () => {
-  if (typeof window === 'undefined') return Promise.resolve(null)
-  if (window.jspdf?.jsPDF) return Promise.resolve(window.jspdf.jsPDF)
-  if (jsPdfLoaderPromise) return jsPdfLoaderPromise
+		let jsPdfLoaderPromise = null
+		const loadJsPdf = () => {
+		  if (typeof window === 'undefined') return Promise.resolve(null)
+		  if (window.jspdf?.jsPDF) return Promise.resolve(window.jspdf.jsPDF)
+		  if (jsPdfLoaderPromise) return jsPdfLoaderPromise
 
-  jsPdfLoaderPromise = new Promise((resolve, reject) => {
-    const existing = document.getElementById('jspdf-cdn')
-    if (existing && window.jspdf?.jsPDF) {
-      resolve(window.jspdf.jsPDF)
-      return
-    }
-    if (!existing) {
-      const script = document.createElement('script')
-      script.id = 'jspdf-cdn'
-      script.src = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js'
-      script.async = true
-      script.onload = () => resolve(window.jspdf?.jsPDF || null)
-      script.onerror = () => reject(new Error('Failed to load PDF library'))
-      document.body.appendChild(script)
-      return
-    }
-    existing.addEventListener('load', () => resolve(window.jspdf?.jsPDF || null))
-    existing.addEventListener('error', () => reject(new Error('Failed to load PDF library')))
-  })
+		  jsPdfLoaderPromise = new Promise((resolve, reject) => {
+		    const existing = document.getElementById('jspdf-cdn')
+		    if (existing && window.jspdf?.jsPDF) {
+		      resolve(window.jspdf.jsPDF)
+		      return
+		    }
+		    if (!existing) {
+		      const script = document.createElement('script')
+		      script.id = 'jspdf-cdn'
+		      script.src = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js'
+		      script.async = true
+		      script.onload = () => resolve(window.jspdf?.jsPDF || null)
+		      script.onerror = () => reject(new Error('Failed to load PDF library'))
+		      document.body.appendChild(script)
+		      return
+		    }
+		    existing.addEventListener('load', () => resolve(window.jspdf?.jsPDF || null))
+		    existing.addEventListener('error', () => reject(new Error('Failed to load PDF library')))
+		  })
 
-  return jsPdfLoaderPromise
-}
+		  return jsPdfLoaderPromise
+		}
 
-function Report() {
-  const { user, eventCategories } = useAuth()
+	function Report() {
+  const { user, categories } = useAuth()
   const supabaseEnabled = isSupabaseEnabled()
-  const [events, setEvents] = useState([])
-  const [datePreset, setDatePreset] = useState('monthly')
-  const [selectedCategory, setSelectedCategory] = useState('all')
-  const [showExportMenu, setShowExportMenu] = useState(false)
-  const [exportingType, setExportingType] = useState('')
+	  const [events, setEvents] = useState([])
+		  const [typedStats, setTypedStats] = useState({ loading: false, error: '', byCategory: {} })
+		  const [datePreset, setDatePreset] = useState('monthly')
+		  const [reportMonth, setReportMonth] = useState(() => dayjs().format('YYYY-MM'))
+		  const [selectedCategory, setSelectedCategory] = useState('all')
+		  const [_showExportMenu, setShowExportMenu] = useState(false)
+		  const [exportingType, setExportingType] = useState('')
 
-  const isAdmin = user?.role === 'admin'
-  const { start, end } = getDateWindow(datePreset)
+	  const isAdmin = user?.role === 'admin'
+	  const { start, end, label: dateWindowLabel } = useMemo(
+	    () => getDateWindow(datePreset, reportMonth),
+	    [datePreset, reportMonth]
+	  )
 
   const categoriesFromDb = useMemo(() => {
-    const entries = Array.isArray(eventCategories) ? eventCategories : []
+    const entries = Array.isArray(categories) ? categories : []
     const map = new Map()
     entries.forEach(name => {
       const label = String(name || '').trim()
@@ -219,7 +232,7 @@ function Report() {
       if (!map.has(key)) map.set(key, titleCaseFromKey(label))
     })
     return map
-  }, [eventCategories])
+  }, [categories])
 
   const categoryKeysFromDb = useMemo(() => {
     return [...categoriesFromDb.keys()]
@@ -238,7 +251,8 @@ function Report() {
     let active = true
 
     const load = async () => {
-      const { data } = await fetchSupabaseEvents()
+      invalidateSupabaseEventsCache()
+      const { data } = await fetchSupabaseEvents({ force: true })
       if (!active) return
       setEvents(data)
     }
@@ -262,6 +276,7 @@ function Report() {
           return key
         })(),
       }))
+      .filter(event => Boolean(event._date))
       .filter(event => event.status === 'done')
       .filter(event => {
         if (start && event._date.isBefore(start)) return false
@@ -269,6 +284,11 @@ function Report() {
         return true
       })
   }, [categoryKeySetFromDb, events, start, end])
+
+  const filteredEvents = useMemo(() => {
+    if (selectedCategory === 'all') return baseEvents
+    return baseEvents.filter(event => event._category === selectedCategory)
+  }, [baseEvents, selectedCategory])
 
   const categoryLabelByKey = useMemo(() => {
     const map = {}
@@ -279,11 +299,192 @@ function Report() {
     return map
   }, [categoriesFromDb])
 
-  const getCategoryLabel = (value) => {
-    const key = canonicalizeOperationKey(normalizeCategory(value))
-    if (!key) return categoryLabelByKey.uncategorized || 'Uncategorized'
-    return categoryLabelByKey[key] || categoryLabelByKey.uncategorized || 'Uncategorized'
-  }
+	  const getCategoryLabel = (value) => {
+	    const key = canonicalizeOperationKey(normalizeCategory(value))
+	    if (!key) return categoryLabelByKey.uncategorized || 'Uncategorized'
+	    return categoryLabelByKey[key] || categoryLabelByKey.uncategorized || 'Uncategorized'
+	  }
+
+	  const typedStatsRecordFingerprint = useMemo(() => {
+	    const recordUseCount = new Map()
+	    filteredEvents.forEach(event => {
+	      const recordId = String(event?.categoryData?.activity_record_id || '').trim()
+	      if (!recordId) return
+	      recordUseCount.set(recordId, (recordUseCount.get(recordId) || 0) + 1)
+	    })
+
+	    const entries = Array.from(recordUseCount.entries())
+	      .filter(([recordId]) => Boolean(recordId))
+	      .sort((a, b) => String(a[0]).localeCompare(String(b[0])))
+	      .slice(0, 500)
+
+	    const fingerprint = entries.map(([recordId, count]) => `${recordId}:${count}`).join('|')
+
+	    return fingerprint
+	  }, [filteredEvents])
+
+	  useEffect(() => {
+	    if (!supabaseEnabled || !supabase || !isAdmin) {
+	      setTypedStats({ loading: false, error: '', byCategory: {} })
+	      return undefined
+	    }
+
+	    const recordPairs = typedStatsRecordFingerprint
+	      ? typedStatsRecordFingerprint.split('|').map(entry => {
+	          const [recordId, countRaw] = entry.split(':')
+	          const recordCount = Number.parseInt(countRaw, 10)
+	          return [recordId, Number.isFinite(recordCount) ? recordCount : 0]
+	        })
+	      : []
+
+	    const recordIds = recordPairs.map(([recordId]) => recordId)
+	    const recordUseCount = new Map(recordPairs)
+	    if (recordIds.length === 0) {
+	      setTypedStats({ loading: false, error: '', byCategory: {} })
+	      return undefined
+	    }
+
+    let active = true
+
+    const load = async () => {
+      setTypedStats(prev => ({ ...prev, loading: true, error: '' }))
+      try {
+        const { data: records, error: recordError } = await supabase
+          .from('activity_records')
+          .select('id,category_id')
+          .in('id', recordIds)
+
+        if (recordError) throw recordError
+
+        const recordCategoryIdById = new Map()
+        const categoryIds = new Set()
+        ;(Array.isArray(records) ? records : []).forEach(row => {
+          const recordId = String(row?.id || '').trim()
+          const categoryId = String(row?.category_id || '').trim()
+          if (!recordId || !categoryId) return
+          recordCategoryIdById.set(recordId, categoryId)
+          categoryIds.add(categoryId)
+        })
+
+        if (categoryIds.size === 0) {
+          if (!active) return
+          setTypedStats({ loading: false, error: '', byCategory: {} })
+          return
+        }
+
+        const { data: categoryRows, error: categoryError } = await supabase
+          .from('categories')
+          .select('id,name')
+          .in('id', Array.from(categoryIds))
+
+        if (categoryError) throw categoryError
+
+        const categoryKeyById = new Map()
+        ;(Array.isArray(categoryRows) ? categoryRows : []).forEach(row => {
+          const id = String(row?.id || '').trim()
+          const name = String(row?.name || '').trim()
+          if (!id || !name) return
+          categoryKeyById.set(id, canonicalizeOperationKey(normalizeCategory(name)) || name)
+        })
+
+        const { data: values, error: valuesError } = await supabase
+          .from('activity_values')
+          .select('record_id,field_id,value_text,value_number,value_date,value_boolean')
+          .in('record_id', recordIds)
+
+        if (valuesError) throw valuesError
+
+        const fieldIds = new Set()
+        ;(Array.isArray(values) ? values : []).forEach(row => {
+          const fieldId = String(row?.field_id || '').trim()
+          if (fieldId) fieldIds.add(fieldId)
+        })
+
+        const fieldMetaById = new Map()
+        if (fieldIds.size > 0) {
+          const { data: fields, error: fieldsError } = await supabase
+            .from('category_fields')
+            .select('id,field_name,field_type')
+            .in('id', Array.from(fieldIds))
+
+          if (fieldsError) throw fieldsError
+
+          ;(Array.isArray(fields) ? fields : []).forEach(field => {
+            const id = String(field?.id || '').trim()
+            const name = String(field?.field_name || '').trim()
+            const type = String(field?.field_type || '').trim()
+            if (!id || !name || !type) return
+            fieldMetaById.set(id, { name, type })
+          })
+        }
+
+        const byCategory = {}
+
+        recordCategoryIdById.forEach((categoryId, recordId) => {
+          const categoryKey = categoryKeyById.get(categoryId)
+          if (!categoryKey) return
+          if (!byCategory[categoryKey]) {
+            byCategory[categoryKey] = {
+              eventCount: 0,
+              numericSums: {},
+              booleanTrueCounts: {},
+            }
+          }
+          byCategory[categoryKey].eventCount += recordUseCount.get(recordId) || 0
+        })
+
+        ;(Array.isArray(values) ? values : []).forEach(row => {
+          const recordId = String(row?.record_id || '').trim()
+          if (!recordId) return
+          const categoryId = recordCategoryIdById.get(recordId)
+          if (!categoryId) return
+          const categoryKey = categoryKeyById.get(categoryId)
+          if (!categoryKey) return
+
+          const fieldId = String(row?.field_id || '').trim()
+          const meta = fieldMetaById.get(fieldId) || null
+          if (!meta) return
+          const label = meta.name
+
+          if (!byCategory[categoryKey]) {
+            byCategory[categoryKey] = {
+              eventCount: 0,
+              numericSums: {},
+              booleanTrueCounts: {},
+            }
+          }
+
+          if (meta.type === 'number') {
+            const value = row?.value_number
+            const numeric = typeof value === 'number' ? value : Number(value)
+            if (!Number.isFinite(numeric)) return
+            byCategory[categoryKey].numericSums[label] = (byCategory[categoryKey].numericSums[label] || 0) + numeric
+          }
+
+          if (meta.type === 'boolean') {
+            const value = row?.value_boolean
+            if (value === true) byCategory[categoryKey].booleanTrueCounts[label] = (byCategory[categoryKey].booleanTrueCounts[label] || 0) + 1
+          }
+        })
+
+        if (!active) return
+        setTypedStats({ loading: false, error: '', byCategory })
+      } catch (error) {
+        if (!active) return
+        setTypedStats({
+          loading: false,
+          error: error?.message ? String(error.message) : 'Unable to load typed activity statistics.',
+          byCategory: {},
+        })
+      }
+    }
+
+    void load()
+
+	    return () => {
+	      active = false
+	    }
+	  }, [isAdmin, supabaseEnabled, typedStatsRecordFingerprint])
 
   const availableCategoryKeys = useMemo(() => {
     const keys = [...categoryKeysFromDb]
@@ -301,11 +502,6 @@ function Report() {
     if (selectedCategory === 'all') return
     if (!availableCategoryKeys.includes(selectedCategory)) setSelectedCategory('all')
   }, [availableCategoryKeys, selectedCategory])
-
-  const filteredEvents = useMemo(() => {
-    if (selectedCategory === 'all') return baseEvents
-    return baseEvents.filter(event => event._category === selectedCategory)
-  }, [baseEvents, selectedCategory])
 
   const stats = useMemo(() => {
     const template = {
@@ -422,56 +618,56 @@ function Report() {
 
   const chartCategoryKeys = availableCategoryKeys
 
-  const additionalCategoryKeys = useMemo(() => {
-    return availableCategoryKeys.filter(key => {
-      if (!key || key === 'uncategorized') return false
-      return !Object.prototype.hasOwnProperty.call(stats, key)
-    })
-  }, [availableCategoryKeys, stats])
+		  const additionalCategoryKeys = useMemo(() => {
+		    return availableCategoryKeys.filter(key => {
+		      if (!key || key === 'uncategorized') return false
+		      return !Object.prototype.hasOwnProperty.call(stats, key)
+		    })
+		  }, [availableCategoryKeys, stats])
 
-  const dynamicFieldKeys = useMemo(() => {
-    const keys = new Set()
-    filteredEvents.forEach(event => {
-      const data = event?.categoryData && typeof event.categoryData === 'object' ? event.categoryData : null
-      if (!data) return
-      Object.keys(data).forEach(key => {
-        const normalized = String(key || '').trim()
-        if (!normalized) return
-        keys.add(normalized)
-      })
-    })
+		  const dynamicFieldKeys = useMemo(() => {
+		    const keys = new Set()
+		    filteredEvents.forEach(event => {
+		      const data = event?.categoryData && typeof event.categoryData === 'object' ? event.categoryData : null
+		      if (!data) return
+		      Object.keys(data).forEach(key => {
+		        const normalized = String(key || '').trim()
+		        if (!normalized) return
+		        keys.add(normalized)
+		      })
+		    })
 
-    const list = [...keys]
-    list.sort((a, b) => getFieldLabel(a).localeCompare(getFieldLabel(b)))
-    return list
-  }, [filteredEvents])
+		    const list = [...keys]
+		    list.sort((a, b) => getFieldLabel(a).localeCompare(getFieldLabel(b)))
+		    return list
+		  }, [filteredEvents])
 
-  const reportColumns = useMemo(() => {
-    const dynamic = dynamicFieldKeys.map(key => ({ key, label: getFieldLabel(key) }))
-    return [...BASE_REPORT_COLUMNS, ...dynamic]
-  }, [dynamicFieldKeys])
+		  const reportColumns = useMemo(() => {
+		    const dynamic = dynamicFieldKeys.map(key => ({ key, label: getFieldLabel(key) }))
+		    return [...BASE_REPORT_COLUMNS, ...dynamic]
+		  }, [dynamicFieldKeys])
 
-  const reportRows = useMemo(() => {
-    return filteredEvents.map(event => {
-      const row = {
-        title: event.title || '',
-        content: event.content || '',
-        category: categoryLabelByKey[event._category] || titleCaseFromKey(event._category) || 'Uncategorized',
-        branch: event.branch || '',
-        membersInvolve: event.membersInvolve || '',
-        dateTime: event._date.format('YYYY-MM-DD HH:mm'),
-        address: event.address || '',
-      }
+		  const reportRows = useMemo(() => {
+		    return filteredEvents.map(event => {
+		      const row = {
+		        title: event.title || '',
+		        content: event.content || '',
+		        category: categoryLabelByKey[event._category] || titleCaseFromKey(event._category) || 'Uncategorized',
+		        branch: event.branch || '',
+		        membersInvolve: event.membersInvolve || '',
+		        dateTime: event._date.format('YYYY-MM-DD HH:mm'),
+		        address: event.address || '',
+		      }
 
-      dynamicFieldKeys.forEach(key => {
-        row[key] = getFieldValue(event, key)
-      })
+		      dynamicFieldKeys.forEach(key => {
+		        row[key] = getFieldValue(event, key)
+		      })
 
-      return row
-    })
-  }, [filteredEvents, categoryLabelByKey, dynamicFieldKeys])
+		      return row
+		    })
+		  }, [filteredEvents, categoryLabelByKey, dynamicFieldKeys])
 
-  const totalEvents = chartCategoryKeys.reduce((sum, key) => sum + (eventCountByCategory[key] || 0), 0)
+		  const totalEvents = chartCategoryKeys.reduce((sum, key) => sum + (eventCountByCategory[key] || 0), 0)
   const maxBarValue = useMemo(() => {
     if (chartCategoryKeys.length === 0) return 1
     return Math.max(1, ...chartCategoryKeys.map(key => eventCountByCategory[key] || 0))
@@ -520,6 +716,24 @@ function Report() {
     `Total Medical Events: ${stats.medical.eventCount}`,
     `Total Medical Equipment Used: ${stats.medical.medicalEquipmentUsed}`,
     `Medical Expenses: ${CURRENCY.format(stats.medical.expenses)}`,
+    ...Object.entries(typedStats.byCategory || {})
+      .filter(([, entry]) => entry && (entry.eventCount > 0 || Object.keys(entry.numericSums || {}).length > 0))
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .flatMap(([categoryKey, entry]) => {
+        const lines = []
+        lines.push(`${getCategoryLabel(categoryKey)} Activities (typed): ${entry.eventCount || 0}`)
+        Object.entries(entry.numericSums || {})
+          .sort((a, b) => a[0].localeCompare(b[0]))
+          .forEach(([label, total]) => {
+            lines.push(`${getCategoryLabel(categoryKey)} - ${label} (sum): ${total}`)
+          })
+        Object.entries(entry.booleanTrueCounts || {})
+          .sort((a, b) => a[0].localeCompare(b[0]))
+          .forEach(([label, count]) => {
+            lines.push(`${getCategoryLabel(categoryKey)} - ${label} (true): ${count}`)
+          })
+        return lines
+      }),
   ]
 
   const downloadCsv = async () => {
@@ -665,10 +879,10 @@ function Report() {
     doc.save(`kusgan_report_${dayjs().format('YYYYMMDD_HHmmss')}.pdf`)
   }
 
-  const handleExport = async type => {
-    if (!isAdmin || exportingType) return
-    setShowExportMenu(false)
-    setExportingType(type)
+	  const _handleExport = async type => {
+	    if (!isAdmin || exportingType) return
+	    setShowExportMenu(false)
+	    setExportingType(type)
 
     try {
       if (type === 'csv') await downloadCsv()
@@ -678,43 +892,28 @@ function Report() {
       alert(error?.message || 'Failed to generate export.')
     } finally {
       setExportingType('')
-    }
-  }
+	    }
+	  }
 
   return (
     <div className="animate-fade-in space-y-6 max-w-7xl 2xl:max-w-[1500px] mx-auto text-gray-700 dark:text-zinc-300">
       <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)]">
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-md p-5 border border-red-600 layout-glow">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
-          <div className="flex items-center gap-2">
-            <Filter size={18} className="text-red-600" />
-            <h2 className="text-2xl font-bold text-gray-800 dark:text-zinc-100">Report - Statistics Overview</h2>
-          </div>
-          {isAdmin && (
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setShowExportMenu(prev => !prev)}
-                disabled={Boolean(exportingType)}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700 transition-colors disabled:opacity-60"
-              >
-                {exportingType ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
-                {exportingType ? `Generating ${exportingType.toUpperCase()}...` : 'Download / Export'}
-              </button>
-              {showExportMenu && !exportingType && (
-                <div className="absolute right-0 mt-2 w-52 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-lg shadow-lg z-20">
-                  <button type="button" onClick={() => handleExport('csv')} className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-zinc-200 hover:bg-gray-50 dark:hover:bg-zinc-800">Download as CSV</button>
-                  <button type="button" onClick={() => handleExport('pdf')} className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-zinc-200 hover:bg-gray-50 dark:hover:bg-zinc-800">Download as PDF</button>
-                  <button type="button" onClick={() => handleExport('doc')} className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-zinc-200 hover:bg-gray-50 dark:hover:bg-zinc-800">Download as DOC</button>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+	        <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-md p-5 border border-red-600 layout-glow">
+	        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+	          <div className="flex items-center gap-2">
+	            <Filter size={18} className="text-red-600" />
+	            <div>
+	              <h2 className="text-2xl font-bold text-gray-800 dark:text-zinc-100">Report - Statistics Overview</h2>
+	              {dateWindowLabel && (
+	                <p className="text-sm text-gray-500 dark:text-zinc-400">{dateWindowLabel}</p>
+	              )}
+	            </div>
+	          </div>
+	        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div>
-            <label htmlFor="report-date-range" className="block text-xs text-gray-500 dark:text-zinc-400 mb-1">Date Range</label>
+	        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+	          <div>
+	            <label htmlFor="report-date-range" className="block text-xs text-gray-500 dark:text-zinc-400 mb-1">Date Range</label>
             <select
               id="report-date-range"
               name="datePreset"
@@ -723,13 +922,24 @@ function Report() {
               className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-sm text-gray-700 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-red-500"
             >
               <option value="monthly">Monthly</option>
-              <option value="quarterly">Quarterly</option>
-              <option value="annually">Annually</option>
-            </select>
-          </div>
-          <div>
-            <label htmlFor="report-category" className="block text-xs text-gray-500 dark:text-zinc-400 mb-1">Category</label>
- 	            <select
+	              <option value="quarterly">Quarterly</option>
+	              <option value="annually">Annually</option>
+	            </select>
+	          </div>
+	          <div>
+	            <label htmlFor="report-month" className="block text-xs text-gray-500 dark:text-zinc-400 mb-1">Month</label>
+	            <input
+	              id="report-month"
+	              type="month"
+	              value={reportMonth}
+	              onChange={e => setReportMonth(e.target.value)}
+	              disabled={datePreset !== 'monthly'}
+	              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-sm text-gray-700 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-60"
+	            />
+	          </div>
+	          <div>
+	            <label htmlFor="report-category" className="block text-xs text-gray-500 dark:text-zinc-400 mb-1">Category</label>
+	 	            <select
                 id="report-category"
                 name="category"
  	              value={selectedCategory}
@@ -891,12 +1101,41 @@ function Report() {
                   <span>Total Activities</span>
                   <strong>{eventCountByCategory[key] || 0}</strong>
                 </div>
+                {typedStats.error && (
+                  <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-[12px] text-red-700">
+                    {typedStats.error}
+                  </div>
+                )}
+                {typedStats.loading && (
+                  <div className="text-[12px] text-gray-500">Loading typed activity totals…</div>
+                )}
+                {!typedStats.loading && !typedStats.error && typedStats.byCategory?.[key] && (
+                  <>
+                    {Object.entries(typedStats.byCategory[key].numericSums || {})
+                      .sort((a, b) => a[0].localeCompare(b[0]))
+                      .slice(0, 8)
+                      .map(([label, total]) => (
+                        <div key={`sum-${label}`} className="flex flex-wrap justify-between gap-2">
+                          <span>Total {label}</span>
+                          <strong>{total}</strong>
+                        </div>
+                      ))}
+                    {Object.entries(typedStats.byCategory[key].booleanTrueCounts || {})
+                      .sort((a, b) => a[0].localeCompare(b[0]))
+                      .slice(0, 6)
+                      .map(([label, count]) => (
+                        <div key={`bool-${label}`} className="flex flex-wrap justify-between gap-2">
+                          <span>{label} (true)</span>
+                          <strong>{count}</strong>
+                        </div>
+                      ))}
+                  </>
+                )}
               </div>
             </div>
           ))}
 	      </div>
 
-      {!isAdmin && <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-sm text-yellow-800">Export feature is available to Admin users only.</div>}
     </div>
   )
 }

@@ -48,7 +48,7 @@ const saveOutbox = (items) => {
 }
 
 function Attendance() {
-  const { user, eventCategories } = useAuth()
+  const { user, categories } = useAuth()
   const supabaseEnabled = isSupabaseEnabled()
   const [localLoginActivity, setLocalLoginActivity] = useState(getStoredLoginActivity)
   const [supabaseLoginActivity, setSupabaseLoginActivity] = useState([])
@@ -78,14 +78,14 @@ function Attendance() {
 
   const categoryLabelByKey = useMemo(() => {
     const map = {}
-    const entries = Array.isArray(eventCategories) ? eventCategories : []
+    const entries = Array.isArray(categories) ? categories : []
     entries.forEach(name => {
       const key = String(name || '').trim()
       if (!key) return
       map[key] = titleCaseFromKey(key)
     })
     return map
-  }, [eventCategories])
+  }, [categories])
 
   const getCategoryLabel = key => {
     const normalized = String(key || '').trim()

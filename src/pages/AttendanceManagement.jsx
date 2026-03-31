@@ -310,10 +310,14 @@ function AdminAttendance() {
     })
   }, [members, activityByUser])
 
-  const presentCount = rows.filter(row => row.status === 'Present').length
-  const absentCount = rows.filter(row => row.status === 'Absent').length
+	  const presentCount = rows.filter(row => row.status === 'Present').length
+	  const absentCount = rows.filter(row => row.status === 'Absent').length
 
-  const startEditing = (memberId) => {
+	  const presentRows = useMemo(() => {
+	    return rows.filter(row => row.status === 'Present')
+	  }, [rows])
+
+	  const startEditing = (memberId) => {
     const existing = activityByUser[String(memberId)]
     const timeInValue = existing?.timeIn || existing?.presentAt || existing?.firstLoginAt || existing?.lastLoginAt || ''
     const timeOutValue = existing?.timeOut || existing?.lastLogoutAt || existing?.lastStatusAt || ''
@@ -491,10 +495,10 @@ function AdminAttendance() {
       ? dayjs(selectedDate).format('MMMM D, YYYY')
       : selectedDate
 
-    const rowsHtml = rows.map(row => {
-      const timeIn = formatTime(row.timeInRaw)
-      const timeOut = formatTime(row.timeOutRaw)
-      return `
+	    const rowsHtml = presentRows.map(row => {
+	      const timeIn = formatTime(row.timeInRaw)
+	      const timeOut = formatTime(row.timeOutRaw)
+	      return `
         <tr>
           <td>${row.member?.name || 'Member'}</td>
           <td>${row.member?.idNumber || row.memberId}</td>
@@ -642,11 +646,11 @@ function AdminAttendance() {
                 <th className="pb-3">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-neutral-100">
-              {rows.map(row => {
-                const timeIn = row.timeInRaw && dayjs(row.timeInRaw).isValid()
-                  ? dayjs(row.timeInRaw).format('h:mm A')
-                  : '-'
+	            <tbody className="divide-y divide-neutral-100">
+	              {presentRows.map(row => {
+	                const timeIn = row.timeInRaw && dayjs(row.timeInRaw).isValid()
+	                  ? dayjs(row.timeInRaw).format('h:mm A')
+	                  : '-'
                 const timeOut = row.timeOutRaw && dayjs(row.timeOutRaw).isValid()
                   ? dayjs(row.timeOutRaw).format('h:mm A')
                   : '-'
@@ -734,8 +738,15 @@ function AdminAttendance() {
                     </td>
                   </tr>
                 )
-              })}
-            </tbody>
+	              })}
+	              {presentRows.length === 0 && (
+	                <tr>
+	                  <td className="py-6 text-center text-neutral-500 dark:text-neutral-400" colSpan={4}>
+	                    No present members recorded for this date.
+	                  </td>
+	                </tr>
+	              )}
+	            </tbody>
           </table>
         </div>
       </section>

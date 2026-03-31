@@ -221,17 +221,7 @@ alter table public.committees
   drop constraint if exists committees_name_not_blank,
   add constraint committees_name_not_blank check (btrim(name) <> '');
 
--- Event Categories (used for EVENTS only)
-create table if not exists public.event_categories (
-  id uuid primary key default gen_random_uuid(),
-  name text not null unique,
-  created_by uuid references public.profiles(id),
-  created_at timestamptz not null default now()
-);
-
-alter table public.event_categories
-  drop constraint if exists event_categories_name_not_blank,
-  add constraint event_categories_name_not_blank check (btrim(name) <> '');
+-- Legacy `event_categories` removed in favor of `public.categories` (typed fields + reporting).
 
 -- Categories (admin-managed, strict typed dynamic fields for activity records + reports)
 create table if not exists public.categories (
@@ -257,6 +247,9 @@ create table if not exists public.category_fields (
 alter table public.category_fields
   drop constraint if exists category_fields_name_not_blank,
   add constraint category_fields_name_not_blank check (btrim(field_name) <> '');
+
+create unique index if not exists category_fields_unique_lower_name_idx
+on public.category_fields (category_id, lower(field_name));
 
 create table if not exists public.activity_records (
   id uuid primary key default gen_random_uuid(),
@@ -458,7 +451,6 @@ create table if not exists public.event_files (
 -- RLS
 alter table public.profiles enable row level security;
 alter table public.committees enable row level security;
-alter table public.event_categories enable row level security;
 alter table public.categories enable row level security;
 alter table public.category_fields enable row level security;
 alter table public.activity_records enable row level security;
@@ -526,32 +518,6 @@ with check (public.is_admin());
 drop policy if exists committees_delete_admin on public.committees;
 create policy committees_delete_admin
 on public.committees for delete
-to authenticated
-using (public.is_admin());
-
--- EVENT CATEGORIES
-drop policy if exists event_categories_select_auth on public.event_categories;
-create policy event_categories_select_auth
-on public.event_categories for select
-to authenticated
-using (true);
-
-drop policy if exists event_categories_write_admin on public.event_categories;
-create policy event_categories_write_admin
-on public.event_categories for insert
-to authenticated
-with check (public.is_admin());
-
-drop policy if exists event_categories_update_admin on public.event_categories;
-create policy event_categories_update_admin
-on public.event_categories for update
-to authenticated
-using (public.is_admin())
-with check (public.is_admin());
-
-drop policy if exists event_categories_delete_admin on public.event_categories;
-create policy event_categories_delete_admin
-on public.event_categories for delete
 to authenticated
 using (public.is_admin());
 
