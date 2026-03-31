@@ -395,9 +395,10 @@ function OrgPersonCard({ person, large = false, size = 'normal' }) {
 
 /* ── Main Page ──────────────────────────────────── */
 
-function Landing() {
+ function Landing() {
   const navigate = useNavigate()
-  const { user, getAllMembers, ensureAdminDataLoaded, committees } = useAuth()
+  const { user, getAllMembers, getAdmins, ensureAdminDataLoaded, committees } = useAuth()
+  const isAdmin = user?.role === 'admin'
   const pageRef = useRef(null)
   const committeeScrollRef = useRef(null)
   const committeeDragStartXRef = useRef(0)
@@ -529,8 +530,10 @@ function Landing() {
 
   const contextMemberPeople = useMemo(() => {
     const members = getAllMembers ? getAllMembers() : []
-    const people = (members || [])
-      .filter(member => allowedVolunteerSet.has(String(member?.name || '').trim().toLowerCase()))
+    const admins = getAdmins ? getAdmins() : []
+    const combined = [...(Array.isArray(members) ? members : []), ...(Array.isArray(admins) ? admins : [])]
+    const people = combined
+      .filter(member => (isAdmin ? true : allowedVolunteerSet.has(String(member?.name || '').trim().toLowerCase())))
       .map(member => ({
         name: String(member?.name || '').trim(),
         image: resolveProfileImage(String(member?.profileImage || '').trim()),
@@ -538,12 +541,12 @@ function Landing() {
       }))
       .filter(person => person.name)
     const unique = new Map()
-    people.forEach(person => {
-      const key = person.name.toLowerCase()
-      if (!unique.has(key)) unique.set(key, person)
-    })
-    return [...unique.values()].sort((a, b) => a.name.localeCompare(b.name))
-  }, [getAllMembers, allowedVolunteerSet])
+	    people.forEach(person => {
+	      const key = person.name.toLowerCase()
+	      if (!unique.has(key)) unique.set(key, person)
+	    })
+	    return [...unique.values()].sort((a, b) => a.name.localeCompare(b.name))
+  }, [getAdmins, getAllMembers, allowedVolunteerSet, isAdmin])
 
 	  useEffect(() => {
 	    let isMounted = true
@@ -560,7 +563,7 @@ function Landing() {
           memberSince: row?.member_since || row?.memberSince || '',
           status: String(row?.status || '').trim(),
         }))
-        .filter(person => person.name && allowedVolunteerSet.has(person.name.toLowerCase()))
+	        .filter(person => person.name && (isAdmin ? true : allowedVolunteerSet.has(person.name.toLowerCase())))
       const unique = new Map()
       people.forEach(person => {
         const key = person.name.toLowerCase()
@@ -600,7 +603,7 @@ function Landing() {
 	    return () => {
 	      isMounted = false
 	    }
-	  }, [allowedVolunteerSet, committees, contextMemberPeople, user?.role])
+	  }, [allowedVolunteerSet, committees, contextMemberPeople, isAdmin])
 
   const displayVolunteerPeople = useMemo(() => {
     if (contextMemberPeople.length > 0) return contextMemberPeople
@@ -610,6 +613,15 @@ function Landing() {
       .sort((a, b) => a.name.localeCompare(b.name))
   }, [contextMemberPeople, kusganVolunteerPeople])
 
+  const normalizeCommitteeKey = (value) => {
+    return String(value || '')
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+  }
+
   const committeeOptions = useMemo(() => {
     const list =
       Array.isArray(committees) && committees.length > 0
@@ -618,7 +630,13 @@ function Landing() {
           ? publicCommittees
           : []
     const normalized = list.map(name => String(name || '').trim()).filter(Boolean)
-    const unique = [...new Set(normalized)]
+    const uniqueByKey = new Map()
+    normalized.forEach(name => {
+      const key = normalizeCommitteeKey(name)
+      if (!key) return
+      if (!uniqueByKey.has(key)) uniqueByKey.set(key, name)
+    })
+    const unique = [...uniqueByKey.values()]
     unique.sort((a, b) => a.localeCompare(b))
     return unique
   }, [committees, publicCommittees])
@@ -636,7 +654,7 @@ function Landing() {
           unassigned.push(person)
           return
         }
-        const key = committee.toLowerCase()
+        const key = normalizeCommitteeKey(committee)
         if (!grouped.has(key)) grouped.set(key, { committee, members: [] })
         grouped.get(key).members.push(person)
       })
@@ -660,7 +678,7 @@ function Landing() {
     const grouped = new Map(
       trimmedOptions.map(name => {
         const committee = String(name || '').trim()
-        return [committee.toLowerCase(), { committee, members: [] }]
+        return [normalizeCommitteeKey(committee), { committee, members: [] }]
       })
     )
     const unassigned = []
@@ -671,7 +689,7 @@ function Landing() {
         unassigned.push(person)
         return
       }
-      const key = committee.toLowerCase()
+      const key = normalizeCommitteeKey(committee)
       if (!grouped.has(key)) {
         unassigned.push(person)
         return

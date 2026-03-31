@@ -1612,10 +1612,11 @@ export function AuthProvider({ children }) {
       status: (updates.status ?? 'active').toString().trim() || 'active',
     }
 
-    const { error } = await supabase.from('profiles').update(payload).eq('id', memberId)
-    if (error) return { success: false, message: error.message || 'Unable to update member.' }
-    return { success: true }
-  }
+	    const { error } = await supabase.from('profiles').update(payload).eq('id', memberId)
+	    if (error) return { success: false, message: error.message || 'Unable to update member.' }
+	    await reloadUsers()
+	    return { success: true }
+	  }
 
   const deleteMembers = async (memberIds = []) => {
     if (!user?.id) return { success: false, message: 'User not found.' }
