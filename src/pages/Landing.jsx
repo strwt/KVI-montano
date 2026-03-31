@@ -395,10 +395,10 @@ function OrgPersonCard({ person, large = false, size = 'normal' }) {
 
 /* ── Main Page ──────────────────────────────────── */
 
- function Landing() {
+function Landing() {
   const navigate = useNavigate()
   const { user, getAllMembers, getAdmins, ensureAdminDataLoaded, committees } = useAuth()
-  const isAdmin = user?.role === 'admin'
+  const supabaseEnabled = isSupabaseEnabled()
   const pageRef = useRef(null)
   const committeeScrollRef = useRef(null)
   const committeeDragStartXRef = useRef(0)
@@ -523,17 +523,11 @@ function OrgPersonCard({ person, large = false, size = 'normal' }) {
     }
   }, [committees])
 
-  const allowedVolunteerSet = useMemo(
-    () => new Set(KUSGAN_VOLUNTEERS.map(name => String(name || '').trim().toLowerCase()).filter(Boolean)),
-    []
-  )
-
   const contextMemberPeople = useMemo(() => {
     const members = getAllMembers ? getAllMembers() : []
     const admins = getAdmins ? getAdmins() : []
     const combined = [...(Array.isArray(members) ? members : []), ...(Array.isArray(admins) ? admins : [])]
     const people = combined
-      .filter(member => (isAdmin ? true : allowedVolunteerSet.has(String(member?.name || '').trim().toLowerCase())))
       .map(member => ({
         name: String(member?.name || '').trim(),
         image: resolveProfileImage(String(member?.profileImage || '').trim()),
@@ -546,72 +540,112 @@ function OrgPersonCard({ person, large = false, size = 'normal' }) {
 	      if (!unique.has(key)) unique.set(key, person)
 	    })
 	    return [...unique.values()].sort((a, b) => a.name.localeCompare(b.name))
-  }, [getAdmins, getAllMembers, allowedVolunteerSet, isAdmin])
+	  }, [getAdmins, getAllMembers])
 
-	  useEffect(() => {
-	    let isMounted = true
+		  useEffect(() => {
+		    let isMounted = true
+		    let reloadTimer = null
 
-    const normalizePeople = (rows = []) => {
-      const people = rows
-        .map(row => ({
-          name: String(row?.name || '').trim(),
-          image: resolveProfileImage(row?.profile_image || row?.profileImage),
-          idNumber: String(row?.id_number || row?.idNumber || '').trim(),
-          contactNumber: String(row?.contact_number || row?.contactNumber || '').trim(),
-          bloodType: String(row?.blood_type || row?.bloodType || '').trim(),
-          committee: String(row?.committee || '').trim(),
-          memberSince: row?.member_since || row?.memberSince || '',
-          status: String(row?.status || '').trim(),
-        }))
-	        .filter(person => person.name && (isAdmin ? true : allowedVolunteerSet.has(person.name.toLowerCase())))
-      const unique = new Map()
-      people.forEach(person => {
-        const key = person.name.toLowerCase()
-        if (!unique.has(key)) unique.set(key, person)
+	    const normalizePeople = (rows = []) => {
+	      const people = rows
+	        .map(row => ({
+	          name: String(row?.name || '').trim(),
+	          image: resolveProfileImage(row?.profile_image || row?.profileImage),
+	          idNumber: String(row?.id_number || row?.idNumber || '').trim(),
+	          contactNumber: String(row?.contact_number || row?.contactNumber || '').trim(),
+	          bloodType: String(row?.blood_type || row?.bloodType || '').trim(),
+	          committee: String(row?.committee || '').trim(),
+	          memberSince: row?.member_since || row?.memberSince || '',
+	          status: String(row?.status || '').trim(),
+	        }))
+		        .filter(person => person.name)
+	      const unique = new Map()
+	      people.forEach(person => {
+	        const key = person.name.toLowerCase()
+	        if (!unique.has(key)) unique.set(key, person)
       })
       return [...unique.values()].sort((a, b) => a.name.localeCompare(b.name))
     }
 
-    const loadMembers = async () => {
-      if (contextMemberPeople.length > 0) {
-        if (isMounted) setKusganVolunteerPeople(contextMemberPeople)
-        return
-      }
+	    const loadMembers = async () => {
+	      if (!supabaseEnabled || !supabase) {
+	        if (isMounted) setKusganVolunteerPeople(contextMemberPeople)
+	        return
+	      }
+	      try {
+	        const rpcClient = typeof supabase?.schema === 'function' ? supabase.schema('public') : supabase
+	        let result = await rpcClient.rpc('get_landing_committee_members')
+	        if (result?.error?.code === 'PGRST202') {
+	          // Backward-compatible fallback if the new RPC isn't deployed yet.
+	          result = await rpcClient.rpc('get_landing_volunteers', { p_names: KUSGAN_VOLUNTEERS })
+	        }
+	        const { data, error } = result || {}
 
-      if (!isSupabaseEnabled()) {
-        if (isMounted) setKusganVolunteerPeople([])
-        return
-      }
-      try {
-        const rpcClient = typeof supabase?.schema === 'function' ? supabase.schema('public') : supabase
-        const { data, error } = await rpcClient.rpc('get_landing_volunteers', { p_names: KUSGAN_VOLUNTEERS })
-
-        if (error) {
-          console.warn('Failed to load members for landing page.', error)
-          if (isMounted) setKusganVolunteerPeople([])
-          return
+	        if (error) {
+	          console.warn('Failed to load members for landing page.', error)
+	          if (isMounted) setKusganVolunteerPeople([])
+	          return
         }
         if (isMounted) setKusganVolunteerPeople(normalizePeople(data))
       } catch (err) {
         console.warn('Failed to load members for landing page.', err)
         if (isMounted) setKusganVolunteerPeople([])
       }
-    }
-
-    void loadMembers()
-
-	    return () => {
-	      isMounted = false
 	    }
-	  }, [allowedVolunteerSet, committees, contextMemberPeople, isAdmin])
 
-  const displayVolunteerPeople = useMemo(() => {
-    if (contextMemberPeople.length > 0) return contextMemberPeople
-    if (kusganVolunteerPeople.length > 0) return kusganVolunteerPeople
-    return KUSGAN_VOLUNTEERS
-      .map(name => ({ name, image: HERO_IMAGE }))
-      .sort((a, b) => a.name.localeCompare(b.name))
-  }, [contextMemberPeople, kusganVolunteerPeople])
+	    const scheduleReload = () => {
+	      if (!isMounted) return
+	      if (reloadTimer) window.clearTimeout(reloadTimer)
+	      reloadTimer = window.setTimeout(() => {
+	        void loadMembers()
+	      }, 200)
+	    }
+
+	    scheduleReload()
+
+	    const handleVisibility = () => {
+	      if (document.visibilityState === 'visible') scheduleReload()
+	    }
+
+	    window.addEventListener('focus', scheduleReload)
+	    document.addEventListener('visibilitychange', handleVisibility)
+
+	    let channel = null
+	    if (supabaseEnabled && supabase) {
+	      try {
+	        channel = supabase
+	          .channel('landing-profiles')
+	          .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
+	            scheduleReload()
+	          })
+	          .subscribe()
+	      } catch {
+	        // ignore
+	      }
+	    }
+
+		    return () => {
+		      isMounted = false
+		      if (reloadTimer) window.clearTimeout(reloadTimer)
+		      window.removeEventListener('focus', scheduleReload)
+		      document.removeEventListener('visibilitychange', handleVisibility)
+		      if (channel && supabase) {
+		        try {
+		          supabase.removeChannel(channel)
+		        } catch {
+		          // ignore
+		        }
+		      }
+		    }
+		  }, [committees, contextMemberPeople, supabaseEnabled])
+
+	  const displayVolunteerPeople = useMemo(() => {
+	    if (kusganVolunteerPeople.length > 0) return kusganVolunteerPeople
+	    if (contextMemberPeople.length > 0) return contextMemberPeople
+	    return KUSGAN_VOLUNTEERS
+	      .map(name => ({ name, image: HERO_IMAGE }))
+	      .sort((a, b) => a.name.localeCompare(b.name))
+	  }, [contextMemberPeople, kusganVolunteerPeople])
 
   const normalizeCommitteeKey = (value) => {
     return String(value || '')
