@@ -400,13 +400,21 @@ function Dashboard() {
                       {visibleNotifications.map((notification, index) => {
                         const hasValidDate = notification.dateTime && dayjs(notification.dateTime).isValid()
                         return (
-                          <button
-                            type="button"
+                          <div
                             key={`${notification.id || 'note'}-${index}`}
                             onClick={() => {
                               handleOpenNotification(notification)
                               setNotificationsOpen(false)
                             }}
+                            onKeyDown={event => {
+                              if (event.target !== event.currentTarget) return
+                              if (event.key !== 'Enter' && event.key !== ' ') return
+                              event.preventDefault()
+                              handleOpenNotification(notification)
+                              setNotificationsOpen(false)
+                            }}
+                            role="button"
+                            tabIndex={0}
                             className={`flex w-full items-start gap-3 border-b border-red-100 px-4 py-3 text-left transition-colors hover:bg-red-50 dark:border-red-900/40 dark:hover:bg-red-950/40 ${
                               notification.readAt ? '' : 'bg-red-50/50 dark:bg-red-950/30'
                             }`}
@@ -441,7 +449,7 @@ function Dashboard() {
                                 <X size={14} />
                               </button>
                             </div>
-                          </button>
+                          </div>
                         )
                       })}
                       {visibleNotifications.length === 0 && (

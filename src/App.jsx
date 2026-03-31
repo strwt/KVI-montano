@@ -14,6 +14,7 @@ import Login from './pages/Login'
 import Landing from './pages/Landing'
 import Recruitment from './pages/Recruitment'
 import Settings from './pages/Settings'
+import CategoryManagement from './pages/CategoryManagement'
 import ChatbotWidget from './components/ChatbotWidget'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import './index.css'
@@ -127,6 +128,7 @@ function AppRoutes() {
         <Route path="attendance-management" element={<AdminRoute><AttendanceManagement /></AdminRoute>} />
         <Route path="events" element={<Calendar listOnly />} />
         <Route path="report" element={<AdminRoute><Report /></AdminRoute>} />
+        <Route path="category-management" element={<AdminRoute><CategoryManagement /></AdminRoute>} />
         <Route path="profile" element={<Profile />} />
         <Route path="account/edit" element={<EditAccount />} />
         <Route path="change-password" element={<ChangePassword />} />
