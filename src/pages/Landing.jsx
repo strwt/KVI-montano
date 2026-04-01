@@ -1515,7 +1515,7 @@ function Landing() {
 
           {/* Copyright */}
             <p className="text-xs" style={{ color: '#374151' }}>
-              © {new Date().getFullYear()} KUSGAN Volunteer Inc. All rights reserved.
+              © {new Date().getFullYear()} Developed By : Niel Caspillo, Prince Laurence Montaño, and Dun Kenneth Salon
             </p>
     
         </div>
