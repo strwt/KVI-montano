@@ -8,7 +8,7 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
   const { user, logout } = useAuth()
   const { t } = useI18n()
   const navigate = useNavigate()
-  const [managementOpen, setManagementOpen] = useState(true)
+  const [managementOpen, setManagementOpen] = useState(false)
 
   const isAdmin = user?.role === 'admin'
   const shellTone = darkMode

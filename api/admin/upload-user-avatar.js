@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { rateLimit } from './_rateLimit.js'
 
 /* global process, Buffer */
 
@@ -59,6 +60,9 @@ const isUuid = (value) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a
 
 export default async function handler(req, res) {
   try {
+    const rl = rateLimit({ req, res, key: 'admin:upload-user-avatar', limit: 20, windowMs: 60_000 })
+    if (!rl.ok) return null
+
     if (req.method !== 'POST') {
       res.setHeader('Allow', 'POST')
       return res.status(405).json({ message: 'Method not allowed.' })
@@ -135,10 +139,18 @@ export default async function handler(req, res) {
       return res.status(500).json({ message: profileError.message || 'Upload succeeded but profile update failed.' })
     }
 
+    await supabaseAdmin
+      .rpc('log_admin_action', {
+        p_action: 'user.avatar.update',
+        p_entity: 'profiles',
+        p_entity_id: targetUserId,
+        p_meta: { path },
+      })
+      .catch(() => {})
+
     return res.status(200).json({ success: true, path })
   } catch (error) {
     console.error('Unhandled error in /api/admin/upload-user-avatar.', error)
     return res.status(500).json({ message: error?.message ? String(error.message) : 'Server error.' })
   }
 }
-

@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { rateLimit } from './_rateLimit.js'
 
 /* global process, Buffer */
 
@@ -11,6 +12,9 @@ const normalizeIdKey = (value = '') => String(value || '').toLowerCase().replace
 
 export default async function handler(req, res) {
   try {
+    const rl = rateLimit({ req, res, key: 'admin:create-user', limit: 20, windowMs: 60_000 })
+    if (!rl.ok) return null
+
     if (req.method !== 'POST') {
       res.setHeader('Allow', 'POST')
       return res.status(405).json({ message: 'Method not allowed.' })
@@ -134,6 +138,15 @@ export default async function handler(req, res) {
     if (profileError) {
       return res.status(500).json({ message: profileError.message || 'User created but profile update failed.' })
     }
+
+    await supabaseAdmin
+      .rpc('log_admin_action', {
+        p_action: 'user.create',
+        p_entity: 'profiles',
+        p_entity_id: newUserId,
+        p_meta: { role, id_number: idNumber, email, committee: profilePatch.committee, status, account_status: accountStatus },
+      })
+      .catch(() => {})
 
     return res.status(200).json({ success: true, userId: newUserId, email })
   } catch (error) {
