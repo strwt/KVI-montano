@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { KUSGAN_VOLUNTEERS } from '../data/kusganVolunteers'
 import {
   Users,
   Search,

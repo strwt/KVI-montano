@@ -81,6 +81,7 @@ const createSafeStorage = ({ persistSession }) => {
       return memory.has(key) ? memory.get(key) : null
     },
     setItem: (key, value) => {
+      memory.set(key, value)
       const storage = getLocalStorage()
       if (storage) {
         try {
@@ -90,9 +91,9 @@ const createSafeStorage = ({ persistSession }) => {
           // Fall back to memory.
         }
       }
-      memory.set(key, value)
     },
     removeItem: (key) => {
+      memory.delete(key)
       const storage = getLocalStorage()
       if (storage) {
         try {
@@ -102,7 +103,6 @@ const createSafeStorage = ({ persistSession }) => {
           // Fall back to memory.
         }
       }
-      memory.delete(key)
     },
   }
 }
