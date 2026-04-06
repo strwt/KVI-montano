@@ -490,6 +490,126 @@ function AdminAttendance() {
     return dayjs(value).format('h:mm A')
   }
 
+  const exportHistoryPdf = () => {
+    if (!historyMember || !historyMonth || historyLoading) return
+
+    const escapeHtml = (value) => String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;')
+
+    const monthStart = dayjs(`${historyMonth}-01`)
+    const monthLabel = monthStart.isValid() ? monthStart.format('MMMM YYYY') : historyMonth
+    const memberName = historyMember?.name || 'Member'
+
+    const rowsHtml = historyRows.map(row => {
+      const dateLabel = dayjs(row.dateKey).isValid()
+        ? dayjs(row.dateKey).format('MMM D, YYYY')
+        : row.label || row.dateKey
+      const timeIn = formatTime(row.timeIn)
+      const timeOut = formatTime(row.timeOut)
+      const badgeClass = row.status === 'Present' ? 'badge badge-present' : 'badge badge-absent'
+
+      return `
+        <tr>
+          <td>${escapeHtml(dateLabel)}</td>
+          <td><span class="${badgeClass}">${escapeHtml(row.status)}</span></td>
+          <td>${escapeHtml(timeIn)}</td>
+          <td>${escapeHtml(timeOut)}</td>
+        </tr>
+      `
+    }).join('')
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <title>Attendance ${escapeHtml(memberName)} ${escapeHtml(monthLabel)}</title>
+          <style>
+            * { box-sizing: border-box; }
+            body {
+              font-family: 'Segoe UI', Tahoma, sans-serif;
+              color: #111827;
+              margin: 24px;
+            }
+            h1 { font-size: 20px; margin: 0 0 6px; }
+            .meta { font-size: 12px; color: #6b7280; margin-bottom: 16px; line-height: 1.5; }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              font-size: 11px;
+            }
+            th, td {
+              border: 1px solid #e5e7eb;
+              padding: 8px;
+              vertical-align: top;
+            }
+            th {
+              background: #f9fafb;
+              text-transform: uppercase;
+              letter-spacing: 0.08em;
+              font-size: 10px;
+              color: #6b7280;
+              text-align: left;
+            }
+            .badge {
+              display: inline-block;
+              padding: 2px 8px;
+              border-radius: 9999px;
+              font-size: 10px;
+              font-weight: 700;
+              letter-spacing: 0.06em;
+              text-transform: uppercase;
+              border: 1px solid transparent;
+            }
+            .badge-present { background: #ecfdf5; border-color: #a7f3d0; color: #047857; }
+            .badge-absent { background: #f3f4f6; border-color: #e5e7eb; color: #374151; }
+            @media print {
+              body { margin: 12mm; }
+              table { page-break-inside: auto; }
+              tr { page-break-inside: avoid; page-break-after: auto; }
+            }
+          </style>
+        </head>
+        <body>
+          <h1>Monthly Attendance Report</h1>
+          <div class="meta">
+            <div><strong>Member:</strong> ${escapeHtml(memberName)}</div>
+            <div><strong>ID:</strong> ${escapeHtml(historyMember?.idNumber || historyMember?.id || '')}</div>
+            <div><strong>Committee:</strong> ${escapeHtml(historyMember?.committee || 'Unassigned')}</div>
+            <div><strong>Month:</strong> ${escapeHtml(monthLabel)}</div>
+            <div><strong>Present:</strong> ${historyPresentCount} &nbsp; <strong>Absent:</strong> ${historyAbsentCount}</div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Status</th>
+                <th>Time In</th>
+                <th>Time Out</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml}
+            </tbody>
+          </table>
+        </body>
+      </html>
+    `
+
+    const printWindow = window.open('', '_blank', 'width=1024,height=768')
+    if (!printWindow) return
+    printWindow.document.write(html)
+    printWindow.document.close()
+    printWindow.focus()
+    printWindow.onload = () => {
+      printWindow.print()
+    }
+  }
+
   const exportAttendancePdf = () => {
     const dateLabel = dayjs(selectedDate).isValid()
       ? dayjs(selectedDate).format('MMMM D, YYYY')
@@ -802,6 +922,15 @@ function AdminAttendance() {
                   <UserX size={14} />
                   Absent: {historyAbsentCount}
                 </span>
+                <button
+                  type="button"
+                  onClick={exportHistoryPdf}
+                  disabled={historyLoading}
+                  className="inline-flex items-center gap-2 rounded-full border border-red-600 bg-red-600 px-4 py-1 text-xs font-semibold text-white shadow-sm transition-all hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <Download size={14} />
+                  Export PDF
+                </button>
               </div>
             </div>
 
