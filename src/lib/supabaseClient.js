@@ -1,7 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
 
-const debugSupabase = String(import.meta.env.VITE_DEBUG_SUPABASE || '').trim().toLowerCase() === 'true'
-
 const parseEnvBool = (value, fallback) => {
   const raw = String(value ?? '').trim().toLowerCase()
   if (!raw) return fallback
@@ -141,15 +139,6 @@ export const supabase = isSupabaseConfigured
   : null
 
 if (!persistSession) clearSupabaseAuthLocalStorage()
-
-if (debugSupabase) {
-  const urlLabel = supabaseUrl ? supabaseUrl.replace(/^https?:\/\//, '') : '(missing)'
-  console.info('[supabase] configured?', isSupabaseConfigured, 'url:', urlLabel, {
-    persistSession,
-    autoRefreshToken,
-    detectSessionInUrl,
-  })
-}
 
 export const getSupabaseConfigError = () => {
   if (isSupabaseConfigured) return ''

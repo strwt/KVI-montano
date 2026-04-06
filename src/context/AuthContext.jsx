@@ -4,11 +4,7 @@ import { clearSupabaseAuthLocalStorage, getSupabaseConfigError, isSupabaseConfig
 
 const AuthContext = createContext(null)
 
-const debugSupabase = String(import.meta.env.VITE_DEBUG_SUPABASE || '').trim().toLowerCase() === 'true'
-const logSupabase = (...args) => {
-  if (!debugSupabase) return
-  console.info('[supabase]', ...args)
-}
+const logSupabase = () => {}
 
 const DEFAULT_PROFILE_IMAGE = '/kvi.png'
 const SESSION_EXPIRED_MESSAGE = 'Session expired. Please log in again.'
@@ -888,7 +884,7 @@ export function AuthProvider({ children }) {
         initialSessionHandledRef.current = true
       }
 
-      if (debugSupabase) logSupabase('auth event', event)
+      logSupabase('auth event', event)
 
       const authUser = session?.user || null
       if (!authUser?.id) {
@@ -1386,7 +1382,7 @@ export function AuthProvider({ children }) {
     try {
       const { data, error } = await supabase.auth.getSession()
       if (error) {
-        if (debugSupabase) logSupabase('profile image session check failed', error)
+        logSupabase('profile image session check failed', error)
         return { success: false, message: error.message || 'Session check failed. Please log in again.' }
       }
       accessToken = data?.session?.access_token || ''
@@ -1402,17 +1398,15 @@ export function AuthProvider({ children }) {
       const jwtAud = jwtPayload?.aud ? String(jwtPayload.aud) : ''
       const jwtIss = jwtPayload?.iss ? String(jwtPayload.iss) : ''
 
-      if (debugSupabase) {
-        logSupabase('profile image session summary', {
-          authUserId: authUserId || null,
-          profileUserId: user?.id ? String(user.id) : null,
-          jwtSub: jwtSub || null,
-          jwtAppRole: jwtAppRole || null,
-          jwtDbRole: jwtDbRole || null,
-          jwtAud: jwtAud || null,
-          jwtIss: jwtIss || null,
-        })
-      }
+      logSupabase('profile image session summary', {
+        authUserId: authUserId || null,
+        profileUserId: user?.id ? String(user.id) : null,
+        jwtSub: jwtSub || null,
+        jwtAppRole: jwtAppRole || null,
+        jwtDbRole: jwtDbRole || null,
+        jwtAud: jwtAud || null,
+        jwtIss: jwtIss || null,
+      })
 
       const expectedId = String(user.id)
       const tokenId = jwtSub || authUserId
@@ -1443,15 +1437,13 @@ export function AuthProvider({ children }) {
     const filename = safeExt ? `${uuid}.${safeExt}` : uuid
     const path = `${PROFILE_IMAGE_PREFIX}/${user.id}/${filename}`
 
-    if (debugSupabase) {
-      logSupabase('profile image upload attempt', {
-        bucket: PROFILE_IMAGE_BUCKET,
-        path,
-        authUserId: authUserId || null,
-        jwtSub: jwtSub || null,
-        jwtAppRole: jwtAppRole || null,
-      })
-    }
+    logSupabase('profile image upload attempt', {
+      bucket: PROFILE_IMAGE_BUCKET,
+      path,
+      authUserId: authUserId || null,
+      jwtSub: jwtSub || null,
+      jwtAppRole: jwtAppRole || null,
+    })
 
     // Preferred: upload via server route using service role (bypasses storage RLS safely).
     if (accessToken) {
@@ -1495,13 +1487,13 @@ export function AuthProvider({ children }) {
         cacheControl: '3600',
       })
     } catch (error) {
-      if (debugSupabase) logSupabase('profile image upload exception', error)
+      logSupabase('profile image upload exception', error)
       return { success: false, message: error?.message || 'Unable to upload image.' }
     }
 
     const uploadError = uploadResult?.error || null
     if (uploadError) {
-      if (debugSupabase) logSupabase('profile image upload error', uploadError)
+      logSupabase('profile image upload error', uploadError)
       const status = uploadError?.statusCode ? ` (HTTP ${uploadError.statusCode})` : ''
       const details = uploadError?.error ? `: ${uploadError.error}` : ''
 
@@ -1531,7 +1523,7 @@ export function AuthProvider({ children }) {
             }
           }
         } catch (error) {
-          if (debugSupabase) logSupabase('profile image upload REST fallback failed', error)
+          logSupabase('profile image upload REST fallback failed', error)
           // Fall through to the original error.
         }
       }
