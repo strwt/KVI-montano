@@ -2554,12 +2554,16 @@ function Calendar({ listOnly = false }) {
 
                 {month.hasEvents && (
                   <div className="mt-3 space-y-2">
-                    {month.items.map((item, itemIndex) => {
-                      const categoryKey = String(item.category || '').toLowerCase()
-                      const categoryLabel = CATEGORY_CONFIG[categoryKey]?.label || item.category || 'Uncategorized'
-                      return (
-                        <div
-                          key={`${month.monthKey}-${item.id || itemIndex}`}
+	                    {month.items.map((item, itemIndex) => {
+	                      const categoryKey = canonicalizeOperationKey(normalizeCategoryKey(item.category)) || 'uncategorized'
+	                      const categoryLabel =
+	                        categoryLabelByKey[categoryKey]
+	                        || CATEGORY_CONFIG[categoryKey]?.label
+	                        || titleCaseFromKey(categoryKey)
+	                        || 'Uncategorized'
+	                      return (
+	                        <div
+	                          key={`${month.monthKey}-${item.id || itemIndex}`}
                           className="rounded-md border p-2 transition-colors cursor-pointer bg-gray-50 border-gray-200 hover:bg-red-50 hover:border-red-200"
                           onClick={e => {
                             e.stopPropagation()
@@ -2572,16 +2576,15 @@ function Calendar({ listOnly = false }) {
                           <p className="text-[11px] text-gray-500 truncate">
                             <span className="font-semibold text-red-700">{categoryLabel}</span> | {dayjs(item.dateTime).format('MMM D, YYYY')}
                           </p>
-                          <div className="flex items-center justify-between gap-2">
-                            <p className="text-xs text-gray-700 truncate">{item.title || 'Untitled Event'}</p>
-                            <div className="flex items-center gap-1">
-                              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold border ${
-                                item.status === 'done'
-                                  ? 'bg-green-100 text-green-700 border-green-200'
-                                  : 'bg-red-100 text-red-700 border-red-200'
-                              }`}>
-                                {item.status === 'done' ? 'Done' : 'On-going'}
-                              </span>
+	                          <div className="flex items-center justify-end gap-2">
+	                            <div className="flex items-center gap-1">
+	                              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold border ${
+	                                item.status === 'done'
+	                                  ? 'bg-green-100 text-green-700 border-green-200'
+	                                  : 'bg-red-100 text-red-700 border-red-200'
+	                              }`}>
+	                                {item.status === 'done' ? 'Done' : 'On-going'}
+	                              </span>
                               {isAssignedToCurrentUser(item) && (
                                 <span className="rounded-full border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700">
                                   Assigned

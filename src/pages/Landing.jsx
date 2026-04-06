@@ -405,6 +405,8 @@ function Landing() {
   const committeeDragStartScrollLeftRef = useRef(0)
   const committeeDragMovedRef = useRef(false)
   const [kusganVolunteerPeople, setKusganVolunteerPeople] = useState([])
+  const [landingMembersLoading, setLandingMembersLoading] = useState(true)
+  const landingMembersLoadedRef = useRef(false)
   const [structureKey, setStructureKey] = useState('board')
   const activeStructure = ORGANIZATION_VIEWS.find(view => view.key === structureKey) || ORGANIZATION_VIEWS[0]
   const [selectedPerson, setSelectedPerson] = useState(null)
@@ -542,9 +544,17 @@ function Landing() {
 	    return [...unique.values()].sort((a, b) => a.name.localeCompare(b.name))
 	  }, [getAdmins, getAllMembers])
 
+  const contextMemberPeopleRef = useRef([])
+  useEffect(() => {
+    contextMemberPeopleRef.current = contextMemberPeople
+  }, [contextMemberPeople])
+
 		  useEffect(() => {
 		    let isMounted = true
 		    let reloadTimer = null
+
+        // Avoid flashing stale committee assignments on login/user switch.
+        landingMembersLoadedRef.current = false
 
 	    const normalizePeople = (rows = []) => {
 	      const people = rows
@@ -567,9 +577,18 @@ function Landing() {
       return [...unique.values()].sort((a, b) => a.name.localeCompare(b.name))
     }
 
-	    const loadMembers = async () => {
+	    const loadMembers = async ({ initial = false } = {}) => {
+        const shouldShowLoading = initial || !landingMembersLoadedRef.current
+        if (isMounted && shouldShowLoading) {
+          setLandingMembersLoading(true)
+          if (initial) setKusganVolunteerPeople([])
+        }
+
 	      if (!supabaseEnabled || !supabase) {
-	        if (isMounted) setKusganVolunteerPeople(contextMemberPeople)
+	        if (isMounted) {
+            setKusganVolunteerPeople(contextMemberPeopleRef.current || [])
+            setLandingMembersLoading(false)
+          }
 	        return
 	      }
 	      try {
@@ -583,13 +602,23 @@ function Landing() {
 
 	        if (error) {
 	          console.warn('Failed to load members for landing page.', error)
-	          if (isMounted) setKusganVolunteerPeople([])
+	          if (isMounted) {
+              setKusganVolunteerPeople([])
+              setLandingMembersLoading(false)
+            }
 	          return
         }
-        if (isMounted) setKusganVolunteerPeople(normalizePeople(data))
+        if (isMounted) {
+          setKusganVolunteerPeople(normalizePeople(data))
+          landingMembersLoadedRef.current = true
+          setLandingMembersLoading(false)
+        }
       } catch (err) {
         console.warn('Failed to load members for landing page.', err)
-        if (isMounted) setKusganVolunteerPeople([])
+        if (isMounted) {
+          setKusganVolunteerPeople([])
+          setLandingMembersLoading(false)
+        }
       }
 	    }
 
@@ -601,7 +630,7 @@ function Landing() {
 	      }, 200)
 	    }
 
-	    scheduleReload()
+      void loadMembers({ initial: true })
 
 	    const handleVisibility = () => {
 	      if (document.visibilityState === 'visible') scheduleReload()
@@ -637,15 +666,21 @@ function Landing() {
 		        }
 		      }
 		    }
-		  }, [committees, contextMemberPeople, supabaseEnabled])
+		  }, [supabaseEnabled, user?.id])
 
 	  const displayVolunteerPeople = useMemo(() => {
 	    if (kusganVolunteerPeople.length > 0) return kusganVolunteerPeople
-	    if (contextMemberPeople.length > 0) return contextMemberPeople
-	    return KUSGAN_VOLUNTEERS
-	      .map(name => ({ name, image: HERO_IMAGE }))
-	      .sort((a, b) => a.name.localeCompare(b.name))
-	  }, [contextMemberPeople, kusganVolunteerPeople])
+      if (landingMembersLoading) return []
+
+      if (!supabaseEnabled || !supabase) {
+        if (contextMemberPeople.length > 0) return contextMemberPeople
+        return KUSGAN_VOLUNTEERS
+          .map(name => ({ name, image: HERO_IMAGE }))
+          .sort((a, b) => a.name.localeCompare(b.name))
+      }
+
+      return []
+	  }, [contextMemberPeople, kusganVolunteerPeople, landingMembersLoading, supabaseEnabled])
 
   const normalizeCommitteeKey = (value) => {
     return String(value || '')

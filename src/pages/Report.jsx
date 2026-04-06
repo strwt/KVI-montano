@@ -68,6 +68,31 @@ const CURRENCY = new Intl.NumberFormat('en-US', {
   maximumFractionDigits: 2,
 })
 
+const NUMBER_FORMAT = new Intl.NumberFormat('en-US', {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
+})
+
+const formatNumber = (value) => {
+  const numeric = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(numeric)) return '-'
+  return NUMBER_FORMAT.format(numeric)
+}
+
+const CATEGORY_DATA_EXCLUDE_KEYS = new Set([
+  'activity_record_id',
+  'contributormemberids',
+  'contributor_member_ids',
+  'partners',
+  'blood_token',
+])
+
+const toFiniteNumberOrNull = (value) => {
+  if (value === null || value === undefined || value === '') return null
+  const numeric = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(numeric) ? numeric : null
+}
+
 const normalizeCategory = category =>
   String(category || '')
     .trim()
@@ -285,10 +310,60 @@ const getFieldValue = (event, key, fallbackKeys = []) => {
       })
   }, [categoryKeySetFromDb, events, start, end])
 
-  const filteredEvents = useMemo(() => {
-    if (selectedCategory === 'all') return baseEvents
-    return baseEvents.filter(event => event._category === selectedCategory)
-  }, [baseEvents, selectedCategory])
+	  const filteredEvents = useMemo(() => {
+	    if (selectedCategory === 'all') return baseEvents
+	    return baseEvents.filter(event => event._category === selectedCategory)
+	  }, [baseEvents, selectedCategory])
+
+	  const entryEvents = selectedCategory === 'all' ? baseEvents : filteredEvents
+
+	  const numericKeysByCategory = useMemo(() => {
+	    const map = new Map()
+
+	    entryEvents.forEach(event => {
+	      const categoryKey = String(event?._category || 'uncategorized')
+	      if (!map.has(categoryKey)) map.set(categoryKey, new Set())
+
+	      const data = event?.categoryData && typeof event.categoryData === 'object' ? event.categoryData : null
+	      if (!data) return
+
+	      Object.entries(data).forEach(([rawKey, rawValue]) => {
+	        const key = String(rawKey || '').trim()
+	        if (!key) return
+	        if (CATEGORY_DATA_EXCLUDE_KEYS.has(key.toLowerCase())) return
+
+	        const numeric = toFiniteNumberOrNull(rawValue)
+	        if (numeric === null) return
+
+	        map.get(categoryKey).add(key)
+	      })
+	    })
+
+	    const out = new Map()
+	    map.forEach((set, categoryKey) => {
+	      const keys = [...set]
+	      keys.sort((a, b) => getFieldLabel(a).localeCompare(getFieldLabel(b)))
+	      out.set(categoryKey, keys)
+	    })
+	    return out
+	  }, [entryEvents])
+
+	  const entryEventsByCategory = useMemo(() => {
+	    const map = new Map()
+	    entryEvents.forEach(event => {
+	      const categoryKey = String(event?._category || 'uncategorized')
+	      if (!map.has(categoryKey)) map.set(categoryKey, [])
+	      map.get(categoryKey).push(event)
+	    })
+	    map.forEach(list => {
+	      list.sort((a, b) => {
+	        const aTime = a?._date?.valueOf?.() || 0
+	        const bTime = b?._date?.valueOf?.() || 0
+	        return bTime - aTime
+	      })
+	    })
+	    return map
+	  }, [entryEvents])
 
   const categoryLabelByKey = useMemo(() => {
     const map = {}
@@ -299,15 +374,50 @@ const getFieldValue = (event, key, fallbackKeys = []) => {
     return map
   }, [categoriesFromDb])
 
-	  const getCategoryLabel = (value) => {
-	    const key = canonicalizeOperationKey(normalizeCategory(value))
-	    if (!key) return categoryLabelByKey.uncategorized || 'Uncategorized'
-	    return categoryLabelByKey[key] || categoryLabelByKey.uncategorized || 'Uncategorized'
-	  }
+		  const getCategoryLabel = (value) => {
+		    const key = canonicalizeOperationKey(normalizeCategory(value))
+		    if (!key) return categoryLabelByKey.uncategorized || 'Uncategorized'
+		    return categoryLabelByKey[key] || categoryLabelByKey.uncategorized || 'Uncategorized'
+		  }
 
-	  const typedStatsRecordFingerprint = useMemo(() => {
-	    const recordUseCount = new Map()
-	    filteredEvents.forEach(event => {
+		  const renderTypedTotals = (categoryKey) => {
+		    if (!supabaseEnabled || !supabase || !isAdmin) return null
+		    if (typedStats.error) {
+		      return (
+		        <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-[12px] text-red-700">
+		          {typedStats.error}
+		        </div>
+		      )
+		    }
+		    if (typedStats.loading) {
+		      return <div className="mt-3 text-[12px] text-gray-500 dark:text-zinc-400">Loading typed activity totals…</div>
+		    }
+
+		    const entry = typedStats.byCategory?.[categoryKey]
+		    if (!entry) return null
+
+		    const numericEntries = Object.entries(entry.numericSums || {}).sort((a, b) => a[0].localeCompare(b[0]))
+		    if ((entry.eventCount || 0) === 0 && numericEntries.length === 0) return null
+
+		    return (
+		      <div className="mt-3 pt-3 border-t border-gray-200 dark:border-zinc-700 space-y-2 text-sm">
+		        <div className="flex flex-wrap justify-between gap-2">
+		          <span>Typed Activities</span>
+		          <strong>{formatNumber(entry.eventCount || 0)}</strong>
+		        </div>
+		        {numericEntries.map(([label, total]) => (
+		          <div key={`sum-${categoryKey}-${label}`} className="flex flex-wrap justify-between gap-2">
+		            <span>Total {label}</span>
+		            <strong>{formatNumber(total)}</strong>
+		          </div>
+		        ))}
+		      </div>
+		    )
+		  }
+
+		  const typedStatsRecordFingerprint = useMemo(() => {
+		    const recordUseCount = new Map()
+		    filteredEvents.forEach(event => {
 	      const recordId = String(event?.categoryData?.activity_record_id || '').trim()
 	      if (!recordId) return
 	      recordUseCount.set(recordId, (recordUseCount.get(recordId) || 0) + 1)
@@ -618,12 +728,11 @@ const getFieldValue = (event, key, fallbackKeys = []) => {
 
   const chartCategoryKeys = availableCategoryKeys
 
-		  const additionalCategoryKeys = useMemo(() => {
-		    return availableCategoryKeys.filter(key => {
-		      if (!key || key === 'uncategorized') return false
-		      return !Object.prototype.hasOwnProperty.call(stats, key)
-		    })
-		  }, [availableCategoryKeys, stats])
+			  const additionalCategoryKeys = useMemo(() => {
+			    // Deprecated: custom categories are now covered by "Entries By Category" (entries + totals),
+			    // so we no longer render separate per-category statistic cards for them.
+			    return []
+			  }, [])
 
 		  const dynamicFieldKeys = useMemo(() => {
 		    const keys = new Set()
@@ -987,15 +1096,16 @@ const getFieldValue = (event, key, fallbackKeys = []) => {
       </div>
 
 	      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {availableCategoryKeys.includes('tuli') && (
-	          <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
-	            <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><HeartPulse size={18} className="text-red-600" />Tuli Statistics</h3>
-	            <div className="space-y-2 text-sm">
-	              <div className="flex flex-wrap justify-between gap-2"><span>Total Tuli Activities</span><strong>{stats.tuli.eventCount}</strong></div>
-	              <div className="flex flex-wrap justify-between gap-2"><span>Total Children Count</span><strong>{stats.tuli.tuliChildrenCount}</strong></div>
-	            </div>
-	          </div>
-          )}
+	          {availableCategoryKeys.includes('tuli') && (
+		          <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
+		            <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><HeartPulse size={18} className="text-red-600" />Tuli Statistics</h3>
+		            <div className="space-y-2 text-sm">
+		              <div className="flex flex-wrap justify-between gap-2"><span>Total Tuli Activities</span><strong>{stats.tuli.eventCount}</strong></div>
+		              <div className="flex flex-wrap justify-between gap-2"><span>Total Children Count</span><strong>{stats.tuli.tuliChildrenCount}</strong></div>
+		              {renderTypedTotals('tuli')}
+		            </div>
+		          </div>
+	          )}
 
           {availableCategoryKeys.includes('blood_letting') && (
 	          <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
@@ -1005,10 +1115,10 @@ const getFieldValue = (event, key, fallbackKeys = []) => {
 	              <div className="flex flex-wrap justify-between gap-2"><span>Total Blood Bags</span><strong>{stats.blood_letting.bloodBagsCount}</strong></div>
 	              <div className="flex flex-wrap justify-between gap-2"><span>Total Successful Donors</span><strong>{stats.blood_letting.bloodSuccessfulDonors}</strong></div>
 	              <div className="flex flex-wrap justify-between gap-2"><span>Total Tokens</span><strong>{stats.blood_letting.bloodTokenCount}</strong></div>
-	              <div className="pt-2 border-t border-gray-200 dark:border-zinc-700">
-	                <p className="text-xs font-semibold text-gray-700 dark:text-zinc-300 mb-2">Token Totals</p>
-	                {bloodTokenRows.length > 0 ? (
-	                  <div className="space-y-1">
+		              <div className="pt-2 border-t border-gray-200 dark:border-zinc-700">
+		                <p className="text-xs font-semibold text-gray-700 dark:text-zinc-300 mb-2">Token Totals</p>
+		                {bloodTokenRows.length > 0 ? (
+		                  <div className="space-y-1">
 	                    {bloodTokenRows.map(row => (
 	                      <div key={row.token} className="flex flex-wrap justify-between gap-2">
 	                        <span className="capitalize">{row.token}</span>
@@ -1016,82 +1126,89 @@ const getFieldValue = (event, key, fallbackKeys = []) => {
 	                      </div>
 	                    ))}
 	                  </div>
-	                ) : (
-	                  <p className="text-xs text-gray-500 dark:text-zinc-400">No tokens recorded for this filter.</p>
-	                )}
-	              </div>
-	            </div>
-	          </div>
-          )}
+		                ) : (
+		                  <p className="text-xs text-gray-500 dark:text-zinc-400">No tokens recorded for this filter.</p>
+		                )}
+		              </div>
+		              {renderTypedTotals('blood_letting')}
+		            </div>
+		          </div>
+	          )}
 
-          {availableCategoryKeys.includes('donations') && (
-	          <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
-	            <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><FileText size={18} className="text-red-600" />Donations Statistics</h3>
-	            <div className="space-y-2 text-sm">
-	              <div className="flex flex-wrap justify-between gap-2"><span>Total Donation Activities</span><strong>{stats.donations.eventCount}</strong></div>
-	            </div>
-	          </div>
-          )}
+	          {availableCategoryKeys.includes('donations') && (
+		          <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
+		            <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><FileText size={18} className="text-red-600" />Donations Statistics</h3>
+		            <div className="space-y-2 text-sm">
+		              <div className="flex flex-wrap justify-between gap-2"><span>Total Donation Activities</span><strong>{stats.donations.eventCount}</strong></div>
+		              {renderTypedTotals('donations')}
+		            </div>
+		          </div>
+	          )}
 
-          {availableCategoryKeys.includes('environmental') && (
-	          <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
-	            <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><Leaf size={18} className="text-green-600" />Environmental Statistics</h3>
-	            <div className="space-y-2 text-sm">
-	              <div className="flex flex-wrap justify-between gap-2"><span>Total Environmental Activities</span><strong>{stats.environmental.eventCount}</strong></div>
-	              <div className="flex flex-wrap justify-between gap-2"><span>Total Trees Planted</span><strong>{stats.environmental.envTreesPlanted}</strong></div>
-	            </div>
-	          </div>
-          )}
+	          {availableCategoryKeys.includes('environmental') && (
+		          <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
+		            <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><Leaf size={18} className="text-green-600" />Environmental Statistics</h3>
+		            <div className="space-y-2 text-sm">
+		              <div className="flex flex-wrap justify-between gap-2"><span>Total Environmental Activities</span><strong>{stats.environmental.eventCount}</strong></div>
+		              <div className="flex flex-wrap justify-between gap-2"><span>Total Trees Planted</span><strong>{stats.environmental.envTreesPlanted}</strong></div>
+		              {renderTypedTotals('environmental')}
+		            </div>
+		          </div>
+	          )}
 
-          {availableCategoryKeys.includes('relief_operation') && (
-	          <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
-	            <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><Activity size={18} className="text-blue-600" />Relief Operation Statistics</h3>
-	            <div className="space-y-2 text-sm">
-	              <div className="flex flex-wrap justify-between gap-2"><span>Total Relief Operations</span><strong>{stats.relief_operation.eventCount}</strong></div>
-	              <div className="flex flex-wrap justify-between gap-2"><span>Total Families Count</span><strong>{stats.relief_operation.reliefFamiliesCount}</strong></div>
-	              <div className="flex flex-wrap justify-between gap-2"><span>Items: Grocery</span><strong>{stats.relief_operation.reliefItems.grocery}</strong></div>
-	              <div className="flex flex-wrap justify-between gap-2"><span>Items: Hygiene Kit</span><strong>{stats.relief_operation.reliefItems.hygiene_kit}</strong></div>
-	              <div className="flex flex-wrap justify-between gap-2"><span>Items: Both</span><strong>{stats.relief_operation.reliefItems.both}</strong></div>
-	            </div>
-	          </div>
-          )}
+	          {availableCategoryKeys.includes('relief_operation') && (
+		          <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
+		            <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><Activity size={18} className="text-blue-600" />Relief Operation Statistics</h3>
+		            <div className="space-y-2 text-sm">
+		              <div className="flex flex-wrap justify-between gap-2"><span>Total Relief Operations</span><strong>{stats.relief_operation.eventCount}</strong></div>
+		              <div className="flex flex-wrap justify-between gap-2"><span>Total Families Count</span><strong>{stats.relief_operation.reliefFamiliesCount}</strong></div>
+		              <div className="flex flex-wrap justify-between gap-2"><span>Items: Grocery</span><strong>{stats.relief_operation.reliefItems.grocery}</strong></div>
+		              <div className="flex flex-wrap justify-between gap-2"><span>Items: Hygiene Kit</span><strong>{stats.relief_operation.reliefItems.hygiene_kit}</strong></div>
+		              <div className="flex flex-wrap justify-between gap-2"><span>Items: Both</span><strong>{stats.relief_operation.reliefItems.both}</strong></div>
+		              {renderTypedTotals('relief_operation')}
+		            </div>
+		          </div>
+	          )}
 
-          {availableCategoryKeys.includes('fire_response') && (
-	          <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
-	            <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><Flame size={18} className="text-orange-600" />Fire Response Statistics</h3>
-	            <div className="space-y-2 text-sm">
-	              <div className="flex flex-wrap justify-between gap-2"><span>Total Fire Responses</span><strong>{stats.fire_response.eventCount}</strong></div>
-	              <div className="flex flex-wrap justify-between gap-2"><span>Total Affected Families</span><strong>{stats.fire_response.fireAffectedFamilies}</strong></div>
-	              <div className="flex flex-wrap justify-between gap-2"><span>Total Estimated Cost</span><strong>{stats.fire_response.fireEstimatedCost}</strong></div>
-	              <div className="flex flex-wrap justify-between gap-2"><span>Total Liters Used</span><strong>{stats.fire_response.fireLiters}</strong></div>
-	            </div>
-	          </div>
-          )}
+	          {availableCategoryKeys.includes('fire_response') && (
+		          <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
+		            <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><Flame size={18} className="text-orange-600" />Fire Response Statistics</h3>
+		            <div className="space-y-2 text-sm">
+		              <div className="flex flex-wrap justify-between gap-2"><span>Total Fire Responses</span><strong>{stats.fire_response.eventCount}</strong></div>
+		              <div className="flex flex-wrap justify-between gap-2"><span>Total Affected Families</span><strong>{stats.fire_response.fireAffectedFamilies}</strong></div>
+		              <div className="flex flex-wrap justify-between gap-2"><span>Total Estimated Cost</span><strong>{stats.fire_response.fireEstimatedCost}</strong></div>
+		              <div className="flex flex-wrap justify-between gap-2"><span>Total Liters Used</span><strong>{stats.fire_response.fireLiters}</strong></div>
+		              {renderTypedTotals('fire_response')}
+		            </div>
+		          </div>
+	          )}
 
-          {availableCategoryKeys.includes('water_distribution') && (
-	          <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
-	            <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><Droplets size={18} className="text-red-600" />Water Distribution Statistics</h3>
-	            <div className="space-y-2 text-sm">
-	              <div className="flex flex-wrap justify-between gap-2"><span>Total Water Distributions</span><strong>{stats.water_distribution.eventCount}</strong></div>
-	              <div className="flex flex-wrap justify-between gap-2"><span>Total Liters</span><strong>{stats.water_distribution.waterLiters}</strong></div>
-	              <div className="flex flex-wrap justify-between gap-2"><span>Total Households</span><strong>{stats.water_distribution.waterHouseholds}</strong></div>
-	            </div>
-	          </div>
-          )}
+	          {availableCategoryKeys.includes('water_distribution') && (
+		          <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
+		            <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><Droplets size={18} className="text-red-600" />Water Distribution Statistics</h3>
+		            <div className="space-y-2 text-sm">
+		              <div className="flex flex-wrap justify-between gap-2"><span>Total Water Distributions</span><strong>{stats.water_distribution.eventCount}</strong></div>
+		              <div className="flex flex-wrap justify-between gap-2"><span>Total Liters</span><strong>{stats.water_distribution.waterLiters}</strong></div>
+		              <div className="flex flex-wrap justify-between gap-2"><span>Total Households</span><strong>{stats.water_distribution.waterHouseholds}</strong></div>
+		              {renderTypedTotals('water_distribution')}
+		            </div>
+		          </div>
+	          )}
 
-          {availableCategoryKeys.includes('medical') && (
-	          <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
-	            <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><HeartPulse size={18} className="text-pink-600" />Medical Statistics</h3>
-	            <div className="space-y-2 text-sm">
-	              <div className="flex flex-wrap justify-between gap-2"><span>Total Medical Events</span><strong>{stats.medical.eventCount}</strong></div>
-	              <div className="flex flex-wrap justify-between gap-2"><span>Total Medical Equipment Used</span><strong>{stats.medical.medicalEquipmentUsed}</strong></div>
-	              <div className="flex flex-wrap justify-between gap-2"><span>Total Expenses</span><strong>{CURRENCY.format(stats.medical.expenses)}</strong></div>
-	            </div>
-	          </div>
-          )}
+	          {availableCategoryKeys.includes('medical') && (
+		          <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
+		            <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><HeartPulse size={18} className="text-pink-600" />Medical Statistics</h3>
+		            <div className="space-y-2 text-sm">
+		              <div className="flex flex-wrap justify-between gap-2"><span>Total Medical Events</span><strong>{stats.medical.eventCount}</strong></div>
+		              <div className="flex flex-wrap justify-between gap-2"><span>Total Medical Equipment Used</span><strong>{stats.medical.medicalEquipmentUsed}</strong></div>
+		              <div className="flex flex-wrap justify-between gap-2"><span>Total Expenses</span><strong>{CURRENCY.format(stats.medical.expenses)}</strong></div>
+		              {renderTypedTotals('medical')}
+		            </div>
+		          </div>
+	          )}
 
-          {additionalCategoryKeys.map(key => (
-            <div key={key} className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
+	          {additionalCategoryKeys.map(key => (
+	            <div key={key} className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
               <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2">
                 <FileText size={18} className="text-red-600" />
                 {getCategoryLabel(key)} Statistics
@@ -1113,31 +1230,106 @@ const getFieldValue = (event, key, fallbackKeys = []) => {
                   <>
                     {Object.entries(typedStats.byCategory[key].numericSums || {})
                       .sort((a, b) => a[0].localeCompare(b[0]))
-                      .slice(0, 8)
+	                      .slice(0, 200)
                       .map(([label, total]) => (
                         <div key={`sum-${label}`} className="flex flex-wrap justify-between gap-2">
                           <span>Total {label}</span>
-                          <strong>{total}</strong>
-                        </div>
-                      ))}
-                    {Object.entries(typedStats.byCategory[key].booleanTrueCounts || {})
-                      .sort((a, b) => a[0].localeCompare(b[0]))
-                      .slice(0, 6)
-                      .map(([label, count]) => (
-                        <div key={`bool-${label}`} className="flex flex-wrap justify-between gap-2">
-                          <span>{label} (true)</span>
-                          <strong>{count}</strong>
+                          <strong>{formatNumber(total)}</strong>
                         </div>
                       ))}
                   </>
                 )}
               </div>
             </div>
-          ))}
-	      </div>
+	          ))}
+		      </div>
 
-    </div>
-  )
+		      <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
+		        <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2">
+		          <FileText size={18} className="text-red-600" />
+		          Entries By Category
+		        </h3>
+
+		        <div className="space-y-3">
+		          {availableCategoryKeys.map(categoryKey => {
+		            const events = entryEventsByCategory.get(categoryKey) || []
+		            const numericKeys = numericKeysByCategory.get(categoryKey) || []
+
+		            const totals = {}
+		            numericKeys.forEach(key => { totals[key] = 0 })
+		            events.forEach(event => {
+		              const data = event?.categoryData && typeof event.categoryData === 'object' ? event.categoryData : null
+		              if (!data) return
+		              numericKeys.forEach(key => {
+		                const numeric = toFiniteNumberOrNull(data[key])
+		                if (numeric === null) return
+		                totals[key] += numeric
+		              })
+		            })
+
+			            return (
+			              <div key={`entries-${categoryKey}`} className="rounded-xl border border-gray-200 dark:border-zinc-700 bg-white/60 dark:bg-zinc-900/40 p-4">
+			                <div className="flex flex-wrap items-center justify-between gap-2">
+			                  <h4 className="text-sm font-semibold text-gray-800 dark:text-zinc-100">
+			                    {getCategoryLabel(categoryKey)}
+			                  </h4>
+			                  <span className="text-xs font-medium text-gray-500 dark:text-zinc-400">
+			                    {formatNumber(events.length)} entr{events.length === 1 ? 'y' : 'ies'}
+			                  </span>
+			                </div>
+			
+			                {events.length === 0 ? (
+			                  <div className="mt-3 text-sm text-gray-500 dark:text-zinc-400">No entries for this category in the selected date window.</div>
+			                ) : (
+			                  <div className="mt-3 overflow-x-auto">
+			                    <table className="w-full min-w-[720px] text-sm">
+			                      <thead>
+			                        <tr className="text-left text-xs uppercase tracking-[0.14em] text-neutral-500 dark:text-neutral-400">
+			                          <th className="pb-2 pr-4">Title</th>
+			                          <th className="pb-2 pr-4">Date</th>
+			                          <th className="pb-2 pr-4">Field</th>
+			                          {numericKeys.map(key => (
+			                            <th key={`head-${categoryKey}-${key}`} className="pb-2 pr-4 whitespace-nowrap">{getFieldLabel(key)}</th>
+			                          ))}
+			                        </tr>
+			                      </thead>
+			                      <tbody className="divide-y divide-neutral-100 dark:divide-zinc-800">
+			                        {events.map(event => {
+			                          const data = event?.categoryData && typeof event.categoryData === 'object' ? event.categoryData : {}
+			                          const dateLabel = event?._date?.isValid?.() ? event._date.format('YYYY-MM-DD') : ''
+			                          return (
+			                            <tr key={`row-${categoryKey}-${event.id}`} className="text-neutral-700 dark:text-zinc-200 align-top">
+			                              <td className="py-2 pr-4 font-medium text-neutral-900 dark:text-zinc-100">{event.title || '-'}</td>
+			                              <td className="py-2 pr-4 whitespace-nowrap">{dateLabel || '-'}</td>
+			                              <td className="py-2 pr-4 whitespace-nowrap">{event.branch || '-'}</td>
+			                              {numericKeys.map(key => (
+			                                <td key={`cell-${categoryKey}-${event.id}-${key}`} className="py-2 pr-4 whitespace-nowrap">
+			                                  {formatNumber(data[key])}
+			                                </td>
+			                              ))}
+			                            </tr>
+			                          )
+			                        })}
+			                        {numericKeys.length > 0 && (
+			                          <tr className="font-semibold text-neutral-900 dark:text-zinc-100">
+			                            <td className="pt-3 pr-4" colSpan={3}>Totals</td>
+			                            {numericKeys.map(key => (
+			                              <td key={`total-${categoryKey}-${key}`} className="pt-3 pr-4 whitespace-nowrap">{formatNumber(totals[key])}</td>
+			                            ))}
+			                          </tr>
+			                        )}
+			                      </tbody>
+			                    </table>
+			                  </div>
+			                )}
+			              </div>
+			            )
+			          })}
+			        </div>
+			      </div>
+	
+	    </div>
+	  )
 }
 
 export default Report
