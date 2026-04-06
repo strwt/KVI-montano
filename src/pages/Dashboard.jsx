@@ -17,7 +17,7 @@ import { useNavigate } from 'react-router-dom'
 import dayjs from 'dayjs'
 import { useI18n } from '../i18n/useI18n'
 import { supabase } from '../lib/supabaseClient'
-import { fetchSupabaseEvents, isSupabaseEnabled } from '../lib/supabaseEvents'
+import { fetchSupabaseEvents, invalidateSupabaseEventsCache, isSupabaseEnabled } from '../lib/supabaseEvents'
 import { fetchMyNotifications } from '../lib/supabaseNotifications'
 
 const normalizeCategoryKey = value =>
@@ -115,7 +115,9 @@ function Dashboard() {
     let active = true
 
     const load = async () => {
-      const { data } = await fetchSupabaseEvents()
+      setEvents([])
+      invalidateSupabaseEventsCache()
+      const { data } = await fetchSupabaseEvents({ force: true })
       if (!active) return
       setEvents(data)
     }
@@ -125,7 +127,7 @@ function Dashboard() {
     return () => {
       active = false
     }
-  }, [supabaseEnabled, user?.id])
+  }, [categories, supabaseEnabled, user?.id])
 
   useEffect(() => {
     if (!notificationsOpen) return
@@ -257,9 +259,6 @@ function Dashboard() {
 
   const operations = useMemo(() => {
     const keySet = new Set(Object.keys(categoryLabelByKey))
-    if (keySet.size === 0) {
-      DEFAULT_OPERATION_ORDER.forEach(key => keySet.add(key))
-    }
     events.forEach(event => {
       const key = canonicalizeOperationKey(normalizeCategoryKey(event.category))
       if (!key) return

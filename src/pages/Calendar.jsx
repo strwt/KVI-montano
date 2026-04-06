@@ -31,6 +31,7 @@ import { supabase } from '../lib/supabaseClient'
 import {
   deleteSupabaseEvent,
   fetchSupabaseEvents,
+  invalidateSupabaseEventsCache,
   insertSupabaseEvent,
   isSupabaseEnabled,
   markSupabaseEventDone,
@@ -918,7 +919,9 @@ function Calendar({ listOnly = false }) {
     let active = true
 
     const load = async () => {
-      const { data } = await fetchSupabaseEvents()
+      setEvents([])
+      invalidateSupabaseEventsCache()
+      const { data } = await fetchSupabaseEvents({ force: true })
       if (!active) return
       setEvents(data)
     }
@@ -928,7 +931,7 @@ function Calendar({ listOnly = false }) {
     return () => {
       active = false
     }
-  }, [supabaseEnabled, user?.id])
+  }, [categories, supabaseEnabled, user?.id])
 
   useEffect(() => {
     if (user?.role !== 'admin') return
@@ -971,30 +974,41 @@ function Calendar({ listOnly = false }) {
 
   const categoryLabelByKey = useMemo(() => {
     const map = {}
-    CATEGORY_KEYS.forEach(key => {
-      map[key] = CATEGORY_CONFIG[key]?.label || titleCaseFromKey(key)
-    })
+    const includeStatic = !supabaseEnabled || categoryKeysFromDb.length === 0
+    if (includeStatic) {
+      CATEGORY_KEYS.forEach(key => {
+        map[key] = CATEGORY_CONFIG[key]?.label || titleCaseFromKey(key)
+      })
+    }
     categoryKeysFromDb.forEach(key => {
       if (!map[key]) map[key] = titleCaseFromKey(key)
     })
     return map
-  }, [categoryKeysFromDb])
+  }, [categoryKeysFromDb, supabaseEnabled])
 
   const additionalCategoryKeys = useMemo(() => {
     const set = new Set()
-    categoryKeysFromDb.forEach(key => {
-      if (!CATEGORY_CONFIG[key]) set.add(key)
-    })
+    const keysInDb = new Set(categoryKeysFromDb)
+
+    // If categories are coming from Supabase, the main filter list already contains them.
+    // Only add categories discovered from events that are missing from Supabase categories.
+    if (!supabaseEnabled || categoryKeysFromDb.length === 0) {
+      categoryKeysFromDb.forEach(key => {
+        if (!CATEGORY_CONFIG[key]) set.add(key)
+      })
+    }
 
     events.forEach(item => {
       const key = canonicalizeOperationKey(normalizeCategoryKey(item.category))
-      if (!key || CATEGORY_CONFIG[key]) return
+      if (!key) return
+      if (supabaseEnabled && keysInDb.has(key)) return
+      if (CATEGORY_CONFIG[key]) return
       set.add(key)
     })
 
     const keys = Array.from(set)
     return keys.sort((a, b) => (categoryLabelByKey[a] || titleCaseFromKey(a)).localeCompare(categoryLabelByKey[b] || titleCaseFromKey(b)))
-  }, [categoryKeysFromDb, events, categoryLabelByKey])
+  }, [categoryKeysFromDb, events, categoryLabelByKey, supabaseEnabled])
 
   const selectedCategoryLabel =
     selectedCategoryKey === 'all'
@@ -1008,6 +1022,11 @@ function Calendar({ listOnly = false }) {
     keys.sort((a, b) => (categoryLabelByKey[a] || titleCaseFromKey(a)).localeCompare(categoryLabelByKey[b] || titleCaseFromKey(b)))
     return keys
   }, [categoryKeysFromDb, categoryLabelByKey])
+
+  const filterCategoryKeys = useMemo(() => {
+    if (!supabaseEnabled) return CATEGORY_KEYS
+    return createCategoryKeys
+  }, [createCategoryKeys, supabaseEnabled])
 
   const memberNameById = useMemo(() => {
     const map = {}
@@ -2206,9 +2225,9 @@ function Calendar({ listOnly = false }) {
 	                className="lg:w-64 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
 	              >
 	                <option value="all">All Categories</option>
-	                {CATEGORY_KEYS.map(category => (
+	                {filterCategoryKeys.map(category => (
 	                  <option key={category} value={category}>
-	                    {categoryLabelByKey[category] || CATEGORY_CONFIG[category].label}
+	                    {categoryLabelByKey[category] || CATEGORY_CONFIG[category]?.label || titleCaseFromKey(category)}
 	                  </option>
 	                ))}
 	                {additionalCategoryKeys.map(categoryKey => {
@@ -2220,7 +2239,7 @@ function Calendar({ listOnly = false }) {
 	                  )
 	                })}
                   {selectedCategoryKey !== 'all' &&
-                    !CATEGORY_KEYS.includes(selectedCategoryKey) &&
+                    !filterCategoryKeys.includes(selectedCategoryKey) &&
                     !additionalCategoryKeys.includes(selectedCategoryKey) && (
                       <option value={selectedCategoryKey}>{selectedCategoryLabel}</option>
                     )}
@@ -2239,7 +2258,7 @@ function Calendar({ listOnly = false }) {
               >
                 All
               </button>
-	              {CATEGORY_KEYS.map(categoryKey => (
+	              {filterCategoryKeys.map(categoryKey => (
 	                <button
 	                  key={categoryKey}
 	                  type="button"
@@ -2250,7 +2269,7 @@ function Calendar({ listOnly = false }) {
 	                      : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
 	                  }`}
 	                >
-	                  {categoryLabelByKey[categoryKey] || CATEGORY_CONFIG[categoryKey].label}
+	                  {categoryLabelByKey[categoryKey] || CATEGORY_CONFIG[categoryKey]?.label || titleCaseFromKey(categoryKey)}
 	                </button>
 	              ))}
 	              {additionalCategoryKeys.map(categoryKey => {
@@ -2645,9 +2664,9 @@ function Calendar({ listOnly = false }) {
                 className="sm:w-64 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
               >
                 <option value="all">All Categories</option>
-                {CATEGORY_KEYS.map(category => (
+                {filterCategoryKeys.map(category => (
                   <option key={category} value={category}>
-                    {categoryLabelByKey[category] || CATEGORY_CONFIG[category].label}
+                    {categoryLabelByKey[category] || CATEGORY_CONFIG[category]?.label || titleCaseFromKey(category)}
                   </option>
                 ))}
                 {additionalCategoryKeys.map(categoryKey => {
@@ -2659,7 +2678,7 @@ function Calendar({ listOnly = false }) {
                   )
                 })}
                 {selectedCategoryKey !== 'all' &&
-                  !CATEGORY_KEYS.includes(selectedCategoryKey) &&
+                  !filterCategoryKeys.includes(selectedCategoryKey) &&
                   !additionalCategoryKeys.includes(selectedCategoryKey) && (
                     <option value={selectedCategoryKey}>{selectedCategoryLabel}</option>
                   )}
