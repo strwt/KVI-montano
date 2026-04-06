@@ -72,6 +72,10 @@ export default async function handler(req, res) {
     const status = statusRaw === 'inactive' ? 'inactive' : 'active'
     const accountStatus = accountStatusRaw ? accountStatusRaw : 'Active'
     const role = body.role === 'admin' ? 'admin' : 'member'
+    const insuranceStatusRaw = String(body.insuranceStatus || body.insurance_status || '').trim()
+    const insuranceStatus = /insured/i.test(insuranceStatusRaw) ? 'Insured' : 'N/A'
+    const insuranceYearRaw = String(body.insuranceYear || body.insurance_year || '').trim()
+    const insuranceYear = insuranceStatus === 'Insured' && insuranceYearRaw ? insuranceYearRaw : null
 
     if (!idNumber || !password) {
       return res.status(400).json({ message: 'idNumber and password are required.' })
@@ -114,6 +118,8 @@ export default async function handler(req, res) {
       contact_number: body.contactNumber ? String(body.contactNumber).trim() : null,
       blood_type: body.bloodType ? String(body.bloodType).trim().toUpperCase() : null,
       member_since: body.memberSince ? String(body.memberSince).trim() : null,
+      insurance_status: insuranceStatus,
+      insurance_year: insuranceYear,
     }
 
     const { error: profileError } = await supabaseAdmin

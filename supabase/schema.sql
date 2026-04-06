@@ -30,6 +30,8 @@ create table if not exists public.profiles (
   contact_number text,
   address text,
   blood_type text,
+  insurance_status text not null default 'N/A',
+  insurance_year text,
   committee text,
   member_since date,
   profile_image text,

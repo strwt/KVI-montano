@@ -287,7 +287,7 @@ const getFieldValue = (event, key, fallbackKeys = []) => {
     return () => {
       active = false
     }
-  }, [supabaseEnabled, user?.id])
+  }, [categoryKeysFromDb, supabaseEnabled, user?.id])
 
   const baseEvents = useMemo(() => {
     return events

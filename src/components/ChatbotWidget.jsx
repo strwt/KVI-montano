@@ -433,7 +433,7 @@ const buildResponse = (input, role) => {
           'You can view your assigned committee in your Profile.',
         ])
       : response([
-          'Go to Members and open Committee Management.',
+          'Go to Management → Committee Management.',
           'Use Add, Edit, or Delete to manage committees.',
         ])
   }
@@ -565,7 +565,7 @@ const buildResponse = (input, role) => {
       : response([
           'Go to Members to create users with full details and role.',
           'You can assign committee, status (active/inactive), and member since.',
-          'Use Committee Management there to add, edit, or delete committees.',
+          'Use Committee Management to add, edit, or delete committees.',
         ])
   }
   if (text.includes('theme') || text.includes('dark') || text.includes('light') || text.includes('logout')) {

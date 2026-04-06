@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, Calendar, ChevronLeft, ChevronRight, Users, FileText, Sun, Moon, ClipboardCheck, LogOut, Tags } from 'lucide-react'
+import { LayoutDashboard, Calendar, ChevronLeft, ChevronRight, Users, FileText, Sun, Moon, ClipboardCheck, LogOut, Tags, Settings, ChevronDown, ChevronUp } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useI18n } from '../i18n/useI18n'
 
@@ -7,6 +8,7 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
   const { user, logout } = useAuth()
   const { t } = useI18n()
   const navigate = useNavigate()
+  const [managementOpen, setManagementOpen] = useState(true)
 
   const isAdmin = user?.role === 'admin'
   const shellTone = darkMode
@@ -30,7 +32,6 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
     ...(!isAdmin ? [{ to: '/attendance', icon: ClipboardCheck, label: 'Attendance' }] : []),
     ...(isAdmin ? [{ to: '/attendance-management', icon: ClipboardCheck, label: 'Attendance Management' }] : []),
     ...(isAdmin ? [{ to: '/report', icon: FileText, label: t('Report') }] : []),
-    ...(isAdmin ? [{ to: '/category-management', icon: Tags, label: t('Categories') }] : []),
   ]
 
   const handleLogout = async () => {
@@ -133,18 +134,74 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
 
           {/* Members Section - Admin Only - Now navigates to /members page */}
           {isAdmin && (
-            <button
+            <NavLink
+              to="/members"
               onClick={() => {
-                navigate('/members')
                 if (window.innerWidth < 768 && isOpen) toggleSidebar()
               }}
-              className={`group relative flex w-full items-center gap-3 rounded-lg border-l-2 border-transparent px-4 py-3 transition-all duration-200 hover:scale-[1.02] ${navTone} ${
-                !isOpen && 'justify-center px-3'
-              }`}
+              className={({ isActive }) =>
+                `group relative flex w-full items-center gap-3 rounded-lg px-4 py-3 transition-all duration-200 hover:scale-[1.02] ${navTone} ${
+                  isActive ? navActiveTone : 'border-l-2 border-transparent'
+                } ${!isOpen && 'justify-center px-3'}`
+              }
             >
               <Users size={20} className={isOpen ? '' : 'mx-auto'} />
-              {isOpen && <span>{t('Management')}</span>}
-            </button>
+              {isOpen && <span>{t('User Management')}</span>}
+            </NavLink>
+          )}
+
+          {isAdmin && (
+            <div>
+              <button
+                type="button"
+                onClick={() => setManagementOpen(prev => !prev)}
+                className={`group relative flex w-full items-center justify-between gap-3 rounded-lg border-l-2 border-transparent px-4 py-3 transition-all duration-200 hover:scale-[1.02] ${navTone} ${
+                  !isOpen && 'justify-center px-3'
+                }`}
+              >
+                <div className={`flex items-center gap-3 ${!isOpen ? 'w-full justify-center' : ''}`}>
+                  <Settings size={20} className={isOpen ? '' : 'mx-auto'} />
+                  {isOpen && <span>{t('Management')}</span>}
+                </div>
+                {isOpen ? (
+                  managementOpen ? <ChevronUp size={18} className="text-current" /> : <ChevronDown size={18} className="text-current" />
+                ) : null}
+              </button>
+
+              {isOpen && managementOpen && (
+                <div className="mt-1 space-y-1 pl-8">
+                  <NavLink
+                    to="/category-management"
+                    onClick={() => {
+                      if (window.innerWidth < 768 && isOpen) toggleSidebar()
+                    }}
+                    className={({ isActive }) =>
+                      `group relative flex items-center gap-3 rounded-lg px-4 py-2 text-sm transition-all duration-200 ${navTone} ${
+                        isActive ? navActiveTone : 'border-l-2 border-transparent'
+                      }`
+                    }
+                  >
+                    <Tags size={18} />
+                    <span>{t('Categories')}</span>
+                  </NavLink>
+
+                  <NavLink
+                    to="/committee-management"
+                    onClick={() => {
+                      if (window.innerWidth < 768 && isOpen) toggleSidebar()
+                    }}
+                    className={({ isActive }) =>
+                      `group relative flex items-center gap-3 rounded-lg px-4 py-2 text-sm transition-all duration-200 ${navTone} ${
+                        isActive ? navActiveTone : 'border-l-2 border-transparent'
+                      }`
+                    }
+                  >
+                    <Users size={18} />
+                    <span>{t('Committee Management')}</span>
+                  </NavLink>
+                </div>
+              )}
+            </div>
           )}
 
         </nav>

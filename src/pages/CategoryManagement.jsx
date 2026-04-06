@@ -32,8 +32,11 @@ const titleCaseFromKey = key =>
 const FIELD_TYPES = [
   { value: 'text', label: 'Text' },
   { value: 'number', label: 'Number' },
-  { value: 'date', label: 'Date' },
-  { value: 'boolean', label: 'Boolean' },
+]
+
+const LEGACY_FIELD_TYPES = [
+  { value: 'date', label: 'Date (Legacy)' },
+  { value: 'boolean', label: 'Boolean (Legacy)' },
 ]
 
 const normalizeName = (value) =>
@@ -87,7 +90,7 @@ function CategoryManagement() {
     setFormError('')
     setSaveState('idle')
     setEditingCategory({ id: category.id, name: category.name })
-    setCategoryName(category.name)
+    setCategoryName(titleCaseFromKey(category.name) || category.name)
     try {
       const loaded = await loadCategoryFields(category.id)
       const mapped = loaded.map(row => ({
@@ -151,9 +154,13 @@ function CategoryManagement() {
     for (const entry of cleanedFields) {
       if (!entry.fieldName) return { ok: false, message: 'Field name is required.' }
       if (!entry.fieldType) return { ok: false, message: 'Field type is required.' }
-      if (!FIELD_TYPES.some(type => type.value === entry.fieldType)) {
-        return { ok: false, message: 'Unsupported field type.' }
-      }
+      const isSupported = FIELD_TYPES.some(type => type.value === entry.fieldType)
+      if (isSupported) continue
+
+      const isLegacy = LEGACY_FIELD_TYPES.some(type => type.value === entry.fieldType)
+      if (isLegacy && entry.fieldId) continue
+
+      return { ok: false, message: 'Unsupported field type.' }
     }
 
     const seen = new Set()
@@ -205,12 +212,40 @@ function CategoryManagement() {
           return
         }
 
-        // Keep category key stable during edits to avoid breaking existing events/reporting references.
-        const stableKey = String(editingCategory.name || '').trim()
-        if (validatedPayload.key !== stableKey) {
-          setFormError('Renaming a category key is not supported yet. Create a new category instead.')
-          setSaveState('idle')
-          return
+        const previousKey = String(editingCategory.name || '').trim()
+        const nextKey = String(validatedPayload.key || '').trim()
+        if (!previousKey || !nextKey) throw new Error('Missing category key.')
+
+        let activeKey = previousKey
+        if (nextKey !== previousKey) {
+          const { data: existing, error: existingError } = await supabase
+            .from('categories')
+            .select('id')
+            .eq('name', nextKey)
+
+          if (existingError) throw existingError
+          const takenByOther = (Array.isArray(existing) ? existing : []).some(row => String(row?.id || '') !== categoryId)
+          if (takenByOther) throw new Error('Category name already exists.')
+
+          const { error: updateCategoryError } = await supabase
+            .from('categories')
+            .update({ name: nextKey })
+            .eq('id', categoryId)
+
+          if (updateCategoryError) throw updateCategoryError
+
+          const { error: updateEventsError } = await supabase
+            .from('events')
+            .update({ category: nextKey })
+            .eq('category', previousKey)
+
+          if (updateEventsError) {
+            await supabase.from('categories').update({ name: previousKey }).eq('id', categoryId)
+            throw updateEventsError
+          }
+
+          activeKey = nextKey
+          setEditingCategory(prev => (prev ? { ...prev, name: activeKey } : prev))
         }
 
         const nextFieldsById = new Map(
@@ -278,8 +313,9 @@ function CategoryManagement() {
         }
 
         setSaveState('success')
+        if (typeof reloadCategories === 'function') await reloadCategories()
         await loadCategories()
-        await handleSelectCategory({ id: categoryId, name: stableKey })
+        await handleSelectCategory({ id: categoryId, name: activeKey })
         return
       }
 
@@ -443,14 +479,8 @@ function CategoryManagement() {
               value={categoryName}
               onChange={e => setCategoryName(e.target.value)}
               placeholder={t('e.g., Mangrove Planting')}
-              disabled={Boolean(editingCategory)}
               className="w-full rounded-xl border border-neutral-300 bg-white px-4 py-2 text-[14px] text-black focus:border-red-600 focus:outline-none dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
             />
-            {editingCategory && (
-              <p className="text-[12px] text-neutral-500 dark:text-zinc-400">
-                {t('Category key renaming is disabled to prevent breaking existing events.')}
-              </p>
-            )}
           </div>
 
           <div className="mt-6 flex items-center justify-between">
@@ -492,6 +522,14 @@ function CategoryManagement() {
                     className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-[13px] text-black focus:border-red-600 focus:outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
                   >
                     <option value="">{t('Select type')}</option>
+                    {field.fieldType && !FIELD_TYPES.some(type => type.value === field.fieldType) ? (
+                      <option value={field.fieldType} disabled>
+                        {(
+                          LEGACY_FIELD_TYPES.find(type => type.value === field.fieldType)?.label ||
+                          `${String(field.fieldType).toUpperCase()} (Legacy)`
+                        )}
+                      </option>
+                    ) : null}
                     {FIELD_TYPES.map(type => (
                       <option key={type.value} value={type.value}>
                         {t(type.label)}
@@ -516,7 +554,7 @@ function CategoryManagement() {
 
           <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="text-[13px] text-neutral-600 dark:text-zinc-400">
-              {t('Each field must have a required data type (text, number, date, boolean).')}
+              {t('Each field must have a required data type (text, number).')}
             </div>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
               {editingCategory && (
@@ -577,9 +615,6 @@ function CategoryManagement() {
                     <div className="min-w-0">
                       <p className="truncate text-[14px] font-semibold text-black dark:text-zinc-100">
                         {titleCaseFromKey(category.name) || category.name}
-                      </p>
-                      <p className="text-[12px] text-neutral-500 dark:text-zinc-400">
-                        {t('Key')}: <span className="font-mono">{category.name}</span>
                       </p>
                     </div>
                     <div className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-neutral-200 bg-white text-neutral-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200">

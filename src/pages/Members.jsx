@@ -40,9 +40,6 @@ function Members() {
     createMember,
     uploadMemberProfileImage,
     committees,
-    addCommittee,
-    editCommittee,
-    deleteCommittee,
     deleteMembers,
     getRecruitments,
     rejectRecruitment,
@@ -52,17 +49,8 @@ function Members() {
   const [searchQuery, setSearchQuery] = useState('')
   const [roleFilter, setRoleFilter] = useState('member')
   const [committeeFilter, setCommitteeFilter] = useState('all')
+  const [insuranceFilter, setInsuranceFilter] = useState('all')
   const [currentPage, setCurrentPage] = useState(1)
-  const [committeeName, setCommitteeName] = useState('')
-  const [committeeActionBusy, setCommitteeActionBusy] = useState(false)
-  const [showEditCommitteeModal, setShowEditCommitteeModal] = useState(false)
-  const [committeeToEdit, setCommitteeToEdit] = useState('')
-  const [editedCommitteeName, setEditedCommitteeName] = useState('')
-  const [showDeleteCommitteeModal, setShowDeleteCommitteeModal] = useState(false)
-  const [committeeToDelete, setCommitteeToDelete] = useState('')
-  const [fallbackCommittee, setFallbackCommittee] = useState('')
-  const [committeeError, setCommitteeError] = useState('')
-  const [showManagementPanel, setShowManagementPanel] = useState(true)
   const [formError, setFormError] = useState('')
   const [recruitmentActionError, setRecruitmentActionError] = useState('')
   const [selectedMemberIds, setSelectedMemberIds] = useState(() => new Set())
@@ -86,6 +74,8 @@ function Members() {
 	    address: '',
 	    contactNumber: '',
     bloodType: '',
+    insuranceStatus: 'N/A',
+    insuranceYear: '',
     memberSince: dayjs().format('YYYY-MM-DD'),
     status: 'active',
     role: ROLE_OPTIONS[0].value,
@@ -100,10 +90,15 @@ function Members() {
       .toLowerCase()
       .replace(/\s+/g, ' ')
 
-  const allMembers = getAllMembers()
-  const members = Array.isArray(allMembers) ? allMembers : []
-  const allAdmins = getAdmins()
-  const admins = Array.isArray(allAdmins) ? allAdmins : []
+  const members = useMemo(() => {
+    const allMembers = getAllMembers()
+    return Array.isArray(allMembers) ? allMembers : []
+  }, [getAllMembers])
+
+  const admins = useMemo(() => {
+    const allAdmins = getAdmins()
+    return Array.isArray(allAdmins) ? allAdmins : []
+  }, [getAdmins])
   const isAdmin = user?.role === 'admin'
   const recruitments = getRecruitments()
 
@@ -146,7 +141,13 @@ function Members() {
       member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (member.email || member.idNumber || '').toLowerCase().includes(searchQuery.toLowerCase())
     const matchesCommittee = committeeFilter === 'all' || member.committee === committeeFilter
-    return matchesSearch && matchesCommittee
+    const normalizedInsurance = String(member?.insuranceStatus || '').trim().toLowerCase()
+    const isInsured = normalizedInsurance === 'insured'
+    const matchesInsurance =
+      insuranceFilter === 'all' ||
+      (insuranceFilter === 'insured' && isInsured) ||
+      (insuranceFilter === 'not_insured' && !isInsured)
+    return matchesSearch && matchesCommittee && matchesInsurance
   })
 
   const indexOfLastMember = currentPage * membersPerPage
@@ -213,17 +214,6 @@ function Members() {
     setSelectedMemberIds(new Set())
   }
 
-  const userCountByCommittee = (() => {
-    const map = {}
-    const allUsers = [...admins, ...members]
-    allUsers.forEach(member => {
-      const committee = String(member?.committee || '').trim()
-      if (!committee) return
-      map[committee] = (map[committee] || 0) + 1
-    })
-    return map
-  })()
-
   useEffect(() => {
     const ids = [...admins, ...members].map(member => String(member?.id || '').trim()).filter(Boolean)
     const allUserIdSet = new Set(ids)
@@ -237,140 +227,6 @@ function Members() {
     if (!selectAllRef.current) return
     selectAllRef.current.indeterminate = hasSelectedOnPage && !allSelectedOnPage
   }, [hasSelectedOnPage, allSelectedOnPage])
-
-  const handleCommitteeAdd = async (e) => {
-    e.preventDefault()
-    if (!isAdmin) return
-    setCommitteeError('')
-
-    const name = committeeName.trim()
-    if (!name) {
-      setCommitteeError('Committee name is required.')
-      return
-    }
-
-    const exists = committeeOptions.some(item => item.toLowerCase() === name.toLowerCase())
-    if (exists) {
-      setCommitteeError('Committee already exists.')
-      return
-    }
-
-    setCommitteeActionBusy(true)
-    const result = await addCommittee(name)
-    setCommitteeActionBusy(false)
-
-    if (!result.success) {
-      setCommitteeError(result.message)
-      return
-    }
-
-    setCommitteeName('')
-  }
-
-
-  const openEditCommittee = (name) => {
-    if (!isAdmin) return
-    setCommitteeError('')
-    setCommitteeToEdit(name)
-    setEditedCommitteeName(name)
-    setShowEditCommitteeModal(true)
-  }
-
-  const handleCommitteeRename = async (e) => {
-    e.preventDefault()
-    if (!isAdmin) return
-    setCommitteeError('')
-
-    const source = committeeToEdit.trim()
-    const target = editedCommitteeName.trim()
-
-    if (!source) {
-      setCommitteeError('Select a committee to edit.')
-      return
-    }
-
-    if (!target) {
-      setCommitteeError('New committee name is required.')
-      return
-    }
-
-    const exists = committeeOptions.some(item => item.toLowerCase() === target.toLowerCase() && item !== source)
-    if (exists) {
-      setCommitteeError('Committee name already exists.')
-      return
-    }
-
-    setCommitteeActionBusy(true)
-    const result = await editCommittee(source, target)
-    setCommitteeActionBusy(false)
-
-    if (!result.success) {
-      setCommitteeError(result.message)
-      return
-    }
-
-    setShowEditCommitteeModal(false)
-
-    setCommitteeFilter(prev => (prev === source ? target : prev))
-    setNewMember(prev => (prev.committee === source ? { ...prev, committee: target } : prev))
-  }
-
-  const openDeleteCommittee = (name) => {
-    if (!isAdmin) return
-    setCommitteeError('')
-    setCommitteeToDelete(name)
-    const fallback = committeeOptions.find(item => item !== name) || ''
-    setFallbackCommittee(fallback)
-    setShowDeleteCommitteeModal(true)
-  }
-
-  const handleCommitteeDelete = async () => {
-    if (!isAdmin) return
-    setCommitteeError('')
-
-    const committee = committeeToDelete.trim()
-    if (!committee) {
-      setCommitteeError('Select a committee to delete.')
-      return
-    }
-
-    const affectedCount = userCountByCommittee[committee] || 0
-    const fallback = fallbackCommittee.trim()
-
-    if (affectedCount > 0) {
-      if (!fallback) {
-        setCommitteeError('Select a committee to reassign members to before deleting.')
-        return
-      }
-      if (fallback === committee) {
-        setCommitteeError('Fallback committee must be different.')
-        return
-      }
-    }
-
-    if (!fallback && committeeOptions.length <= 1) {
-      setCommitteeError('Add another committee before deleting the last one.')
-      return
-    }
-
-    setCommitteeActionBusy(true)
-    const result = await deleteCommittee(committee, fallback || null)
-    setCommitteeActionBusy(false)
-
-    if (!result.success) {
-      setCommitteeError(result.message)
-      return
-    }
-
-    setShowDeleteCommitteeModal(false)
-
-    setCommitteeFilter(prev => (prev === committee ? 'all' : prev))
-    setNewMember(prev => {
-      if (prev.committee !== committee) return prev
-      const nextCommittee = fallback || committeeOptions.find(item => item !== committee) || ''
-      return { ...prev, committee: nextCommittee }
-    })
-  }
 
  	  const handleCreateMember = async (e) => {
     e.preventDefault()
@@ -414,6 +270,8 @@ function Members() {
 	      address: '',
 	      contactNumber: '',
       bloodType: '',
+      insuranceStatus: 'N/A',
+      insuranceYear: '',
       memberSince: dayjs().format('YYYY-MM-DD'),
       status: 'active',
       role: ROLE_OPTIONS[0].value,
@@ -440,6 +298,8 @@ function Members() {
 	      address: recruitment.address || '',
 	      contactNumber: recruitment.contactNumber || '',
       bloodType: recruitment.bloodType || '',
+      insuranceStatus: recruitment.insuranceStatus || 'N/A',
+      insuranceYear: recruitment.insuranceYear || '',
       memberSince: dayjs().format('YYYY-MM-DD'),
       status: 'active',
       role: ROLE_OPTIONS[0].value,
@@ -464,8 +324,6 @@ function Members() {
     }
   }
 
-  const deletingCommitteeAssignedCount = committeeToDelete ? (userCountByCommittee[committeeToDelete] || 0) : 0
-
   useEffect(() => {
     if (!newMemberImageFile) {
       setNewMemberImagePreviewUrl('')
@@ -488,8 +346,8 @@ function Members() {
     <div className="animate-fade-in text-gray-900 dark:text-zinc-100">
       <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800 dark:text-zinc-100">Management</h2>
-          <p className="text-sm text-gray-500 dark:text-zinc-400">Manage users by role and committee</p>
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-zinc-100">User Management</h2>
+          <p className="text-sm text-gray-500 dark:text-zinc-400">Manage users by role</p>
         </div>
       </div>
 
@@ -695,209 +553,6 @@ function Members() {
             </form>
           </div>
 
-          <div className="xl:col-span-2">
-            <button
-              type="button"
-              onClick={() => setShowManagementPanel(prev => !prev)}
-              className="w-full inline-flex items-center justify-between gap-3 rounded-2xl border border-green-200 bg-green-100 px-5 py-4 text-left text-green-900 shadow-sm hover:bg-green-200 transition-colors"
-            >
-              <span className="text-lg font-semibold">Management</span>
-              <span className="text-sm font-medium">{showManagementPanel ? 'Hide' : 'Show'}</span>
-            </button>
-
-            {showManagementPanel && (
-              <div className="mt-4 grid grid-cols-1 xl:grid-cols-2 gap-6">
-                <div className="bg-white dark:bg-zinc-900 border border-red-600 rounded-2xl shadow-md p-5">
-                  <h3 className="font-semibold text-gray-800 dark:text-zinc-100 mb-3">Committee Management</h3>
-                  {committeeError && <p className="text-sm text-red-600 mb-3">{committeeError}</p>}
-
-                  <form onSubmit={handleCommitteeAdd} className="flex flex-col sm:flex-row gap-2 mb-4">
-                    <input
-                      id="committee-new-name"
-                      name="committeeName"
-                      type="text"
-                      value={committeeName}
-                      onChange={e => setCommitteeName(e.target.value)}
-                      placeholder="New committee name"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                      disabled={committeeActionBusy}
-                      autoComplete="off"
-                    />
-                    <button
-                      type="submit"
-                      className="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                      disabled={committeeActionBusy}
-                    >
-                      Add
-                    </button>
-                  </form>
-
-                  <div className="space-y-2 max-h-[420px] overflow-auto pr-1">
-                    {committeeOptions.length === 0 ? (
-                      <p className="text-sm text-gray-500 dark:text-zinc-400">No committees available.</p>
-                    ) : (
-                      committeeOptions.map(name => (
-                        <div
-                          key={name}
-                          className="flex items-start justify-between gap-3 rounded-xl border border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2"
-                        >
-                          <div className="min-w-0">
-                            <p className="text-sm font-semibold text-gray-800 dark:text-zinc-100 truncate">{name}</p>
-                            <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5">
-                              {userCountByCommittee[name] || 0} assigned
-                            </p>
-                          </div>
-                          <div className="flex shrink-0 items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => openEditCommittee(name)}
-                              className="px-3 py-1.5 rounded-lg text-sm bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                              disabled={committeeActionBusy}
-                            >
-                              Edit
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => openDeleteCommittee(name)}
-                              className="px-3 py-1.5 rounded-lg text-sm bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                              disabled={committeeActionBusy}
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {isAdmin && showEditCommitteeModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="w-full max-w-xl bg-white dark:bg-zinc-900 rounded-xl shadow-2xl p-5 space-y-4 animate-fade-in-up">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-gray-800 dark:text-zinc-100">Edit Committee</h3>
-              <button
-                type="button"
-                onClick={() => {
-                  if (committeeActionBusy) return
-                  setShowEditCommitteeModal(false)
-                  setCommitteeToEdit('')
-                  setEditedCommitteeName('')
-                  setCommitteeError('')
-                }}
-                className="px-3 py-1.5 bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-100 rounded-lg hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors text-sm disabled:opacity-60 disabled:cursor-not-allowed"
-                disabled={committeeActionBusy}
-              >
-                Close
-              </button>
-            </div>
-
-            <form onSubmit={handleCommitteeRename} className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              <input
-                type="text"
-                value={editedCommitteeName}
-                onChange={e => setEditedCommitteeName(e.target.value)}
-                placeholder="New committee name"
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                required
-              />
-              <button
-                type="submit"
-                className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                disabled={committeeActionBusy}
-              >
-                Save
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {isAdmin && showDeleteCommitteeModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="w-full max-w-xl bg-white dark:bg-zinc-900 rounded-xl shadow-2xl p-5 space-y-4 animate-fade-in-up">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-gray-800 dark:text-zinc-100">Delete Committee</h3>
-              <button
-                type="button"
-                onClick={() => {
-                  if (committeeActionBusy) return
-                  setShowDeleteCommitteeModal(false)
-                  setCommitteeToDelete('')
-                  setFallbackCommittee('')
-                  setCommitteeError('')
-                }}
-                className="px-3 py-1.5 bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-100 rounded-lg hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors text-sm disabled:opacity-60 disabled:cursor-not-allowed"
-                disabled={committeeActionBusy}
-              >
-                Close
-              </button>
-            </div>
-
-            {committeeError && <p className="text-sm text-red-600">{committeeError}</p>}
-
-            <div className="rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/30 p-4 space-y-3">
-              <p className="text-sm text-red-700 dark:text-red-200">
-                You are about to delete <span className="font-semibold">{committeeToDelete}</span>.
-              </p>
-              <p className="text-xs text-red-700 dark:text-red-200">
-                Assigned users: <span className="font-semibold tabular-nums">{deletingCommitteeAssignedCount}</span>
-              </p>
-
-              {deletingCommitteeAssignedCount > 0 && (
-                <div>
-                  <label htmlFor="delete-committee-fallback" className="block text-xs text-gray-700 dark:text-zinc-200 mb-1">Reassign users to</label>
-                  <select
-                    id="delete-committee-fallback"
-                    name="fallbackCommittee"
-                    value={fallbackCommittee}
-                    onChange={e => setFallbackCommittee(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                  >
-                    <option value="">Select a committee</option>
-                    {committeeOptions
-                      .filter(name => name !== committeeToDelete)
-                      .map(name => (
-                        <option key={name} value={name}>
-                          {name}
-                        </option>
-                      ))}
-                  </select>
-                </div>
-              )}
-
-              <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (committeeActionBusy) return
-                    setShowDeleteCommitteeModal(false)
-                    setCommitteeToDelete('')
-                    setFallbackCommittee('')
-                    setCommitteeError('')
-                  }}
-                  className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-100 hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors text-sm disabled:opacity-60 disabled:cursor-not-allowed"
-                  disabled={committeeActionBusy}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleCommitteeDelete}
-                  className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors text-sm disabled:opacity-60 disabled:cursor-not-allowed"
-                  disabled={committeeActionBusy}
-                >
-                  Confirm Delete
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
       )}
 
@@ -1020,7 +675,7 @@ function Members() {
           {processedRecruitments.length > 0 && (
             <div className="mt-6 pt-5 border-t border-gray-200">
               <h4 className="text-sm font-semibold text-gray-700 mb-3">Processed Applications</h4>
-              <div className="space-y-2">
+              <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
                 {processedRecruitments.map(entry => (
                   <div key={entry.id} className="rounded-lg border border-gray-200 p-3 bg-white">
                     <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1041,7 +696,7 @@ function Members() {
       )}
 
       <div className="bg-white rounded-2xl border border-red-600 shadow-md p-4 mb-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
             <input
@@ -1087,6 +742,21 @@ function Members() {
                   {committee}
                 </option>
               ))}
+            </select>
+          </div>
+          <div className="relative">
+            <Shield className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <select
+              value={insuranceFilter}
+              onChange={e => {
+                setCurrentPage(1)
+                setInsuranceFilter(e.target.value)
+              }}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+            >
+              <option value="all">All Insurance</option>
+              <option value="insured">Insured</option>
+              <option value="not_insured">Not Insured</option>
             </select>
           </div>
         </div>
@@ -1251,6 +921,14 @@ function Members() {
                   </div>
                   <div className="text-sm text-gray-600">
                     <span>Contact: {member.contactNumber || 'N/A'}</span>
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    <span>
+                      Insurance:{' '}
+                      {member.insuranceStatus === 'Insured'
+                        ? `Insured${member.insuranceYear ? ` (${member.insuranceYear})` : ''}`
+                        : member.insuranceStatus || 'N/A'}
+                    </span>
                   </div>
                   <div className="text-sm text-gray-600">
                     <span>Blood Type: {member.bloodType || 'N/A'}</span>

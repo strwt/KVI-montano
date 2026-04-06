@@ -15,6 +15,7 @@ import Landing from './pages/Landing'
 import Recruitment from './pages/Recruitment'
 import Settings from './pages/Settings'
 import CategoryManagement from './pages/CategoryManagement'
+import CommitteeManagement from './pages/CommitteeManagement'
 import ChatbotWidget from './components/ChatbotWidget'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import './index.css'
@@ -111,6 +112,12 @@ function PublicRoute({ children }) {
   return children
 }
 
+function ChatbotGate() {
+  const { user } = useAuth()
+  if (user?.role === 'admin') return null
+  return <ChatbotWidget />
+}
+
 function AppRoutes() {
   return (
     <Routes>
@@ -129,6 +136,7 @@ function AppRoutes() {
         <Route path="events" element={<Calendar listOnly />} />
         <Route path="report" element={<AdminRoute><Report /></AdminRoute>} />
         <Route path="category-management" element={<AdminRoute><CategoryManagement /></AdminRoute>} />
+        <Route path="committee-management" element={<AdminRoute><CommitteeManagement /></AdminRoute>} />
         <Route path="profile" element={<Profile />} />
         <Route path="account/edit" element={<EditAccount />} />
         <Route path="change-password" element={<ChangePassword />} />
@@ -148,7 +156,7 @@ function App() {
     <AuthProvider>
       <Router>
         <AppRoutes />
-        <ChatbotWidget />
+        <ChatbotGate />
       </Router>
     </AuthProvider>
   )
