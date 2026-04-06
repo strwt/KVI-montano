@@ -2436,13 +2436,6 @@ function Calendar({ listOnly = false }) {
                                 >
                                   Update
                                 </button>
-                                <button
-                                  type="button"
-                                  onClick={() => confirmDeleteEvent(item.id)}
-                                  className="px-3 py-1.5 rounded-md bg-gray-100 text-gray-700 text-xs font-medium hover:bg-gray-200 transition-colors"
-                                >
-                                  Delete
-                                </button>
                               </div>
                             )}
                           </div>
@@ -2833,13 +2826,6 @@ function Calendar({ listOnly = false }) {
                                   className="px-3 py-1.5 rounded-md bg-red-600 text-white text-xs font-medium hover:bg-red-700 transition-colors"
                                 >
                                   Update
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => confirmDeleteEvent(item.id)}
-                                  className="px-3 py-1.5 rounded-md bg-gray-100 text-gray-700 text-xs font-medium hover:bg-gray-200 transition-colors"
-                                >
-                                  Delete
                                 </button>
                               </div>
                             )}
