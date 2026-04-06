@@ -721,14 +721,10 @@ function Landing() {
 
     if (trimmedOptions.length === 0) {
       const grouped = new Map()
-      const unassigned = []
 
       displayVolunteerPeople.forEach(person => {
         const committee = String(person?.committee || '').trim()
-        if (!committee) {
-          unassigned.push(person)
-          return
-        }
+        if (!committee) return
         const key = normalizeCommitteeKey(committee)
         if (!grouped.has(key)) grouped.set(key, { committee, members: [] })
         grouped.get(key).members.push(person)
@@ -740,13 +736,6 @@ function Landing() {
       }))
       groups.sort((a, b) => a.committee.localeCompare(b.committee))
 
-      if (unassigned.length > 0) {
-        groups.push({
-          committee: 'Unassigned',
-          members: [...unassigned].sort((a, b) => a.name.localeCompare(b.name)),
-        })
-      }
-
       return groups
     }
 
@@ -756,19 +745,12 @@ function Landing() {
         return [normalizeCommitteeKey(committee), { committee, members: [] }]
       })
     )
-    const unassigned = []
 
     displayVolunteerPeople.forEach(person => {
       const committee = String(person?.committee || '').trim()
-      if (!committee) {
-        unassigned.push(person)
-        return
-      }
+      if (!committee) return
       const key = normalizeCommitteeKey(committee)
-      if (!grouped.has(key)) {
-        unassigned.push(person)
-        return
-      }
+      if (!grouped.has(key)) grouped.set(key, { committee, members: [] })
       grouped.get(key).members.push(person)
     })
 
@@ -777,13 +759,6 @@ function Landing() {
       members: [...group.members].sort((a, b) => a.name.localeCompare(b.name)),
     }))
     groups.sort((a, b) => a.committee.localeCompare(b.committee))
-
-    if (unassigned.length > 0) {
-      groups.push({
-        committee: 'Unassigned',
-        members: [...unassigned].sort((a, b) => a.name.localeCompare(b.name)),
-      })
-    }
 
     return groups
   }, [committeeOptions, displayVolunteerPeople])

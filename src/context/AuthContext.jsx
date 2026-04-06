@@ -347,7 +347,7 @@ const mapProfileToUser = (profile, authUser) => {
 
   const name = profile?.name || authUser?.user_metadata?.name || ''
   const email = profile?.email || authUser?.email || ''
-  const role = normalizeRole(profile?.role)
+  const role = normalizeRole(profile?.role || authUser?.app_metadata?.role || authUser?.user_metadata?.role || 'member')
 
   return enrichUserWithProfileImage({
     id,
@@ -438,6 +438,8 @@ export function AuthProvider({ children }) {
   const [recruitments, setRecruitments] = useState([])
   const authEpochRef = useRef(0)
   const initialSessionHandledRef = useRef(false)
+  const hydratedUserIdRef = useRef('')
+  const userRef = useRef(null)
   const adminDataInflightRef = useRef(null)
   const lookupsUserIdRef = useRef('')
   const lookupsLoadedRef = useRef(false)
@@ -518,6 +520,10 @@ export function AuthProvider({ children }) {
     const timeoutId = window.setTimeout(() => setAuthResolved(true), LOADING_FALLBACK_MS)
     return () => window.clearTimeout(timeoutId)
   }, [authResolved])
+
+  useEffect(() => {
+    userRef.current = user
+  }, [user])
 
   const getAllMembers = useCallback(() => members, [members])
   const getAdmins = useCallback(() => admins, [admins])
@@ -857,6 +863,7 @@ export function AuthProvider({ children }) {
       try {
         await hydrateProfile(authUser, epoch)
         if (epoch !== authEpochRef.current || disposed) return
+        hydratedUserIdRef.current = String(authUser.id || '')
 
         if (lookupsUserIdRef.current !== authUser.id) {
           lookupsUserIdRef.current = authUser.id
@@ -885,7 +892,21 @@ export function AuthProvider({ children }) {
 
       const authUser = session?.user || null
       if (!authUser?.id) {
-        applySignedOut()
+        if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESH_FAILED' || event === 'INITIAL_SESSION') {
+          applySignedOut()
+        }
+        return
+      }
+
+      const currentUser = userRef.current
+      const alreadyHydrated =
+        String(currentUser?.id || '') === String(authUser.id)
+        && Boolean(currentUser?.role)
+        && hydratedUserIdRef.current === String(authUser.id)
+        && lookupsLoadedRef.current
+
+      if (event === 'SIGNED_IN' && alreadyHydrated) {
+        setAuthResolved(true)
         return
       }
 
