@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ArrowLeft, Mail, Calendar, User, Trash2, Eye, EyeOff } from 'lucide-react'
+import { ArrowLeft, Mail, Calendar, User, Trash2, Eye, EyeOff, Shield } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate, useParams } from 'react-router-dom'
 
@@ -23,6 +23,8 @@ function MemberDetail() {
     address: '',
     contactNumber: '',
     bloodType: '',
+    insuranceStatus: 'N/A',
+    insuranceYear: '',
     committee: '',
     status: 'active',
     memberSince: '',
@@ -53,6 +55,8 @@ function MemberDetail() {
       address: member.address || '',
       contactNumber: member.contactNumber || '',
       bloodType: member.bloodType || '',
+      insuranceStatus: member.insuranceStatus || 'N/A',
+      insuranceYear: member.insuranceYear || '',
       committee: member.committee || '',
       status: member.status || 'active',
       memberSince: (member.memberSince || new Date().toISOString()).split('T')[0],
@@ -75,6 +79,21 @@ function MemberDetail() {
     e.preventDefault()
     if (!member) return
     setActionError('')
+
+    const insuranceStatus = editForm.insuranceStatus === 'Insured' ? 'Insured' : 'N/A'
+    const insuranceYearRaw = String(editForm.insuranceYear || '').trim()
+    const insuranceYear = insuranceStatus === 'Insured' ? insuranceYearRaw : ''
+    if (insuranceStatus === 'Insured') {
+      if (!insuranceYear) {
+        setActionError('Insurance year is required when insured.')
+        return
+      }
+      if (!/^\d{4}$/.test(insuranceYear)) {
+        setActionError('Insurance year must be a 4-digit year.')
+        return
+      }
+    }
+
     const updates = {
       idNumber: editForm.idNumber,
       name: editForm.name,
@@ -82,6 +101,8 @@ function MemberDetail() {
       address: editForm.address,
       contactNumber: editForm.contactNumber,
       bloodType: editForm.bloodType,
+      insuranceStatus,
+      insuranceYear,
       committee: editForm.committee,
       status: editForm.status,
       memberSince: editForm.memberSince,
@@ -242,9 +263,17 @@ function MemberDetail() {
             <p className="text-sm text-gray-500 mb-1">Contact Number</p>
             <p className="text-lg font-semibold text-gray-800">{member.contactNumber || 'N/A'}</p>
           </div>
-          <div className="bg-white rounded-xl shadow-md p-5">
+          <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl shadow-md p-5">
             <p className="text-sm text-gray-500 mb-1">Blood Type</p>
             <p className="text-lg font-semibold text-gray-800">{member.bloodType || 'N/A'}</p>
+          </div>
+          <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl shadow-md p-5">
+            <p className="text-sm text-gray-500 mb-1">Insurance</p>
+            <p className="text-lg font-semibold text-gray-800">
+              {member.insuranceStatus === 'Insured'
+                ? `Insured${member.insuranceYear ? ` (${member.insuranceYear})` : ''}`
+                : (member.insuranceStatus || 'N/A')}
+            </p>
           </div>
         </div>
       </div>
@@ -384,6 +413,49 @@ function MemberDetail() {
                     </option>
                   ))}
                 </select>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="update-member-insurance-status" className="block text-sm font-medium text-gray-700 mb-1">
+                    Insurance Status
+                  </label>
+                  <div className="relative">
+                    <Shield size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <select
+                      id="update-member-insurance-status"
+                      name="insuranceStatus"
+                      value={editForm.insuranceStatus}
+                      onChange={(e) => {
+                        const next = e.target.value
+                        setEditForm(prev => ({
+                          ...prev,
+                          insuranceStatus: next,
+                          insuranceYear: next === 'Insured' ? prev.insuranceYear : '',
+                        }))
+                      }}
+                      className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                    >
+                      <option value="N/A">Not Insured</option>
+                      <option value="Insured">Insured</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label htmlFor="update-member-insurance-year" className="block text-sm font-medium text-gray-700 mb-1">
+                    Insurance Year
+                  </label>
+                  <input
+                    id="update-member-insurance-year"
+                    name="insuranceYear"
+                    type="text"
+                    inputMode="numeric"
+                    placeholder={editForm.insuranceStatus === 'Insured' ? 'e.g. 2026' : 'Not applicable'}
+                    value={editForm.insuranceYear}
+                    onChange={(e) => setEditForm({ ...editForm, insuranceYear: e.target.value })}
+                    disabled={editForm.insuranceStatus !== 'Insured'}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-60"
+                  />
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>

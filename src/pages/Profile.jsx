@@ -65,12 +65,20 @@ function Profile() {
     { label: t('Address'), value: user?.address || 'Not set', icon: MapPin },
     { label: t('Contact Number'), value: user?.contactNumber || 'Not set', icon: Phone },
     { label: t('Blood Type'), value: user?.bloodType || 'Not set', icon: Droplets },
+    {
+      label: t('Insurance'),
+      value:
+        user?.insuranceStatus === 'Insured'
+          ? `Insured${user?.insuranceYear ? ` (${user.insuranceYear})` : ''}`
+          : (user?.insuranceStatus || 'Not set'),
+      icon: Shield,
+    },
     { label: t('Role'), value: user?.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : t('Member'), icon: Shield },
     { label: t('Account Status'), value: user?.accountStatus || t('Active'), icon: BadgeCheck },
   ]), [user, t])
 
   const completion = useMemo(() => {
-    const tracked = [user?.name, user?.email, user?.idNumber, user?.address, user?.contactNumber, user?.bloodType]
+    const tracked = [user?.name, user?.email, user?.idNumber, user?.address, user?.contactNumber, user?.bloodType, user?.insuranceStatus]
     const filled = tracked.filter((field) => String(field || '').trim().length > 0).length
     return Math.round((filled / tracked.length) * 100)
   }, [user])

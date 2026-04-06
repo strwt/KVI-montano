@@ -1270,6 +1270,11 @@ export function AuthProvider({ children }) {
     const address = updates.address?.toString().trim() ?? (user.address || '')
     const contactNumber = updates.contactNumber?.toString().trim() ?? (user.contactNumber || '')
     const bloodType = (updates.bloodType ?? user.bloodType ?? '').toString().toUpperCase()
+    const insuranceStatus = updates.insuranceStatus === 'Insured' ? 'Insured' : (user.insuranceStatus === 'Insured' ? 'Insured' : 'N/A')
+    const insuranceYearRaw = Object.prototype.hasOwnProperty.call(updates, 'insuranceYear')
+      ? String(updates.insuranceYear || '').trim()
+      : String(user.insuranceYear || '').trim()
+    const insuranceYear = insuranceStatus === 'Insured' ? insuranceYearRaw : ''
     const hasProfileImageUpdate = Object.prototype.hasOwnProperty.call(updates, 'profileImage')
     const nextProfileImageRaw = hasProfileImageUpdate ? (updates.profileImage ?? '').toString().trim() : null
     const profileImageToStore = hasProfileImageUpdate ? normalizeProfileImageStorageValue(nextProfileImageRaw) : undefined
@@ -1291,6 +1296,8 @@ export function AuthProvider({ children }) {
       address,
       contact_number: contactNumber,
       blood_type: bloodType || null,
+      insurance_status: insuranceStatus,
+      insurance_year: insuranceStatus === 'Insured' ? (insuranceYear || null) : null,
     }
     if (hasProfileImageUpdate) patch.profile_image = profileImageToStore
 
@@ -1307,6 +1314,8 @@ export function AuthProvider({ children }) {
             address,
             contactNumber,
             bloodType,
+            insuranceStatus,
+            insuranceYear,
             ...(hasProfileImageUpdate ? { profileImage: resolveProfileImageSrc(profileImageToStore) } : null),
           }
         : prev
@@ -1321,6 +1330,8 @@ export function AuthProvider({ children }) {
               address,
               contactNumber,
               bloodType,
+              insuranceStatus,
+              insuranceYear,
               ...(hasProfileImageUpdate ? { profileImage: resolveProfileImageSrc(profileImageToStore) } : null),
             }
           : member
@@ -1338,6 +1349,8 @@ export function AuthProvider({ children }) {
               address,
               contactNumber,
               bloodType,
+              insuranceStatus,
+              insuranceYear,
               ...(hasProfileImageUpdate ? { profileImage: resolveProfileImageSrc(profileImageToStore) } : null),
             }
           : member
@@ -1694,6 +1707,11 @@ export function AuthProvider({ children }) {
       address: (updates.address ?? '').toString().trim() || null,
       contact_number: (updates.contactNumber ?? '').toString().trim() || null,
       blood_type: (updates.bloodType ?? '').toString().trim().toUpperCase() || null,
+      insurance_status: updates.insuranceStatus === 'Insured' ? 'Insured' : 'N/A',
+      insurance_year:
+        updates.insuranceStatus === 'Insured'
+          ? (String(updates.insuranceYear || '').trim() || null)
+          : null,
       account_status: (updates.accountStatus ?? 'Active').toString().trim() || 'Active',
       status: (updates.status ?? 'active').toString().trim() || 'active',
     }

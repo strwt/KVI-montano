@@ -10,7 +10,16 @@ function EditAccount() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [isSaving, setIsSaving] = useState(false)
-  const [form, setForm] = useState({ name: '', email: '', address: '', contactNumber: '', bloodType: '', profileImage: '' })
+  const [form, setForm] = useState({
+    name: '',
+    email: '',
+    address: '',
+    contactNumber: '',
+    bloodType: '',
+    insuranceStatus: 'N/A',
+    insuranceYear: '',
+    profileImage: '',
+  })
   const [selectedFile, setSelectedFile] = useState(null)
   const [previewUrl, setPreviewUrl] = useState('')
   const [selectedFileName, setSelectedFileName] = useState('')
@@ -26,6 +35,8 @@ function EditAccount() {
       address: user.address || '',
       contactNumber: user.contactNumber || '',
       bloodType: user.bloodType || '',
+      insuranceStatus: user.insuranceStatus || 'N/A',
+      insuranceYear: user.insuranceYear || '',
       profileImage: user.profileImage || '',
     })
     setSelectedFile(null)
@@ -85,12 +96,37 @@ function EditAccount() {
       return
     }
 
+    const insuranceStatus = form.insuranceStatus === 'Insured' ? 'Insured' : 'N/A'
+    const insuranceYearRaw = String(form.insuranceYear || '').trim()
+    const insuranceYear = insuranceStatus === 'Insured' ? insuranceYearRaw : ''
+    if (insuranceStatus === 'Insured') {
+      if (!insuranceYear) {
+        setError('Insurance year is required when insured.')
+        setIsSaving(false)
+        return
+      }
+      if (!/^\d{4}$/.test(insuranceYear)) {
+        setError('Insurance year must be a 4-digit year.')
+        setIsSaving(false)
+        return
+      }
+      const yearNumber = Number(insuranceYear)
+      const currentYear = new Date().getFullYear()
+      if (yearNumber < 1990 || yearNumber > currentYear + 1) {
+        setError(`Insurance year must be between 1990 and ${currentYear + 1}.`)
+        setIsSaving(false)
+        return
+      }
+    }
+
     const payload = {
       name: form.name,
       email: form.email,
       address: form.address,
       contactNumber: phone,
       bloodType: blood,
+      insuranceStatus,
+      insuranceYear,
     }
 
     if (selectedFile) {
@@ -312,6 +348,48 @@ function EditAccount() {
                   <option value="O+">O+</option>
                   <option value="O-">O-</option>
                 </select>
+              </div>
+
+              <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+                <label htmlFor="edit-account-insurance-status" className="block text-sm text-zinc-700 mb-1.5 font-medium flex items-center gap-2">
+                  <Shield size={16} className="text-red-600" />
+                  Insurance Status
+                </label>
+                <select
+                  id="edit-account-insurance-status"
+                  name="insuranceStatus"
+                  value={form.insuranceStatus}
+                  onChange={(e) => {
+                    const next = e.target.value
+                    setForm(prev => ({
+                      ...prev,
+                      insuranceStatus: next,
+                      insuranceYear: next === 'Insured' ? prev.insuranceYear : '',
+                    }))
+                  }}
+                  className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-zinc-800 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500"
+                >
+                  <option value="N/A">Not Insured</option>
+                  <option value="Insured">Insured</option>
+                </select>
+              </div>
+
+              <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+                <label htmlFor="edit-account-insurance-year" className="block text-sm text-zinc-700 mb-1.5 font-medium flex items-center gap-2">
+                  <Shield size={16} className="text-red-600" />
+                  Insurance Year
+                </label>
+                <input
+                  id="edit-account-insurance-year"
+                  name="insuranceYear"
+                  type="text"
+                  inputMode="numeric"
+                  placeholder={form.insuranceStatus === 'Insured' ? 'e.g. 2026' : 'Not applicable'}
+                  value={form.insuranceYear}
+                  onChange={(e) => setForm({ ...form, insuranceYear: e.target.value })}
+                  disabled={form.insuranceStatus !== 'Insured'}
+                  className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500 disabled:opacity-60"
+                />
               </div>
             </div>
 

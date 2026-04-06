@@ -45,6 +45,19 @@ const buildProfilePatch = (updates = {}) => {
   if (Object.prototype.hasOwnProperty.call(updates, 'status')) patch.status = normalizeText(updates.status) || 'active'
   if (Object.prototype.hasOwnProperty.call(updates, 'memberSince')) patch.member_since = normalizeText(updates.memberSince) || null
 
+  if (Object.prototype.hasOwnProperty.call(updates, 'insuranceStatus') || Object.prototype.hasOwnProperty.call(updates, 'insuranceYear')) {
+    const statusRaw = Object.prototype.hasOwnProperty.call(updates, 'insuranceStatus') ? updates.insuranceStatus : ''
+    const status = /insured/i.test(normalizeText(statusRaw)) ? 'Insured' : 'N/A'
+    patch.insurance_status = status
+
+    const yearRaw = Object.prototype.hasOwnProperty.call(updates, 'insuranceYear') ? normalizeText(updates.insuranceYear) : ''
+    if (status === 'Insured') {
+      patch.insurance_year = yearRaw || null
+    } else {
+      patch.insurance_year = null
+    }
+  }
+
   if (Object.prototype.hasOwnProperty.call(updates, 'email')) {
     const email = normalizeEmail(updates.email)
     patch.email = email || null
