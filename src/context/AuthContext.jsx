@@ -753,25 +753,25 @@ export function AuthProvider({ children }) {
     return names
   }, [supabaseEnabled])
 
-    const reloadCategories = async () => {
-      if (!supabaseEnabled) return []
-      let typedCategories = []
-      try {
-        const res = await supabase
-          .from('categories')
-          .select('name')
-          .order('name', { ascending: true })
-        if (res.error) console.warn('Failed to load categories from Supabase.', res.error)
-        typedCategories = res.data
-      } catch (error) {
-        console.warn('Failed to load categories from Supabase.', error)
-      }
-
-      const merged = Array.isArray(typedCategories) ? typedCategories.map(row => row.name) : []
-      const next = sortEventCategories(merged.map(name => toEventCategoryKey(name)).filter(Boolean))
-      setCategories(next)
-      return next
+  const reloadCategories = useCallback(async () => {
+    if (!supabaseEnabled) return []
+    let typedCategories = []
+    try {
+      const res = await supabase
+        .from('categories')
+        .select('name')
+        .order('name', { ascending: true })
+      if (res.error) console.warn('Failed to load categories from Supabase.', res.error)
+      typedCategories = res.data
+    } catch (error) {
+      console.warn('Failed to load categories from Supabase.', error)
     }
+
+    const merged = Array.isArray(typedCategories) ? typedCategories.map(row => row.name) : []
+    const next = sortEventCategories(merged.map(name => toEventCategoryKey(name)).filter(Boolean))
+    setCategories(next)
+    return next
+  }, [supabaseEnabled])
 
   	  const reloadRecruitments = async (asAdmin) => {
   	    if (!supabaseEnabled) return
@@ -990,6 +990,63 @@ export function AuthProvider({ children }) {
       supabase.removeChannel(channel)
     }
   }, [supabaseEnabled, reloadCommittees])
+
+  useEffect(() => {
+    if (!supabaseEnabled) return undefined
+
+    const realtimeEnabled = String(import.meta.env.VITE_SUPABASE_ENABLE_REALTIME || '').toLowerCase() !== 'false'
+    if (!realtimeEnabled) {
+      const intervalId = window.setInterval(() => {
+        void reloadCategories()
+      }, 15000)
+      return () => window.clearInterval(intervalId)
+    }
+
+    let fallbackIntervalId
+    let disposed = false
+
+    const startFallbackPolling = () => {
+      if (disposed || fallbackIntervalId) return
+      fallbackIntervalId = window.setInterval(() => {
+        void reloadCategories()
+      }, 15000)
+    }
+
+    const channel = supabase
+      .channel('kusgan-categories')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'categories' },
+        () => {
+          void reloadCategories()
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'category_fields' },
+        () => {
+          void reloadCategories()
+        }
+      )
+      .subscribe(status => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          startFallbackPolling()
+          supabase.removeChannel(channel)
+        }
+      })
+
+    const timeoutId = window.setTimeout(() => {
+      startFallbackPolling()
+      supabase.removeChannel(channel)
+    }, 8000)
+
+    return () => {
+      disposed = true
+      window.clearTimeout(timeoutId)
+      if (fallbackIntervalId) window.clearInterval(fallbackIntervalId)
+      supabase.removeChannel(channel)
+    }
+  }, [supabaseEnabled, reloadCategories])
 
 		  const login = async (identifier, password) => {
         if (loginRequestRef.current) return loginRequestRef.current

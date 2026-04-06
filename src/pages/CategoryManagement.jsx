@@ -218,31 +218,13 @@ function CategoryManagement() {
 
         let activeKey = previousKey
         if (nextKey !== previousKey) {
-          const { data: existing, error: existingError } = await supabase
-            .from('categories')
-            .select('id')
-            .eq('name', nextKey)
+          const { error: renameError } = await supabase.rpc('rename_category_key', {
+            p_category_id: categoryId,
+            p_old_key: previousKey,
+            p_new_key: nextKey,
+          })
 
-          if (existingError) throw existingError
-          const takenByOther = (Array.isArray(existing) ? existing : []).some(row => String(row?.id || '') !== categoryId)
-          if (takenByOther) throw new Error('Category name already exists.')
-
-          const { error: updateCategoryError } = await supabase
-            .from('categories')
-            .update({ name: nextKey })
-            .eq('id', categoryId)
-
-          if (updateCategoryError) throw updateCategoryError
-
-          const { error: updateEventsError } = await supabase
-            .from('events')
-            .update({ category: nextKey })
-            .eq('category', previousKey)
-
-          if (updateEventsError) {
-            await supabase.from('categories').update({ name: previousKey }).eq('id', categoryId)
-            throw updateEventsError
-          }
+          if (renameError) throw renameError
 
           activeKey = nextKey
           setEditingCategory(prev => (prev ? { ...prev, name: activeKey } : prev))
