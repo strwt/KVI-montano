@@ -863,7 +863,7 @@ function Landing() {
             </div>
 
             <p className="text-base sm:text-lg text-gray-400 max-w-lg leading-relaxed">
-              Building a better world through compassion, service, and unity. KUSGAN mobilizes people for meaningful community action that strengthens social inclusion.
+              Serbisyong KUSGAN
             </p>            {/* Stat chips */}
             <div className="flex flex-wrap gap-2.5">
               {STATS.map(stat => {
