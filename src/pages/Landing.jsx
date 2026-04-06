@@ -116,32 +116,32 @@ const SERVICES = [
 const CORE_VALUES = [
   {
     title: 'Kindness',
-    description: 'Serve every person with empathy and respect.',
+    description: 'Everyone with compassion and Care',
     image: '/Kindness.jpg',
   },
   {
     title: 'Unity',
-    description: 'Collaborate as one team to achieve shared goals.',
+    description: 'Working together as a team work for a common goal.',
     image: '/Unity.jpg',
   },
   {
     title: 'Service',
-    description: 'Deliver practical help where communities need it most.',
+    description: 'Helping other and giving back to the community.',
     image: '/Service.jpg',
   },
   {
     title: 'Generosity',
-    description: 'Give time, care, and effort with sincere commitment.',
+    description: 'Giving time, resources, and effort selflessly..',
     image: '/Generosity.jpg',
   },
   {
     title: 'Aspiration',
-    description: 'Pursue continuous growth and meaningful impact.',
+    description: 'Striving to achieve our best and reach our goal.',
     image: '/Aspiration.jpg',
   },
   {
     title: 'Nurture',
-    description: 'Support people and communities with lasting care.',
+    description: 'Nurture providing care and support to other thrive.',
     image: '/Nurture.jpg',
   },
 ]
@@ -1301,7 +1301,8 @@ function Landing() {
                 <p className="text-xs font-bold tracking-widest uppercase mb-2" style={{ color: '#f87171' }}>Mission</p>
                 <h3 className="text-lg font-bold text-white font-heading mb-2">Our Purpose</h3>
                 <p className="text-sm text-gray-400 leading-relaxed relative">
-                  To mobilize volunteers in delivering practical, compassionate service to communities in need.
+                  to be catalyst of community involvement though volunteerism and creating social inclusion for a better world to live in
+
                 </p>
               </article>
 
@@ -1323,7 +1324,7 @@ function Landing() {
                 <p className="text-xs font-bold tracking-widest uppercase mb-2" style={{ color: '#f87171' }}>Vision</p>
                 <h3 className="text-lg font-bold text-white font-heading mb-2">Our Future</h3>
                 <p className="text-sm text-gray-400 leading-relaxed relative">
-                  To inspire inclusive and resilient communities through volunteerism and collective action.
+                  To inspire everyone through volunteerism.
                 </p>
               </article>
             </div>            {/* Core Values - image grid */}
