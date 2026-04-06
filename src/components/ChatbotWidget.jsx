@@ -1,23 +1,129 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { MessageCircle, Send, X } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
 
 const PAGE_SUGGESTIONS = [
   {
-    match: pathname => pathname.startsWith('/calendar'),
+    match: ({ pathname, hash }) => pathname.startsWith('/landing') && hash === '#services',
+    title: 'Services',
+    suggestions: [
+      'What services does KVI offer?',
+      'Where can I see the partners of KVI?',
+      'How do I go back to Home?',
+    ],
+    links: [
+      { label: 'Services', to: '/landing#services' },
+      { label: 'Home', to: '/landing' },
+      { label: 'About', to: '/landing#about' },
+    ],
+  },
+  {
+    match: ({ pathname, hash }) => pathname.startsWith('/landing') && hash === '#organizational-structure',
+    title: 'Organization Structure',
+    suggestions: [
+      'Where is the Board Organizational Structure?',
+      'How do I view the KUSGAN Organization Structure?',
+      'How do I see member details?',
+    ],
+    links: [
+      { label: 'Structure', to: '/landing#organizational-structure' },
+      { label: 'Home', to: '/landing' },
+      { label: 'About', to: '/landing#about' },
+    ],
+  },
+  {
+    match: ({ pathname, hash }) => pathname.startsWith('/landing') && hash === '#about',
+    title: 'About KUSGAN',
+    suggestions: [
+      'Where can I read the Mission and Vision?',
+      'Where are the Core Values?',
+      'How do I find Contact Details?',
+    ],
+    links: [
+      { label: 'About', to: '/landing#about' },
+      { label: 'Home', to: '/landing' },
+      { label: 'Services', to: '/landing#services' },
+    ],
+  },
+  {
+    match: ({ pathname }) => pathname.startsWith('/landing'),
+    title: 'Landing Page',
+    suggestions: [
+      'Where can I log in?',
+      'How do I apply for recruitment?',
+      'Where can I see Services, Structure, and About?',
+    ],
+    links: [
+      { label: 'Login', to: '/login' },
+      { label: 'Recruitment', to: '/recruitment' },
+      { label: 'Home', to: '/landing' },
+    ],
+  },
+  {
+    match: ({ pathname }) => pathname === '/',
+    title: 'Dashboard',
+    suggestions: [
+      'Where can I see recent activities?',
+      'Where can I view all events?',
+      'Why do categories appear automatically?',
+    ],
+    suggestionsByRole: {
+      admin: [
+        'How do I create an event?',
+        'Where can I see recent activities?',
+        'Why do categories appear automatically?',
+      ],
+      member: [
+        'Where can I see recent activities?',
+        'Where can I view all events?',
+        'Can I create events as a member?',
+      ],
+    },
+    links: [
+      { label: 'Dashboard', to: '/' },
+      { label: 'Calendar', to: '/calendar' },
+      { label: 'Reports', to: '/report' },
+      { label: 'Profile', to: '/profile' },
+    ],
+    linksByRole: {
+      member: [
+        { label: 'Dashboard', to: '/' },
+        { label: 'Calendar', to: '/calendar' },
+        { label: 'Attendance', to: '/attendance' },
+        { label: 'Profile', to: '/profile' },
+      ],
+    },
+  },
+  {
+    match: ({ pathname }) => pathname.startsWith('/calendar'),
     title: 'Calendar & Events',
     suggestions: [
       'How do I create an event?',
       'How can I edit or delete an event?',
-      'Can I view events in list mode?',
+      'How do I filter by category?',
     ],
     links: [
-      { label: 'Create Event', to: '/calendar' },
+      { label: 'Create Event', to: '/calendar', state: { openCreateEventForm: true } },
       { label: 'Event List', to: '/events' },
     ],
   },
   {
-    match: pathname => pathname.startsWith('/attendance-management'),
+    match: ({ pathname }) => pathname.startsWith('/events'),
+    title: 'Event List',
+    suggestions: [
+      'How do I filter by category?',
+      'How do I open an event details?',
+      'How do I create a new event?',
+    ],
+    links: [
+      { label: 'Create Event', to: '/calendar', state: { openCreateEventForm: true } },
+      { label: 'Calendar', to: '/calendar' },
+      { label: 'Dashboard', to: '/' },
+    ],
+  },
+  {
+    match: ({ pathname }) => pathname.startsWith('/attendance-management'),
     title: 'Attendance Management',
     suggestions: [
       'How do I mark attendance for today?',
@@ -28,14 +134,15 @@ const PAGE_SUGGESTIONS = [
       { label: 'Attendance Mgmt', to: '/attendance-management' },
       { label: 'Dashboard', to: '/' },
     ],
+    roles: ['admin'],
   },
   {
-    match: pathname => pathname.startsWith('/attendance'),
+    match: ({ pathname }) => pathname.startsWith('/attendance'),
     title: 'Attendance',
     suggestions: [
       'How do I time in for today?',
-      'Where can I see my attendance stats?',
-      'How do I report a mistake?',
+      'Where can I see my attendance records?',
+      'Can admin edit my attendance?',
     ],
     links: [
       { label: 'Attendance', to: '/attendance' },
@@ -43,37 +150,54 @@ const PAGE_SUGGESTIONS = [
     ],
   },
   {
-    match: pathname => pathname.startsWith('/report'),
+    match: ({ pathname }) => pathname.startsWith('/report'),
     title: 'Reports',
     suggestions: [
       'How do I export a report?',
-      'How do I filter by date range?',
-      'What does each category mean?',
+      'Can I view monthly or quarterly reports?',
+      'Are reports grouped by event type?',
     ],
     links: [
       { label: 'Reports', to: '/report' },
       { label: 'Dashboard', to: '/' },
     ],
+    roles: ['admin'],
   },
   {
-    match: pathname => pathname.startsWith('/members'),
+    match: ({ pathname }) => pathname.startsWith('/category-management'),
+    title: 'Category Management',
+    suggestions: [
+      'How do I add a new category?',
+      'Can I add custom fields like seedling count?',
+      'How do I edit a category?',
+    ],
+    links: [
+      { label: 'Categories', to: '/category-management' },
+      { label: 'Members', to: '/members' },
+      { label: 'Calendar', to: '/calendar' },
+    ],
+    roles: ['admin'],
+  },
+  {
+    match: ({ pathname }) => pathname.startsWith('/members'),
     title: 'Members',
     suggestions: [
-      'How do I add a member?',
-      'How can I edit a member profile?',
-      'How do I delete or reassign a member?',
+      'How do I create a member account?',
+      'How do I update a member details?',
+      'How do I delete members?',
     ],
     links: [
       { label: 'Members', to: '/members' },
-      { label: 'Settings', to: '/settings' },
+      { label: 'Categories', to: '/category-management' },
     ],
+    roles: ['admin'],
   },
   {
-    match: pathname => pathname.startsWith('/settings'),
+    match: ({ pathname }) => pathname.startsWith('/settings'),
     title: 'Settings',
     suggestions: [
       'How do I change the theme?',
-      'Where do I change language?',
+      'Where is the logout button?',
       'How do I update notifications?',
     ],
     links: [
@@ -82,7 +206,7 @@ const PAGE_SUGGESTIONS = [
     ],
   },
   {
-    match: pathname => pathname.startsWith('/profile'),
+    match: ({ pathname }) => pathname.startsWith('/profile'),
     title: 'Profile',
     suggestions: [
       'How do I update my profile info?',
@@ -92,10 +216,37 @@ const PAGE_SUGGESTIONS = [
     links: [
       { label: 'Edit Profile', to: '/account/edit' },
       { label: 'Change Password', to: '/change-password' },
+      { label: 'Profile', to: '/profile' },
     ],
   },
   {
-    match: pathname => pathname.startsWith('/login'),
+    match: ({ pathname }) => pathname.startsWith('/account/edit'),
+    title: 'Edit Profile',
+    suggestions: [
+      'How do I update my name and contact info?',
+      'Can I change my blood type here?',
+      'How do I upload a profile image?',
+    ],
+    links: [
+      { label: 'Edit Profile', to: '/account/edit' },
+      { label: 'Profile', to: '/profile' },
+    ],
+  },
+  {
+    match: ({ pathname }) => pathname.startsWith('/change-password'),
+    title: 'Change Password',
+    suggestions: [
+      'What do I need to change my password?',
+      'Why does my new password not match?',
+      'Where do I go after changing it?',
+    ],
+    links: [
+      { label: 'Change Password', to: '/change-password' },
+      { label: 'Profile', to: '/profile' },
+    ],
+  },
+  {
+    match: ({ pathname }) => pathname.startsWith('/login'),
     title: 'Login',
     suggestions: [
       'How do I sign in?',
@@ -108,7 +259,7 @@ const PAGE_SUGGESTIONS = [
     ],
   },
   {
-    match: pathname => pathname.startsWith('/recruitment'),
+    match: ({ pathname }) => pathname.startsWith('/recruitment'),
     title: 'Recruitment',
     suggestions: [
       'How do I submit the recruitment form?',
@@ -120,81 +271,334 @@ const PAGE_SUGGESTIONS = [
       { label: 'Login', to: '/login' },
     ],
   },
-  {
-    match: pathname => pathname.startsWith('/landing'),
-    title: 'Welcome',
-    suggestions: [
-      'How do I join KUSGAN?',
-      'Where can I learn about programs?',
-      'How do I sign in?',
-    ],
-    links: [
-      { label: 'Login', to: '/login' },
-      { label: 'Recruitment', to: '/recruitment' },
-    ],
-  },
 ]
 
 const DEFAULT_SUGGESTIONS = {
   title: 'KUSGAN Assistant',
   suggestions: [
-    'How do I create an event?',
-    'How do I change my password?',
-    'How do I update my profile?',
+    'How do I log in?',
+    'How do I apply for recruitment?',
+    'Where can I see the calendar?',
   ],
   links: [
-    { label: 'Dashboard', to: '/' },
+    { label: 'Home', to: '/landing' },
     { label: 'Calendar', to: '/calendar' },
-    { label: 'Login', to: '/login' },
+    { label: 'Recruitment', to: '/recruitment' },
+    { label: 'Profile', to: '/profile' },
   ],
 }
 
-const buildResponse = (input) => {
+const buildResponse = (input, role) => {
   const text = String(input || '').toLowerCase()
+  const response = (lines) => lines.map((line, index) => `${index + 1}. ${line}`).join('\n')
 
-  if (text.includes('login') || text.includes('sign in')) {
-    return 'Go to the Login page and enter your ID number and password. If you cannot sign in, double-check your ID number and password or contact an admin.'
+  if (role === 'member' && (text.includes('create event') || text.includes('add event'))) {
+    return response([
+      'Only admins can create events.',
+      'Members can view events and notifications in the Calendar.',
+    ])
   }
-  if (text.includes('logout') || text.includes('sign out')) {
-    return 'Use the logout icon beside the theme toggle in the sidebar footer to sign out.'
+  if (role === 'member' && text.includes('report')) {
+    return response([
+      'Reports are for admins only.',
+      'Members can view events and notifications in the Calendar.',
+    ])
+  }
+  if (role === 'member' && (text.includes('category') || text.includes('categories'))) {
+    return response([
+      'Category management is for admins only.',
+      'Members can view events in the Calendar.',
+    ])
+  }
+  if (role === 'member' && (text.includes('members') || text.includes('management'))) {
+    return response([
+      'Member management is for admins only.',
+      'Members can update their own profile and password.',
+    ])
+  }
+  if (role === 'member' && (text.includes('attendance management') || text.includes('calendar management'))) {
+    return response([
+      'Attendance Management is for admins only.',
+      'Members can Time In and Time Out in Attendance.',
+    ])
+  }
+
+  if (text.includes('login') || text.includes('log in') || text.includes('sign in')) {
+    return response([
+      'Go to Login and enter your ID Number and Password.',
+      'If you do not have an account, click Recruitment to apply.',
+      'Accounts and temporary passwords are provided by the admin.',
+      'You can change your password after you log in.',
+    ])
+  }
+  if (text.includes('logout') || text.includes('log out') || text.includes('sign out')) {
+    return response([
+      'Open the sidebar footer and click Logout.',
+      'It is beside the theme toggle.',
+    ])
   }
   if (text.includes('theme') || text.includes('dark') || text.includes('light')) {
-    return 'Toggle the theme using the sun/moon button in the sidebar footer.'
+    return response([
+      'Use the theme toggle in the sidebar footer.',
+      'Click the sun/moon icon to switch Light or Dark.',
+    ])
   }
-  if (text.includes('attendance')) {
-    return 'Members can open Attendance to time in/out and view stats. Admins manage attendance in Attendance Management.'
+  if (text.includes('attendance') || text.includes('time in') || text.includes('time out')) {
+    return role === 'member'
+      ? response([
+          'Go to Attendance and tap Time In or Time Out.',
+          'You can view your attendance records there.',
+        ])
+      : response([
+          'Go to Attendance Management to edit attendance and view past records.',
+          'Use Export PDF to download present members only.',
+        ])
   }
   if (text.includes('event') || text.includes('calendar')) {
-    return 'Open Calendar to create, edit, and review events. Use the Event List view for a list-only format.'
+    return response([
+      role === 'member'
+        ? 'Go to Calendar to view events (read-only for members).'
+        : 'Go to Calendar to view, add, update, or delete events.',
+      role === 'member'
+        ? 'You can see event details and schedules there.'
+        : 'You can assign members and filter by title, content, address, or category.',
+      'Switch between All Months and Event Months and navigate previous months.',
+    ])
+  }
+  if (text.includes('calendar management') || text.includes('attendance management')) {
+    return response([
+      'Admins: Go to Attendance Management to track attendance for each day.',
+      'You can edit Time In and Time Out and view previous records.',
+      'Use Export PDF to download present members only.',
+    ])
   }
   if (text.includes('report')) {
-    return 'Reports are available to admins. You can filter by date range and export as CSV/PDF/DOC.'
+    return role === 'member'
+      ? response([
+          'Reports are only available to admins.',
+          'You can view events and notifications in the Calendar instead.',
+        ])
+      : response([
+          'Go to Reports to view Monthly, Quarterly, or Yearly reports.',
+          'Use the export buttons to download CSV, PDF, or DOCS.',
+          'Reports are categorized by event type.',
+        ])
+  }
+  if (
+    text.includes('update member') ||
+    text.includes('edit member') ||
+    text.includes('member details') ||
+    text.includes('member profile') ||
+    text.includes('update user') ||
+    text.includes('edit user') ||
+    text.includes('change details')
+  ) {
+    return role === 'member'
+      ? response([
+          'You can only edit your own account info and password.',
+          'Go to Profile and use Manage to update your details.',
+        ])
+      : response([
+          'Go to Members and click a member card to open details.',
+          'Click Update, edit the fields, then Save Changes.',
+        ])
+  }
+  if (text.includes('delete member')) {
+    return role === 'member'
+      ? response([
+          'Only admins can delete members.',
+          'You can update your own account info and password in Profile.',
+        ])
+      : response([
+          'Go to Members and open the member details.',
+          'Click Update, then Delete Member, then confirm.',
+          'You can also select members on the list and click Delete selected.',
+        ])
+  }
+  if (text.includes('search member') || (text.includes('search') && text.includes('member'))) {
+    return role === 'member'
+      ? response([
+          'Member search is available to admins.',
+          'You can view your own profile details in Profile.',
+        ])
+      : response([
+          'Go to Members and use the Search box.',
+          'You can filter by role and committee, then click a member to view details.',
+        ])
+  }
+  if (text.includes('committee management') || text.includes('manage committee')) {
+    return role === 'member'
+      ? response([
+          'Committee management is available to admins only.',
+          'You can view your assigned committee in your Profile.',
+        ])
+      : response([
+          'Go to Members and open Committee Management.',
+          'Use Add, Edit, or Delete to manage committees.',
+        ])
+  }
+  if (text.includes('create member') || text.includes('create user') || text.includes('add member')) {
+    return role === 'member'
+      ? response([
+          'Only admins can create member accounts.',
+          'You can apply through Recruitment if you do not have an account.',
+        ])
+      : response([
+          'Go to Members and use the Create Member form.',
+          'Fill in Full Name, ID Number, Temporary Password, address, contact number, blood type, status, role, committee, and member since.',
+          'Click Create Member to save.',
+        ])
   }
   if (text.includes('member') || text.includes('committee')) {
-    return 'Admins can manage members, committees, and roles in Members Management.'
+    return role === 'member'
+      ? response([
+          'Member management is only available to admins.',
+          'You can update your own profile and password.',
+        ])
+      : response([
+          'Go to Members to manage users and committees.',
+          'Use Search by name, email, or ID, then click a member to view details.',
+        ])
   }
   if (text.includes('profile') || text.includes('avatar')) {
-    return 'Open your Profile to update your avatar and personal info. Use Edit Account for details.'
+    return response([
+      'Go to Profile and click Manage.',
+      'Choose Account Info to update your details and profile image.',
+      'Choose Change Password to update your password.',
+    ])
+  }
+  if (text.includes('account info') || text.includes('edit account') || text.includes('edit profile')) {
+    return response([
+      'Go to Profile and click Manage.',
+      'Choose Account Info.',
+      'Update your details, then click Save Changes.',
+    ])
+  }
+  if (text.includes('account info') || text.includes('manage account') || text.includes('manage button')) {
+    return response([
+      'Admin: Open your avatar to go to Profile.',
+      'Click Manage, then Account Info to update profile details and image.',
+    ])
   }
   if (text.includes('password')) {
-    return 'Go to Change Password from your profile to update your password.'
+    return response([
+      'Open Profile and click Manage.',
+      'Choose Change Password.',
+      'Enter current password, new password, and confirm.',
+    ])
   }
-  if (text.includes('settings') || text.includes('language') || text.includes('notification')) {
-    return 'Settings lets you change language, theme, and notification preferences.'
+  if (text.includes('settings') || text.includes('notification')) {
+    return response([
+      'Go to Settings to update your preferences.',
+      'You can also toggle the theme from the sidebar footer.',
+    ])
   }
-  if (text.includes('recruitment') || text.includes('join') || text.includes('register')) {
-    return 'Use the Recruitment form to apply. Fill out all required fields and submit.'
+  if (text.includes('recruitment') || text.includes('apply') || text.includes('join') || text.includes('register')) {
+    return response([
+      'Go to Recruitment and fill out the form.',
+      'Required fields: Full Name, Email, Contact Number, Address, Blood Type.',
+      'Insurance can be N/A or Insured. If Insured, enter the year.',
+      'Submit Application and wait for admin review.',
+    ])
   }
-  if (text.includes('support') || text.includes('help') || text.includes('contact')) {
-    return 'If you need help beyond this assistant, please contact an admin for account or data issues.'
+  if (text.includes('services') || text.includes('partners')) {
+    return response([
+      'Go to Landing and open the Services section.',
+      'You will see KVI services and the partner organizations at the top.',
+    ])
+  }
+  if (text.includes('structure') || text.includes('board') || text.includes('organization')) {
+    return response([
+      'Go to Landing and open the Structure section.',
+      'Click Board Organizational Structure to see the leaders.',
+      'Click KUSGAN Organization Structure to view committees and members, then click a name to view details.',
+    ])
+  }
+  if (text.includes('about') || text.includes('mission') || text.includes('vision') || text.includes('values') || text.includes('contact')) {
+    return response([
+      'Go to Landing and open the About section.',
+      'You can see the Mission, Vision, Core Values, and Contact Details there.',
+    ])
+  }
+  if (text.includes('category') || text.includes('categories') || text.includes('custom field')) {
+    return role === 'member'
+      ? response([
+          'Category management is only available to admins.',
+          'You can view events in the Calendar.',
+        ])
+      : response([
+          'Go to Category Management to create or manage event categories.',
+          'You can add custom fields per category (example: seedling count for mangrove events).',
+        ])
+  }
+  if (text.includes('dashboard') || text.includes('activity') || text.includes('recent')) {
+    return response([
+      'Go to Dashboard and click Create Event to add an event.',
+      'Use Recent Activity to open a specific event, or View All to see all created events.',
+      'Event categories appear automatically after creation.',
+    ])
+  }
+  if (text.includes('notification') || text.includes('notifications')) {
+    return response([
+      'Members: You can view events and notifications assigned by admins.',
+      'Check Calendar for event schedules (read-only for members).',
+    ])
+  }
+  if (text.includes('inbox') || text.includes('applicant') || text.includes('recruitment inbox')) {
+    return role === 'member'
+      ? response([
+          'Recruitment Inbox is only available to admins.',
+          'You can apply through the Recruitment form.',
+        ])
+      : response([
+          'Go to Members and open Recruitment Inbox.',
+          'Click Approve & Create Account or Reject Application.',
+          'Approved applicants pre-fill the Create Member form.',
+        ])
+  }
+  if (text.includes('management') || text.includes('create user') || text.includes('committee')) {
+    return role === 'member'
+      ? response([
+          'Management features are only available to admins.',
+          'You can update your own profile and password.',
+        ])
+      : response([
+          'Go to Members to create users with full details and role.',
+          'You can assign committee, status (active/inactive), and member since.',
+          'Use Committee Management there to add, edit, or delete committees.',
+        ])
+  }
+  if (text.includes('theme') || text.includes('dark') || text.includes('light') || text.includes('logout')) {
+    return response([
+      'Use the theme toggle in the sidebar footer to switch Dark/Light.',
+      'Click Logout beside it to sign out.',
+    ])
+  }
+  if (text.includes('member') && text.includes('can')) {
+    return response([
+      'Members can view events and notifications, and view the calendar (read-only).',
+      'Members can update their account info and password.',
+      'Members can Time In and Time Out; only admins can edit attendance.',
+    ])
+  }
+  if (text.includes('support') || text.includes('help')) {
+    return response([
+      'Tell me what you are trying to do, and I will guide you step-by-step.',
+      'If it is account-related, an admin can also assist.',
+    ])
   }
 
-  return 'I can help with navigation, events, attendance, profile, settings, and reports. Try one of the suggested questions or use the quick links.'
+  return response([
+    'I can help with login, recruitment, events, attendance, reports, and profile updates.',
+    'What do you want to do right now?',
+  ])
 }
 
 function ChatbotWidget() {
-  const { pathname } = useLocation()
+  const { pathname, hash } = useLocation()
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const role = user?.role || 'guest'
   const [isOpen, setIsOpen] = useState(false)
   const [input, setInput] = useState('')
   const [position, setPosition] = useState(() => {
@@ -222,13 +626,31 @@ function ChatbotWidget() {
     {
       id: 'welcome',
       role: 'assistant',
-      text: 'Hi! I can answer questions about this system and guide you to the right page.',
+      text: 'Hi! I can answer questions about the KUSGAN Volunteer System and guide you to the right page.',
     },
   ])
 
   const pageConfig = useMemo(() => {
-    return PAGE_SUGGESTIONS.find(item => item.match(pathname)) || DEFAULT_SUGGESTIONS
-  }, [pathname])
+    const matched = PAGE_SUGGESTIONS.find(item => item.match({ pathname, hash }))
+    if (!matched) return DEFAULT_SUGGESTIONS
+    if (matched.roles && !matched.roles.includes(role)) return DEFAULT_SUGGESTIONS
+    return matched
+  }, [pathname, hash, role])
+
+  const roleSuggestions = pageConfig.suggestionsByRole?.[role] || pageConfig.suggestions
+
+  const roleLinks = useMemo(() => {
+    const baseLinks = pageConfig.linksByRole?.[role] || pageConfig.links || []
+    if (role === 'admin') return baseLinks
+    // Hide admin-only destinations for members and guests.
+    const adminOnly = new Set([
+      '/attendance-management',
+      '/report',
+      '/category-management',
+      '/members',
+    ])
+    return baseLinks.filter(link => !adminOnly.has(link.to))
+  }, [pageConfig.links, pageConfig.linksByRole, role])
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined
@@ -301,7 +723,7 @@ function ChatbotWidget() {
     const cleaned = String(text || '').trim()
     if (!cleaned) return
 
-    const responseText = buildResponse(cleaned)
+    const responseText = buildResponse(cleaned, role)
     setMessages(prev => [...prev, { id: `user-${Date.now()}`, role: 'user', text: cleaned }])
     setInput('')
     setIsTyping(true)
@@ -315,14 +737,14 @@ function ChatbotWidget() {
 
   const chatPanelStyle = useMemo(() => {
     if (!position || typeof window === 'undefined') return undefined
-    const panelWidth = window.innerWidth >= 768 ? 360 : 320
-    const panelHeight = 520
+    const gutter = 16
+    const panelWidth = window.innerWidth >= 768 ? 360 : Math.min(320, window.innerWidth - gutter * 2)
+    const panelHeight = Math.min(520, window.innerHeight - gutter * 2)
     const buttonSize = 48
-    const gutter = 36
-
     const spaceRight = window.innerWidth - (position.x + buttonSize)
     const placeLeft = spaceRight < panelWidth + gutter
-    const left = placeLeft ? position.x - panelWidth - gutter : position.x + buttonSize + gutter
+    let left = placeLeft ? position.x - panelWidth - gutter : position.x + buttonSize + gutter
+    left = Math.max(gutter, Math.min(left, window.innerWidth - panelWidth - gutter))
 
     const centerY = position.y + buttonSize / 2
     let top = centerY - panelHeight / 2
@@ -331,6 +753,8 @@ function ChatbotWidget() {
     return {
       left: `${left}px`,
       top: `${top}px`,
+      height: `${panelHeight}px`,
+      width: `${panelWidth}px`,
     }
   }, [position])
 
@@ -341,7 +765,7 @@ function ChatbotWidget() {
     >
       {isOpen && (
         <div
-          className="fixed w-[320px] md:w-[360px] rounded-2xl border border-red-600 bg-white shadow-2xl dark:bg-zinc-900"
+          className="fixed rounded-2xl border border-red-600 bg-white shadow-2xl dark:bg-zinc-900 flex flex-col"
           style={chatPanelStyle}
         >
           <div className="flex items-center justify-between border-b border-red-600/30 px-4 py-3">
@@ -359,7 +783,7 @@ function ChatbotWidget() {
             </button>
           </div>
 
-          <div className="max-h-[260px] overflow-y-auto px-4 py-3 space-y-3">
+          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
             {messages.map(message => (
               <div
                 key={message.id}
@@ -401,11 +825,17 @@ function ChatbotWidget() {
               </button>
             </div>
             <div className="flex flex-wrap gap-2">
-              {pageConfig.links.map(link => (
+              {roleLinks.map(link => (
                 <button
                   key={link.label}
                   type="button"
-                  onClick={() => navigate(link.to)}
+                  onClick={() => {
+                    if (link.state) {
+                      navigate(link.to, { state: link.state })
+                    } else {
+                      navigate(link.to)
+                    }
+                  }}
                   className="rounded-full border border-red-600/50 px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-50 dark:hover:bg-zinc-800"
                 >
                   {link.label}
@@ -414,7 +844,7 @@ function ChatbotWidget() {
             </div>
             {showSuggestions && (
               <div className="flex flex-wrap gap-2">
-                {pageConfig.suggestions.map(suggestion => (
+                {roleSuggestions.map(suggestion => (
                   <button
                     key={suggestion}
                     type="button"
