@@ -116,33 +116,39 @@ const SERVICES = [
 const CORE_VALUES = [
   {
     title: 'Kindness',
-    description: 'Serve every person with empathy and respect.',
+    description: 'Everyone with compassion and Care',
     image: '/Kindness.jpg',
+    letter: 'K',
   },
   {
     title: 'Unity',
-    description: 'Collaborate as one team to achieve shared goals.',
+    description: 'Working together as a team work for a common goal.',
     image: '/Unity.jpg',
+    letter: 'U',
   },
   {
     title: 'Service',
-    description: 'Deliver practical help where communities need it most.',
+    description: 'Helping other and giving back to the community.',
     image: '/Service.jpg',
+    letter: 'S',
   },
   {
     title: 'Generosity',
-    description: 'Give time, care, and effort with sincere commitment.',
+    description: 'Giving time, resources, and effort selflessly..',
     image: '/Generosity.jpg',
+    letter: 'G',
   },
   {
     title: 'Aspiration',
-    description: 'Pursue continuous growth and meaningful impact.',
+    description: 'Striving to achieve our best and reach our goal.',
     image: '/Aspiration.jpg',
+    letter: 'A',
   },
   {
     title: 'Nurture',
-    description: 'Support people and communities with lasting care.',
+    description: 'Nurture providing care and support to other thrive.',
     image: '/Nurture.jpg',
+    letter: 'N',
   },
 ]
 
@@ -1280,7 +1286,6 @@ function Landing() {
           <div className="max-w-5xl mx-auto">
             <SectionHeader
               title="Who We Are"
-              subtitle="KUSGAN Volunteer Inc. is committed to inclusive community service through compassion, coordinated action, and unity."
               centered
             />
 
@@ -1301,7 +1306,8 @@ function Landing() {
                 <p className="text-xs font-bold tracking-widest uppercase mb-2" style={{ color: '#f87171' }}>Mission</p>
                 <h3 className="text-lg font-bold text-white font-heading mb-2">Our Purpose</h3>
                 <p className="text-sm text-gray-400 leading-relaxed relative">
-                  To mobilize volunteers in delivering practical, compassionate service to communities in need.
+                  to be catalyst of community involvement though volunteerism and creating social inclusion for a better world to live in
+
                 </p>
               </article>
 
@@ -1323,7 +1329,7 @@ function Landing() {
                 <p className="text-xs font-bold tracking-widest uppercase mb-2" style={{ color: '#f87171' }}>Vision</p>
                 <h3 className="text-lg font-bold text-white font-heading mb-2">Our Future</h3>
                 <p className="text-sm text-gray-400 leading-relaxed relative">
-                  To inspire inclusive and resilient communities through volunteerism and collective action.
+                  To inspire everyone through volunteerism.
                 </p>
               </article>
             </div>            {/* Core Values - image grid */}
@@ -1347,6 +1353,16 @@ function Landing() {
                         'linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.45) 55%, rgba(0,0,0,0.15) 100%)',
                     }}
                   />
+                  {/* Center letter */}
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <span
+                      aria-hidden="true"
+                      className="font-heading text-6xl sm:text-7xl font-black tracking-[0.2em] text-white drop-shadow-[0_10px_26px_rgba(0,0,0,0.65)]"
+                      style={{ textShadow: '0 0 18px rgba(255,255,255,0.55)' }}
+                    >
+                      {value.letter || String(value.title || '').trim().charAt(0).toUpperCase()}
+                    </span>
+                  </div>
                   {/* Content */}
                   <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-5">
                     <h4 className="text-lg font-bold text-white font-heading leading-tight">{value.title}</h4>
@@ -1550,7 +1566,7 @@ function Landing() {
 
           {/* Copyright */}
             <p className="text-xs" style={{ color: '#374151' }}>
-              © {new Date().getFullYear()} KUSGAN Volunteer Inc. All rights reserved.
+              © {new Date().getFullYear()} Developed By : Niel Caspillo, Prince Laurence Montaño, and Dun Kenneth Salon
             </p>
     
         </div>
