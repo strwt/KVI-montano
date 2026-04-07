@@ -10,6 +10,13 @@ const getBearerToken = (authorization = '') => {
 
 const normalizeIdKey = (value = '') => String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '')
 
+const isUniqueViolation = (error) => {
+  const code = error?.code ? String(error.code) : ''
+  if (code === '23505') return true
+  const message = error?.message ? String(error.message) : ''
+  return /duplicate key value|unique constraint/i.test(message)
+}
+
 export default async function handler(req, res) {
   try {
     const rl = rateLimit({ req, res, key: 'admin:create-user', limit: 20, windowMs: 60_000 })
@@ -136,17 +143,30 @@ export default async function handler(req, res) {
         { onConflict: 'id' }
       )
     if (profileError) {
-      return res.status(500).json({ message: profileError.message || 'User created but profile update failed.' })
+      try {
+        await supabaseAdmin.auth.admin.deleteUser(newUserId)
+      } catch (rollbackError) {
+        console.warn('Failed to roll back auth user after profile upsert error.', rollbackError)
+      }
+
+      const statusCode = isUniqueViolation(profileError) ? 409 : 500
+      const fallbackMessage = isUniqueViolation(profileError)
+        ? 'Member already exists (duplicate profile fields).'
+        : 'User created but profile update failed.'
+
+      return res.status(statusCode).json({ message: profileError.message || fallbackMessage })
     }
 
-    await supabaseAdmin
-      .rpc('log_admin_action', {
+    try {
+      await supabaseAdmin.rpc('log_admin_action', {
         p_action: 'user.create',
         p_entity: 'profiles',
         p_entity_id: newUserId,
         p_meta: { role, id_number: idNumber, email, committee: profilePatch.committee, status, account_status: accountStatus },
       })
-      .catch(() => {})
+    } catch (error) {
+      console.warn('log_admin_action failed (user.create).', error)
+    }
 
     return res.status(200).json({ success: true, userId: newUserId, email })
   } catch (error) {

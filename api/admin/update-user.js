@@ -191,14 +191,16 @@ export default async function handler(req, res) {
       }
     }
 
-    await supabaseAdmin
-      .rpc('log_admin_action', {
+    try {
+      await supabaseAdmin.rpc('log_admin_action', {
         p_action: 'user.update',
         p_entity: 'profiles',
         p_entity_id: userId,
         p_meta: { fields: Object.keys(patch) },
       })
-      .catch(() => {})
+    } catch (error) {
+      console.warn('log_admin_action failed (user.update).', error)
+    }
 
     return res.status(200).json({ success: true })
   } catch (error) {

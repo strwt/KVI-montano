@@ -147,14 +147,16 @@ export default async function handler(req, res) {
       failed.push({ userId: callerId, message: 'Cannot delete your own admin account from the admin panel.' })
     }
 
-    await supabaseAdmin
-      .rpc('log_admin_action', {
+    try {
+      await supabaseAdmin.rpc('log_admin_action', {
         p_action: 'user.delete.batch',
         p_entity: 'profiles',
         p_entity_id: '',
         p_meta: { deleted, failedCount: failed.length },
       })
-      .catch(() => {})
+    } catch (error) {
+      console.warn('log_admin_action failed (user.delete.batch).', error)
+    }
 
     return res.status(200).json({ success: failed.length === 0, deleted, failed })
   } catch (error) {

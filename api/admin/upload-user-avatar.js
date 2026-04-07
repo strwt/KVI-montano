@@ -139,14 +139,16 @@ export default async function handler(req, res) {
       return res.status(500).json({ message: profileError.message || 'Upload succeeded but profile update failed.' })
     }
 
-    await supabaseAdmin
-      .rpc('log_admin_action', {
+    try {
+      await supabaseAdmin.rpc('log_admin_action', {
         p_action: 'user.avatar.update',
         p_entity: 'profiles',
         p_entity_id: targetUserId,
         p_meta: { path },
       })
-      .catch(() => {})
+    } catch (error) {
+      console.warn('log_admin_action failed (user.avatar.update).', error)
+    }
 
     return res.status(200).json({ success: true, path })
   } catch (error) {
