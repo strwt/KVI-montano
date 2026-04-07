@@ -1350,6 +1350,51 @@ function Landing() {
                 </article>
               ))}
             </div>
+
+            {/* History */}
+            <div className="mt-12 sm:mt-16">
+              <SectionHeader title="History" centered />
+              <div
+                className="rounded-3xl p-6 sm:p-8 lg:p-10"
+                style={{
+                  background: 'rgba(8,8,8,0.92)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  boxShadow: '0 24px 60px rgba(0,0,0,0.35)',
+                }}
+              >
+                <div className="space-y-4 text-sm sm:text-base leading-relaxed text-gray-300">
+                  <p>
+                    On the 7th day of November 2020, Kusgan Volunteers Inc. (KVI) was founded by Noel "Doy Danlag"
+                    Raboy and Jerson Ebal. Their passion for volunteerism and community service motivated them to build
+                    the organization.
+                  </p>
+                  <p>
+                    On that same day, fourteen (14) individuals from four (4) different organizations namely ALERT 10,
+                    Kabalikat Civic, Rescue Line, and COCPO gathered at Kauswagan Covered Court to discuss the advocacy
+                    of the proposed organization. On the 21st of December 2020, the Security Exchange Commission (SEC)
+                    released the certificate with the registration number CN20206496. On the 17th day of January 2021,
+                    Kusgan Volunteers Inc. was officially launched at Brgy. Bon-bon, Cagayan de Oro City.
+                  </p>
+                  <p>
+                    The primary advocacy of Kusgan Volunteers Inc. is to provide the first meal during calamity and its
+                    mission is to promote volunteerism and serve the community voluntarily. The organization conducts
+                    environmental activities, outreach programs, medical missions, feeding programs, serbisyong kusgan,
+                    and operation tuli.
+                  </p>
+                </div>
+
+                <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm sm:text-base">
+                  <div>
+                    <strong className="block text-white font-heading">Jerson Ebal</strong>
+                    <span className="text-gray-400">President/Executive Director</span>
+                  </div>
+                  <div>
+                    <strong className="block text-white font-heading">Noel "Doy Danlag" Raboy</strong>
+                    <span className="text-gray-400">Chairman</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
