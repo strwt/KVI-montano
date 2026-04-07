@@ -63,13 +63,6 @@ const SPONSOR_MARQUEE_REPEAT = 4
 const SPONSOR_MARQUEE_SHIFT = `-${100 / SPONSOR_MARQUEE_REPEAT}%`
 const SPONSOR_LOGOS_LOOP = Array.from({ length: SPONSOR_MARQUEE_REPEAT }, () => SPONSOR_LOGOS).flat()
 
-const STATS = [
-  { label: 'Volunteers', value: '100+', icon: Users },
-  { label: 'Activities', value: '150+', icon: FolderCheck },
-  { label: 'Committees', value: '8', icon: LayoutGrid },
-  { label: 'Years Active', value: '5', icon: CalendarDays },
-]
-
 const SERVICES = [
   {
     key: 'environmental',
@@ -417,6 +410,7 @@ function Landing() {
   const activeStructure = ORGANIZATION_VIEWS.find(view => view.key === structureKey) || ORGANIZATION_VIEWS[0]
   const [selectedPerson, setSelectedPerson] = useState(null)
   const [publicCommittees, setPublicCommittees] = useState([])
+  const [publicCommitteesLoaded, setPublicCommitteesLoaded] = useState(false)
   const [committeeDragging, setCommitteeDragging] = useState(false)
 
   function resolveProfileImage(value) {
@@ -496,6 +490,7 @@ function Landing() {
     let active = true
 
     const load = async () => {
+      setPublicCommitteesLoaded(false)
       try {
         const queryClient = typeof supabase?.schema === 'function' ? supabase.schema('public') : supabase
         const pageSize = 1000
@@ -521,6 +516,8 @@ function Landing() {
         setPublicCommittees(names)
       } catch {
         // ignore
+      } finally {
+        if (active) setPublicCommitteesLoaded(true)
       }
     }
 
@@ -529,7 +526,32 @@ function Landing() {
     return () => {
       active = false
     }
-  }, [committees])
+  }, [supabaseEnabled])
+
+  const savedCommitteeCount = useMemo(() => {
+    const source =
+      Array.isArray(publicCommittees) && publicCommittees.length > 0
+        ? publicCommittees
+        : (Array.isArray(committees) ? committees : [])
+
+    const unique = new Set(
+      source
+        .map(name => String(name || '').trim())
+        .filter(Boolean)
+    )
+
+    return unique.size
+  }, [committees, publicCommittees])
+
+  const stats = useMemo(() => {
+    const committeeValue = supabaseEnabled && !publicCommitteesLoaded ? '...' : String(savedCommitteeCount)
+    return [
+      { label: 'Volunteers', value: '100+', icon: Users },
+      { label: 'Activities', value: '150+', icon: FolderCheck },
+      { label: 'Committees', value: committeeValue, icon: LayoutGrid },
+      { label: 'Years Active', value: '5', icon: CalendarDays },
+    ]
+  }, [publicCommitteesLoaded, savedCommitteeCount, supabaseEnabled])
 
   const contextMemberPeople = useMemo(() => {
     const members = getAllMembers ? getAllMembers() : []
@@ -866,7 +888,7 @@ function Landing() {
               Serbisyong KUSGAN
             </p>            {/* Stat chips */}
             <div className="flex flex-wrap gap-2.5">
-              {STATS.map(stat => {
+              {stats.map(stat => {
                 const Icon = stat.icon
                 return (
                   <div

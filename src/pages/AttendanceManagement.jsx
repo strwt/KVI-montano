@@ -59,12 +59,24 @@ function AdminAttendance() {
   }, [ensureAdminDataLoaded, user?.role, user?.id])
 
   useEffect(() => {
-    const refreshLogin = () => setLocalLoginActivity(getStoredLoginActivity())
+    const refreshLogin = () => {
+      const next = getStoredLoginActivity()
+      setLocalLoginActivity(prev => {
+        if (prev === next) return prev
+        try {
+          const prevJson = JSON.stringify(prev || [])
+          const nextJson = JSON.stringify(next || [])
+          return prevJson === nextJson ? prev : next
+        } catch {
+          return next
+        }
+      })
+    }
     const onStorage = event => {
       if (event?.key === LOGIN_ACTIVITY_KEY) refreshLogin()
     }
     refreshLogin()
-    const intervalId = window.setInterval(refreshLogin, 5000)
+    const intervalId = window.setInterval(refreshLogin, 60_000)
     let channel
     if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
       channel = new BroadcastChannel(LOGIN_ACTIVITY_CHANNEL)

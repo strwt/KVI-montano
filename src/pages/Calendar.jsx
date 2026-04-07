@@ -919,7 +919,6 @@ function Calendar({ listOnly = false }) {
     let active = true
 
     const load = async () => {
-      setEvents([])
       invalidateSupabaseEventsCache()
       const { data } = await fetchSupabaseEvents({ force: true })
       if (!active) return
@@ -931,7 +930,7 @@ function Calendar({ listOnly = false }) {
     return () => {
       active = false
     }
-  }, [categories, supabaseEnabled, user?.id])
+  }, [supabaseEnabled, user?.id])
 
   useEffect(() => {
     if (user?.role !== 'admin') return
@@ -3172,9 +3171,10 @@ function Calendar({ listOnly = false }) {
                                 const fieldName = String(field?.field_name || '').trim()
                                 const fieldType = String(field?.field_type || '').trim()
                                 if (!fieldId || !fieldName || !fieldType) return null
+                                const showTypeSuffix = fieldType !== 'text' && fieldType !== 'number'
                                 return (
                                   <option key={fieldId} value={fieldId}>
-                                    {fieldName} ({fieldType})
+                                    {fieldName}{showTypeSuffix ? ` (${fieldType})` : ''}
                                   </option>
                                 )
                               })}
