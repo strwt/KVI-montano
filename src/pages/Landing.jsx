@@ -885,7 +885,7 @@ function Landing() {
             </div>
 
             <p className="text-base sm:text-lg text-gray-400 max-w-lg leading-relaxed">
-              Serbisyong KUSGAN
+              Serbisyong Kusgan represents strength, unity, and genuine care for the community. It delivers dedicated service with unwavering commitment, reaching those who need support the most. A stronger, safer, and more compassionate community begins with consistent and selfless action.
             </p>            {/* Stat chips */}
             <div className="flex flex-wrap gap-2.5">
               {stats.map(stat => {
@@ -1286,6 +1286,64 @@ function Landing() {
               centered
             />
 
+            {/* What is Kusgan & History */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-12">
+              <article
+                className="rounded-3xl p-6 sm:p-8 lg:p-10 relative overflow-hidden"
+                style={{
+                  background: 'rgba(8,8,8,0.92)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  boxShadow: '0 24px 60px rgba(0,0,0,0.35)',
+                }}
+              >
+                <div className="absolute top-0 left-0 right-0 h-0.5 rounded-t-3xl" style={{ background: 'linear-gradient(90deg, #dc2626, #f87171)' }} />
+                <h3 className="text-xl sm:text-2xl font-bold text-white font-heading mb-3">What is Kusgan?</h3>
+                <div className="space-y-4 text-sm sm:text-base leading-relaxed text-gray-300">
+                  <p>
+                    Kusgan Volunteers Inc. (KVI) is a community-driven volunteer organization rooted in Cagayan de Oro City,
+                    built to mobilize people for meaningful action when communities need it most. It unites individuals and
+                    partner groups who share a heart for service, teamwork, and practical solutions.
+                  </p>
+                  <p>
+                    The organization is best known for providing the first meal during calamities, but its work goes far beyond
+                    emergency response. KVI also leads medical missions, feeding programs, environmental initiatives, outreach
+                    activities, and operation tuli to support families and vulnerable sectors.
+                  </p>
+                  <p>
+                    More than a group of volunteers, KVI is a growing movement that promotes volunteerism and social inclusion.
+                    It inspires ordinary people to take part in community-building, creating lasting impact through consistent,
+                    hands-on service.
+                  </p>
+                </div>
+              </article>
+
+              <article
+                className="rounded-3xl p-6 sm:p-8 lg:p-10 relative overflow-hidden"
+                style={{
+                  background: 'rgba(8,8,8,0.92)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  boxShadow: '0 24px 60px rgba(0,0,0,0.35)',
+                }}
+              >
+                <div className="absolute top-0 left-0 right-0 h-0.5 rounded-t-3xl" style={{ background: 'linear-gradient(90deg, #dc2626, #f87171)' }} />
+                <h3 className="text-xl sm:text-2xl font-bold text-white font-heading mb-3">History</h3>
+                <div className="space-y-4 text-sm sm:text-base leading-relaxed text-gray-300">
+                  <p>
+                    On the 7th day of November 2020, Kusgan Volunteers Inc. (KVI) was founded by Noel "Doy Danlag"
+                    Raboy and Jerson Ebal. Their passion for volunteerism and community service motivated them to build
+                    the organization.
+                  </p>
+                  <p>
+                    On that same day, fourteen (14) individuals from four (4) different organizations namely ALERT 10,
+                    Kabalikat Civic, Rescue Line, and COCPO gathered at Kauswagan Covered Court to discuss the advocacy
+                    of the proposed organization. On the 21st of December 2020, the Security Exchange Commission (SEC)
+                    released the certificate with the registration number CN20206496. On the 17th day of January 2021,
+                    Kusgan Volunteers Inc. was officially launched at Brgy. Bon-bon, Cagayan de Oro City.
+                  </p>
+                </div>
+              </article>
+            </div>
+
             {/* Mission & Vision */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-12">
               <article
@@ -1373,50 +1431,6 @@ function Landing() {
               ))}
             </div>
 
-            {/* History */}
-            <div className="mt-12 sm:mt-16">
-              <SectionHeader title="History" centered />
-              <div
-                className="rounded-3xl p-6 sm:p-8 lg:p-10"
-                style={{
-                  background: 'rgba(8,8,8,0.92)',
-                  border: '1px solid rgba(255,255,255,0.08)',
-                  boxShadow: '0 24px 60px rgba(0,0,0,0.35)',
-                }}
-              >
-                <div className="space-y-4 text-sm sm:text-base leading-relaxed text-gray-300">
-                  <p>
-                    On the 7th day of November 2020, Kusgan Volunteers Inc. (KVI) was founded by Noel "Doy Danlag"
-                    Raboy and Jerson Ebal. Their passion for volunteerism and community service motivated them to build
-                    the organization.
-                  </p>
-                  <p>
-                    On that same day, fourteen (14) individuals from four (4) different organizations namely ALERT 10,
-                    Kabalikat Civic, Rescue Line, and COCPO gathered at Kauswagan Covered Court to discuss the advocacy
-                    of the proposed organization. On the 21st of December 2020, the Security Exchange Commission (SEC)
-                    released the certificate with the registration number CN20206496. On the 17th day of January 2021,
-                    Kusgan Volunteers Inc. was officially launched at Brgy. Bon-bon, Cagayan de Oro City.
-                  </p>
-                  <p>
-                    The primary advocacy of Kusgan Volunteers Inc. is to provide the first meal during calamity and its
-                    mission is to promote volunteerism and serve the community voluntarily. The organization conducts
-                    environmental activities, outreach programs, medical missions, feeding programs, serbisyong kusgan,
-                    and operation tuli.
-                  </p>
-                </div>
-
-                <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm sm:text-base">
-                  <div>
-                    <strong className="block text-white font-heading">Jerson Ebal</strong>
-                    <span className="text-gray-400">President/Executive Director</span>
-                  </div>
-                  <div>
-                    <strong className="block text-white font-heading">Noel "Doy Danlag" Raboy</strong>
-                    <span className="text-gray-400">Chairman</span>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </section>
