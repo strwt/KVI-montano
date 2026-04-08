@@ -24,6 +24,8 @@ import {
 } from 'lucide-react'
 
 const HERO_IMAGE = '/kvi.png'
+const DONATION_TARGET_BANK_NUMBER = 'ADD BANK NUMBER HERE'
+const DONATION_NOTIFICATION_EMAIL = 'kusganvolunteersinc@gmail.com'
 
 const NAV_LINKS = [
   { label: 'Home', href: '#home' },
@@ -409,9 +411,59 @@ function Landing() {
   const [structureKey, setStructureKey] = useState('board')
   const activeStructure = ORGANIZATION_VIEWS.find(view => view.key === structureKey) || ORGANIZATION_VIEWS[0]
   const [selectedPerson, setSelectedPerson] = useState(null)
+  const [donationOpen, setDonationOpen] = useState(false)
+  const [donationForm, setDonationForm] = useState({ name: '', email: '', referenceNo: '' })
+  const [donationCopied, setDonationCopied] = useState(false)
   const [publicCommittees, setPublicCommittees] = useState([])
   const [publicCommitteesLoaded, setPublicCommitteesLoaded] = useState(false)
   const [committeeDragging, setCommitteeDragging] = useState(false)
+
+  const openDonation = () => {
+    setDonationOpen(true)
+    setDonationCopied(false)
+  }
+
+  const closeDonation = () => {
+    setDonationOpen(false)
+    setDonationCopied(false)
+    setDonationForm({ name: '', email: '', referenceNo: '' })
+  }
+
+  const copyDonationBankNumber = async () => {
+    try {
+      if (!DONATION_TARGET_BANK_NUMBER) return
+      if (typeof navigator !== 'undefined' && navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(DONATION_TARGET_BANK_NUMBER)
+        setDonationCopied(true)
+        window.setTimeout(() => setDonationCopied(false), 1400)
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  const submitDonationForm = (event) => {
+    event.preventDefault()
+
+    const donorName = String(donationForm?.name || '').trim()
+    const donorEmail = String(donationForm?.email || '').trim()
+    const referenceNo = String(donationForm?.referenceNo || '').trim()
+
+    const subject = `Donation Reference${referenceNo ? `: ${referenceNo}` : ''}`
+    const lines = [
+      'Donation Notification',
+      '',
+      `Name: ${donorName || '-'}`,
+      `Email: ${donorEmail || '-'}`,
+      `Reference No.: ${referenceNo || '-'}`,
+      '',
+      `Target Bank Number: ${DONATION_TARGET_BANK_NUMBER || '-'}`,
+      `Submitted: ${new Date().toLocaleString()}`,
+    ]
+
+    window.location.href = `mailto:${DONATION_NOTIFICATION_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(lines.join('\n'))}`
+    closeDonation()
+  }
 
   function resolveProfileImage(value) {
     const raw = String(value || '').trim()
@@ -1491,9 +1543,133 @@ function Landing() {
               <LogIn size={18} />
               Member Login
             </button>
+            <button
+              type="button"
+              onClick={openDonation}
+              className="inline-flex items-center gap-2.5 px-8 py-3.5 rounded-xl text-white font-semibold hover:-translate-y-0.5 transition-all duration-200 border"
+              style={{
+                background: 'rgba(0,0,0,0.18)',
+                borderColor: 'rgba(252,165,165,0.5)',
+              }}
+            >
+              <Sparkles size={18} />
+              Donate
+            </button>
           </div>
         </div>
       </section>
+
+      {donationOpen && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center px-4"
+          style={{ background: 'rgba(0,0,0,0.75)' }}
+          role="dialog"
+          aria-modal="true"
+          onClick={closeDonation}
+        >
+          <div
+            className="w-full max-w-lg rounded-2xl border border-white/10 bg-black/90 p-6 text-left"
+            onClick={event => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold tracking-[0.2em] uppercase text-red-300">Donation</p>
+                <h3 className="mt-2 text-xl font-bold text-white font-heading">Donate to KUSGAN</h3>
+                <p className="mt-1 text-sm text-white/60">
+                  Send your donation to the bank number below. You may optionally leave your details so we can verify your transfer.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeDonation}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 text-white/70 hover:border-white/20 hover:text-white"
+                aria-label="Close donation form"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="mt-5 rounded-xl border border-white/10 bg-white/5 p-4">
+              <p className="text-xs font-semibold tracking-[0.14em] uppercase text-white/60">Target Bank Number</p>
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+                <span className="font-mono text-sm text-white">{DONATION_TARGET_BANK_NUMBER}</span>
+                <button
+                  type="button"
+                  onClick={copyDonationBankNumber}
+                  className="inline-flex items-center rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-white/80 hover:bg-white/10"
+                >
+                  {donationCopied ? 'Copied' : 'Copy'}
+                </button>
+              </div>
+            </div>
+
+            <form className="mt-6 space-y-4" onSubmit={submitDonationForm}>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <label htmlFor="donor-name" className="text-xs font-semibold tracking-[0.14em] uppercase text-white/60">
+                    Name (optional)
+                  </label>
+                  <input
+                    id="donor-name"
+                    type="text"
+                    value={donationForm.name}
+                    onChange={event => setDonationForm(prev => ({ ...prev, name: event.target.value }))}
+                    placeholder="Your name"
+                    className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-red-400 focus:outline-none"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label htmlFor="donor-email" className="text-xs font-semibold tracking-[0.14em] uppercase text-white/60">
+                    Email (optional)
+                  </label>
+                  <input
+                    id="donor-email"
+                    type="email"
+                    value={donationForm.email}
+                    onChange={event => setDonationForm(prev => ({ ...prev, email: event.target.value }))}
+                    placeholder="you@example.com"
+                    className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-red-400 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label htmlFor="donor-reference" className="text-xs font-semibold tracking-[0.14em] uppercase text-white/60">
+                  Reference No. (optional)
+                </label>
+                <input
+                  id="donor-reference"
+                  type="text"
+                  value={donationForm.referenceNo}
+                  onChange={event => setDonationForm(prev => ({ ...prev, referenceNo: event.target.value }))}
+                  placeholder="Bank reference / transaction number"
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-red-400 focus:outline-none"
+                />
+              </div>
+
+              <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={closeDonation}
+                  className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-5 py-2.5 text-sm font-semibold text-white/80 hover:bg-white/10"
+                >
+                  Close
+                </button>
+                <button
+                  type="submit"
+                  className="inline-flex items-center justify-center rounded-xl bg-red-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-red-700"
+                >
+                  Submit
+                </button>
+              </div>
+
+              <p className="text-[11px] leading-relaxed text-white/45">
+                Submitting opens your email app to send the donation details to {DONATION_NOTIFICATION_EMAIL}. All fields are optional.
+              </p>
+            </form>
+          </div>
+        </div>
+      )}
 
       {selectedPerson ? (
         <div className="fixed inset-0 z-[60] flex items-center justify-center px-4" style={{ background: 'rgba(0,0,0,0.7)' }}>
