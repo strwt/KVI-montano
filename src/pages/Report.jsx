@@ -16,23 +16,23 @@ import { useAuth } from '../context/AuthContext'
 import { fetchSupabaseEvents, invalidateSupabaseEventsCache, isSupabaseEnabled } from '../lib/supabaseEvents'
 import { supabase } from '../lib/supabaseClient'
 
-const CATEGORY_COLORS = {
-  tuli: '#ef4444',
-  blood_letting: '#dc2626',
-  donations: '#b91c1c',
-  environmental: '#22c55e',
-  relief_operation: '#3b82f6',
-  fire_response: '#f97316',
-  water_distribution: '#f43f5e',
-  notes: '#6366f1',
-  medical: '#ec4899',
+const CATEGORY_COLOR_SEEDS = {
+  tuli: '#ef4444', // red
+  blood_letting: '#b91c1c', // dark red
+  donations: '#f59e0b', // amber
+  environmental: '#22c55e', // green
+  relief_operation: '#3b82f6', // blue
+  fire_response: '#f97316', // orange
+  water_distribution: '#06b6d4', // cyan
+  notes: '#6366f1', // indigo
+  medical: '#ec4899', // pink
+  uncategorized: '#94a3b8', // slate
 }
 
 const BASE_REPORT_COLUMNS = [
   { key: 'title', label: 'Event Title' },
   { key: 'content', label: 'Content' },
   { key: 'category', label: 'Category' },
-  { key: 'branch', label: 'Field' },
   { key: 'membersInvolve', label: 'Members Involve' },
   { key: 'dateTime', label: 'Date and Time' },
   { key: 'address', label: 'Address' },
@@ -119,16 +119,69 @@ const titleCaseFromKey = key =>
 
 const getFieldLabel = (key) => FIELD_LABELS[key] || titleCaseFromKey(key)
 
-const hashColor = key => {
+const hashInt = (key) => {
   const input = String(key || '')
-  let hash = 0
+  let hash = 2166136261
   for (let i = 0; i < input.length; i += 1) {
-    hash = (hash * 31 + input.charCodeAt(i)) % 360
+    hash ^= input.charCodeAt(i)
+    hash = Math.imul(hash, 16777619)
   }
-  return `hsl(${hash} 70% 45%)`
+  return hash >>> 0
 }
 
-const getCategoryColor = key => CATEGORY_COLORS[key] || hashColor(key) || '#94a3b8'
+const hueDistance = (a, b) => {
+  const diff = Math.abs(a - b) % 360
+  return Math.min(diff, 360 - diff)
+}
+
+const buildCategoryColorMap = (keys = []) => {
+  const inputKeys = Array.isArray(keys) ? keys.map(k => String(k || '').trim()).filter(Boolean) : []
+  const uniqueKeys = [...new Set(inputKeys)]
+
+  const map = {}
+  const usedHues = []
+
+  const rememberHue = (color) => {
+    const match = String(color || '').match(/hsl\(\s*([0-9.]+)/i)
+    if (!match) return
+    const hue = Number(match[1])
+    if (Number.isFinite(hue)) usedHues.push(hue)
+  }
+
+  uniqueKeys.forEach(key => {
+    if (CATEGORY_COLOR_SEEDS[key]) {
+      map[key] = CATEGORY_COLOR_SEEDS[key]
+    }
+  })
+
+  // We only use hue de-confliction among the dynamic HSL colors (hex seeds can collide,
+  // but those are intentionally hand-picked and very limited).
+  Object.values(map).forEach(rememberHue)
+
+  uniqueKeys.forEach((key) => {
+    if (map[key]) return
+    const hash = hashInt(key)
+
+    let hue = hash % 360
+    const saturation = 72 + (hash % 18) // 72..89
+    const lightness = 40 + ((hash >>> 8) % 14) // 40..53
+
+    // Ensure visible separation in the current report view.
+    // Rotate by the golden angle until the hue is far enough from previously assigned hues.
+    for (let attempt = 0; attempt < 24; attempt += 1) {
+      const minDistance = usedHues.length
+        ? Math.min(...usedHues.map(existing => hueDistance(existing, hue)))
+        : 999
+      if (minDistance >= 18) break
+      hue = (hue + 137.508) % 360
+    }
+
+    usedHues.push(hue)
+    map[key] = `hsl(${hue.toFixed(1)} ${saturation}% ${lightness}%)`
+  })
+
+  return map
+}
 
 const splitPipe = value =>
   String(value || '')
@@ -236,7 +289,6 @@ const getFieldValue = (event, key, fallbackKeys = []) => {
 		  const [typedStats, setTypedStats] = useState({ loading: false, error: '', byCategory: {} })
 		  const [datePreset, setDatePreset] = useState('monthly')
 		  const [reportMonth, setReportMonth] = useState(() => dayjs().format('YYYY-MM'))
-		  const [selectedCategory, setSelectedCategory] = useState('all')
 		  const [_showExportMenu, setShowExportMenu] = useState(false)
 		  const [exportingType, setExportingType] = useState('')
 
@@ -310,12 +362,8 @@ const getFieldValue = (event, key, fallbackKeys = []) => {
       })
   }, [categoryKeySetFromDb, events, start, end])
 
-	  const filteredEvents = useMemo(() => {
-	    if (selectedCategory === 'all') return baseEvents
-	    return baseEvents.filter(event => event._category === selectedCategory)
-	  }, [baseEvents, selectedCategory])
-
-	  const entryEvents = selectedCategory === 'all' ? baseEvents : filteredEvents
+	  const filteredEvents = baseEvents
+	  const entryEvents = baseEvents
 
 	  const numericKeysByCategory = useMemo(() => {
 	    const map = new Map()
@@ -608,10 +656,12 @@ const getFieldValue = (event, key, fallbackKeys = []) => {
     return unique
   }, [baseEvents, categoryKeysFromDb, categoryLabelByKey])
 
-  useEffect(() => {
-    if (selectedCategory === 'all') return
-    if (!availableCategoryKeys.includes(selectedCategory)) setSelectedCategory('all')
-  }, [availableCategoryKeys, selectedCategory])
+  const categoryColorByKey = useMemo(
+    () => buildCategoryColorMap(availableCategoryKeys),
+    [availableCategoryKeys]
+  )
+
+  const getCategoryColor = (key) => categoryColorByKey[String(key || '')] || CATEGORY_COLOR_SEEDS[String(key || '')] || '#94a3b8'
 
   const stats = useMemo(() => {
     const template = {
@@ -762,7 +812,6 @@ const getFieldValue = (event, key, fallbackKeys = []) => {
 		        title: event.title || '',
 		        content: event.content || '',
 		        category: categoryLabelByKey[event._category] || titleCaseFromKey(event._category) || 'Uncategorized',
-		        branch: event.branch || '',
 		        membersInvolve: event.membersInvolve || '',
 		        dateTime: event._date.format('YYYY-MM-DD HH:mm'),
 		        address: event.address || '',
@@ -795,10 +844,10 @@ const getFieldValue = (event, key, fallbackKeys = []) => {
       const startPct = current
       const endPct = current + segment.percent
       current = endPct
-      return `${getCategoryColor(segment.key)} ${startPct}% ${endPct}%`
+      return `${categoryColorByKey[String(segment.key || '')] || '#94a3b8'} ${startPct}% ${endPct}%`
     })
     return `conic-gradient(${pieces.join(', ')})`
-  }, [pieSegments, totalEvents])
+  }, [pieSegments, totalEvents, categoryColorByKey])
 
   const summaryLines = [
     `Total Tuli Activities: ${stats.tuli.eventCount}`,
@@ -851,7 +900,6 @@ const getFieldValue = (event, key, fallbackKeys = []) => {
     lines.push('KUSGAN Report Export')
     lines.push(`Generated At,${dayjs().format('YYYY-MM-DD HH:mm:ss')}`)
     lines.push(`Date Filter,${datePreset}`)
-    lines.push(`Category Filter,${selectedCategory}`)
     lines.push('')
     lines.push('Summary Statistics')
     summaryLines.forEach(line => lines.push(escapeCsv(line)))
@@ -882,7 +930,7 @@ const getFieldValue = (event, key, fallbackKeys = []) => {
       <body style="font-family:Arial,sans-serif;">
         <h1>KUSGAN Report</h1>
         <p>Date Generated: ${dayjs().format('YYYY-MM-DD HH:mm:ss')}</p>
-        <p>Filters - Date: ${datePreset}, Category: ${selectedCategory}</p>
+        <p>Filters - Date: ${datePreset}</p>
         <h2>Summary Statistics</h2>
         <ul>${summaryHtml}</ul>
         <h2>Event Details</h2>
@@ -912,7 +960,7 @@ const getFieldValue = (event, key, fallbackKeys = []) => {
     doc.setFontSize(10)
     doc.text(`Generated: ${dayjs().format('YYYY-MM-DD HH:mm:ss')}`, margin, y)
     y += 14
-    doc.text(`Filters - Date: ${datePreset} | Category: ${selectedCategory}`, margin, y)
+    doc.text(`Filters - Date: ${datePreset}`, margin, y)
     y += 18
 
     doc.setFontSize(12)
@@ -937,11 +985,11 @@ const getFieldValue = (event, key, fallbackKeys = []) => {
     y += 12
     doc.setFontSize(8)
 
-    const headers = ['Title', 'Category', 'Field', 'Date/Time', 'Address', 'Category Fields']
+    const headers = ['Title', 'Category', 'Date/Time', 'Address', 'Category Fields']
     doc.setFillColor(245, 245, 245)
     doc.rect(margin, y, pageWidth - margin * 2, 18, 'F')
     headers.forEach((h, idx) => {
-      const x = margin + [6, 110, 190, 260, 340, 460][idx]
+      const x = margin + [6, 130, 225, 315, 430][idx]
       doc.text(h, x, y + 12)
     })
     y += 22
@@ -961,12 +1009,11 @@ const getFieldValue = (event, key, fallbackKeys = []) => {
         .join(' | ')
 
       const lines = [
-        doc.splitTextToSize(row.title || '', 100),
-        doc.splitTextToSize(row.category || '', 75),
-        doc.splitTextToSize(row.branch || '', 65),
-        doc.splitTextToSize(row.dateTime || '', 75),
-        doc.splitTextToSize(row.address || '', 130),
-        doc.splitTextToSize(catFields || '-', 95),
+        doc.splitTextToSize(row.title || '', 120),
+        doc.splitTextToSize(row.category || '', 90),
+        doc.splitTextToSize(row.dateTime || '', 85),
+        doc.splitTextToSize(row.address || '', 110),
+        doc.splitTextToSize(catFields || '-', 90),
       ]
       const rowHeight = Math.max(...lines.map(arr => arr.length * 10)) + 6
 
@@ -976,7 +1023,7 @@ const getFieldValue = (event, key, fallbackKeys = []) => {
       }
 
       doc.rect(margin, y, pageWidth - margin * 2, rowHeight)
-      const xPositions = [margin + 6, margin + 110, margin + 190, margin + 260, margin + 340, margin + 460]
+      const xPositions = [margin + 6, margin + 130, margin + 225, margin + 315, margin + 430]
       lines.forEach((cellLines, i) => {
         cellLines.forEach((line, lineIndex) => {
           doc.text(line, xPositions[i], y + 11 + lineIndex * 10)
@@ -1020,7 +1067,7 @@ const getFieldValue = (event, key, fallbackKeys = []) => {
 	          </div>
 	        </div>
 
-	        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+	        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
 	          <div>
 	            <label htmlFor="report-date-range" className="block text-xs text-gray-500 dark:text-zinc-400 mb-1">Date Range</label>
             <select
@@ -1045,21 +1092,6 @@ const getFieldValue = (event, key, fallbackKeys = []) => {
 	              disabled={datePreset !== 'monthly'}
 	              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-sm text-gray-700 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-60"
 	            />
-	          </div>
-	          <div>
-	            <label htmlFor="report-category" className="block text-xs text-gray-500 dark:text-zinc-400 mb-1">Category</label>
-	 	            <select
-                id="report-category"
-                name="category"
- 	              value={selectedCategory}
- 	              onChange={e => setSelectedCategory(e.target.value)}
- 	              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-sm text-gray-700 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-red-500"
- 	            >
-	              <option value="all">All Categories</option>
-	              {availableCategoryKeys.map(key => (
-	                <option key={key} value={key}>{getCategoryLabel(key)}</option>
-	              ))}
-	            </select>
 	          </div>
 	        </div>
 	        </div>
@@ -1097,8 +1129,14 @@ const getFieldValue = (event, key, fallbackKeys = []) => {
 
 	      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 	          {availableCategoryKeys.includes('tuli') && (
-		          <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
-		            <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><HeartPulse size={18} className="text-red-600" />Tuli Statistics</h3>
+		          <div
+                className="rounded-2xl border bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow"
+                style={{ borderColor: getCategoryColor('tuli') }}
+              >
+		            <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2">
+                  <HeartPulse size={18} style={{ color: getCategoryColor('tuli') }} />
+                  Tuli Statistics
+                </h3>
 		            <div className="space-y-2 text-sm">
 		              <div className="flex flex-wrap justify-between gap-2"><span>Total Tuli Activities</span><strong>{stats.tuli.eventCount}</strong></div>
 		              <div className="flex flex-wrap justify-between gap-2"><span>Total Children Count</span><strong>{stats.tuli.tuliChildrenCount}</strong></div>
@@ -1108,8 +1146,14 @@ const getFieldValue = (event, key, fallbackKeys = []) => {
 	          )}
 
           {availableCategoryKeys.includes('blood_letting') && (
-	          <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
-	            <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><Activity size={18} className="text-red-600" />Blood Letting Statistics</h3>
+	          <div
+              className="rounded-2xl border bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow"
+              style={{ borderColor: getCategoryColor('blood_letting') }}
+            >
+	            <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2">
+                <Activity size={18} style={{ color: getCategoryColor('blood_letting') }} />
+                Blood Letting Statistics
+              </h3>
 	            <div className="space-y-2 text-sm">
 	              <div className="flex flex-wrap justify-between gap-2"><span>Total Blood Letting Activities</span><strong>{stats.blood_letting.eventCount}</strong></div>
 	              <div className="flex flex-wrap justify-between gap-2"><span>Total Blood Bags</span><strong>{stats.blood_letting.bloodBagsCount}</strong></div>
@@ -1136,8 +1180,14 @@ const getFieldValue = (event, key, fallbackKeys = []) => {
 	          )}
 
 	          {availableCategoryKeys.includes('donations') && (
-		          <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
-		            <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><FileText size={18} className="text-red-600" />Donations Statistics</h3>
+		          <div
+                className="rounded-2xl border bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow"
+                style={{ borderColor: getCategoryColor('donations') }}
+              >
+		            <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2">
+                  <FileText size={18} style={{ color: getCategoryColor('donations') }} />
+                  Donations Statistics
+                </h3>
 		            <div className="space-y-2 text-sm">
 		              <div className="flex flex-wrap justify-between gap-2"><span>Total Donation Activities</span><strong>{stats.donations.eventCount}</strong></div>
 		              {renderTypedTotals('donations')}
@@ -1146,8 +1196,14 @@ const getFieldValue = (event, key, fallbackKeys = []) => {
 	          )}
 
 	          {availableCategoryKeys.includes('environmental') && (
-		          <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
-		            <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><Leaf size={18} className="text-green-600" />Environmental Statistics</h3>
+		          <div
+                className="rounded-2xl border bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow"
+                style={{ borderColor: getCategoryColor('environmental') }}
+              >
+		            <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2">
+                  <Leaf size={18} style={{ color: getCategoryColor('environmental') }} />
+                  Environmental Statistics
+                </h3>
 		            <div className="space-y-2 text-sm">
 		              <div className="flex flex-wrap justify-between gap-2"><span>Total Environmental Activities</span><strong>{stats.environmental.eventCount}</strong></div>
 		              <div className="flex flex-wrap justify-between gap-2"><span>Total Trees Planted</span><strong>{stats.environmental.envTreesPlanted}</strong></div>
@@ -1157,8 +1213,14 @@ const getFieldValue = (event, key, fallbackKeys = []) => {
 	          )}
 
 	          {availableCategoryKeys.includes('relief_operation') && (
-		          <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
-		            <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><Activity size={18} className="text-blue-600" />Relief Operation Statistics</h3>
+		          <div
+                className="rounded-2xl border bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow"
+                style={{ borderColor: getCategoryColor('relief_operation') }}
+              >
+		            <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2">
+                  <Activity size={18} style={{ color: getCategoryColor('relief_operation') }} />
+                  Relief Operation Statistics
+                </h3>
 		            <div className="space-y-2 text-sm">
 		              <div className="flex flex-wrap justify-between gap-2"><span>Total Relief Operations</span><strong>{stats.relief_operation.eventCount}</strong></div>
 		              <div className="flex flex-wrap justify-between gap-2"><span>Total Families Count</span><strong>{stats.relief_operation.reliefFamiliesCount}</strong></div>
@@ -1171,8 +1233,14 @@ const getFieldValue = (event, key, fallbackKeys = []) => {
 	          )}
 
 	          {availableCategoryKeys.includes('fire_response') && (
-		          <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
-		            <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><Flame size={18} className="text-orange-600" />Fire Response Statistics</h3>
+		          <div
+                className="rounded-2xl border bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow"
+                style={{ borderColor: getCategoryColor('fire_response') }}
+              >
+		            <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2">
+                  <Flame size={18} style={{ color: getCategoryColor('fire_response') }} />
+                  Fire Response Statistics
+                </h3>
 		            <div className="space-y-2 text-sm">
 		              <div className="flex flex-wrap justify-between gap-2"><span>Total Fire Responses</span><strong>{stats.fire_response.eventCount}</strong></div>
 		              <div className="flex flex-wrap justify-between gap-2"><span>Total Affected Families</span><strong>{stats.fire_response.fireAffectedFamilies}</strong></div>
@@ -1184,8 +1252,14 @@ const getFieldValue = (event, key, fallbackKeys = []) => {
 	          )}
 
 	          {availableCategoryKeys.includes('water_distribution') && (
-		          <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
-		            <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><Droplets size={18} className="text-red-600" />Water Distribution Statistics</h3>
+		          <div
+                className="rounded-2xl border bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow"
+                style={{ borderColor: getCategoryColor('water_distribution') }}
+              >
+		            <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2">
+                  <Droplets size={18} style={{ color: getCategoryColor('water_distribution') }} />
+                  Water Distribution Statistics
+                </h3>
 		            <div className="space-y-2 text-sm">
 		              <div className="flex flex-wrap justify-between gap-2"><span>Total Water Distributions</span><strong>{stats.water_distribution.eventCount}</strong></div>
 		              <div className="flex flex-wrap justify-between gap-2"><span>Total Liters</span><strong>{stats.water_distribution.waterLiters}</strong></div>
@@ -1196,8 +1270,14 @@ const getFieldValue = (event, key, fallbackKeys = []) => {
 	          )}
 
 	          {availableCategoryKeys.includes('medical') && (
-		          <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
-		            <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><HeartPulse size={18} className="text-pink-600" />Medical Statistics</h3>
+		          <div
+                className="rounded-2xl border bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow"
+                style={{ borderColor: getCategoryColor('medical') }}
+              >
+		            <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2">
+                  <HeartPulse size={18} style={{ color: getCategoryColor('medical') }} />
+                  Medical Statistics
+                </h3>
 		            <div className="space-y-2 text-sm">
 		              <div className="flex flex-wrap justify-between gap-2"><span>Total Medical Events</span><strong>{stats.medical.eventCount}</strong></div>
 		              <div className="flex flex-wrap justify-between gap-2"><span>Total Medical Equipment Used</span><strong>{stats.medical.medicalEquipmentUsed}</strong></div>
@@ -1208,9 +1288,13 @@ const getFieldValue = (event, key, fallbackKeys = []) => {
 	          )}
 
 	          {additionalCategoryKeys.map(key => (
-	            <div key={key} className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
+	            <div
+                key={key}
+                className="rounded-2xl border bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow"
+                style={{ borderColor: getCategoryColor(key) }}
+              >
               <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2">
-                <FileText size={18} className="text-red-600" />
+                <FileText size={18} style={{ color: getCategoryColor(key) }} />
                 {getCategoryLabel(key)} Statistics
               </h3>
               <div className="space-y-2 text-sm">
@@ -1267,15 +1351,18 @@ const getFieldValue = (event, key, fallbackKeys = []) => {
 		              })
 		            })
 
+			            const categoryColor = getCategoryColor(categoryKey)
 			            return (
-			              <div key={`entries-${categoryKey}`} className="rounded-xl border border-gray-200 dark:border-zinc-700 bg-white/60 dark:bg-zinc-900/40 p-4">
+			              <div
+			                key={`entries-${categoryKey}`}
+			                className="rounded-xl border border-gray-200 dark:border-zinc-700 border-l-4 bg-white/60 dark:bg-zinc-900/40 p-4"
+			                style={{ borderLeftColor: categoryColor }}
+			              >
 			                <div className="flex flex-wrap items-center justify-between gap-2">
-			                  <h4 className="text-sm font-semibold text-gray-800 dark:text-zinc-100">
+			                  <h4 className="flex items-center gap-2 text-sm font-semibold text-gray-800 dark:text-zinc-100">
+			                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: categoryColor }} />
 			                    {getCategoryLabel(categoryKey)}
 			                  </h4>
-			                  <span className="text-xs font-medium text-gray-500 dark:text-zinc-400">
-			                    {formatNumber(events.length)} entr{events.length === 1 ? 'y' : 'ies'}
-			                  </span>
 			                </div>
 			
 			                {events.length === 0 ? (
@@ -1287,7 +1374,6 @@ const getFieldValue = (event, key, fallbackKeys = []) => {
 			                        <tr className="text-left text-xs uppercase tracking-[0.14em] text-neutral-500 dark:text-neutral-400">
 			                          <th className="pb-2 pr-4">Title</th>
 			                          <th className="pb-2 pr-4">Date</th>
-			                          <th className="pb-2 pr-4">Field</th>
 			                          {numericKeys.map(key => (
 			                            <th key={`head-${categoryKey}-${key}`} className="pb-2 pr-4 whitespace-nowrap">{getFieldLabel(key)}</th>
 			                          ))}
@@ -1301,7 +1387,6 @@ const getFieldValue = (event, key, fallbackKeys = []) => {
 			                            <tr key={`row-${categoryKey}-${event.id}`} className="text-neutral-700 dark:text-zinc-200 align-top">
 			                              <td className="py-2 pr-4 font-medium text-neutral-900 dark:text-zinc-100">{event.title || '-'}</td>
 			                              <td className="py-2 pr-4 whitespace-nowrap">{dateLabel || '-'}</td>
-			                              <td className="py-2 pr-4 whitespace-nowrap">{event.branch || '-'}</td>
 			                              {numericKeys.map(key => (
 			                                <td key={`cell-${categoryKey}-${event.id}-${key}`} className="py-2 pr-4 whitespace-nowrap">
 			                                  {formatNumber(data[key])}
@@ -1312,7 +1397,7 @@ const getFieldValue = (event, key, fallbackKeys = []) => {
 			                        })}
 			                        {numericKeys.length > 0 && (
 			                          <tr className="font-semibold text-neutral-900 dark:text-zinc-100">
-			                            <td className="pt-3 pr-4" colSpan={3}>Totals</td>
+			                            <td className="pt-3 pr-4" colSpan={2}>Totals</td>
 			                            {numericKeys.map(key => (
 			                              <td key={`total-${categoryKey}-${key}`} className="pt-3 pr-4 whitespace-nowrap">{formatNumber(totals[key])}</td>
 			                            ))}

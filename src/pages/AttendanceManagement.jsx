@@ -47,6 +47,8 @@ function AdminAttendance() {
   const [selectedDate, setSelectedDate] = useState(dayjs().format('YYYY-MM-DD'))
   const [editingUserId, setEditingUserId] = useState(null)
   const [editingAttendance, setEditingAttendance] = useState({ timeIn: '', timeOut: '' })
+  const [attendanceSaveBusyId, setAttendanceSaveBusyId] = useState(null)
+  const [attendanceSaveError, setAttendanceSaveError] = useState('')
   const [historyMember, setHistoryMember] = useState(null)
   const [historyMonth, setHistoryMonth] = useState(() => dayjs().format('YYYY-MM'))
   const [historySupabaseActivity, setHistorySupabaseActivity] = useState([])
@@ -99,7 +101,7 @@ function AdminAttendance() {
     const load = async () => {
       const { data } = await supabase
         .from('login_activity')
-        .select('date,user_id,is_present,status,present_at,time_in,time_out')
+        .select('date,user_id,is_present,is_online,status,present_at,time_in,time_out')
         .eq('date', selectedDate)
 
       if (!active) return
@@ -107,7 +109,8 @@ function AdminAttendance() {
         ? data.map(row => ({
             date: row.date,
             userId: row.user_id,
-            isOnline: Boolean(row.is_present),
+            isPresent: Boolean(row.is_present),
+            isOnline: Boolean(row.is_online),
             status: row.status === 'Halfday' ? 'Present' : (row.status || 'Present'),
             presentAt: row.present_at || null,
             timeIn: row.time_in || row.present_at || null,
@@ -141,7 +144,8 @@ function AdminAttendance() {
           const mapRow = (row) => ({
             date: row.date,
             userId: row.user_id,
-            isOnline: Boolean(row.is_present),
+            isPresent: Boolean(row.is_present),
+            isOnline: Boolean(row.is_online),
             status: row.status === 'Halfday' ? 'Present' : (row.status || 'Present'),
             presentAt: row.present_at || null,
             timeIn: row.time_in || row.present_at || null,
@@ -329,7 +333,8 @@ function AdminAttendance() {
 	    return rows.filter(row => row.status === 'Present')
 	  }, [rows])
 
-	  const startEditing = (memberId) => {
+  const startEditing = (memberId) => {
+    setAttendanceSaveError('')
     const existing = activityByUser[String(memberId)]
     const timeInValue = existing?.timeIn || existing?.presentAt || existing?.firstLoginAt || existing?.lastLoginAt || ''
     const timeOutValue = existing?.timeOut || existing?.lastLogoutAt || existing?.lastStatusAt || ''
@@ -343,6 +348,7 @@ function AdminAttendance() {
   const cancelEditing = () => {
     setEditingUserId(null)
     setEditingAttendance({ timeIn: '', timeOut: '' })
+    setAttendanceSaveBusyId(null)
   }
 
   const openHistory = (member) => {
@@ -425,17 +431,20 @@ function AdminAttendance() {
   }
 
   const saveAttendanceFor = async (memberId) => {
+    setAttendanceSaveError('')
+    setAttendanceSaveBusyId(String(memberId))
     const timeInIsoRaw = resolveDateTime(editingAttendance.timeIn)
     const timeOutIsoRaw = resolveDateTime(editingAttendance.timeOut)
     const timeInIso = timeInIsoRaw || timeOutIsoRaw
     const timeOutIso = timeOutIsoRaw
-    const status = (timeInIso || timeOutIso) ? 'Present' : 'Absent'
-    const isOnline = Boolean(timeInIso) && !timeOutIso && status !== 'Absent'
+    const isPresent = Boolean(timeInIso || timeOutIso)
+    const status = isPresent ? 'Present' : 'Absent'
+    const isOnline = isPresent && Boolean(timeInIso) && !timeOutIso
 
     const payload = {
       date: selectedDate,
       userId: memberId,
-      isPresent: isOnline,
+      isPresent,
       isOnline,
       status,
       presentAt: timeInIso,
@@ -443,6 +452,46 @@ function AdminAttendance() {
       timeOut: timeOutIso,
       updatedBy: user?.name || 'Admin',
       updatedAt: new Date().toISOString(),
+    }
+
+    if (supabaseEnabled) {
+      const dbPayload = {
+        user_id: memberId,
+        date: selectedDate,
+        is_present: isPresent,
+        is_online: isOnline,
+        present_at: timeInIso,
+        status,
+        time_in: timeInIso,
+        time_out: timeOutIso,
+        time_out_reason: null,
+      }
+      const { error } = await supabase
+        .from('login_activity')
+        .upsert(dbPayload, { onConflict: 'user_id,date' })
+
+      if (error) {
+        console.warn('Unable to save attendance.', error)
+        setAttendanceSaveError(error.message || 'Unable to save attendance.')
+        setAttendanceSaveBusyId(null)
+        return
+      }
+
+      setSupabaseLoginActivity(prev => {
+        const list = Array.isArray(prev) ? prev : []
+        const idx = list.findIndex(item => String(item?.userId || '') === String(memberId) && item?.date === selectedDate)
+        const mapped = {
+          date: selectedDate,
+          userId: memberId,
+          isPresent,
+          isOnline,
+          status,
+          presentAt: timeInIso,
+          timeIn: timeInIso,
+          timeOut: timeOutIso,
+        }
+        return idx === -1 ? [...list, mapped] : list.map((item, i) => (i === idx ? { ...item, ...mapped } : item))
+      })
     }
 
     setLocalLoginActivity(prev => {
@@ -457,23 +506,6 @@ function AdminAttendance() {
       return next
     })
 
-    if (supabaseEnabled) {
-      const dbPayload = {
-        user_id: memberId,
-        date: selectedDate,
-        is_present: isOnline,
-        present_at: timeInIso,
-        status,
-        time_in: timeInIso,
-        time_out: timeOutIso,
-        time_out_reason: null,
-      }
-      const { error } = await supabase
-        .from('login_activity')
-        .upsert(dbPayload, { onConflict: 'user_id,date' })
-      if (error) console.warn('Unable to save attendance.', error)
-    }
-
     setAdminAttendanceCache(prev => {
       const next = { ...(prev || {}) }
       const current = Array.isArray(next[selectedDate]) ? [...next[selectedDate]] : []
@@ -481,6 +513,7 @@ function AdminAttendance() {
       const cachedEntry = {
         date: selectedDate,
         userId: memberId,
+        isPresent,
         isOnline,
         status,
         presentAt: timeInIso,
@@ -495,6 +528,7 @@ function AdminAttendance() {
     })
 
     cancelEditing()
+    setAttendanceSaveBusyId(null)
   }
 
   const formatTime = (value) => {
@@ -768,6 +802,11 @@ function AdminAttendance() {
           <ClipboardCheck size={18} className="text-red-600" />
           <h2 className="text-[20px] font-semibold text-neutral-900 dark:text-zinc-100">Daily Attendance Table</h2>
         </div>
+        {attendanceSaveError ? (
+          <p className="mb-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {attendanceSaveError}
+          </p>
+        ) : null}
         <div className="overflow-x-auto">
           <table className="w-full min-w-[640px] text-sm">
             <thead>
@@ -787,6 +826,7 @@ function AdminAttendance() {
                   ? dayjs(row.timeOutRaw).format('h:mm A')
                   : '-'
                 const isEditing = String(editingUserId) === row.memberId
+                const isSaving = String(attendanceSaveBusyId || '') === String(row.memberId)
 
                 return (
                   <tr key={row.memberId} className="text-neutral-700">
@@ -843,15 +883,17 @@ function AdminAttendance() {
                           <button
                             type="button"
                             onClick={() => saveAttendanceFor(row.memberId)}
-                            className="inline-flex items-center gap-1 rounded-lg bg-red-600 px-2 py-1 text-xs font-semibold text-white hover:bg-red-700"
+                            className="inline-flex items-center gap-1 rounded-lg bg-red-600 px-2 py-1 text-xs font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                            disabled={isSaving}
                           >
                             <Save size={12} />
-                            Save
+                            {isSaving ? 'Saving...' : 'Save'}
                           </button>
                           <button
                             type="button"
                             onClick={cancelEditing}
-                            className="inline-flex items-center gap-1 rounded-lg border border-neutral-200 px-2 py-1 text-xs font-semibold text-neutral-600 hover:border-neutral-300"
+                            className="inline-flex items-center gap-1 rounded-lg border border-neutral-200 px-2 py-1 text-xs font-semibold text-neutral-600 hover:border-neutral-300 disabled:cursor-not-allowed disabled:opacity-60"
+                            disabled={isSaving}
                           >
                             <X size={12} />
                             Cancel

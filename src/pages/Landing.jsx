@@ -1596,10 +1596,10 @@ function Landing() {
                 <p className="leading-relaxed flex flex-wrap items-baseline justify-start gap-x-2">
                   <span className="text-gray-500 shrink-0">Email:</span>
                   <a
-                    href="mailto:kusganvolunteersincorporated@gmail.com"
+                    href="mailto:kusganvolunteersinc@gmail.com"
                     className="hover:text-gray-300 transition-colors break-all min-w-0"
                   >
-                    kusganvolunteersincorporated@gmail.com
+                    kusganvolunteersinc@gmail.com
                   </a>
                 </p>
               </div>
