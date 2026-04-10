@@ -95,6 +95,8 @@ export default async function handler(req, res) {
     const status = statusRaw === 'inactive' ? 'inactive' : 'active'
     const accountStatus = accountStatusRaw ? accountStatusRaw : 'Active'
     const role = body.role === 'admin' ? 'admin' : 'member'
+    const committeeRoleRaw = String(body.committeeRole || body.committee_role || '').trim()
+    const committeeRole = committeeRoleRaw === 'OIC' ? 'OIC' : 'Member'
     const insuranceStatusRaw = String(body.insuranceStatus || body.insurance_status || '').trim()
     const insuranceStatus = /insured/i.test(insuranceStatusRaw) ? 'Insured' : 'N/A'
     const insuranceYearRaw = String(body.insuranceYear || body.insurance_year || '').trim()
@@ -140,6 +142,7 @@ export default async function handler(req, res) {
       status,
       account_status: accountStatus,
       committee: body.committee ? String(body.committee).trim() : null,
+      committee_role: committeeRole,
       address: body.address ? String(body.address).trim() : null,
       contact_number: body.contactNumber ? String(body.contactNumber).trim() : null,
       emergency_contact_number: body.emergencyContactNumber ? String(body.emergencyContactNumber).trim() : null,

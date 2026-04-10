@@ -199,7 +199,7 @@ const ORGANIZATION_VIEWS = [
   },
   {
     key: 'kusgan',
-    label: 'KUSGAN Organizational Structure',
+    label: 'KUSGAN Committee',
     subtitle: 'Committee teams of KUSGAN.',
   },
 ]
@@ -673,18 +673,19 @@ function Landing() {
         // Avoid flashing stale committee assignments on login/user switch.
         landingMembersLoadedRef.current = false
 
-	    const normalizePeople = (rows = []) => {
-	      const people = rows
-	        .map(row => ({
-	          name: String(row?.name || '').trim(),
-	          image: resolveProfileImage(row?.profile_image || row?.profileImage),
-	          idNumber: String(row?.id_number || row?.idNumber || '').trim(),
-	          contactNumber: String(row?.contact_number || row?.contactNumber || '').trim(),
-	          bloodType: String(row?.blood_type || row?.bloodType || '').trim(),
-	          committee: String(row?.committee || '').trim(),
-	          memberSince: row?.member_since || row?.memberSince || '',
-	          status: String(row?.status || '').trim(),
-	        }))
+  	    const normalizePeople = (rows = []) => {
+  	      const people = rows
+  	        .map(row => ({
+  	          name: String(row?.name || '').trim(),
+  	          image: resolveProfileImage(row?.profile_image || row?.profileImage),
+  	          idNumber: String(row?.id_number || row?.idNumber || '').trim(),
+  	          contactNumber: String(row?.contact_number || row?.contactNumber || '').trim(),
+  	          bloodType: String(row?.blood_type || row?.bloodType || '').trim(),
+  	          committee: String(row?.committee || '').trim(),
+              committeeRole: String(row?.committee_role || row?.committeeRole || '').trim(),
+  	          memberSince: row?.member_since || row?.memberSince || '',
+  	          status: String(row?.status || '').trim(),
+  	        }))
 		        .filter(person => person.name)
 	      const unique = new Map()
 	      people.forEach(person => {
@@ -837,12 +838,16 @@ function Landing() {
         const committee = String(person?.committee || '').trim()
         if (!committee) return
         const key = normalizeCommitteeKey(committee)
-        if (!grouped.has(key)) grouped.set(key, { committee, members: [] })
-        grouped.get(key).members.push(person)
+        if (!grouped.has(key)) grouped.set(key, { committee, oic: [], members: [] })
+        const roleRaw = String(person?.committeeRole || person?.committee_role || '').trim()
+        const isOic = roleRaw.toLowerCase() === 'oic'
+        if (isOic) grouped.get(key).oic.push(person)
+        else grouped.get(key).members.push(person)
       })
 
       const groups = [...grouped.values()].map(group => ({
         ...group,
+        oic: [...group.oic].sort((a, b) => a.name.localeCompare(b.name)),
         members: [...group.members].sort((a, b) => a.name.localeCompare(b.name)),
       }))
       groups.sort((a, b) => a.committee.localeCompare(b.committee))
@@ -853,7 +858,7 @@ function Landing() {
     const grouped = new Map(
       trimmedOptions.map(name => {
         const committee = String(name || '').trim()
-        return [normalizeCommitteeKey(committee), { committee, members: [] }]
+        return [normalizeCommitteeKey(committee), { committee, oic: [], members: [] }]
       })
     )
 
@@ -861,18 +866,43 @@ function Landing() {
       const committee = String(person?.committee || '').trim()
       if (!committee) return
       const key = normalizeCommitteeKey(committee)
-      if (!grouped.has(key)) grouped.set(key, { committee, members: [] })
-      grouped.get(key).members.push(person)
+      if (!grouped.has(key)) grouped.set(key, { committee, oic: [], members: [] })
+      const roleRaw = String(person?.committeeRole || person?.committee_role || '').trim()
+      const isOic = roleRaw.toLowerCase() === 'oic'
+      if (isOic) grouped.get(key).oic.push(person)
+      else grouped.get(key).members.push(person)
     })
 
     const groups = [...grouped.values()].map(group => ({
       ...group,
+      oic: [...group.oic].sort((a, b) => a.name.localeCompare(b.name)),
       members: [...group.members].sort((a, b) => a.name.localeCompare(b.name)),
     }))
     groups.sort((a, b) => a.committee.localeCompare(b.committee))
 
     return groups
   }, [committeeOptions, displayVolunteerPeople])
+
+  const overallOicPeople = useMemo(() => {
+    const oicPeople = []
+
+    displayVolunteerPeople.forEach(person => {
+      const roleRaw = String(person?.committeeRole || person?.committee_role || '').trim()
+      if (roleRaw.toLowerCase() === 'oic') oicPeople.push(person)
+    })
+
+    oicPeople.sort((a, b) => String(a?.name || '').localeCompare(String(b?.name || '')))
+
+    const seen = new Set()
+    return oicPeople.filter(person => {
+      const name = String(person?.name || '').trim()
+      if (!name) return false
+      const key = name.toLowerCase()
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+  }, [displayVolunteerPeople])
 
   const onCommitteePointerDown = (event) => {
     const scroller = committeeScrollRef.current
@@ -1224,14 +1254,51 @@ function Landing() {
           <div className="flex flex-col items-center">
             {activeStructure.key === 'kusgan' ? (
               <div className="w-full max-w-none space-y-6">
+                <div className="w-full flex flex-col items-center">
+                  <div className="w-full flex items-center gap-3 mb-2">
+                    <div className="flex-1 h-px" style={{ background: 'linear-gradient(to right, transparent, rgba(220,38,38,0.25))' }} />
+                    <span
+                      className="px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase border shrink-0 inline-flex flex-col items-center leading-tight"
+                      style={{ color: '#fca5a5', background: 'rgba(220,38,38,0.1)', borderColor: 'rgba(220,38,38,0.2)' }}
+                    >
+                      <span className="tracking-widest uppercase">OIC</span>
+                      <span className="text-[9px] font-semibold tracking-wide normal-case">(Officer in Charge)</span>
+                    </span>
+                    <div className="flex-1 h-px" style={{ background: 'linear-gradient(to left, transparent, rgba(220,38,38,0.25))' }} />
+                  </div>
+
+                  {overallOicPeople.length > 0 ? (
+                    <div className="flex flex-col sm:flex-row flex-wrap gap-2 items-center justify-center w-full">
+                      {overallOicPeople.map(person => (
+                        <button
+                          key={`overall-oic-${person.name}`}
+                          type="button"
+                          onClick={() => openPerson(person)}
+                          className="w-full sm:w-auto rounded-lg px-4 py-2 text-center text-[11px] sm:text-xs font-semibold text-white border transition hover:border-red-400/70 hover:bg-red-600/15"
+                          style={{
+                            background: 'rgba(12,12,12,0.85)',
+                            borderColor: 'rgba(255,255,255,0.12)',
+                            boxShadow: '0 10px 22px rgba(0,0,0,0.35)',
+                            minWidth: '220px',
+                          }}
+                        >
+                          {person.name}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div
+                      className="w-full max-w-md rounded-xl border px-4 py-3 text-center text-sm font-semibold text-gray-300"
+                      style={{ background: 'rgba(12,12,12,0.65)', borderColor: 'rgba(255,255,255,0.12)' }}
+                    >
+                      No OIC assigned
+                    </div>
+                  )}
+                </div>
+
                 <div className="w-full flex items-center gap-3 mb-2">
                   <div className="flex-1 h-px" style={{ background: 'linear-gradient(to right, transparent, rgba(220,38,38,0.25))' }} />
-                  <span
-                    className="px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase border shrink-0"
-                    style={{ color: '#fca5a5', background: 'rgba(220,38,38,0.1)', borderColor: 'rgba(220,38,38,0.2)' }}
-                  >
-                    KUSGAN Volunteers
-                  </span>
+                  
                   <div className="flex-1 h-px" style={{ background: 'linear-gradient(to left, transparent, rgba(220,38,38,0.25))' }} />
                 </div>
 

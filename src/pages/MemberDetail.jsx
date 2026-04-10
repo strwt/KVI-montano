@@ -29,6 +29,7 @@ function MemberDetail() {
     insuranceStatus: 'N/A',
     insuranceYear: '',
     committee: '',
+    committeeRole: 'Member',
     status: 'active',
     memberSince: '',
   })
@@ -64,6 +65,7 @@ function MemberDetail() {
       insuranceStatus: member.insuranceStatus || 'N/A',
       insuranceYear: member.insuranceYear || '',
       committee: member.committee || '',
+      committeeRole: member.committeeRole || 'Member',
       status: member.status || 'active',
       memberSince: (member.memberSince || new Date().toISOString()).split('T')[0],
     })
@@ -113,6 +115,7 @@ function MemberDetail() {
       insuranceStatus,
       insuranceYear,
       committee: editForm.committee,
+      committeeRole: editForm.committeeRole,
       status: editForm.status,
       memberSince: editForm.memberSince,
     }
@@ -458,6 +461,19 @@ function MemberDetail() {
                       {name}
                     </option>
                   ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="update-member-committee-role" className="block text-sm font-medium text-gray-700 mb-1">Committee Role</label>
+                <select
+                  id="update-member-committee-role"
+                  name="committeeRole"
+                  value={editForm.committeeRole || 'Member'}
+                  onChange={(e) => setEditForm({ ...editForm, committeeRole: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                >
+                  <option value="Member">Member</option>
+                  <option value="OIC">OIC (Head)</option>
                 </select>
               </div>
               <div>

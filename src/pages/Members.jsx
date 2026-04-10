@@ -82,6 +82,7 @@ function Members() {
     status: 'active',
     role: ROLE_OPTIONS[0].value,
     committee: committees[0] || '',
+    committeeRole: 'Member',
   })
   const [showTempPassword, setShowTempPassword] = useState(false)
   const membersPerPage = 9
@@ -281,6 +282,7 @@ function Members() {
       status: 'active',
       role: ROLE_OPTIONS[0].value,
       committee: committeeOptions[0] || '',
+      committeeRole: 'Member',
     })
     setNewMemberImageFile(null)
     setPendingApprovalRecruitmentId(null)
@@ -312,6 +314,7 @@ function Members() {
       status: 'active',
       role: ROLE_OPTIONS[0].value,
       committee: committeeOptions[0] || '',
+      committeeRole: 'Member',
     })
     setNewMemberImageFile(null)
     const createMemberSection = document.getElementById('create-member-form')
@@ -581,6 +584,19 @@ function Members() {
                       {committee}
                     </option>
                   ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="create-member-committee-role" className="block text-xs text-gray-500 mb-1">Committee Role</label>
+                <select
+                  id="create-member-committee-role"
+                  name="committeeRole"
+                  value={newMember.committeeRole || 'Member'}
+                  onChange={e => setNewMember({ ...newMember, committeeRole: e.target.value })}
+                  className="w-full h-10 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                >
+                  <option value="Member">Member</option>
+                  <option value="OIC">OIC (Head)</option>
                 </select>
               </div>
               <div>

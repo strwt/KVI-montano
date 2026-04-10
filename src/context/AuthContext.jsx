@@ -22,6 +22,7 @@ const PROFILE_SELECT_COLUMNS = [
   'name',
   'id_number',
   'committee',
+  'committee_role',
   'contact_number',
   'emergency_contact_number',
   'emergency_contact_name',
@@ -47,6 +48,7 @@ const PROFILE_LIST_COLUMNS = [
   'name',
   'id_number',
   'committee',
+  'committee_role',
   'contact_number',
   'emergency_contact_number',
   'emergency_contact_name',
@@ -374,6 +376,7 @@ const mapProfileToUser = (profile, authUser) => {
     email,
     role,
     committee: profile?.committee || '',
+    committeeRole: profile?.committee_role || 'Member',
     contactNumber: profile?.contact_number || '',
     emergencyContactNumber: profile?.emergency_contact_number || '',
     emergencyContactName: profile?.emergency_contact_name || '',
@@ -669,6 +672,7 @@ export function AuthProvider({ children }) {
             email: profile.email || '',
             role: normalizeRole(profile.role),
             committee: profile.committee || '',
+            committeeRole: profile.committee_role || 'Member',
             contactNumber: profile.contact_number || '',
             emergencyContactNumber: profile.emergency_contact_number || '',
             emergencyContactName: profile.emergency_contact_name || '',
@@ -1739,6 +1743,10 @@ export function AuthProvider({ children }) {
     const payload = {}
     if (Object.prototype.hasOwnProperty.call(updates, 'name')) payload.name = (updates.name ?? '').toString().trim() || ''
     if (Object.prototype.hasOwnProperty.call(updates, 'committee')) payload.committee = (updates.committee ?? '').toString().trim() || null
+    if (Object.prototype.hasOwnProperty.call(updates, 'committeeRole')) {
+      const raw = (updates.committeeRole ?? '').toString().trim()
+      payload.committee_role = raw === 'OIC' ? 'OIC' : 'Member'
+    }
     if (Object.prototype.hasOwnProperty.call(updates, 'address')) payload.address = (updates.address ?? '').toString().trim() || null
     if (Object.prototype.hasOwnProperty.call(updates, 'contactNumber')) {
       payload.contact_number = (updates.contactNumber ?? '').toString().trim() || null
@@ -2019,12 +2027,13 @@ export function AuthProvider({ children }) {
 	          name,
 	          idNumber,
 	          password,
-	          role,
-            status: memberData.status || 'active',
-            accountStatus: memberData.accountStatus || 'Active',
-  	          committee: memberData.committee || null,
-  	          address: memberData.address || null,
-  	          contactNumber: memberData.contactNumber || null,
+    	          role,
+              status: memberData.status || 'active',
+              accountStatus: memberData.accountStatus || 'Active',
+   	          committee: memberData.committee || null,
+              committeeRole: memberData.committeeRole || memberData.committee_role || 'Member',
+   	          address: memberData.address || null,
+   	          contactNumber: memberData.contactNumber || null,
               emergencyContactNumber: memberData.emergencyContactNumber || null,
               emergencyContactName: memberData.emergencyContactName || null,
               emergencyContactRelationship: memberData.emergencyContactRelationship || null,
@@ -2067,6 +2076,7 @@ export function AuthProvider({ children }) {
           email: createdEmail,
           role,
           committee: memberData.committee || '',
+          committeeRole: memberData.committeeRole || memberData.committee_role || 'Member',
           contactNumber: memberData.contactNumber || '',
           emergencyContactNumber: memberData.emergencyContactNumber || '',
           emergencyContactName: memberData.emergencyContactName || '',

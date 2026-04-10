@@ -36,6 +36,7 @@ create table if not exists public.profiles (
   insurance_status text not null default 'N/A',
   insurance_year text,
   committee text,
+  committee_role text not null default 'Member' check (committee_role in ('Member','OIC')),
   member_since date,
   profile_image text,
   account_status text not null default 'Active',
@@ -176,6 +177,47 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
 after insert on auth.users
 for each row execute function public.handle_new_user();
+
+-- Landing committees RPC: return active profiles so the landing page does not rely on hardcoded lists.
+drop function if exists public.get_landing_committee_members();
+create function public.get_landing_committee_members()
+returns table(
+  name text,
+  id_number text,
+  profile_image text,
+  contact_number text,
+  blood_type text,
+  member_since date,
+  committee text,
+  committee_role text,
+  status text
+)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select
+    p.name,
+    p.id_number,
+    p.profile_image,
+    p.contact_number,
+    p.blood_type,
+    p.member_since,
+    p.committee,
+    p.committee_role,
+    p.status
+  from public.profiles p
+  where p.name is not null
+    and btrim(p.name) <> ''
+    and coalesce(p.status, 'active') = 'active'
+    and coalesce(p.account_status, 'Active') = 'Active'
+  order by p.name asc
+  limit 5000;
+$$;
+
+revoke all on function public.get_landing_committee_members() from public;
+grant execute on function public.get_landing_committee_members() to anon, authenticated;
 
 drop trigger if exists profiles_sync_auth_user_role on public.profiles;
 create trigger profiles_sync_auth_user_role
