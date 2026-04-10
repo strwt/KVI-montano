@@ -29,6 +29,80 @@ const titleCaseFromKey = key =>
     .replace(/\s+/g, ' ')
     .toUpperCase()
 
+const CATEGORY_COLOR_SEEDS = {
+  tuli: '#ef4444', // red
+  blood_letting: '#b91c1c', // dark red
+  donations: '#f59e0b', // amber
+  environmental: '#22c55e', // green
+  relief_operation: '#3b82f6', // blue
+  fire_response: '#f97316', // orange
+  water_distribution: '#06b6d4', // cyan
+  notes: '#6366f1', // indigo
+  medical: '#ec4899', // pink
+  uncategorized: '#94a3b8', // slate
+}
+
+const hashInt = (key) => {
+  const input = String(key || '')
+  let hash = 2166136261
+  for (let i = 0; i < input.length; i += 1) {
+    hash ^= input.charCodeAt(i)
+    hash = Math.imul(hash, 16777619)
+  }
+  return hash >>> 0
+}
+
+const hexToRgb = (hex) => {
+  const raw = String(hex || '').trim().replace(/^#/, '')
+  const normalized = raw.length === 3 ? raw.split('').map(ch => `${ch}${ch}`).join('') : raw
+  if (!/^[0-9a-f]{6}$/i.test(normalized)) return null
+
+  return {
+    r: Number.parseInt(normalized.slice(0, 2), 16),
+    g: Number.parseInt(normalized.slice(2, 4), 16),
+    b: Number.parseInt(normalized.slice(4, 6), 16),
+  }
+}
+
+const toRgba = (hex, alpha) => {
+  const rgb = hexToRgb(hex)
+  const parsedAlpha = typeof alpha === 'number' ? alpha : Number(alpha)
+  const safeAlpha = Number.isFinite(parsedAlpha) ? Math.max(0, Math.min(1, parsedAlpha)) : 0
+  if (!rgb) return `rgba(148, 163, 184, ${safeAlpha})`
+  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${safeAlpha})`
+}
+
+const getCategoryPalette = (value) => {
+  const normalizedKey = toCategoryKey(value)
+  const key = normalizedKey || 'uncategorized'
+  const seeded = CATEGORY_COLOR_SEEDS[key]
+
+  if (seeded) {
+    return {
+      key,
+      accent: seeded,
+      bg: toRgba(seeded, 0.12),
+      bgStrong: toRgba(seeded, 0.18),
+      border: toRgba(seeded, 0.35),
+      borderStrong: toRgba(seeded, 0.55),
+    }
+  }
+
+  const hash = hashInt(key)
+  const hue = hash % 360
+  const saturation = 72 + (hash % 18) // 72..89
+  const lightness = 44 + ((hash >>> 8) % 10) // 44..53
+
+  return {
+    key,
+    accent: `hsl(${hue}, ${saturation}%, ${lightness}%)`,
+    bg: `hsla(${hue}, ${saturation}%, ${lightness}%, 0.12)`,
+    bgStrong: `hsla(${hue}, ${saturation}%, ${lightness}%, 0.18)`,
+    border: `hsla(${hue}, ${saturation}%, ${lightness}%, 0.35)`,
+    borderStrong: `hsla(${hue}, ${saturation}%, ${lightness}%, 0.55)`,
+  }
+}
+
 const FIELD_TYPES = [
   { value: 'text', label: 'Text' },
   { value: 'number', label: 'Number' },
@@ -580,31 +654,41 @@ function CategoryManagement() {
               <p className="rounded-xl border border-neutral-200 bg-neutral-50 p-3 text-[13px] text-neutral-600 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-400">
                 {t('No categories yet.')}
               </p>
-            ) : (
-              categories.map(category => {
-                const isSelected = String(editingCategory?.id || '') === String(category.id || '')
-                return (
-                  <button
-                    key={category.id}
-                    type="button"
-                    onClick={() => handleSelectCategory(category)}
-                    className={`flex w-full items-center justify-between gap-3 rounded-xl border px-3 py-2 text-left transition-colors ${
-                      isSelected
-                        ? 'border-red-600 bg-red-50 dark:bg-red-950/20'
-                        : 'border-neutral-200 bg-white hover:bg-neutral-50 dark:border-zinc-700 dark:bg-zinc-950 dark:hover:bg-zinc-900'
-                    }`}
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate text-[14px] font-semibold text-black dark:text-zinc-100">
-                        {titleCaseFromKey(category.name) || category.name}
-                      </p>
-                    </div>
-                    <div className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-neutral-200 bg-white text-neutral-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200">
-                      <Pencil size={14} />
-                    </div>
-                  </button>
-                )
-              })
+              ) : (
+                categories.map(category => {
+                  const isSelected = String(editingCategory?.id || '') === String(category.id || '')
+                  const palette = getCategoryPalette(category.name)
+                  return (
+                    <button
+                      key={category.id}
+                      type="button"
+                      onClick={() => handleSelectCategory(category)}
+                      className="group relative flex w-full items-center justify-between gap-3 rounded-xl border px-3 py-2 text-left transition-colors overflow-hidden bg-white hover:bg-neutral-50 dark:bg-zinc-950 dark:hover:bg-zinc-900"
+                      style={{
+                        borderColor: isSelected ? palette.borderStrong : palette.border,
+                        background: isSelected ? palette.bgStrong : undefined,
+                      }}
+                    >
+                      <span
+                        aria-hidden="true"
+                        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none"
+                        style={{ background: palette.bg }}
+                      />
+                      <div className="relative min-w-0 flex items-center gap-2">
+                        <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full" style={{ background: palette.accent }} />
+                        <p className="truncate text-[14px] font-semibold text-black dark:text-zinc-100">
+                          {titleCaseFromKey(category.name) || category.name}
+                        </p>
+                      </div>
+                      <div
+                        className="relative inline-flex h-8 w-8 items-center justify-center rounded-lg border"
+                        style={{ borderColor: palette.border, background: palette.bg }}
+                      >
+                        <Pencil size={14} style={{ color: palette.accent }} />
+                      </div>
+                    </button>
+                  )
+                })
             )}
           </div>
         </aside>

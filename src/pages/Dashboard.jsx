@@ -44,6 +44,82 @@ const titleCaseFromKey = key =>
     .replace(/\s+/g, ' ')
     .toUpperCase()
 
+const CATEGORY_COLOR_SEEDS = {
+  tuli: '#ef4444', // red
+  blood_letting: '#b91c1c', // dark red
+  donations: '#f59e0b', // amber
+  environmental: '#22c55e', // green
+  relief_operation: '#3b82f6', // blue
+  fire_response: '#f97316', // orange
+  water_distribution: '#06b6d4', // cyan
+  notes: '#6366f1', // indigo
+  medical: '#ec4899', // pink
+  uncategorized: '#94a3b8', // slate
+}
+
+const hashInt = (key) => {
+  const input = String(key || '')
+  let hash = 2166136261
+  for (let i = 0; i < input.length; i += 1) {
+    hash ^= input.charCodeAt(i)
+    hash = Math.imul(hash, 16777619)
+  }
+  return hash >>> 0
+}
+
+const hexToRgb = (hex) => {
+  const raw = String(hex || '').trim().replace(/^#/, '')
+  const normalized = raw.length === 3 ? raw.split('').map(ch => `${ch}${ch}`).join('') : raw
+  if (!/^[0-9a-f]{6}$/i.test(normalized)) return null
+
+  return {
+    r: Number.parseInt(normalized.slice(0, 2), 16),
+    g: Number.parseInt(normalized.slice(2, 4), 16),
+    b: Number.parseInt(normalized.slice(4, 6), 16),
+  }
+}
+
+const toRgba = (hex, alpha) => {
+  const rgb = hexToRgb(hex)
+  const parsedAlpha = typeof alpha === 'number' ? alpha : Number(alpha)
+  const safeAlpha = Number.isFinite(parsedAlpha) ? Math.max(0, Math.min(1, parsedAlpha)) : 0
+  if (!rgb) return `rgba(148, 163, 184, ${safeAlpha})`
+  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${safeAlpha})`
+}
+
+const getCategoryPalette = (value) => {
+  const normalizedKey = canonicalizeOperationKey(normalizeCategoryKey(value))
+  const key = normalizedKey || 'uncategorized'
+  const seeded = CATEGORY_COLOR_SEEDS[key]
+
+  if (seeded) {
+    return {
+      key,
+      accent: seeded,
+      bg: toRgba(seeded, 0.12),
+      bgStrong: toRgba(seeded, 0.18),
+      border: toRgba(seeded, 0.35),
+      borderStrong: toRgba(seeded, 0.55),
+      glow: toRgba(seeded, 0.2),
+    }
+  }
+
+  const hash = hashInt(key)
+  const hue = hash % 360
+  const saturation = 72 + (hash % 18) // 72..89
+  const lightness = 44 + ((hash >>> 8) % 10) // 44..53
+
+  return {
+    key,
+    accent: `hsl(${hue}, ${saturation}%, ${lightness}%)`,
+    bg: `hsla(${hue}, ${saturation}%, ${lightness}%, 0.12)`,
+    bgStrong: `hsla(${hue}, ${saturation}%, ${lightness}%, 0.18)`,
+    border: `hsla(${hue}, ${saturation}%, ${lightness}%, 0.35)`,
+    borderStrong: `hsla(${hue}, ${saturation}%, ${lightness}%, 0.55)`,
+    glow: `hsla(${hue}, ${saturation}%, ${lightness}%, 0.2)`,
+  }
+}
+
 const OPERATION_META = {
   tuli: { label: 'Tuli', icon: HeartPulse },
   blood_letting: { label: 'Blood Letting', icon: Activity },
@@ -483,23 +559,44 @@ function Dashboard() {
         <div className="col-span-12">
           <h2 className="mb-3 text-[24px] font-semibold text-black dark:text-zinc-100">{t('Events by Category')}</h2>
           <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
-            {operations.map((category, index) => (
-              <button
-                key={category.key}
-                type="button"
-                onClick={() => navigate(getEventsCategoryRoute(category.key))}
-                className={`h-full cursor-pointer rounded-xl border border-red-600 bg-white p-4 text-left transition-all duration-200 hover:scale-[1.02] hover:border-red-700 hover:shadow-[0_8px_14px_rgba(0,0,0,0.08)] dark:border-red-600 dark:bg-zinc-900 ${
-                  animatedStats ? 'animate-fade-in-up' : 'opacity-0'
-                }`}
-                style={{ animationDelay: `${index * 0.06}s` }}
-              >
-                <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-neutral-100 text-red-600 dark:bg-zinc-800">
-                  <category.icon size={18} className={getIconThemeClass(category.key)} />
-                </div>
-                <p className="text-[14px] text-neutral-500 dark:text-zinc-400">{t(category.label)}</p>
-                <p className="text-[18px] font-semibold text-black dark:text-zinc-100">{categoryCounts[category.key] || 0}</p>
-              </button>
-            ))}
+            {operations.map((category, index) => {
+              const palette = getCategoryPalette(category.key)
+              return (
+                <button
+                  key={category.key}
+                  type="button"
+                  onClick={() => navigate(getEventsCategoryRoute(category.key))}
+                  className={`group relative h-full cursor-pointer rounded-xl border bg-white p-4 text-left transition-all duration-200 hover:scale-[1.02] hover:shadow-[0_8px_14px_rgba(0,0,0,0.08)] dark:bg-zinc-900 ${
+                    animatedStats ? 'animate-fade-in-up' : 'opacity-0'
+                  }`}
+                  style={{ animationDelay: `${index * 0.06}s`, borderColor: palette.border }}
+                >
+                  <span
+                    aria-hidden="true"
+                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+                    style={{
+                      background: `radial-gradient(ellipse at 50% 0%, ${palette.glow} 0%, transparent 65%)`,
+                    }}
+                  />
+                  <span aria-hidden="true" className="absolute top-0 left-0 right-0 h-0.5" style={{ background: palette.accent }} />
+
+                  <div className="relative">
+                    <div
+                      className="mb-2 flex h-10 w-10 items-center justify-center rounded-lg border"
+                      style={{ background: palette.bg, borderColor: palette.border }}
+                    >
+                      <category.icon
+                        size={18}
+                        className={getIconThemeClass(category.key)}
+                        style={{ color: palette.accent }}
+                      />
+                    </div>
+                    <p className="text-[14px] text-neutral-500 dark:text-zinc-400">{t(category.label)}</p>
+                    <p className="text-[18px] font-semibold text-black dark:text-zinc-100">{categoryCounts[category.key] || 0}</p>
+                  </div>
+                </button>
+              )
+            })}
           </div>
           </div> 
 	      </section>
@@ -518,33 +615,41 @@ function Dashboard() {
             )}
           </div>
           <div className="max-h-[360px] space-y-3 overflow-y-auto pr-1">
-            {recentEvents.map((event, index) => (
-              <button
-                type="button"
-                key={`${event.id || 'event'}-${resolveEventDate(event) || 'no-date'}-${index}`}
-                onClick={() => handleOpenEventInCalendar(event)}
-                className={`group flex w-full cursor-pointer items-start gap-4 rounded-xl border border-red-600 bg-white p-3 md:p-4 text-left transition-all duration-200 hover:scale-[1.02] hover:shadow-[0_10px_16px_rgba(0,0,0,0.08)] dark:border-red-600 dark:bg-zinc-950 ${
-                  animatedStats ? 'animate-fade-in-up' : 'opacity-0'
-                }`}
-                style={{ animationDelay: `${index * 0.08}s` }}
-              >
-                <div className="relative flex flex-col items-center">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-red-600 text-white">
-                    <CalendarIcon size={14} />
+            {recentEvents.map((event, index) => {
+              const palette = getCategoryPalette(event.category)
+              return (
+                <button
+                  type="button"
+                  key={`${event.id || 'event'}-${resolveEventDate(event) || 'no-date'}-${index}`}
+                  onClick={() => handleOpenEventInCalendar(event)}
+                  className={`group flex w-full cursor-pointer items-start gap-4 rounded-xl border border-red-600 bg-white p-3 md:p-4 text-left transition-all duration-200 hover:scale-[1.02] hover:shadow-[0_10px_16px_rgba(0,0,0,0.08)] dark:border-red-600 dark:bg-zinc-950 ${
+                    animatedStats ? 'animate-fade-in-up' : 'opacity-0'
+                  }`}
+                  style={{ animationDelay: `${index * 0.08}s` }}
+                >
+                  <div className="relative flex flex-col items-center">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-red-600 text-white">
+                      <CalendarIcon size={14} />
+                    </span>
+                    {index !== recentEvents.length - 1 && <span className="mt-2 h-12 w-px bg-neutral-300 dark:bg-zinc-700" />}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[18px] font-medium text-black dark:text-zinc-100">
+                      {event.title || t('Untitled Event')}
+                    </p>
+                    <p className="mt-1 text-[14px] text-neutral-500 dark:text-zinc-400">
+                      {dayjs(resolveEventDate(event)).format('MMM D, YYYY h:mm A')}
+                    </p>
+                  </div>
+                  <span
+                    className="rounded-md border px-2 py-1 text-[14px] capitalize"
+                    style={{ borderColor: palette.border, background: palette.bg, color: palette.accent }}
+                  >
+                    {getCategoryLabel(event.category)}
                   </span>
-                  {index !== recentEvents.length - 1 && <span className="mt-2 h-12 w-px bg-neutral-300 dark:bg-zinc-700" />}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[18px] font-medium text-black dark:text-zinc-100">{event.title || t('Untitled Event')}</p>
-                  <p className="mt-1 text-[14px] text-neutral-500 dark:text-zinc-400">
-                    {dayjs(resolveEventDate(event)).format('MMM D, YYYY h:mm A')}
-                  </p>
-                </div>
-                <span className="rounded-md border border-neutral-300 bg-neutral-100 px-2 py-1 text-[14px] capitalize text-neutral-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-                  {getCategoryLabel(event.category)}
-                </span>
-              </button>
-            ))}
+                </button>
+              )
+            })}
             {recentEvents.length === 0 && <p className="py-4 text-center text-[14px] text-neutral-500 dark:text-zinc-400">{t('No activity yet')}</p>}
           </div>
         </article>
