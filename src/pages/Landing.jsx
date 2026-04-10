@@ -1739,7 +1739,7 @@ function Landing() {
                 <p className="text-xs font-semibold tracking-[0.2em] uppercase text-red-300">Donation</p>
                 <h3 className="mt-2 text-xl font-bold text-white font-heading">Donate to KUSGAN</h3>
                 <p className="mt-1 text-sm text-white/60">
-                  Send your donation to the bank number below. You may optionally leave your details so we can verify your transfer.
+                  Your contribution goes directly toward sustaining our operations, supporting volunteer activities, and expanding our reach to more communities. Even the smallest donation fuels real change.
                 </p>
               </div>
               <button
@@ -1825,14 +1825,7 @@ function Landing() {
                 />
               </div>
 
-              <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
-                <button
-                  type="button"
-                  onClick={closeDonation}
-                  className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-5 py-2.5 text-sm font-semibold text-white/80 hover:bg-white/10"
-                >
-                  Close
-                </button>
+              <div className="flex justify-end pt-2">
                 <button
                   type="submit"
                   disabled={donationSubmitting}
@@ -1843,7 +1836,7 @@ function Landing() {
               </div>
 
               <p className="text-[11px] leading-relaxed text-white/45">
-                Submitting records your details (if provided) and opens your email app to notify {DONATION_NOTIFICATION_EMAIL}. All fields are optional.
+                By donating, you’re not just giving money you’re becoming a partner in every good deed, every smile, and every life improved through this platform.
               </p>
             </form>
           </div>
