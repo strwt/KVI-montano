@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext'
 import {
   LogIn,
   Handshake,
+  HandHeart,
   Sparkles,
   Crown,
   ShieldCheck,
@@ -416,6 +417,8 @@ function Landing() {
   const [donationOpen, setDonationOpen] = useState(false)
   const [donationForm, setDonationForm] = useState({ name: '', email: '', referenceNo: '' })
   const [donationCopied, setDonationCopied] = useState(false)
+  const [donationSubmitting, setDonationSubmitting] = useState(false)
+  const [donationSubmitError, setDonationSubmitError] = useState('')
   const [publicCommittees, setPublicCommittees] = useState([])
   const [publicCommitteesLoaded, setPublicCommitteesLoaded] = useState(false)
   const [committeeDragging, setCommitteeDragging] = useState(false)
@@ -423,11 +426,15 @@ function Landing() {
   const openDonation = () => {
     setDonationOpen(true)
     setDonationCopied(false)
+    setDonationSubmitError('')
+    setDonationSubmitting(false)
   }
 
   const closeDonation = () => {
     setDonationOpen(false)
     setDonationCopied(false)
+    setDonationSubmitError('')
+    setDonationSubmitting(false)
     setDonationForm({ name: '', email: '', referenceNo: '' })
   }
 
@@ -444,12 +451,38 @@ function Landing() {
     }
   }
 
-  const submitDonationForm = (event) => {
+  const submitDonationForm = async (event) => {
     event.preventDefault()
+    if (donationSubmitting) return
+    setDonationSubmitError('')
+    setDonationSubmitting(true)
 
     const donorName = String(donationForm?.name || '').trim()
     const donorEmail = String(donationForm?.email || '').trim()
     const referenceNo = String(donationForm?.referenceNo || '').trim()
+
+    let savedOk = true
+    if (supabaseEnabled) {
+      try {
+        const { error } = await supabase.from('donations').insert({
+          donor_name: donorName || null,
+          donor_email: donorEmail || null,
+          reference_no: referenceNo || null,
+        })
+        if (error) {
+          setDonationSubmitError(error.message || 'Unable to save donation record.')
+          savedOk = false
+        }
+      } catch (error) {
+        setDonationSubmitError(error?.message ? String(error.message) : 'Unable to save donation record.')
+        savedOk = false
+      }
+    }
+
+    if (!savedOk) {
+      setDonationSubmitting(false)
+      return
+    }
 
     const subject = `Donation Reference${referenceNo ? `: ${referenceNo}` : ''}`
     const lines = [
@@ -1529,7 +1562,7 @@ function Landing() {
             <button
               type="button"
               onClick={() => navigate('/recruitment')}
-              className="inline-flex items-center gap-2.5 px-8 py-3.5 rounded-xl bg-white text-red-700 font-bold hover:-translate-y-0.5 transition-all duration-200 hover:bg-gray-50"
+              className="inline-flex w-full sm:w-56 h-12 items-center justify-center gap-2.5 px-8 rounded-xl bg-white text-red-700 font-bold hover:-translate-y-0.5 transition-all duration-200 hover:bg-gray-50"
               style={{ boxShadow: '0 16px 48px rgba(0,0,0,0.4)' }}
             >
               <Handshake size={18} />
@@ -1538,7 +1571,7 @@ function Landing() {
             <button
               type="button"
               onClick={() => navigate('/login')}
-              className="inline-flex items-center gap-2.5 px-8 py-3.5 rounded-xl text-white font-semibold hover:-translate-y-0.5 transition-all duration-200 border"
+              className="inline-flex w-full sm:w-56 h-12 items-center justify-center gap-2.5 px-8 rounded-xl text-white font-semibold hover:-translate-y-0.5 transition-all duration-200 border"
               style={{
                 background: 'rgba(255,255,255,0.08)',
                 borderColor: 'rgba(255,255,255,0.25)',
@@ -1550,13 +1583,13 @@ function Landing() {
             <button
               type="button"
               onClick={openDonation}
-              className="inline-flex items-center gap-2.5 px-8 py-3.5 rounded-xl text-white font-semibold hover:-translate-y-0.5 transition-all duration-200 border"
+              className="inline-flex w-full sm:w-56 h-12 items-center justify-center gap-2.5 px-8 rounded-xl text-white font-semibold hover:-translate-y-0.5 transition-all duration-200 border"
               style={{
                 background: 'rgba(0,0,0,0.18)',
                 borderColor: 'rgba(252,165,165,0.5)',
               }}
             >
-              <Sparkles size={18} />
+              <HandHeart size={18} />
               Donate
             </button>
           </div>
@@ -1618,6 +1651,11 @@ function Landing() {
             </div>
 
             <form className="mt-6 space-y-4" onSubmit={submitDonationForm}>
+              {donationSubmitError ? (
+                <div className="rounded-xl border border-amber-200 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                  {donationSubmitError}
+                </div>
+              ) : null}
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <label htmlFor="donor-name" className="text-xs font-semibold tracking-[0.14em] uppercase text-white/60">
@@ -1671,14 +1709,15 @@ function Landing() {
                 </button>
                 <button
                   type="submit"
+                  disabled={donationSubmitting}
                   className="inline-flex items-center justify-center rounded-xl bg-red-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-red-700"
                 >
-                  Submit
+                  {donationSubmitting ? 'Submitting...' : 'Submit'}
                 </button>
               </div>
 
               <p className="text-[11px] leading-relaxed text-white/45">
-                Submitting opens your email app to send the donation details to {DONATION_NOTIFICATION_EMAIL}. All fields are optional.
+                Submitting records your details (if provided) and opens your email app to notify {DONATION_NOTIFICATION_EMAIL}. All fields are optional.
               </p>
             </form>
           </div>

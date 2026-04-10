@@ -19,6 +19,10 @@ const normalizeEmail = (value) => String(value || '').trim().toLowerCase()
 const normalizeText = (value) => String(value ?? '').toString().trim()
 
 const isValidRole = (value) => value === 'admin' || value === 'member'
+const isEmailRateLimitError = (error) => {
+  const message = error?.message ? String(error.message) : ''
+  return /rate limit|rate-limit|too many requests/i.test(message)
+}
 
 const runAdminQuery = async (label, queryFactory) => {
   try {
@@ -163,6 +167,7 @@ export default async function handler(req, res) {
     const body = parseBody(req)
     const userId = String(body.userId || body.id || '').trim()
     const updates = body.updates && typeof body.updates === 'object' ? body.updates : body
+    const syncAuthEmail = Boolean(body.syncAuthEmail)
 
     if (!userId) return res.status(400).json({ message: 'userId is required.' })
 
@@ -185,11 +190,16 @@ export default async function handler(req, res) {
       }
     }
 
-    // If email is being updated, also update the Auth user so sign-in flows keep working.
-    if (Object.prototype.hasOwnProperty.call(patch, 'email') && patch.email) {
+    let warning = ''
+    // Optional: Sync Auth email too. By default we only update `public.profiles.email` because this app uses ID-number login.
+    if (syncAuthEmail && Object.prototype.hasOwnProperty.call(patch, 'email') && patch.email) {
       const { error: authUpdateError } = await supabaseAdmin.auth.admin.updateUserById(userId, { email: patch.email })
       if (authUpdateError) {
-        return res.status(400).json({ message: authUpdateError.message || 'Unable to update auth email.' })
+        if (isEmailRateLimitError(authUpdateError)) {
+          warning = 'Auth email update is temporarily rate limited. Profile email was updated, but Auth email was not changed.'
+        } else {
+          return res.status(400).json({ message: authUpdateError.message || 'Unable to update auth email.' })
+        }
       }
     }
 
@@ -211,7 +221,7 @@ export default async function handler(req, res) {
       console.warn('log_admin_action failed (user.update).', error)
     }
 
-    return res.status(200).json({ success: true })
+    return res.status(200).json({ success: true, warning: warning || undefined })
   } catch (error) {
     console.error('Unhandled error in /api/admin/update-user.', error)
     return res.status(500).json({ message: error?.message ? String(error.message) : 'Server error.' })

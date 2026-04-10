@@ -402,6 +402,15 @@ create table if not exists public.recruitments (
   unique (email)
 );
 
+-- Donations (public inserts, admin-only read/delete)
+create table if not exists public.donations (
+  id uuid primary key default gen_random_uuid(),
+  donor_name text,
+  donor_email text,
+  reference_no text,
+  created_at timestamptz not null default now()
+);
+
 -- Login activity (client upserts on login)
 create table if not exists public.login_activity (
   id uuid primary key default gen_random_uuid(),
@@ -463,12 +472,13 @@ alter table public.categories enable row level security;
 alter table public.category_fields enable row level security;
 alter table public.activity_records enable row level security;
 alter table public.activity_values enable row level security;
-alter table public.events enable row level security;
-alter table public.event_views enable row level security;
-alter table public.recruitments enable row level security;
-alter table public.login_activity enable row level security;
-alter table public.event_files enable row level security;
-alter table public.notifications enable row level security;
+ alter table public.events enable row level security;
+ alter table public.event_views enable row level security;
+ alter table public.recruitments enable row level security;
+ alter table public.donations enable row level security;
+ alter table public.login_activity enable row level security;
+ alter table public.event_files enable row level security;
+ alter table public.notifications enable row level security;
 
 -- PROFILES
 drop policy if exists profiles_select_auth on public.profiles;
@@ -695,16 +705,35 @@ to authenticated
 using (public.is_admin())
 with check (public.is_admin());
 
-drop policy if exists recruitments_delete_admin on public.recruitments;
-create policy recruitments_delete_admin
-on public.recruitments for delete
-to authenticated
-using (public.is_admin());
+ drop policy if exists recruitments_delete_admin on public.recruitments;
+ create policy recruitments_delete_admin
+ on public.recruitments for delete
+ to authenticated
+ using (public.is_admin());
 
--- LOGIN ACTIVITY
-drop policy if exists login_activity_select_self_or_admin on public.login_activity;
-create policy login_activity_select_self_or_admin
-on public.login_activity for select
+ -- DONATIONS
+ drop policy if exists donations_insert_public on public.donations;
+ create policy donations_insert_public
+ on public.donations for insert
+ to anon, authenticated
+ with check (true);
+
+ drop policy if exists donations_select_admin on public.donations;
+ create policy donations_select_admin
+ on public.donations for select
+ to authenticated
+ using (public.is_admin());
+
+ drop policy if exists donations_delete_admin on public.donations;
+ create policy donations_delete_admin
+ on public.donations for delete
+ to authenticated
+ using (public.is_admin());
+
+ -- LOGIN ACTIVITY
+ drop policy if exists login_activity_select_self_or_admin on public.login_activity;
+ create policy login_activity_select_self_or_admin
+ on public.login_activity for select
 to authenticated
 using (user_id = auth.uid() or public.is_admin());
 

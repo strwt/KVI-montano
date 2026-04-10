@@ -80,6 +80,10 @@ const isRefreshTokenError = (error) => {
 }
 
 const isAbortError = (error) => error?.name === 'AbortError'
+const isEmailRateLimitError = (error) => {
+  const message = error?.message ? String(error.message) : ''
+  return /rate limit|rate-limit|too many requests/i.test(message)
+}
 
 const enrichUserWithProfileImage = (user = {}) => ({
   ...user,
@@ -1290,14 +1294,21 @@ export function AuthProvider({ children }) {
     const nextProfileImageRaw = hasProfileImageUpdate ? (updates.profileImage ?? '').toString().trim() : null
     const profileImageToStore = hasProfileImageUpdate ? normalizeProfileImageStorageValue(nextProfileImageRaw) : undefined
 
+    let emailRateLimited = false
     if (email !== (user.email || '').trim().toLowerCase()) {
       try {
         const { error: emailError } = await runAuthOperationWithRetry(() => supabase.auth.updateUser({ email }))
         if (emailError) {
-          return { success: false, message: emailError.message || 'Unable to update email.' }
+          if (!isEmailRateLimitError(emailError)) {
+            return { success: false, message: emailError.message || 'Unable to update email.' }
+          }
+          emailRateLimited = true
         }
       } catch (error) {
-        return { success: false, message: error.message || 'Unable to update email.' }
+        if (!isEmailRateLimitError(error)) {
+          return { success: false, message: error.message || 'Unable to update email.' }
+        }
+        emailRateLimited = true
       }
     }
 
@@ -1382,6 +1393,12 @@ export function AuthProvider({ children }) {
       },
       authEpochRef.current
     )
+    if (emailRateLimited) {
+      return {
+        success: true,
+        message: 'Profile updated. Auth email change is temporarily rate limited, so it was not updated yet.',
+      }
+    }
     return { success: true }
   }
 

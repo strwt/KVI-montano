@@ -9,6 +9,7 @@ import ChangePassword from './pages/ChangePassword'
 import EditAccount from './pages/EditAccount'
 import Members from './pages/Members'
 import MemberDetail from './pages/MemberDetail'
+import Donations from './pages/Donations'
 import Report from './pages/Report'
 import Login from './pages/Login'
 import Landing from './pages/Landing'
@@ -143,6 +144,7 @@ function AppRoutes() {
         <Route path="settings" element={<Settings />} />
         <Route path="members" element={<AdminRoute><Members /></AdminRoute>} />
         <Route path="members/:id" element={<AdminRoute><MemberDetail /></AdminRoute>} />
+        <Route path="donations" element={<AdminRoute><Donations /></AdminRoute>} />
       </Route>
 
       {/* Catch all - redirect to home */}

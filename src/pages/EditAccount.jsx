@@ -148,7 +148,7 @@ function EditAccount() {
         setError(res.message)
         return
       }
-      setSuccess('Account information updated successfully.')
+      setSuccess(res.message || 'Account information updated successfully.')
       setTimeout(() => navigate('/profile'), 350)
     } finally {
       setIsSaving(false)
