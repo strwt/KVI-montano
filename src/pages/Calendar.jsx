@@ -2016,14 +2016,43 @@ function Calendar({ listOnly = false }) {
     if (pendingConfirmation.type === 'update') {
       const { eventId, payload } = pendingConfirmation
       const existingEvent = events.find(event => event.id === eventId) || null
+      const previousCategoryKey = String(existingEvent?.category || '').trim()
+      const nextCategoryKey = String(payload?.category || '').trim()
+      const nextCategoryData =
+        existingEvent?.categoryData && typeof existingEvent.categoryData === 'object' ? { ...existingEvent.categoryData } : {}
+      let detachedActivityRecordId = ''
+
+      // If an event changes category, typed category activity data (activity_record_id) is no longer valid.
+      // Detach it so category management can safely delete old categories without being blocked by stale records.
+      if (previousCategoryKey && nextCategoryKey && previousCategoryKey !== nextCategoryKey) {
+        detachedActivityRecordId = String(nextCategoryData.activity_record_id || '').trim()
+        if (detachedActivityRecordId) delete nextCategoryData.activity_record_id
+      }
+
       const updatedEvent = {
         ...(existingEvent || {}),
         ...payload,
         id: eventId,
         updatedAt: dayjs().format('YYYY-MM-DD HH:mm'),
+        ...(detachedActivityRecordId ? { categoryData: nextCategoryData } : {}),
       }
 
       if (supabaseEnabled) {
+        if (detachedActivityRecordId) {
+          try {
+            const { count, error } = await supabase
+              .from('events')
+              .select('id', { count: 'exact', head: true })
+              .eq('category_data->>activity_record_id', detachedActivityRecordId)
+
+            if (!error && Number(count || 0) <= 1) {
+              await supabase.from('activity_records').delete().eq('id', detachedActivityRecordId)
+            }
+          } catch (error) {
+            console.warn('Failed to detach typed activity record from event update.', error)
+          }
+        }
+
         const { error } = await updateSupabaseEvent(eventId, updatedEvent)
         if (error) {
           setFormError(error.message || 'Unable to update event.')
@@ -2031,12 +2060,13 @@ function Calendar({ listOnly = false }) {
           return
         }
       }
+      const localPatch = detachedActivityRecordId ? { ...payload, categoryData: nextCategoryData } : payload
       setEvents(prev =>
         prev.map(event =>
           event.id === eventId
             ? {
                 ...event,
-                ...payload,
+                ...localPatch,
                 updatedAt: dayjs().format('YYYY-MM-DD HH:mm'),
               }
             : event

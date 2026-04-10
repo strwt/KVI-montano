@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Plus, Trash2, Save, Tags, Pencil, X as CloseIcon } from 'lucide-react'
+import { Plus, Trash2, Save, Tags, Pencil } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useI18n } from '../i18n/useI18n'
 import { supabase } from '../lib/supabaseClient'
@@ -372,7 +372,16 @@ function CategoryManagement() {
         .select('id', { count: 'exact', head: true })
         .eq('category_id', categoryId)
       if (recordCountError) throw recordCountError
-      if (Number(recordCount || 0) > 0) throw new Error('This category has activity records and cannot be deleted.')
+
+      // If there are orphaned typed activity records (e.g. events were reassigned/deleted),
+      // clean them up before deleting the category (activity_values cascades from activity_records).
+      if (Number(recordCount || 0) > 0) {
+        const { error: deleteRecordsError } = await supabase
+          .from('activity_records')
+          .delete()
+          .eq('category_id', categoryId)
+        if (deleteRecordsError) throw deleteRecordsError
+      }
 
       const { error: deleteTypedError } = await supabase.from('categories').delete().eq('id', categoryId)
       if (deleteTypedError) throw deleteTypedError
@@ -434,14 +443,6 @@ function CategoryManagement() {
                 </span>
               )}
             </div>
-            <button
-              type="button"
-              onClick={resetForm}
-              className="inline-flex items-center gap-2 rounded-xl border border-neutral-300 bg-white px-3 py-1.5 text-[13px] text-neutral-700 hover:bg-neutral-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-900"
-            >
-              <CloseIcon size={14} />
-              {editingCategory ? t('Close') : t('Reset')}
-            </button>
           </div>
 
           {formError && (

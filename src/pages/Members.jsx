@@ -30,6 +30,11 @@ const ROLE_OPTIONS = [
   { value: 'oic', label: 'OIC' },
   { value: 'admin', label: 'Admin' },
 ]
+
+const ROLE_FILTER_OPTIONS = [
+  { value: 'member', label: 'Member' },
+  { value: 'admin', label: 'Admin' },
+]
 const BLOOD_TYPE_OPTIONS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
 
 function Members() {
@@ -150,8 +155,7 @@ function Members() {
   const filteredMembers = visibleUsers.filter(member => {
     const memberCommitteeRole = member?.committeeRole || member?.committee_role || 'Member'
     const memberType = memberCommitteeRole === 'OIC' ? 'oic' : (member.role === 'admin' ? 'admin' : 'member')
-    if (roleFilter === 'oic' && memberType !== 'oic') return false
-    if (roleFilter === 'member' && memberType !== 'member') return false
+    if (roleFilter === 'member' && memberType === 'admin') return false
     const matchesSearch =
       member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (member.email || member.idNumber || '').toLowerCase().includes(searchQuery.toLowerCase())
@@ -821,7 +825,7 @@ function Members() {
               }}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
             >
-              {ROLE_OPTIONS.map(roleOption => (
+              {ROLE_FILTER_OPTIONS.map(roleOption => (
                 <option key={roleOption.value} value={roleOption.value}>
                   {roleOption.label}
                 </option>
