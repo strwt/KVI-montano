@@ -14,6 +14,7 @@ function Donations() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [deletingId, setDeletingId] = useState('')
+  const [pendingDeleteId, setPendingDeleteId] = useState('')
 
   const canLoad = useMemo(() => Boolean(supabaseEnabled && isAdmin && authResolved && !authLoading), [
     supabaseEnabled,
@@ -54,14 +55,23 @@ function Donations() {
     void loadDonations()
   }, [canLoad, loadDonations])
 
-  const handleDelete = async (id) => {
+  const handleRequestDelete = (id) => {
     const donationId = String(id || '').trim()
     if (!donationId) return
     if (deletingId) return
+    setPendingDeleteId(donationId)
+  }
 
-    const confirmed = window.confirm('Delete this donation record?')
-    if (!confirmed) return
+  const closeDeleteConfirm = () => {
+    if (deletingId) return
+    setPendingDeleteId('')
+  }
 
+  const handleConfirmDelete = async () => {
+    if (!pendingDeleteId) return
+    if (deletingId) return
+
+    const donationId = pendingDeleteId
     setDeletingId(donationId)
     setError('')
     try {
@@ -71,6 +81,7 @@ function Donations() {
         return
       }
       setDonations(prev => (Array.isArray(prev) ? prev.filter(row => String(row?.id) !== donationId) : []))
+      setPendingDeleteId('')
     } catch (error) {
       setError(error?.message ? String(error.message) : 'Unable to delete donation record.')
     } finally {
@@ -168,7 +179,7 @@ function Donations() {
                       <td className="px-4 py-3 text-right">
                         <button
                           type="button"
-                          onClick={() => handleDelete(row.id)}
+                          onClick={() => handleRequestDelete(row.id)}
                           disabled={Boolean(deletingId)}
                           className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
                           aria-label="Delete donation record"
@@ -186,6 +197,60 @@ function Donations() {
           </div>
         </div>
       </div>
+
+      {pendingDeleteId ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4"
+          role="dialog"
+          aria-modal="true"
+          onClick={closeDeleteConfirm}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-red-200 bg-white p-5 shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold tracking-[0.2em] uppercase text-red-700">Confirm Delete</p>
+                <h3 className="mt-1 text-lg font-bold text-gray-900">Delete donation record?</h3>
+              </div>
+              <button
+                type="button"
+                onClick={closeDeleteConfirm}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-gray-600 hover:bg-gray-50"
+                aria-label="Close delete confirmation"
+                disabled={Boolean(deletingId)}
+              >
+                <span className="text-lg leading-none">&times;</span>
+              </button>
+            </div>
+
+            <p className="mt-3 text-sm text-gray-600">
+              This will permanently remove the donation record from the admin list.
+            </p>
+
+            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={closeDeleteConfirm}
+                disabled={Boolean(deletingId)}
+                className="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={Boolean(deletingId)}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+              >
+                <Trash2 size={16} />
+                {deletingId ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }
