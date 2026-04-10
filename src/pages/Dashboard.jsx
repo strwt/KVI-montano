@@ -624,8 +624,6 @@ function Dashboard() {
                   }`}
                   style={{ animationDelay: `${index * 0.06}s`, borderColor: color }}
                 >
-                  <span aria-hidden="true" className="absolute top-0 left-0 right-0 h-0.5" style={{ background: color }} />
-
                   <div className="relative">
                     <div
                       className="mb-2 flex h-10 w-10 items-center justify-center rounded-lg border bg-neutral-100 dark:bg-zinc-800"

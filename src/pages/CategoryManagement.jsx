@@ -726,7 +726,6 @@ function CategoryManagement() {
                       style={{ borderColor: color }}
                     >
                       <div className="min-w-0 flex items-center gap-2">
-                        <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full" style={{ background: color }} />
                         <p className="truncate text-[14px] font-semibold text-black dark:text-zinc-100">
                           {titleCaseFromKey(category.name) || category.name}
                         </p>
