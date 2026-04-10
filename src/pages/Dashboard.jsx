@@ -79,45 +79,91 @@ const hexToRgb = (hex) => {
   }
 }
 
-const toRgba = (hex, alpha) => {
-  const rgb = hexToRgb(hex)
-  const parsedAlpha = typeof alpha === 'number' ? alpha : Number(alpha)
-  const safeAlpha = Number.isFinite(parsedAlpha) ? Math.max(0, Math.min(1, parsedAlpha)) : 0
-  if (!rgb) return `rgba(148, 163, 184, ${safeAlpha})`
-  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${safeAlpha})`
+const rgbToHue = (rgb) => {
+  if (!rgb) return null
+  const r = rgb.r / 255
+  const g = rgb.g / 255
+  const b = rgb.b / 255
+
+  const max = Math.max(r, g, b)
+  const min = Math.min(r, g, b)
+  const delta = max - min
+
+  if (delta === 0) return 0
+
+  let hue = 0
+  if (max === r) hue = ((g - b) / delta) % 6
+  else if (max === g) hue = (b - r) / delta + 2
+  else hue = (r - g) / delta + 4
+
+  hue *= 60
+  if (hue < 0) hue += 360
+  return hue
 }
 
-const getCategoryPalette = (value) => {
-  const normalizedKey = canonicalizeOperationKey(normalizeCategoryKey(value))
-  const key = normalizedKey || 'uncategorized'
-  const seeded = CATEGORY_COLOR_SEEDS[key]
+const hueDistance = (a, b) => {
+  const diff = Math.abs(a - b) % 360
+  return Math.min(diff, 360 - diff)
+}
 
-  if (seeded) {
-    return {
-      key,
-      accent: seeded,
-      bg: toRgba(seeded, 0.12),
-      bgStrong: toRgba(seeded, 0.18),
-      border: toRgba(seeded, 0.35),
-      borderStrong: toRgba(seeded, 0.55),
-      glow: toRgba(seeded, 0.2),
+const getHueFromColor = (color) => {
+  const raw = String(color || '').trim()
+  const hslMatch = raw.match(/hsl\(\s*([0-9.]+)/i)
+  if (hslMatch) {
+    const hue = Number(hslMatch[1])
+    if (Number.isFinite(hue)) return ((hue % 360) + 360) % 360
+  }
+
+  const rgb = hexToRgb(raw)
+  const hue = rgbToHue(rgb)
+  return Number.isFinite(hue) ? hue : null
+}
+
+const buildCategoryColorMap = (keys = []) => {
+  const inputKeys = Array.isArray(keys) ? keys : []
+  const normalizedKeys = inputKeys
+    .map(key => canonicalizeOperationKey(normalizeCategoryKey(key)))
+    .filter(Boolean)
+  const uniqueKeys = [...new Set(normalizedKeys)].sort((a, b) => a.localeCompare(b))
+
+  const map = {}
+  const usedHues = []
+  const usedColors = new Set()
+
+  const rememberHue = (color) => {
+    const hue = getHueFromColor(color)
+    if (Number.isFinite(hue)) usedHues.push(hue)
+  }
+
+  uniqueKeys.forEach((key) => {
+    const seeded = CATEGORY_COLOR_SEEDS[key]
+    if (!seeded) return
+    map[key] = seeded
+    usedColors.add(seeded)
+    rememberHue(seeded)
+  })
+
+  uniqueKeys.forEach((key) => {
+    if (map[key]) return
+
+    const hash = hashInt(key)
+    let hue = hash % 360
+    const saturation = 78 + (hash % 10) // 78..87
+    const lightness = 44 + ((hash >>> 8) % 10) // 44..53
+
+    for (let attempt = 0; attempt < 30; attempt += 1) {
+      const minDistance = usedHues.length ? Math.min(...usedHues.map(existing => hueDistance(existing, hue))) : 999
+      if (minDistance >= 18) break
+      hue = (hue + 137.508) % 360
     }
-  }
 
-  const hash = hashInt(key)
-  const hue = hash % 360
-  const saturation = 72 + (hash % 18) // 72..89
-  const lightness = 44 + ((hash >>> 8) % 10) // 44..53
+    const color = `hsl(${hue.toFixed(0)}, ${saturation}%, ${lightness}%)`
+    map[key] = color
+    usedColors.add(color)
+    usedHues.push(hue)
+  })
 
-  return {
-    key,
-    accent: `hsl(${hue}, ${saturation}%, ${lightness}%)`,
-    bg: `hsla(${hue}, ${saturation}%, ${lightness}%, 0.12)`,
-    bgStrong: `hsla(${hue}, ${saturation}%, ${lightness}%, 0.18)`,
-    border: `hsla(${hue}, ${saturation}%, ${lightness}%, 0.35)`,
-    borderStrong: `hsla(${hue}, ${saturation}%, ${lightness}%, 0.55)`,
-    glow: `hsla(${hue}, ${saturation}%, ${lightness}%, 0.2)`,
-  }
+  return map
 }
 
 const OPERATION_META = {
@@ -359,6 +405,11 @@ function Dashboard() {
     }))
   }, [categoryLabelByKey, events])
 
+  const categoryColorByKey = useMemo(
+    () => buildCategoryColorMap(operations.map(category => category.key)),
+    [operations]
+  )
+
   const categoryCounts = useMemo(() => {
     const counts = {}
     events.forEach(event => {
@@ -560,7 +611,7 @@ function Dashboard() {
           <h2 className="mb-3 text-[24px] font-semibold text-black dark:text-zinc-100">{t('Events by Category')}</h2>
           <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
             {operations.map((category, index) => {
-              const palette = getCategoryPalette(category.key)
+              const color = categoryColorByKey[category.key] || CATEGORY_COLOR_SEEDS.uncategorized
               return (
                 <button
                   key={category.key}
@@ -569,26 +620,19 @@ function Dashboard() {
                   className={`group relative h-full cursor-pointer rounded-xl border bg-white p-4 text-left transition-all duration-200 hover:scale-[1.02] hover:shadow-[0_8px_14px_rgba(0,0,0,0.08)] dark:bg-zinc-900 ${
                     animatedStats ? 'animate-fade-in-up' : 'opacity-0'
                   }`}
-                  style={{ animationDelay: `${index * 0.06}s`, borderColor: palette.border }}
+                  style={{ animationDelay: `${index * 0.06}s`, borderColor: color }}
                 >
-                  <span
-                    aria-hidden="true"
-                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
-                    style={{
-                      background: `radial-gradient(ellipse at 50% 0%, ${palette.glow} 0%, transparent 65%)`,
-                    }}
-                  />
-                  <span aria-hidden="true" className="absolute top-0 left-0 right-0 h-0.5" style={{ background: palette.accent }} />
+                  <span aria-hidden="true" className="absolute top-0 left-0 right-0 h-0.5" style={{ background: color }} />
 
                   <div className="relative">
                     <div
-                      className="mb-2 flex h-10 w-10 items-center justify-center rounded-lg border"
-                      style={{ background: palette.bg, borderColor: palette.border }}
+                      className="mb-2 flex h-10 w-10 items-center justify-center rounded-lg border bg-neutral-100 dark:bg-zinc-800"
+                      style={{ borderColor: color }}
                     >
                       <category.icon
                         size={18}
                         className={getIconThemeClass(category.key)}
-                        style={{ color: palette.accent }}
+                        style={{ color }}
                       />
                     </div>
                     <p className="text-[14px] text-neutral-500 dark:text-zinc-400">{t(category.label)}</p>
@@ -616,7 +660,11 @@ function Dashboard() {
           </div>
           <div className="max-h-[360px] space-y-3 overflow-y-auto pr-1">
             {recentEvents.map((event, index) => {
-              const palette = getCategoryPalette(event.category)
+              const eventCategoryKey = canonicalizeOperationKey(normalizeCategoryKey(event.category)) || 'uncategorized'
+              const color =
+                categoryColorByKey[eventCategoryKey] ||
+                CATEGORY_COLOR_SEEDS[eventCategoryKey] ||
+                CATEGORY_COLOR_SEEDS.uncategorized
               return (
                 <button
                   type="button"
@@ -643,7 +691,7 @@ function Dashboard() {
                   </div>
                   <span
                     className="rounded-md border px-2 py-1 text-[14px] capitalize"
-                    style={{ borderColor: palette.border, background: palette.bg, color: palette.accent }}
+                    style={{ borderColor: color, color }}
                   >
                     {getCategoryLabel(event.category)}
                   </span>
