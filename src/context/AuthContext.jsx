@@ -85,6 +85,17 @@ const isEmailRateLimitError = (error) => {
   return /rate limit|rate-limit|too many requests/i.test(message)
 }
 
+const normalizeRegisterErrorMessage = (error) => {
+  const message = error?.message ? String(error.message) : ''
+  if (/profiles_id_number_key|id_number/i.test(message) && /duplicate|unique constraint/i.test(message)) {
+    return 'ID Number is already used.'
+  }
+  if (/user already registered|email.*already/i.test(message)) {
+    return 'Email is already used.'
+  }
+  return message || 'Registration failed.'
+}
+
 const enrichUserWithProfileImage = (user = {}) => ({
   ...user,
   profileImage: user.profileImage || DEFAULT_PROFILE_IMAGE,
@@ -1259,7 +1270,7 @@ export function AuthProvider({ children }) {
       })
     )
 
-    if (error) return { success: false, message: error.message || 'Registration failed.' }
+    if (error) return { success: false, message: normalizeRegisterErrorMessage(error) }
 
     const activeUser = data?.session?.user || data?.user || null
     if (activeUser?.id) {

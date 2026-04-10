@@ -17,6 +17,18 @@ const isUniqueViolation = (error) => {
   return /duplicate key value|unique constraint/i.test(message)
 }
 
+const looksLikeEmailAlreadyUsedError = (error) => {
+  const message = error?.message ? String(error.message) : ''
+  return /user already registered|email.*already|already.*email/i.test(message)
+}
+
+const buildDuplicateProfileMessage = (error) => {
+  const message = error?.message ? String(error.message) : ''
+  if (/id_number|profiles_id_number_key/i.test(message)) return 'ID Number is already used.'
+  if (/email|profiles_email_key/i.test(message)) return 'Email is already used.'
+  return 'Member already exists.'
+}
+
 export default async function handler(req, res) {
   try {
     const rl = rateLimit({ req, res, key: 'admin:create-user', limit: 20, windowMs: 60_000 })
@@ -111,6 +123,9 @@ export default async function handler(req, res) {
     })
 
     if (createError) {
+      if (looksLikeEmailAlreadyUsedError(createError)) {
+        return res.status(409).json({ message: 'ID Number is already used.' })
+      }
       return res.status(400).json({ message: createError.message || 'Unable to create user.' })
     }
 
@@ -154,7 +169,7 @@ export default async function handler(req, res) {
 
       const statusCode = isUniqueViolation(profileError) ? 409 : 500
       const fallbackMessage = isUniqueViolation(profileError)
-        ? 'Member already exists (duplicate profile fields).'
+        ? buildDuplicateProfileMessage(profileError)
         : 'User created but profile update failed.'
 
       return res.status(statusCode).json({ message: profileError.message || fallbackMessage })
