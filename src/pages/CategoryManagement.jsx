@@ -29,6 +29,125 @@ const titleCaseFromKey = key =>
     .replace(/\s+/g, ' ')
     .toUpperCase()
 
+const CATEGORY_COLOR_SEEDS = {
+  tuli: '#ef4444', // red
+  blood_letting: '#b91c1c', // dark red
+  donations: '#f59e0b', // amber
+  environmental: '#22c55e', // green
+  relief_operation: '#3b82f6', // blue
+  fire_response: '#f97316', // orange
+  water_distribution: '#06b6d4', // cyan
+  notes: '#6366f1', // indigo
+  medical: '#ec4899', // pink
+  uncategorized: '#94a3b8', // slate
+}
+
+const hashInt = (key) => {
+  const input = String(key || '')
+  let hash = 2166136261
+  for (let i = 0; i < input.length; i += 1) {
+    hash ^= input.charCodeAt(i)
+    hash = Math.imul(hash, 16777619)
+  }
+  return hash >>> 0
+}
+
+const hexToRgb = (hex) => {
+  const raw = String(hex || '').trim().replace(/^#/, '')
+  const normalized = raw.length === 3 ? raw.split('').map(ch => `${ch}${ch}`).join('') : raw
+  if (!/^[0-9a-f]{6}$/i.test(normalized)) return null
+
+  return {
+    r: Number.parseInt(normalized.slice(0, 2), 16),
+    g: Number.parseInt(normalized.slice(2, 4), 16),
+    b: Number.parseInt(normalized.slice(4, 6), 16),
+  }
+}
+
+const rgbToHue = (rgb) => {
+  if (!rgb) return null
+  const r = rgb.r / 255
+  const g = rgb.g / 255
+  const b = rgb.b / 255
+
+  const max = Math.max(r, g, b)
+  const min = Math.min(r, g, b)
+  const delta = max - min
+
+  if (delta === 0) return 0
+
+  let hue = 0
+  if (max === r) hue = ((g - b) / delta) % 6
+  else if (max === g) hue = (b - r) / delta + 2
+  else hue = (r - g) / delta + 4
+
+  hue *= 60
+  if (hue < 0) hue += 360
+  return hue
+}
+
+const hueDistance = (a, b) => {
+  const diff = Math.abs(a - b) % 360
+  return Math.min(diff, 360 - diff)
+}
+
+const getHueFromColor = (color) => {
+  const raw = String(color || '').trim()
+  const hslMatch = raw.match(/hsl\(\s*([0-9.]+)/i)
+  if (hslMatch) {
+    const hue = Number(hslMatch[1])
+    if (Number.isFinite(hue)) return ((hue % 360) + 360) % 360
+  }
+
+  const rgb = hexToRgb(raw)
+  const hue = rgbToHue(rgb)
+  return Number.isFinite(hue) ? hue : null
+}
+
+const buildCategoryColorMap = (keys = []) => {
+  const inputKeys = Array.isArray(keys) ? keys : []
+  const normalizedKeys = inputKeys
+    .map(key => toCategoryKey(key))
+    .filter(Boolean)
+  const uniqueKeys = [...new Set(normalizedKeys)].sort((a, b) => a.localeCompare(b))
+
+  const map = {}
+  const usedHues = []
+
+  const rememberHue = (color) => {
+    const hue = getHueFromColor(color)
+    if (Number.isFinite(hue)) usedHues.push(hue)
+  }
+
+  uniqueKeys.forEach((key) => {
+    const seeded = CATEGORY_COLOR_SEEDS[key]
+    if (!seeded) return
+    map[key] = seeded
+    rememberHue(seeded)
+  })
+
+  uniqueKeys.forEach((key) => {
+    if (map[key]) return
+
+    const hash = hashInt(key)
+    let hue = hash % 360
+    const saturation = 78 + (hash % 10) // 78..87
+    const lightness = 44 + ((hash >>> 8) % 10) // 44..53
+
+    for (let attempt = 0; attempt < 30; attempt += 1) {
+      const minDistance = usedHues.length ? Math.min(...usedHues.map(existing => hueDistance(existing, hue))) : 999
+      if (minDistance >= 18) break
+      hue = (hue + 137.508) % 360
+    }
+
+    const color = `hsl(${hue.toFixed(0)}, ${saturation}%, ${lightness}%)`
+    map[key] = color
+    usedHues.push(hue)
+  })
+
+  return map
+}
+
 const FIELD_TYPES = [
   { value: 'text', label: 'Text' },
   { value: 'number', label: 'Number' },
@@ -53,6 +172,11 @@ function CategoryManagement() {
 
   const [categories, setCategories] = useState([])
   const [loadingCategories, setLoadingCategories] = useState(false)
+
+  const categoryColorByKey = useMemo(
+    () => buildCategoryColorMap(categories.map(category => category?.name)),
+    [categories]
+  )
 
   const [categoryName, setCategoryName] = useState('')
   const [fields, setFields] = useState([{ fieldId: null, fieldName: '', fieldType: '' }])
@@ -581,31 +705,41 @@ function CategoryManagement() {
               <p className="rounded-xl border border-neutral-200 bg-neutral-50 p-3 text-[13px] text-neutral-600 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-400">
                 {t('No categories yet.')}
               </p>
-            ) : (
-              categories.map(category => {
-                const isSelected = String(editingCategory?.id || '') === String(category.id || '')
-                return (
-                  <button
-                    key={category.id}
-                    type="button"
-                    onClick={() => handleSelectCategory(category)}
-                    className={`flex w-full items-center justify-between gap-3 rounded-xl border px-3 py-2 text-left transition-colors ${
-                      isSelected
-                        ? 'border-red-600 bg-red-50 dark:bg-red-950/20'
-                        : 'border-neutral-200 bg-white hover:bg-neutral-50 dark:border-zinc-700 dark:bg-zinc-950 dark:hover:bg-zinc-900'
-                    }`}
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate text-[14px] font-semibold text-black dark:text-zinc-100">
-                        {titleCaseFromKey(category.name) || category.name}
-                      </p>
-                    </div>
-                    <div className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-neutral-200 bg-white text-neutral-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200">
-                      <Pencil size={14} />
-                    </div>
-                  </button>
-                )
-              })
+              ) : (
+                categories.map(category => {
+                  const isSelected = String(editingCategory?.id || '') === String(category.id || '')
+                  const categoryKey = toCategoryKey(category.name) || 'uncategorized'
+                  const color =
+                    categoryColorByKey[categoryKey] ||
+                    CATEGORY_COLOR_SEEDS[categoryKey] ||
+                    CATEGORY_COLOR_SEEDS.uncategorized
+                  return (
+                    <button
+                      key={category.id}
+                      type="button"
+                      onClick={() => handleSelectCategory(category)}
+                      className={`flex w-full items-center justify-between gap-3 rounded-xl border px-3 py-2 text-left transition-colors ${
+                        isSelected
+                          ? 'bg-neutral-50 dark:bg-zinc-900/40'
+                          : 'bg-white hover:bg-neutral-50 dark:bg-zinc-950 dark:hover:bg-zinc-900'
+                      }`}
+                      style={{ borderColor: color }}
+                    >
+                      <div className="min-w-0 flex items-center gap-2">
+                        <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full" style={{ background: color }} />
+                        <p className="truncate text-[14px] font-semibold text-black dark:text-zinc-100">
+                          {titleCaseFromKey(category.name) || category.name}
+                        </p>
+                      </div>
+                      <div
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg border bg-white dark:bg-zinc-950"
+                        style={{ borderColor: color }}
+                      >
+                        <Pencil size={14} style={{ color }} />
+                      </div>
+                    </button>
+                  )
+                })
             )}
           </div>
         </aside>
