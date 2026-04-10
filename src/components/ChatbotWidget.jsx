@@ -746,6 +746,16 @@ function ChatbotWidget() {
     }, 700)
   }
 
+  const handleQuickAction = (link) => {
+    if (!link?.to) return
+    setIsOpen(false)
+    if (link.state) {
+      navigate(link.to, { state: link.state })
+    } else {
+      navigate(link.to)
+    }
+  }
+
   const chatPanelStyle = useMemo(() => {
     if (!position || typeof window === 'undefined') return undefined
     const gutter = 16
@@ -841,13 +851,7 @@ function ChatbotWidget() {
                 <button
                   key={link.label}
                   type="button"
-                  onClick={() => {
-                    if (link.state) {
-                      navigate(link.to, { state: link.state })
-                    } else {
-                      navigate(link.to)
-                    }
-                  }}
+                  onClick={() => handleQuickAction(link)}
                   className="rounded-full border border-red-600/50 px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-50 dark:hover:bg-zinc-800"
                 >
                   {link.label}
