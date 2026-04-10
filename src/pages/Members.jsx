@@ -72,6 +72,9 @@ function Members() {
 	    password: '',
 	    address: '',
 	    contactNumber: '',
+      emergencyContactNumber: '',
+      emergencyContactName: '',
+      emergencyContactRelationship: '',
     bloodType: '',
     insuranceStatus: 'N/A',
     insuranceYear: '',
@@ -268,6 +271,9 @@ function Members() {
 	      password: '',
 	      address: '',
 	      contactNumber: '',
+        emergencyContactNumber: '',
+        emergencyContactName: '',
+        emergencyContactRelationship: '',
       bloodType: '',
       insuranceStatus: 'N/A',
       insuranceYear: '',
@@ -296,6 +302,9 @@ function Members() {
 	      password: '',
 	      address: recruitment.address || '',
 	      contactNumber: recruitment.contactNumber || '',
+        emergencyContactNumber: recruitment.emergencyContactNumber || '',
+        emergencyContactName: recruitment.emergencyContactName || '',
+        emergencyContactRelationship: recruitment.emergencyContactRelationship || '',
       bloodType: recruitment.bloodType || '',
       insuranceStatus: recruitment.insuranceStatus || 'N/A',
       insuranceYear: recruitment.insuranceYear || '',
@@ -453,23 +462,66 @@ function Members() {
                   autoComplete="street-address"
                 />
               </div>
-              <div>
-                <label htmlFor="create-member-contact-number" className="block text-xs text-gray-500 mb-1">Contact Number</label>
-                <input
-                  id="create-member-contact-number"
-                  name="contactNumber"
-                  type="text"
-                  placeholder="Contact Number"
-                  value={newMember.contactNumber}
-                  onChange={e => setNewMember({ ...newMember, contactNumber: e.target.value })}
-                  className="w-full h-10 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                  autoComplete="tel"
-                />
-              </div>
-              <div>
-                <label htmlFor="create-member-blood-type" className="block text-xs text-gray-500 mb-1">Blood Type</label>
-                <select
-                  id="create-member-blood-type"
+               <div>
+                 <label htmlFor="create-member-contact-number" className="block text-xs text-gray-500 mb-1">Contact Number</label>
+                 <input
+                   id="create-member-contact-number"
+                   name="contactNumber"
+                   type="text"
+                   placeholder="Contact Number"
+                   value={newMember.contactNumber}
+                   onChange={e => setNewMember({ ...newMember, contactNumber: e.target.value })}
+                   className="w-full h-10 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                   autoComplete="tel"
+                 />
+               </div>
+                <div className="md:col-span-2 pt-2">
+                  <p className="text-sm font-medium text-gray-800">In Case of Emergency</p>
+                  <p className="text-xs text-gray-500">Emergency contact details for this member.</p>
+                </div>
+                <div>
+                  <label htmlFor="create-member-emergency-number" className="block text-xs text-gray-500 mb-1">Emergency Number</label>
+                  <input
+                    id="create-member-emergency-number"
+                    name="emergencyContactNumber"
+                    type="tel"
+                    placeholder="Emergency Contact Number"
+                    value={newMember.emergencyContactNumber}
+                    onChange={e => setNewMember({ ...newMember, emergencyContactNumber: e.target.value })}
+                    className="w-full h-10 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                    autoComplete="tel"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="create-member-emergency-name" className="block text-xs text-gray-500 mb-1">Emergency Contact Name</label>
+                  <input
+                    id="create-member-emergency-name"
+                    name="emergencyContactName"
+                    type="text"
+                    placeholder="Emergency Contact Name"
+                    value={newMember.emergencyContactName}
+                    onChange={e => setNewMember({ ...newMember, emergencyContactName: e.target.value })}
+                    className="w-full h-10 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                    autoComplete="name"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="create-member-emergency-relationship" className="block text-xs text-gray-500 mb-1">Relationship</label>
+                  <input
+                    id="create-member-emergency-relationship"
+                    name="emergencyContactRelationship"
+                    type="text"
+                    placeholder="Relationship"
+                    value={newMember.emergencyContactRelationship}
+                    onChange={e => setNewMember({ ...newMember, emergencyContactRelationship: e.target.value })}
+                    className="w-full h-10 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                    autoComplete="off"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="create-member-blood-type" className="block text-xs text-gray-500 mb-1">Blood Type</label>
+                  <select
+                    id="create-member-blood-type"
                   name="bloodType"
                   value={newMember.bloodType}
                   onChange={e => setNewMember({ ...newMember, bloodType: e.target.value })}

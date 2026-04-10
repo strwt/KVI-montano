@@ -23,6 +23,9 @@ const PROFILE_SELECT_COLUMNS = [
   'id_number',
   'committee',
   'contact_number',
+  'emergency_contact_number',
+  'emergency_contact_name',
+  'emergency_contact_relationship',
   'address',
   'blood_type',
   'insurance_status',
@@ -45,6 +48,9 @@ const PROFILE_LIST_COLUMNS = [
   'id_number',
   'committee',
   'contact_number',
+  'emergency_contact_number',
+  'emergency_contact_name',
+  'emergency_contact_relationship',
   'address',
   'blood_type',
   'insurance_status',
@@ -354,6 +360,9 @@ const mapProfileToUser = (profile, authUser) => {
     role,
     committee: profile?.committee || '',
     contactNumber: profile?.contact_number || '',
+    emergencyContactNumber: profile?.emergency_contact_number || '',
+    emergencyContactName: profile?.emergency_contact_name || '',
+    emergencyContactRelationship: profile?.emergency_contact_relationship || '',
     address: profile?.address || '',
     bloodType: profile?.blood_type || '',
     insuranceStatus: profile?.insurance_status || 'N/A',
@@ -646,6 +655,9 @@ export function AuthProvider({ children }) {
             role: normalizeRole(profile.role),
             committee: profile.committee || '',
             contactNumber: profile.contact_number || '',
+            emergencyContactNumber: profile.emergency_contact_number || '',
+            emergencyContactName: profile.emergency_contact_name || '',
+            emergencyContactRelationship: profile.emergency_contact_relationship || '',
             address: profile.address || '',
             bloodType: profile.blood_type || '',
             insuranceStatus: profile.insurance_status || 'N/A',
@@ -779,7 +791,7 @@ export function AuthProvider({ children }) {
 	    try {
 	      const res = await supabase
           .from('recruitments')
-          .select('id,full_name,email,id_number,contact_number,address,blood_type,insurance_status,insurance_year,status,submitted_at,processed_at,processed_by,notes')
+          .select('id,full_name,email,id_number,contact_number,emergency_contact_number,emergency_contact_name,emergency_contact_relationship,address,blood_type,insurance_status,insurance_year,status,submitted_at,processed_at,processed_by,notes')
           .order('submitted_at', { ascending: false })
 	      if (res.error) console.warn('Failed to load recruitments from Supabase.', res.error)
 	      data = res.data
@@ -793,6 +805,9 @@ export function AuthProvider({ children }) {
           email: row.email,
           idNumber: row.id_number || '',
           contactNumber: row.contact_number,
+          emergencyContactNumber: row.emergency_contact_number || '',
+          emergencyContactName: row.emergency_contact_name || '',
+          emergencyContactRelationship: row.emergency_contact_relationship || '',
           address: row.address,
           bloodType: row.blood_type,
           insuranceStatus: row.insurance_status,
@@ -1693,20 +1708,44 @@ export function AuthProvider({ children }) {
       return { success: true }
     }
 
-    const payload = {
-      name: (updates.name ?? '').toString().trim() || null,
-      committee: (updates.committee ?? '').toString().trim() || null,
-      address: (updates.address ?? '').toString().trim() || null,
-      contact_number: (updates.contactNumber ?? '').toString().trim() || null,
-      blood_type: (updates.bloodType ?? '').toString().trim().toUpperCase() || null,
-      insurance_status: updates.insuranceStatus === 'Insured' ? 'Insured' : 'N/A',
-      insurance_year:
-        updates.insuranceStatus === 'Insured'
-          ? (String(updates.insuranceYear || '').trim() || null)
-          : null,
-      account_status: (updates.accountStatus ?? 'Active').toString().trim() || 'Active',
-      status: (updates.status ?? 'active').toString().trim() || 'active',
+    const payload = {}
+    if (Object.prototype.hasOwnProperty.call(updates, 'name')) payload.name = (updates.name ?? '').toString().trim() || ''
+    if (Object.prototype.hasOwnProperty.call(updates, 'committee')) payload.committee = (updates.committee ?? '').toString().trim() || null
+    if (Object.prototype.hasOwnProperty.call(updates, 'address')) payload.address = (updates.address ?? '').toString().trim() || null
+    if (Object.prototype.hasOwnProperty.call(updates, 'contactNumber')) {
+      payload.contact_number = (updates.contactNumber ?? '').toString().trim() || null
     }
+    if (Object.prototype.hasOwnProperty.call(updates, 'emergencyContactNumber')) {
+      payload.emergency_contact_number = (updates.emergencyContactNumber ?? '').toString().trim() || null
+    }
+    if (Object.prototype.hasOwnProperty.call(updates, 'emergencyContactName')) {
+      payload.emergency_contact_name = (updates.emergencyContactName ?? '').toString().trim() || null
+    }
+    if (Object.prototype.hasOwnProperty.call(updates, 'emergencyContactRelationship')) {
+      payload.emergency_contact_relationship = (updates.emergencyContactRelationship ?? '').toString().trim() || null
+    }
+    if (Object.prototype.hasOwnProperty.call(updates, 'bloodType')) {
+      payload.blood_type = (updates.bloodType ?? '').toString().trim().toUpperCase() || null
+    }
+    if (Object.prototype.hasOwnProperty.call(updates, 'memberSince')) {
+      payload.member_since = (updates.memberSince ?? '').toString().trim() || null
+    }
+    if (
+      Object.prototype.hasOwnProperty.call(updates, 'insuranceStatus') ||
+      Object.prototype.hasOwnProperty.call(updates, 'insuranceYear')
+    ) {
+      const status = updates.insuranceStatus === 'Insured' ? 'Insured' : 'N/A'
+      payload.insurance_status = status
+      payload.insurance_year = status === 'Insured' ? (String(updates.insuranceYear || '').trim() || null) : null
+    }
+    if (Object.prototype.hasOwnProperty.call(updates, 'accountStatus')) {
+      payload.account_status = (updates.accountStatus ?? 'Active').toString().trim() || 'Active'
+    }
+    if (Object.prototype.hasOwnProperty.call(updates, 'status')) {
+      payload.status = (updates.status ?? 'active').toString().trim() || 'active'
+    }
+
+    if (Object.keys(payload).length === 0) return { success: true }
 
 	    const { error } = await supabase.from('profiles').update(payload).eq('id', memberId)
 	    if (error) return { success: false, message: error.message || 'Unable to update member.' }
@@ -1878,6 +1917,9 @@ export function AuthProvider({ children }) {
       email,
       id_number: idNumber || null,
       contact_number: contactNumber,
+      emergency_contact_number: applicationData.emergencyContactNumber?.trim() || null,
+      emergency_contact_name: applicationData.emergencyContactName?.trim() || null,
+      emergency_contact_relationship: applicationData.emergencyContactRelationship?.trim() || null,
       address,
       blood_type: bloodType,
       insurance_status: insuranceStatus,
@@ -1952,14 +1994,17 @@ export function AuthProvider({ children }) {
 	          role,
             status: memberData.status || 'active',
             accountStatus: memberData.accountStatus || 'Active',
-	          committee: memberData.committee || null,
-	          address: memberData.address || null,
-	          contactNumber: memberData.contactNumber || null,
-	          bloodType: memberData.bloodType || null,
-	          memberSince: memberData.memberSince || null,
-            insuranceStatus: memberData.insuranceStatus || memberData.insurance_status || 'N/A',
-            insuranceYear: memberData.insuranceYear || memberData.insurance_year || null,
-	        }),
+  	          committee: memberData.committee || null,
+  	          address: memberData.address || null,
+  	          contactNumber: memberData.contactNumber || null,
+              emergencyContactNumber: memberData.emergencyContactNumber || null,
+              emergencyContactName: memberData.emergencyContactName || null,
+              emergencyContactRelationship: memberData.emergencyContactRelationship || null,
+  	          bloodType: memberData.bloodType || null,
+  	          memberSince: memberData.memberSince || null,
+              insuranceStatus: memberData.insuranceStatus || memberData.insurance_status || 'N/A',
+              insuranceYear: memberData.insuranceYear || memberData.insurance_year || null,
+  	        }),
 	      })
 	    } catch (error) {
 	      console.warn('Failed to reach admin create-user endpoint.', error)
@@ -1995,6 +2040,9 @@ export function AuthProvider({ children }) {
           role,
           committee: memberData.committee || '',
           contactNumber: memberData.contactNumber || '',
+          emergencyContactNumber: memberData.emergencyContactNumber || '',
+          emergencyContactName: memberData.emergencyContactName || '',
+          emergencyContactRelationship: memberData.emergencyContactRelationship || '',
           address: memberData.address || '',
           bloodType: memberData.bloodType || '',
           insuranceStatus: memberData.insuranceStatus || 'N/A',

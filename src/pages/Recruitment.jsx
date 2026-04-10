@@ -10,6 +10,9 @@ function Recruitment() {
     fullName: '',
     email: '',
     contactNumber: '',
+    emergencyContactNumber: '',
+    emergencyContactName: '',
+    emergencyContactRelationship: '',
     address: '',
     bloodType: '',
     insuranceStatus: 'N/A',
@@ -38,6 +41,9 @@ function Recruitment() {
       fullName: '',
       email: '',
       contactNumber: '',
+      emergencyContactNumber: '',
+      emergencyContactName: '',
+      emergencyContactRelationship: '',
       address: '',
       bloodType: '',
       insuranceStatus: 'N/A',
@@ -178,6 +184,62 @@ function Recruitment() {
                 placeholder="e.g. +63 912 345 6789"
                 autoComplete="tel"
                 required
+              />
+            </div>
+          </div>
+
+          <div className="pt-2">
+            <p className="text-sm font-semibold text-gray-900 dark:text-white">In Case of Emergency</p>
+            <p className="text-xs text-gray-600 dark:text-gray-300">Optional: who should we contact in an emergency?</p>
+          </div>
+
+          <div>
+            <label htmlFor="recruitment-emergency-number" className="block text-sm text-gray-700 dark:text-gray-200 mb-2">Emergency Number</label>
+            <div className="relative">
+              <Phone size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                id="recruitment-emergency-number"
+                name="emergencyContactNumber"
+                type="tel"
+                value={formData.emergencyContactNumber}
+                onChange={e => setFormData(prev => ({ ...prev, emergencyContactNumber: e.target.value }))}
+                className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900/60 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                placeholder="Emergency contact number"
+                autoComplete="tel"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label htmlFor="recruitment-emergency-name" className="block text-sm text-gray-700 dark:text-gray-200 mb-2">Name</label>
+            <div className="relative">
+              <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                id="recruitment-emergency-name"
+                name="emergencyContactName"
+                type="text"
+                value={formData.emergencyContactName}
+                onChange={e => setFormData(prev => ({ ...prev, emergencyContactName: e.target.value }))}
+                className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900/60 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                placeholder="Emergency contact name"
+                autoComplete="name"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label htmlFor="recruitment-emergency-relationship" className="block text-sm text-gray-700 dark:text-gray-200 mb-2">Relationship</label>
+            <div className="relative">
+              <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                id="recruitment-emergency-relationship"
+                name="emergencyContactRelationship"
+                type="text"
+                value={formData.emergencyContactRelationship}
+                onChange={e => setFormData(prev => ({ ...prev, emergencyContactRelationship: e.target.value }))}
+                className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900/60 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                placeholder="e.g. Parent, Sibling"
+                autoComplete="off"
               />
             </div>
           </div>

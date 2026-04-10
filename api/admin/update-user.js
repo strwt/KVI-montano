@@ -38,6 +38,15 @@ const buildProfilePatch = (updates = {}) => {
   if (Object.prototype.hasOwnProperty.call(updates, 'category')) patch.category = normalizeText(updates.category) || null
   if (Object.prototype.hasOwnProperty.call(updates, 'address')) patch.address = normalizeText(updates.address) || null
   if (Object.prototype.hasOwnProperty.call(updates, 'contactNumber')) patch.contact_number = normalizeText(updates.contactNumber) || null
+  if (Object.prototype.hasOwnProperty.call(updates, 'emergencyContactNumber')) {
+    patch.emergency_contact_number = normalizeText(updates.emergencyContactNumber) || null
+  }
+  if (Object.prototype.hasOwnProperty.call(updates, 'emergencyContactName')) {
+    patch.emergency_contact_name = normalizeText(updates.emergencyContactName) || null
+  }
+  if (Object.prototype.hasOwnProperty.call(updates, 'emergencyContactRelationship')) {
+    patch.emergency_contact_relationship = normalizeText(updates.emergencyContactRelationship) || null
+  }
   if (Object.prototype.hasOwnProperty.call(updates, 'bloodType')) {
     const bt = normalizeText(updates.bloodType).toUpperCase()
     patch.blood_type = bt || null

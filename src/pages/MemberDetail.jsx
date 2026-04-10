@@ -22,6 +22,9 @@ function MemberDetail() {
     newPassword: '',
     address: '',
     contactNumber: '',
+    emergencyContactNumber: '',
+    emergencyContactName: '',
+    emergencyContactRelationship: '',
     bloodType: '',
     insuranceStatus: 'N/A',
     insuranceYear: '',
@@ -54,6 +57,9 @@ function MemberDetail() {
       newPassword: '',
       address: member.address || '',
       contactNumber: member.contactNumber || '',
+      emergencyContactNumber: member.emergencyContactNumber || '',
+      emergencyContactName: member.emergencyContactName || '',
+      emergencyContactRelationship: member.emergencyContactRelationship || '',
       bloodType: member.bloodType || '',
       insuranceStatus: member.insuranceStatus || 'N/A',
       insuranceYear: member.insuranceYear || '',
@@ -100,6 +106,9 @@ function MemberDetail() {
       email: editForm.email,
       address: editForm.address,
       contactNumber: editForm.contactNumber,
+      emergencyContactNumber: editForm.emergencyContactNumber,
+      emergencyContactName: editForm.emergencyContactName,
+      emergencyContactRelationship: editForm.emergencyContactRelationship,
       bloodType: editForm.bloodType,
       insuranceStatus,
       insuranceYear,
@@ -263,6 +272,20 @@ function MemberDetail() {
             <p className="text-sm text-gray-500 mb-1">Contact Number</p>
             <p className="text-lg font-semibold text-gray-800">{member.contactNumber || 'N/A'}</p>
           </div>
+          <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl shadow-md p-5 lg:col-span-2">
+            <p className="text-sm text-gray-500 mb-2">In Case of Emergency</p>
+            <div className="space-y-1 text-sm text-gray-700">
+              <p>
+                <span className="text-gray-500">Number:</span> {member.emergencyContactNumber || 'N/A'}
+              </p>
+              <p>
+                <span className="text-gray-500">Name:</span> {member.emergencyContactName || 'N/A'}
+              </p>
+              <p>
+                <span className="text-gray-500">Relationship:</span> {member.emergencyContactRelationship || 'N/A'}
+              </p>
+            </div>
+          </div>
           <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl shadow-md p-5">
             <p className="text-sm text-gray-500 mb-1">Blood Type</p>
             <p className="text-lg font-semibold text-gray-800">{member.bloodType || 'N/A'}</p>
@@ -378,6 +401,46 @@ function MemberDetail() {
                   onChange={(e) => setEditForm({ ...editForm, contactNumber: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                   autoComplete="tel"
+                />
+              </div>
+              <div className="pt-2 border-t border-gray-100">
+                <p className="text-sm font-medium text-gray-800">In Case of Emergency</p>
+                <p className="text-xs text-gray-500">Emergency contact details for this member.</p>
+              </div>
+              <div>
+                <label htmlFor="update-member-emergency-number" className="block text-sm font-medium text-gray-700 mb-1">Emergency Number</label>
+                <input
+                  id="update-member-emergency-number"
+                  name="emergencyContactNumber"
+                  type="tel"
+                  value={editForm.emergencyContactNumber}
+                  onChange={(e) => setEditForm({ ...editForm, emergencyContactNumber: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                  autoComplete="tel"
+                />
+              </div>
+              <div>
+                <label htmlFor="update-member-emergency-name" className="block text-sm font-medium text-gray-700 mb-1">Emergency Contact Name</label>
+                <input
+                  id="update-member-emergency-name"
+                  name="emergencyContactName"
+                  type="text"
+                  value={editForm.emergencyContactName}
+                  onChange={(e) => setEditForm({ ...editForm, emergencyContactName: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                  autoComplete="name"
+                />
+              </div>
+              <div>
+                <label htmlFor="update-member-emergency-relationship" className="block text-sm font-medium text-gray-700 mb-1">Relationship</label>
+                <input
+                  id="update-member-emergency-relationship"
+                  name="emergencyContactRelationship"
+                  type="text"
+                  value={editForm.emergencyContactRelationship}
+                  onChange={(e) => setEditForm({ ...editForm, emergencyContactRelationship: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                  autoComplete="off"
                 />
               </div>
               <div>

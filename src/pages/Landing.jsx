@@ -24,7 +24,9 @@ import {
 } from 'lucide-react'
 
 const HERO_IMAGE = '/kvi.png'
-const DONATION_TARGET_BANK_NUMBER = 'ADD BANK NUMBER HERE'
+const DONATION_BANK_NAME = 'BDO Unibank, Inc.'
+const DONATION_ACCOUNT_NAME = 'Kusgan Volunteers Inc.'
+const DONATION_ACCOUNT_NUMBER = '003168018017'
 const DONATION_NOTIFICATION_EMAIL = 'kusganvolunteersinc@gmail.com'
 
 const NAV_LINKS = [
@@ -431,9 +433,9 @@ function Landing() {
 
   const copyDonationBankNumber = async () => {
     try {
-      if (!DONATION_TARGET_BANK_NUMBER) return
+      if (!DONATION_ACCOUNT_NUMBER) return
       if (typeof navigator !== 'undefined' && navigator?.clipboard?.writeText) {
-        await navigator.clipboard.writeText(DONATION_TARGET_BANK_NUMBER)
+        await navigator.clipboard.writeText(DONATION_ACCOUNT_NUMBER)
         setDonationCopied(true)
         window.setTimeout(() => setDonationCopied(false), 1400)
       }
@@ -457,7 +459,9 @@ function Landing() {
       `Email: ${donorEmail || '-'}`,
       `Reference No.: ${referenceNo || '-'}`,
       '',
-      `Target Bank Number: ${DONATION_TARGET_BANK_NUMBER || '-'}`,
+      `Bank: ${DONATION_BANK_NAME || '-'}`,
+      `Account Name: ${DONATION_ACCOUNT_NAME || '-'}`,
+      `Account Number: ${DONATION_ACCOUNT_NUMBER || '-'}`,
       `Submitted: ${new Date().toLocaleString()}`,
     ]
 
@@ -1590,15 +1594,25 @@ function Landing() {
             </div>
 
             <div className="mt-5 rounded-xl border border-white/10 bg-white/5 p-4">
-              <p className="text-xs font-semibold tracking-[0.14em] uppercase text-white/60">Target Bank Number</p>
-              <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
-                <span className="font-mono text-sm text-white">{DONATION_TARGET_BANK_NUMBER}</span>
+              <p className="text-xs font-semibold tracking-[0.14em] uppercase text-white/60">Bank Information</p>
+              <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0 space-y-1 text-sm text-white/90">
+                  <p className="truncate">
+                    <span className="text-white/60">Bank:</span> {DONATION_BANK_NAME}
+                  </p>
+                  <p className="truncate">
+                    <span className="text-white/60">Account Name:</span> {DONATION_ACCOUNT_NAME}
+                  </p>
+                  <p className="font-mono text-white">
+                    <span className="font-sans text-white/60">Account Number:</span> {DONATION_ACCOUNT_NUMBER}
+                  </p>
+                </div>
                 <button
                   type="button"
                   onClick={copyDonationBankNumber}
                   className="inline-flex items-center rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-white/80 hover:bg-white/10"
                 >
-                  {donationCopied ? 'Copied' : 'Copy'}
+                  {donationCopied ? 'Copied' : 'Copy account no.'}
                 </button>
               </div>
             </div>
@@ -1634,9 +1648,9 @@ function Landing() {
               </div>
 
               <div className="space-y-1.5">
-                <label htmlFor="donor-reference" className="text-xs font-semibold tracking-[0.14em] uppercase text-white/60">
-                  Reference No. (optional)
-                </label>
+                  <label htmlFor="donor-reference" className="text-xs font-semibold tracking-[0.14em] uppercase text-white/60">
+                    Reference No.
+                  </label>
                 <input
                   id="donor-reference"
                   type="text"
