@@ -27,6 +27,7 @@ import dayjs from 'dayjs'
 
 const ROLE_OPTIONS = [
   { value: 'member', label: 'Member' },
+  { value: 'oic', label: 'OIC' },
   { value: 'admin', label: 'Admin' },
 ]
 const BLOOD_TYPE_OPTIONS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
@@ -125,6 +126,7 @@ function Members() {
   useEffect(() => {
     if (committeeOptions.length === 0) return
     setNewMember(prev => {
+      if (prev?.role === 'admin' || prev?.role === 'oic' || prev?.committeeRole === 'OIC') return prev
       const currentCommittee = String(prev?.committee || '').trim()
       if (currentCommittee && committeeOptions.includes(currentCommittee)) return prev
       return { ...prev, committee: committeeOptions[0] }
@@ -137,13 +139,26 @@ function Members() {
     setCommitteeFilter('all')
   }, [committeeFilter, committeeOptions])
 
+  useEffect(() => {
+    if (roleFilter === 'member') return
+    if (committeeFilter === 'all') return
+    setCommitteeFilter('all')
+  }, [committeeFilter, roleFilter])
+
   const visibleUsers = roleFilter === 'admin' ? admins : members
 
   const filteredMembers = visibleUsers.filter(member => {
+    const memberCommitteeRole = member?.committeeRole || member?.committee_role || 'Member'
+    const memberType = memberCommitteeRole === 'OIC' ? 'oic' : (member.role === 'admin' ? 'admin' : 'member')
+    if (roleFilter === 'oic' && memberType !== 'oic') return false
+    if (roleFilter === 'member' && memberType !== 'member') return false
     const matchesSearch =
       member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (member.email || member.idNumber || '').toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesCommittee = committeeFilter === 'all' || member.committee === committeeFilter
+    const matchesCommittee =
+      roleFilter !== 'member' ||
+      committeeFilter === 'all' ||
+      member.committee === committeeFilter
     const normalizedInsurance = String(member?.insuranceStatus || '').trim().toLowerCase()
     const isInsured = normalizedInsurance === 'insured'
     const matchesInsurance =
@@ -163,9 +178,9 @@ function Members() {
   const allSelectedOnPage = currentMemberIds.length > 0 && currentMemberIds.every(id => selectedMemberIds.has(id))
 
   const getRoleBadge = role => {
-    return role === 'admin'
-      ? 'bg-red-100 text-red-700 border-red-200'
-      : 'bg-blue-100 text-blue-700 border-blue-200'
+    if (role === 'admin') return 'bg-red-100 text-red-700 border-red-200'
+    if (role === 'oic') return 'bg-amber-100 text-amber-700 border-amber-200'
+    return 'bg-blue-100 text-blue-700 border-blue-200'
   }
 
   const handleViewMember = memberId => {
@@ -558,7 +573,33 @@ function Members() {
                   id="create-member-role"
                   name="role"
                   value={newMember.role}
-                  onChange={e => setNewMember({ ...newMember, role: e.target.value })}
+                  onChange={e => {
+                    const nextRole = e.target.value
+                    setNewMember(prev => {
+                      if (nextRole === 'admin') {
+                        return {
+                          ...prev,
+                          role: 'admin',
+                          committeeRole: 'Member',
+                          committee: '',
+                        }
+                      }
+                      if (nextRole === 'oic') {
+                        return {
+                          ...prev,
+                          role: 'oic',
+                          committeeRole: 'OIC',
+                          committee: '',
+                        }
+                      }
+                      return {
+                        ...prev,
+                        role: 'member',
+                        committeeRole: 'Member',
+                        committee: prev.committee || committeeOptions[0] || '',
+                      }
+                    })
+                  }}
                   className="w-full h-10 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                   required
                 >
@@ -569,36 +610,28 @@ function Members() {
                   ))}
                 </select>
               </div>
-              <div>
-                <label htmlFor="create-member-committee" className="block text-xs text-gray-500 mb-1">Committee</label>
-                <select
-                  id="create-member-committee"
-                  name="committee"
-                  value={newMember.committee}
-                  onChange={e => setNewMember({ ...newMember, committee: e.target.value })}
-                  className="w-full h-10 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                  required
-                >
-                  {committeeOptions.map(committee => (
-                    <option key={committee} value={committee}>
-                      {committee}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label htmlFor="create-member-committee-role" className="block text-xs text-gray-500 mb-1">Committee Role</label>
-                <select
-                  id="create-member-committee-role"
-                  name="committeeRole"
-                  value={newMember.committeeRole || 'Member'}
-                  onChange={e => setNewMember({ ...newMember, committeeRole: e.target.value })}
-                  className="w-full h-10 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                >
-                  <option value="Member">Member</option>
-                  <option value="OIC">OIC (Head)</option>
-                </select>
-              </div>
+
+              {newMember.role === 'member' ? (
+                <div>
+                  <label htmlFor="create-member-committee" className="block text-xs text-gray-500 mb-1">Committee</label>
+                  <select
+                    id="create-member-committee"
+                    name="committee"
+                    value={newMember.committee}
+                    onChange={e => setNewMember({ ...newMember, committee: e.target.value })}
+                    className="w-full h-10 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                    required
+                  >
+                    {committeeOptions.map(committee => (
+                      <option key={committee} value={committee}>
+                        {committee}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div />
+              )}
               <div>
                 <label htmlFor="create-member-member-since" className="block text-xs text-gray-500 mb-1">Member Since</label>
                 <input
@@ -784,6 +817,7 @@ function Members() {
               onChange={e => {
                 setCurrentPage(1)
                 setRoleFilter(e.target.value)
+                setCommitteeFilter('all')
               }}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
             >
@@ -794,23 +828,27 @@ function Members() {
               ))}
             </select>
           </div>
-          <div>
-            <select
-              value={committeeFilter}
-              onChange={e => {
-                setCurrentPage(1)
-                setCommitteeFilter(e.target.value)
-              }}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-            >
-              <option value="all">All Committees</option>
-              {committeeOptions.map(committee => (
-                <option key={committee} value={committee}>
-                  {committee}
-                </option>
-              ))}
-            </select>
-          </div>
+          {roleFilter === 'member' ? (
+            <div>
+              <select
+                value={committeeFilter}
+                onChange={e => {
+                  setCurrentPage(1)
+                  setCommitteeFilter(e.target.value)
+                }}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+              >
+                <option value="all">All Committees</option>
+                {committeeOptions.map(committee => (
+                  <option key={committee} value={committee}>
+                    {committee}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : (
+            <div />
+          )}
           <div className="relative">
             <Shield className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
             <select
@@ -966,9 +1004,16 @@ function Members() {
                   )}
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-gray-800 text-lg truncate">{member.name}</h3>
-                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium border ${getRoleBadge(member.role)}`}>
-                      {member.role === 'admin' ? 'Administrator' : 'Member'}
-                    </span>
+                    {(() => {
+                      const memberCommitteeRole = member?.committeeRole || member?.committee_role || 'Member'
+                      const memberType = memberCommitteeRole === 'OIC' ? 'oic' : (member.role === 'admin' ? 'admin' : 'member')
+                      const label = memberType === 'admin' ? 'Administrator' : (memberType === 'oic' ? 'OIC' : 'Member')
+                      return (
+                        <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium border ${getRoleBadge(memberType)}`}>
+                          {label}
+                        </span>
+                      )
+                    })()}
                   </div>
                 </div>
 
@@ -1003,12 +1048,26 @@ function Members() {
                 </div>
 
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <span className="px-2 py-1 rounded bg-red-50 text-red-700 text-xs border border-red-200">
-                    Committee: {member.committee || 'N/A'}
-                  </span>
-                  <span className="px-2 py-1 rounded bg-blue-50 text-blue-700 text-xs border border-blue-200">
-                    Role: {member.role === 'admin' ? 'Admin' : 'Member'}
-                  </span>
+                  {member.role !== 'admin' && (member.committeeRole || member.committee_role) !== 'OIC' ? (
+                    <span className="px-2 py-1 rounded bg-red-50 text-red-700 text-xs border border-red-200">
+                      Committee: {member.committee || 'N/A'}
+                    </span>
+                  ) : null}
+                  {(() => {
+                    const memberCommitteeRole = member?.committeeRole || member?.committee_role || 'Member'
+                    const memberType = memberCommitteeRole === 'OIC' ? 'oic' : (member.role === 'admin' ? 'admin' : 'member')
+                    const label = memberType === 'admin' ? 'Admin' : (memberType === 'oic' ? 'OIC' : 'Member')
+                    const tone = memberType === 'admin'
+                      ? 'bg-red-50 text-red-700 border-red-200'
+                      : memberType === 'oic'
+                        ? 'bg-amber-50 text-amber-700 border-amber-200'
+                        : 'bg-blue-50 text-blue-700 border-blue-200'
+                    return (
+                      <span className={`px-2 py-1 rounded text-xs border ${tone}`}>
+                        Role: {label}
+                      </span>
+                    )
+                  })()}
                 </div>
 
                 {isAdmin && (

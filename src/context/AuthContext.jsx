@@ -975,22 +975,11 @@ export function AuthProvider({ children }) {
     if (!supabaseEnabled) return undefined
 
     const realtimeEnabled = String(import.meta.env.VITE_SUPABASE_ENABLE_REALTIME || '').toLowerCase() !== 'false'
-    if (!realtimeEnabled) {
-      const intervalId = window.setInterval(() => {
-        void reloadCommittees()
-      }, 15000)
-      return () => window.clearInterval(intervalId)
-    }
+    if (!realtimeEnabled) return undefined
 
-    let fallbackIntervalId
     let disposed = false
-
-    const startFallbackPolling = () => {
-      if (disposed || fallbackIntervalId) return
-      fallbackIntervalId = window.setInterval(() => {
-        void reloadCommittees()
-      }, 15000)
-    }
+    let subscribed = false
+    let timeoutId = 0
 
     const channel = supabase
       .channel('kusgan-committees')
@@ -1002,21 +991,23 @@ export function AuthProvider({ children }) {
         }
       )
       .subscribe(status => {
-        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          startFallbackPolling()
-          supabase.removeChannel(channel)
+        if (status === 'SUBSCRIBED') {
+          subscribed = true
+          if (timeoutId) window.clearTimeout(timeoutId)
+          return
         }
+
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') supabase.removeChannel(channel)
       })
 
-    const timeoutId = window.setTimeout(() => {
-      startFallbackPolling()
+    timeoutId = window.setTimeout(() => {
+      if (disposed || subscribed) return
       supabase.removeChannel(channel)
     }, 8000)
 
     return () => {
       disposed = true
-      window.clearTimeout(timeoutId)
-      if (fallbackIntervalId) window.clearInterval(fallbackIntervalId)
+      if (timeoutId) window.clearTimeout(timeoutId)
       supabase.removeChannel(channel)
     }
   }, [supabaseEnabled, reloadCommittees])
@@ -1025,22 +1016,11 @@ export function AuthProvider({ children }) {
     if (!supabaseEnabled) return undefined
 
     const realtimeEnabled = String(import.meta.env.VITE_SUPABASE_ENABLE_REALTIME || '').toLowerCase() !== 'false'
-    if (!realtimeEnabled) {
-      const intervalId = window.setInterval(() => {
-        void reloadCategories()
-      }, 15000)
-      return () => window.clearInterval(intervalId)
-    }
+    if (!realtimeEnabled) return undefined
 
-    let fallbackIntervalId
     let disposed = false
-
-    const startFallbackPolling = () => {
-      if (disposed || fallbackIntervalId) return
-      fallbackIntervalId = window.setInterval(() => {
-        void reloadCategories()
-      }, 15000)
-    }
+    let subscribed = false
+    let timeoutId = 0
 
     const channel = supabase
       .channel('kusgan-categories')
@@ -1059,21 +1039,23 @@ export function AuthProvider({ children }) {
         }
       )
       .subscribe(status => {
-        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          startFallbackPolling()
-          supabase.removeChannel(channel)
+        if (status === 'SUBSCRIBED') {
+          subscribed = true
+          if (timeoutId) window.clearTimeout(timeoutId)
+          return
         }
+
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') supabase.removeChannel(channel)
       })
 
-    const timeoutId = window.setTimeout(() => {
-      startFallbackPolling()
+    timeoutId = window.setTimeout(() => {
+      if (disposed || subscribed) return
       supabase.removeChannel(channel)
     }, 8000)
 
     return () => {
       disposed = true
-      window.clearTimeout(timeoutId)
-      if (fallbackIntervalId) window.clearInterval(fallbackIntervalId)
+      if (timeoutId) window.clearTimeout(timeoutId)
       supabase.removeChannel(channel)
     }
   }, [supabaseEnabled, reloadCategories])
@@ -1706,15 +1688,78 @@ export function AuthProvider({ children }) {
     if (!user?.id) return { success: false, message: 'User not found.' }
     if (user.role !== 'admin') return { success: false, message: 'Only admins can update members.' }
 
-    const requiresAdminEndpoint = Object.prototype.hasOwnProperty.call(updates, 'email')
-      || Object.prototype.hasOwnProperty.call(updates, 'idNumber')
-      || Object.prototype.hasOwnProperty.call(updates, 'password')
-      || Object.prototype.hasOwnProperty.call(updates, 'newPassword')
+    const currentRecord = [...admins, ...members].find(item => String(item?.id) === String(memberId)) || null
+    const currentEmail = String(currentRecord?.email || '').trim().toLowerCase()
+    const currentIdNumber = String(currentRecord?.idNumber || currentRecord?.id_number || '').trim()
+    const currentRole = normalizeRole(currentRecord?.role) || 'member'
+
+    const sanitizedUpdates = updates && typeof updates === 'object' ? { ...updates } : {}
+
+    if (Object.prototype.hasOwnProperty.call(sanitizedUpdates, 'email')) {
+      const nextEmail = String(sanitizedUpdates.email || '').trim().toLowerCase()
+      if (nextEmail === currentEmail) delete sanitizedUpdates.email
+    }
+
+    if (Object.prototype.hasOwnProperty.call(sanitizedUpdates, 'idNumber')) {
+      const nextIdNumber = String(sanitizedUpdates.idNumber || '').trim()
+      if (nextIdNumber === currentIdNumber) delete sanitizedUpdates.idNumber
+    }
+
+    if (Object.prototype.hasOwnProperty.call(sanitizedUpdates, 'role')) {
+      const nextRole = normalizeRole(sanitizedUpdates.role)
+      if (!nextRole || nextRole === currentRole) delete sanitizedUpdates.role
+    }
+
+    if (Object.prototype.hasOwnProperty.call(sanitizedUpdates, 'password')) {
+      const nextPassword = String(sanitizedUpdates.password || '').trim()
+      if (!nextPassword) delete sanitizedUpdates.password
+    }
+
+    if (Object.prototype.hasOwnProperty.call(sanitizedUpdates, 'newPassword')) {
+      const nextPassword = String(sanitizedUpdates.newPassword || '').trim()
+      if (!nextPassword) delete sanitizedUpdates.newPassword
+    }
+
+    const requiresAdminEndpoint = Object.prototype.hasOwnProperty.call(sanitizedUpdates, 'email')
+      || Object.prototype.hasOwnProperty.call(sanitizedUpdates, 'idNumber')
+      || Object.prototype.hasOwnProperty.call(sanitizedUpdates, 'password')
+      || Object.prototype.hasOwnProperty.call(sanitizedUpdates, 'newPassword')
+      || Object.prototype.hasOwnProperty.call(sanitizedUpdates, 'role')
 
     if (requiresAdminEndpoint) {
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
-      const token = sessionData?.session?.access_token
-      if (sessionError || !token) return { success: false, message: SESSION_EXPIRED_MESSAGE }
+      const getAdminToken = async () => {
+        const { data: sessionData, error: sessionError } = await runAuthOperationWithRetry(() => supabase.auth.getSession(), {
+          attempts: 2,
+          timeoutMs: 20_000,
+          queued: false,
+        })
+
+        let token = sessionData?.session?.access_token || ''
+        if (sessionError || !token) return { token: '', error: sessionError || new Error('Missing session.') }
+
+        const payload = decodeJwtPayload(token)
+        const expSeconds = payload?.exp ? Number(payload.exp) : 0
+        const expMs = Number.isFinite(expSeconds) ? expSeconds * 1000 : 0
+        if (expMs && expMs - Date.now() < 60_000) {
+          try {
+            await runAuthOperationWithRetry(() => supabase.auth.refreshSession(), { attempts: 1, timeoutMs: 20_000, queued: false })
+            const refreshed = await runAuthOperationWithRetry(() => supabase.auth.getSession(), {
+              attempts: 1,
+              timeoutMs: 20_000,
+              queued: false,
+            })
+            token = refreshed?.data?.session?.access_token || token
+          } catch {
+            // Best-effort only; we'll try with the current token.
+          }
+        }
+
+        return { token, error: null }
+      }
+
+      const tokenResult = await getAdminToken()
+      if (!tokenResult.token) return { success: false, message: SESSION_EXPIRED_MESSAGE }
+      let token = tokenResult.token
 
       let response
       try {
@@ -1724,11 +1769,36 @@ export function AuthProvider({ children }) {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ userId: memberId, updates }),
+          body: JSON.stringify({ userId: memberId, updates: sanitizedUpdates }),
         })
       } catch (error) {
         console.warn('Failed to reach admin update-user endpoint.', error)
         return { success: false, message: 'Unable to reach the server. Please try again.' }
+      }
+
+      if (response.status === 401) {
+        try {
+          await runAuthOperationWithRetry(() => supabase.auth.refreshSession(), { attempts: 1, timeoutMs: 20_000, queued: false })
+          const refreshed = await runAuthOperationWithRetry(() => supabase.auth.getSession(), {
+            attempts: 1,
+            timeoutMs: 20_000,
+            queued: false,
+          })
+          const refreshedToken = refreshed?.data?.session?.access_token || ''
+          if (refreshedToken && refreshedToken !== token) {
+            token = refreshedToken
+            response = await fetch('/api/admin/update-user', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({ userId: memberId, updates: sanitizedUpdates }),
+            })
+          }
+        } catch {
+          // ignore, fall through to error handler
+        }
       }
 
       const payload = await response.json().catch(() => ({}))
@@ -1745,7 +1815,9 @@ export function AuthProvider({ children }) {
     if (Object.prototype.hasOwnProperty.call(updates, 'committee')) payload.committee = (updates.committee ?? '').toString().trim() || null
     if (Object.prototype.hasOwnProperty.call(updates, 'committeeRole')) {
       const raw = (updates.committeeRole ?? '').toString().trim()
-      payload.committee_role = raw === 'OIC' ? 'OIC' : 'Member'
+      const nextRole = raw === 'OIC' ? 'OIC' : 'Member'
+      payload.committee_role = nextRole
+      if (nextRole === 'OIC') payload.committee = null
     }
     if (Object.prototype.hasOwnProperty.call(updates, 'address')) payload.address = (updates.address ?? '').toString().trim() || null
     if (Object.prototype.hasOwnProperty.call(updates, 'contactNumber')) {
@@ -1997,7 +2069,10 @@ export function AuthProvider({ children }) {
 	    const name = String(memberData.name || '').trim()
 	    const idNumber = String(memberData.idNumber || memberData.id_number || '').trim()
 	    const password = String(memberData.password || '').trim()
-	    const role = memberData.role === 'admin' ? 'admin' : 'member'
+	    const role = memberData.role === 'admin' || memberData.role === 'oic' ? 'admin' : 'member'
+      const committeeRoleRaw = String(memberData.committeeRole || memberData.committee_role || 'Member').trim()
+      const committeeRole = memberData.role === 'oic' || committeeRoleRaw === 'OIC' ? 'OIC' : 'Member'
+      const committee = role === 'admin' || committeeRole === 'OIC' ? null : (memberData.committee || null)
 
 	    if (!name || !idNumber || !password) {
 	      return { success: false, message: 'Name, ID number, and password are required.' }
@@ -2030,8 +2105,8 @@ export function AuthProvider({ children }) {
     	          role,
               status: memberData.status || 'active',
               accountStatus: memberData.accountStatus || 'Active',
-   	          committee: memberData.committee || null,
-              committeeRole: memberData.committeeRole || memberData.committee_role || 'Member',
+   	          committee,
+              committeeRole,
    	          address: memberData.address || null,
    	          contactNumber: memberData.contactNumber || null,
               emergencyContactNumber: memberData.emergencyContactNumber || null,
@@ -2075,8 +2150,8 @@ export function AuthProvider({ children }) {
           name,
           email: createdEmail,
           role,
-          committee: memberData.committee || '',
-          committeeRole: memberData.committeeRole || memberData.committee_role || 'Member',
+          committee: committee || '',
+          committeeRole,
           contactNumber: memberData.contactNumber || '',
           emergencyContactNumber: memberData.emergencyContactNumber || '',
           emergencyContactName: memberData.emergencyContactName || '',

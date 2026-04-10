@@ -625,7 +625,11 @@ function AdminAttendance() {
           <div class="meta">
             <div><strong>Member:</strong> ${escapeHtml(memberName)}</div>
             <div><strong>ID:</strong> ${escapeHtml(historyMember?.idNumber || historyMember?.id || '')}</div>
-            <div><strong>Committee:</strong> ${escapeHtml(historyMember?.committee || 'Unassigned')}</div>
+            ${
+              historyMember?.role === 'admin' || (historyMember?.committeeRole || historyMember?.committee_role) === 'OIC'
+                ? ''
+                : `<div><strong>Committee:</strong> ${escapeHtml(historyMember?.committee || 'Unassigned')}</div>`
+            }
             <div><strong>Month:</strong> ${escapeHtml(monthLabel)}</div>
             <div><strong>Present:</strong> ${historyPresentCount} &nbsp; <strong>Absent:</strong> ${historyAbsentCount}</div>
           </div>
@@ -668,7 +672,7 @@ function AdminAttendance() {
         <tr>
           <td>${row.member?.name || 'Member'}</td>
           <td>${row.member?.idNumber || row.memberId}</td>
-          <td>${row.member?.committee || ''}</td>
+          <td>${row.member?.role === 'admin' || (row.member?.committeeRole || row.member?.committee_role) === 'OIC' ? '' : (row.member?.committee || '')}</td>
           <td>${timeIn}</td>
           <td>${timeOut}</td>
         </tr>
@@ -840,7 +844,9 @@ function AdminAttendance() {
                         >
                           {row.member?.name || 'Member'}
                         </button>
-                        <p className="text-xs text-neutral-500">{row.member?.committee || 'Unassigned'}</p>
+                        {row.member?.role === 'admin' || (row.member?.committeeRole || row.member?.committee_role) === 'OIC' ? null : (
+                          <p className="text-xs text-neutral-500">{row.member?.committee || 'Unassigned'}</p>
+                        )}
                       </div>
                     </td>
                     <td className="py-3">
@@ -942,7 +948,9 @@ function AdminAttendance() {
                 <h3 className="mt-1 text-[20px] font-semibold text-neutral-900 dark:text-zinc-100">
                   {historyMember?.name || 'Member'}
                 </h3>
-                <p className="text-sm text-neutral-500 dark:text-neutral-300">{historyMember?.committee || 'Unassigned'}</p>
+                {historyMember?.role === 'admin' || (historyMember?.committeeRole || historyMember?.committee_role) === 'OIC' ? null : (
+                  <p className="text-sm text-neutral-500 dark:text-neutral-300">{historyMember?.committee || 'Unassigned'}</p>
+                )}
               </div>
               <button
                 type="button"

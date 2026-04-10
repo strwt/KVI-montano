@@ -24,6 +24,8 @@ function Profile() {
   const menuRef = useRef(null)
   const triggerRef = useRef(null)
   const panelRef = useRef(null)
+  const userCommitteeRole = user?.committeeRole || user?.committee_role || 'Member'
+  const userType = userCommitteeRole === 'OIC' ? 'oic' : (user?.role === 'admin' ? 'admin' : 'member')
 
   const closeMenu = useCallback(({ restoreFocus = true } = {}) => {
     if (restoreFocus) {
@@ -73,9 +75,13 @@ function Profile() {
           : (user?.insuranceStatus || 'Not set'),
       icon: Shield,
     },
-    { label: t('Role'), value: user?.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : t('Member'), icon: Shield },
+    {
+      label: t('Role'),
+      value: userType === 'admin' ? t('Administrator') : (userType === 'oic' ? 'OIC' : t('Member')),
+      icon: Shield,
+    },
     { label: t('Account Status'), value: user?.accountStatus || t('Active'), icon: BadgeCheck },
-  ]), [user, t])
+  ]), [user, t, userType])
 
   const completion = useMemo(() => {
     const tracked = [user?.name, user?.email, user?.idNumber, user?.address, user?.contactNumber, user?.bloodType, user?.insuranceStatus]
@@ -106,12 +112,12 @@ function Profile() {
                 <p className="text-zinc-600">{user?.email || t('No email available')}</p>
                 <div className="flex items-center gap-2 mt-3">
                   <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${
-                    user?.role === 'admin'
+                    userType === 'admin'
                       ? 'bg-red-100 text-red-700'
                       : 'bg-zinc-100 text-zinc-700'
                   }`}>
                     <Shield size={13} />
-                    {user?.role === 'admin' ? t('Administrator') : t('Member')}
+                    {userType === 'admin' ? t('Administrator') : (userType === 'oic' ? 'OIC' : t('Member'))}
                   </span>
                   <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />

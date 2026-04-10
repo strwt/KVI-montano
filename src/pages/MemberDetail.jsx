@@ -16,6 +16,7 @@ function MemberDetail() {
   const [newProfileImageFile, setNewProfileImageFile] = useState(null)
   const [actionError, setActionError] = useState('')
   const [editForm, setEditForm] = useState({
+    type: 'member',
     idNumber: '',
     name: '',
     email: '',
@@ -37,21 +38,26 @@ function MemberDetail() {
   const members = getAllMembers()
   const admins = getAdmins()
   const member = [...admins, ...members].find(m => String(m.id) === String(id)) || null
+  const memberCommitteeRole = member?.committeeRole || member?.committee_role || 'Member'
+  const memberType = memberCommitteeRole === 'OIC' ? 'oic' : (member?.role === 'admin' ? 'admin' : 'member')
 
   const getRoleBadge = (role) => {
-    return role === 'admin' 
-      ? 'bg-red-100 text-red-700 border-red-200'
-      : 'bg-blue-100 text-blue-700 border-blue-200'
+    if (role === 'admin') return 'bg-red-100 text-red-700 border-red-200'
+    if (role === 'oic') return 'bg-amber-100 text-amber-700 border-amber-200'
+    return 'bg-blue-100 text-blue-700 border-blue-200'
   }
 
   const isAdmin = user?.role === 'admin'
+  const isSelf = member?.id && user?.id && String(member.id) === String(user.id)
 
   const openUpdateModal = () => {
     if (!member) return
     setActionError('')
     setShowNewPassword(false)
     setNewProfileImageFile(null)
+    const resolvedType = memberType
     setEditForm({
+      type: resolvedType,
       idNumber: member.idNumber || '',
       name: member.name || '',
       email: member.email || '',
@@ -64,8 +70,8 @@ function MemberDetail() {
       bloodType: member.bloodType || '',
       insuranceStatus: member.insuranceStatus || 'N/A',
       insuranceYear: member.insuranceYear || '',
-      committee: member.committee || '',
-      committeeRole: member.committeeRole || 'Member',
+      committee: resolvedType === 'member' ? (member.committee || '') : '',
+      committeeRole: resolvedType === 'oic' ? 'OIC' : 'Member',
       status: member.status || 'active',
       memberSince: (member.memberSince || new Date().toISOString()).split('T')[0],
     })
@@ -102,7 +108,15 @@ function MemberDetail() {
       }
     }
 
+    const resolvedType = editForm.type === 'admin' || editForm.type === 'oic' || editForm.type === 'member'
+      ? editForm.type
+      : memberType
+    const nextRole = resolvedType === 'admin' || resolvedType === 'oic' ? 'admin' : 'member'
+    const nextCommitteeRole = resolvedType === 'oic' ? 'OIC' : 'Member'
+    const nextCommittee = resolvedType === 'member' ? editForm.committee : ''
+
     const updates = {
+      role: nextRole,
       idNumber: editForm.idNumber,
       name: editForm.name,
       email: editForm.email,
@@ -114,8 +128,8 @@ function MemberDetail() {
       bloodType: editForm.bloodType,
       insuranceStatus,
       insuranceYear,
-      committee: editForm.committee,
-      committeeRole: editForm.committeeRole,
+      committee: nextCommittee,
+      committeeRole: nextCommitteeRole,
       status: editForm.status,
       memberSince: editForm.memberSince,
     }
@@ -212,8 +226,8 @@ function MemberDetail() {
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2 flex-wrap">
                 <h2 className="text-2xl font-bold text-gray-800 dark:text-zinc-100">{member.name}</h2>
-                <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getRoleBadge(member.role)}`}>
-                  {member.role === 'admin' ? 'Administrator' : 'Member'}
+                <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getRoleBadge(memberType)}`}>
+                  {memberType === 'admin' ? 'Administrator' : (memberType === 'oic' ? 'OIC' : 'Member')}
                 </span>
               </div>
               
@@ -227,11 +241,13 @@ function MemberDetail() {
                   <span>Joined {joinedDateLabel}</span>
                 </div>
                 <div className="flex flex-wrap gap-2 pt-1">
-                  <span className="px-2 py-1 rounded bg-red-50 text-red-700 text-xs border border-red-200">
-                    Committee: {member.committee || 'N/A'}
-                  </span>
+                  {member.role !== 'admin' && (member.committeeRole || member.committee_role) !== 'OIC' ? (
+                    <span className="px-2 py-1 rounded bg-red-50 text-red-700 text-xs border border-red-200">
+                      Committee: {member.committee || 'N/A'}
+                    </span>
+                  ) : null}
                   <span className="px-2 py-1 rounded bg-blue-50 text-blue-700 text-xs border border-blue-200">
-                    Role: {member.role === 'admin' ? 'Admin' : 'Member'}
+                    Role: {memberType === 'admin' ? 'Admin' : (memberType === 'oic' ? 'OIC' : 'Member')}
                   </span>
                 </div>
               </div>
@@ -247,7 +263,7 @@ function MemberDetail() {
           <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl shadow-md p-5">
             <p className="text-sm text-gray-500 mb-1">Role</p>
             <p className="text-lg font-semibold text-gray-800">
-              {member.role === 'admin' ? 'Administrator' : 'Member'}
+              {memberType === 'admin' ? 'Administrator' : (memberType === 'oic' ? 'OIC' : 'Member')}
             </p>
           </div>
           <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl shadow-md p-5">
@@ -447,35 +463,55 @@ function MemberDetail() {
                 />
               </div>
               <div>
-                <label htmlFor="update-member-committee" className="block text-sm font-medium text-gray-700 mb-1">Committee</label>
+                <label htmlFor="update-member-type" className="block text-sm font-medium text-gray-700 mb-1">Type</label>
                 <select
-                  id="update-member-committee"
-                  name="committee"
-                  value={editForm.committee}
-                  onChange={(e) => setEditForm({ ...editForm, committee: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                  id="update-member-type"
+                  name="type"
+                  value={editForm.type}
+                  onChange={(e) => {
+                    const next = e.target.value
+                    setEditForm(prev => {
+                      if (next === 'admin') {
+                        return { ...prev, type: 'admin', committeeRole: 'Member', committee: '' }
+                      }
+                      if (next === 'oic') {
+                        return { ...prev, type: 'oic', committeeRole: 'OIC', committee: '' }
+                      }
+                      return {
+                        ...prev,
+                        type: 'member',
+                        committeeRole: 'Member',
+                        committee: prev.committee || (Array.isArray(committees) ? committees[0] : '') || '',
+                      }
+                    })
+                  }}
+                  disabled={!isAdmin || (isSelf && member?.role === 'admin')}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-60"
                 >
-                  <option value="">Select committee</option>
-                  {(Array.isArray(committees) ? committees : []).map(name => (
-                    <option key={name} value={name}>
-                      {name}
-                    </option>
-                  ))}
+                  <option value="member">Member</option>
+                  <option value="oic">OIC</option>
+                  <option value="admin">Admin</option>
                 </select>
               </div>
-              <div>
-                <label htmlFor="update-member-committee-role" className="block text-sm font-medium text-gray-700 mb-1">Committee Role</label>
-                <select
-                  id="update-member-committee-role"
-                  name="committeeRole"
-                  value={editForm.committeeRole || 'Member'}
-                  onChange={(e) => setEditForm({ ...editForm, committeeRole: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                >
-                  <option value="Member">Member</option>
-                  <option value="OIC">OIC (Head)</option>
-                </select>
-              </div>
+              {editForm.type === 'member' ? (
+                <div>
+                  <label htmlFor="update-member-committee" className="block text-sm font-medium text-gray-700 mb-1">Committee</label>
+                  <select
+                    id="update-member-committee"
+                    name="committee"
+                    value={editForm.committee}
+                    onChange={(e) => setEditForm({ ...editForm, committee: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                  >
+                    <option value="">Select committee</option>
+                    {(Array.isArray(committees) ? committees : []).map(name => (
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : null}
               <div>
                 <label htmlFor="update-member-blood-type" className="block text-sm font-medium text-gray-700 mb-1">Blood Type</label>
                 <select

@@ -95,6 +95,8 @@ function Dashboard() {
   const { t } = useI18n()
   const navigate = useNavigate()
   const isAdmin = user?.role === 'admin'
+  const userCommitteeRole = user?.committeeRole || user?.committee_role || 'Member'
+  const userType = userCommitteeRole === 'OIC' ? 'oic' : (isAdmin ? 'admin' : 'member')
   const supabaseEnabled = isSupabaseEnabled()
   const [animatedStats, setAnimatedStats] = useState(false)
   const [events, setEvents] = useState([])
@@ -347,7 +349,7 @@ function Dashboard() {
             <p className="text-[14px] text-neutral-500 dark:text-neutral-300">KUSGAN Volunteer Inc. - Cares Department</p>
             <div className="flex flex-wrap gap-2 pt-1">
               <span className="rounded-lg border border-red-700/60 bg-red-600/15 px-3 py-1 text-[14px]">
-                {isAdmin ? t('Administrator') : t('Member')}
+                {userType === 'admin' ? t('Administrator') : (userType === 'oic' ? 'OIC' : t('Member'))}
               </span>
             </div>
           </div>

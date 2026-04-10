@@ -194,6 +194,44 @@ export default async function handler(req, res) {
       }
     }
 
+    if (Object.prototype.hasOwnProperty.call(patch, 'role')) {
+      const { data: targetProfile, error: targetError } = await supabaseAdmin
+        .from('profiles')
+        .select('id,role')
+        .eq('id', userId)
+        .maybeSingle()
+
+      if (targetError) {
+        return res.status(500).json({ message: targetError.message || 'Unable to validate target user.' })
+      }
+
+      if (!targetProfile?.id) {
+        return res.status(404).json({ message: 'User not found.' })
+      }
+
+      const currentTargetRole = normalizeText(targetProfile.role) || 'member'
+      const nextTargetRole = normalizeText(patch.role) || currentTargetRole
+
+      if (String(userId) === String(caller?.id) && currentTargetRole === 'admin' && nextTargetRole !== 'admin') {
+        return res.status(400).json({ message: 'You cannot change your own admin role.' })
+      }
+
+      if (currentTargetRole === 'admin' && nextTargetRole !== 'admin') {
+        const { count: adminCount, error: countError } = await supabaseAdmin
+          .from('profiles')
+          .select('id', { count: 'exact', head: true })
+          .eq('role', 'admin')
+
+        if (countError) {
+          return res.status(500).json({ message: countError.message || 'Unable to validate admin count.' })
+        }
+
+        if ((adminCount || 0) <= 1) {
+          return res.status(400).json({ message: 'Cannot demote the last admin account.' })
+        }
+      }
+    }
+
     let warning = ''
     // Optional: Sync Auth email too. By default we only update `public.profiles.email` because this app uses ID-number login.
     if (syncAuthEmail && Object.prototype.hasOwnProperty.call(patch, 'email') && patch.email) {

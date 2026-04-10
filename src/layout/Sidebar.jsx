@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { LayoutDashboard, Calendar, ChevronLeft, ChevronRight, Users, FileText, Sun, Moon, ClipboardCheck, LogOut, Tags, Settings, ChevronDown, ChevronUp, HandHeart } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useI18n } from '../i18n/useI18n'
@@ -8,7 +8,8 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
   const { user, logout } = useAuth()
   const { t } = useI18n()
   const navigate = useNavigate()
-  const [managementOpen, setManagementOpen] = useState(false)
+  const location = useLocation()
+  const [managementOpen, setManagementOpen] = useState(null)
 
   const isAdmin = user?.role === 'admin'
   const shellTone = darkMode
@@ -25,6 +26,9 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
     : 'text-gray-700 hover:bg-red-50 hover:text-gray-900'
   const userDividerTone = darkMode ? 'border-t border-gray-800' : 'border-t border-gray-200'
   const userNameTone = darkMode ? 'text-white' : 'text-gray-900'
+  const managementRoutes = ['/members', '/category-management', '/committee-management']
+  const isOnManagementRoute = managementRoutes.some(route => location.pathname.startsWith(route))
+  const resolvedManagementOpen = managementOpen ?? isOnManagementRoute
 
   const navItems = [
     { to: '/', icon: LayoutDashboard, label: t('Dashboard') },
@@ -51,7 +55,7 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
       )}
 
       <aside
-        className={`fixed left-0 top-0 h-full shadow-2xl z-40 w-64 transition-transform md:transition-all md:translate-x-0 duration-300 ${shellTone} ${
+        className={`fixed left-0 top-0 h-full shadow-2xl z-40 w-64 flex flex-col transition-transform md:transition-all md:translate-x-0 duration-300 ${shellTone} ${
           isOpen ? 'translate-x-0 md:w-64' : '-translate-x-full md:w-20'
         }`}
       >
@@ -63,6 +67,7 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
           {isOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
         </button>
 
+        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pb-2">
         {/* User Section (Top) */}
         <div className={`p-6 ${!isOpen && 'px-2'}`}>
           {isOpen ? (
@@ -86,9 +91,13 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
                 </button>
                 <div className="flex flex-col items-center min-w-0">
                   <p className={`font-normal truncate ${userNameTone}`}>{user?.name || 'Guest'}</p>
-                  {user?.role === 'admin' && (
+                  {user?.role === 'admin' ? (
                     <span className="inline-block mt-1 px-2 py-0.5 bg-red-600/20 text-red-600 text-xs rounded">Admin</span>
-                  )}
+                  ) : (user?.committeeRole || user?.committee_role) === 'OIC' ? (
+                    <span className="inline-block mt-1 px-2 py-0.5 bg-amber-500/15 text-amber-600 text-xs rounded border border-amber-500/20">
+                      OIC
+                    </span>
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -113,7 +122,7 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
         </div>
 
         {/* Navigation */}
-        <nav className="mt-6 px-2 space-y-1">
+        <nav className="mt-2 px-2 space-y-1">
           {navItems.map((item, index) => (
             <NavLink
               key={item.to}
@@ -133,29 +142,16 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
             </NavLink>
           ))}
 
-          {/* Members Section - Admin Only - Now navigates to /members page */}
-          {isAdmin && (
-            <NavLink
-              to="/members"
-              onClick={() => {
-                if (window.innerWidth < 768 && isOpen) toggleSidebar()
-              }}
-              className={({ isActive }) =>
-                `group relative flex w-full items-center gap-3 rounded-lg px-4 py-3 transition-all duration-200 hover:scale-[1.02] ${navTone} ${
-                  isActive ? navActiveTone : 'border-l-2 border-transparent'
-                } ${!isOpen && 'justify-center px-3'}`
-              }
-            >
-              <Users size={20} className={isOpen ? '' : 'mx-auto'} />
-              {isOpen && <span>{t('User Management')}</span>}
-            </NavLink>
-          )}
-
           {isAdmin && (
             <div>
               <button
                 type="button"
-                onClick={() => setManagementOpen(prev => !prev)}
+                onClick={() => {
+                  setManagementOpen(prev => {
+                    const current = prev ?? isOnManagementRoute
+                    return !current
+                  })
+                }}
                 className={`group relative flex w-full items-center justify-between gap-3 rounded-lg border-l-2 border-transparent px-4 py-3 transition-all duration-200 hover:scale-[1.02] ${navTone} ${
                   !isOpen && 'justify-center px-3'
                 }`}
@@ -165,12 +161,27 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
                   {isOpen && <span>{t('Management')}</span>}
                 </div>
                 {isOpen ? (
-                  managementOpen ? <ChevronUp size={18} className="text-current" /> : <ChevronDown size={18} className="text-current" />
+                  resolvedManagementOpen ? <ChevronUp size={18} className="text-current" /> : <ChevronDown size={18} className="text-current" />
                 ) : null}
               </button>
 
-              {isOpen && managementOpen && (
+              {isOpen && resolvedManagementOpen && (
                 <div className="mt-1 space-y-1 pl-8">
+                  <NavLink
+                    to="/members"
+                    onClick={() => {
+                      if (window.innerWidth < 768 && isOpen) toggleSidebar()
+                    }}
+                    className={({ isActive }) =>
+                      `group relative flex items-center gap-3 rounded-lg px-4 py-2 text-sm transition-all duration-200 ${navTone} ${
+                        isActive ? navActiveTone : 'border-l-2 border-transparent'
+                      }`
+                    }
+                  >
+                    <Users size={18} />
+                    <span>{t('User Management')}</span>
+                  </NavLink>
+
                   <NavLink
                     to="/category-management"
                     onClick={() => {
@@ -207,8 +218,9 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
 
         </nav>
 
+        </div>
         {/* Footer Section */}
-        <div className={`absolute bottom-0 w-full p-4 space-y-3 ${userDividerTone} ${!isOpen && (darkMode ? 'border-l border-gray-800' : 'border-l border-gray-200')}`}>
+        <div className={`mt-auto w-full p-4 space-y-3 ${userDividerTone} ${!isOpen && (darkMode ? 'border-l border-gray-800' : 'border-l border-gray-200')}`}>
           {isOpen ? (
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">

@@ -539,13 +539,17 @@ function Landing() {
       member => String(member?.name || '').trim().toLowerCase() === String(person.name || '').trim().toLowerCase()
     )
     const resolvedImage = resolveProfileImage(matched?.profileImage || person.image)
+    const resolvedRole = matched?.role || person?.role || 'member'
+    const resolvedCommitteeRole = matched?.committeeRole || matched?.committee_role || person?.committeeRole || person?.committee_role || 'Member'
     setSelectedPerson({
       name: person.name,
       image: resolvedImage,
       idNumber: coerceString(matched?.idNumber || matched?.id_number || person.idNumber),
       contactNumber: coerceString(matched?.contactNumber || person.contactNumber),
       bloodType: coerceString(matched?.bloodType || person.bloodType),
-      committee: coerceString(matched?.committee || person.committee),
+      role: resolvedRole,
+      committeeRole: resolvedCommitteeRole,
+      committee: (resolvedRole === 'admin' || resolvedCommitteeRole === 'OIC') ? '' : coerceString(matched?.committee || person.committee),
       memberSince: formatMemberSince(matched?.memberSince || person.memberSince),
       status: coerceString(matched?.status || person.status),
     })
@@ -1879,10 +1883,12 @@ function Landing() {
                   <span className="text-white/60">Joined</span>
                   <span className="text-white">{selectedPerson.memberSince || '—'}</span>
                 </div>
-                <div className="flex items-baseline justify-between gap-3">
-                  <span className="text-white/60">Committee</span>
-                  <span className="text-white">{selectedPerson.committee || '—'}</span>
-                </div>
+                {selectedPerson.role !== 'admin' && selectedPerson.committeeRole !== 'OIC' ? (
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="text-white/60">Committee</span>
+                    <span className="text-white">{selectedPerson.committee || '—'}</span>
+                  </div>
+                ) : null}
                 <div className="flex items-baseline justify-between gap-3">
                   <span className="text-white/60">Status</span>
                   <span className="text-white">{selectedPerson.status || '—'}</span>

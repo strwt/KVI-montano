@@ -3536,10 +3536,12 @@ function Calendar({ listOnly = false }) {
                   <span className="text-gray-500">Member since</span>
                   <span className="text-gray-900">{formatMemberSince(selectedMember.memberSince) || '—'}</span>
                 </div>
-                <div className="flex items-baseline justify-between gap-3">
-                  <span className="text-gray-500">Committee</span>
-                  <span className="text-gray-900">{selectedMember.committee || '—'}</span>
-                </div>
+                {selectedMember.role !== 'admin' && (selectedMember.committeeRole || selectedMember.committee_role) !== 'OIC' ? (
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="text-gray-500">Committee</span>
+                    <span className="text-gray-900">{selectedMember.committee || '—'}</span>
+                  </div>
+                ) : null}
                 <div className="flex items-baseline justify-between gap-3">
                   <span className="text-gray-500">Status</span>
                   <span className="text-gray-900">{selectedMember.status || selectedMember.accountStatus || '—'}</span>
