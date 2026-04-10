@@ -1361,12 +1361,13 @@ function Landing() {
                 </div>
 
                 <div
-                  className="flex gap-6 overflow-x-auto pb-2 landing-scrollbar"
+                  className="flex flex-nowrap gap-6 overflow-x-auto pb-2 landing-scrollbar snap-x snap-mandatory"
                   style={{
                     scrollbarGutter: 'stable',
                     cursor: committeeDragging ? 'grabbing' : 'grab',
                     userSelect: committeeDragging ? 'none' : 'auto',
-                    touchAction: 'pan-y',
+                    touchAction: 'pan-x',
+                    WebkitOverflowScrolling: 'touch',
                     paddingInline: '16px',
                     scrollPaddingInline: '16px',
                   }}

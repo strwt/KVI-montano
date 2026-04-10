@@ -613,6 +613,7 @@ function ChatbotWidget() {
   const [showSuggestions, setShowSuggestions] = useState(true)
   const [isTyping, setIsTyping] = useState(false)
   const typingTimerRef = useRef(null)
+  const messagesEndRef = useRef(null)
   const dragStateRef = useRef({
     isDragging: false,
     hasMoved: false,
@@ -719,6 +720,16 @@ function ChatbotWidget() {
     }
   }, [])
 
+  useEffect(() => {
+    if (!isOpen) return
+    if (!messagesEndRef.current) return
+    const scrollToBottom = () => {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' })
+    }
+    const frame = window.requestAnimationFrame(scrollToBottom)
+    return () => window.cancelAnimationFrame(frame)
+  }, [messages, isTyping, isOpen])
+
   const sendMessage = (text) => {
     const cleaned = String(text || '').trim()
     if (!cleaned) return
@@ -811,6 +822,7 @@ function ChatbotWidget() {
                 </div>
               </div>
             )}
+            <div ref={messagesEndRef} />
           </div>
 
           <div className="border-t border-red-600/30 px-4 py-3 space-y-3">
