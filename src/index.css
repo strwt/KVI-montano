@@ -518,7 +518,8 @@ body {
 }
 
 .hero-float {
-  animation: hero-float 4s ease-in-out infinite;
+  transform: translateY(0);
+  will-change: transform;
 }
 
 .floating-card-1 {

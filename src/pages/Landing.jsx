@@ -404,6 +404,7 @@ function Landing() {
   const { user, getAllMembers, getAdmins, ensureAdminDataLoaded, committees } = useAuth()
   const supabaseEnabled = isSupabaseEnabled()
   const pageRef = useRef(null)
+  const heroFloatRef = useRef(null)
   const committeeScrollRef = useRef(null)
   const committeeDragStartXRef = useRef(0)
   const committeeDragStartScrollLeftRef = useRef(0)
@@ -566,6 +567,58 @@ function Landing() {
     )
     targets.forEach(t => observer.observe(t))
     return () => observer.disconnect()
+  }, [])
+
+  useEffect(() => {
+    const element = heroFloatRef.current
+    if (!element) return
+
+    const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches
+    if (prefersReducedMotion) return
+
+    let lastScrollY = window.scrollY
+    let lastTime = performance.now()
+    let rafId = 0
+    let stopTimerId = 0
+
+    element.style.willChange = 'transform'
+    element.style.transition = 'transform 220ms ease'
+
+    const clamp = (value, min, max) => Math.min(max, Math.max(min, value))
+
+    const update = () => {
+      rafId = 0
+      const nowY = window.scrollY
+      const nowTime = performance.now()
+      const dy = nowY - lastScrollY
+      const dt = Math.max(16, nowTime - lastTime)
+
+      const velocity = dy / dt // px per ms
+      const offset = clamp(-velocity * 140, -10, 10)
+
+      element.style.transform = `translateY(${offset.toFixed(2)}px)`
+      lastScrollY = nowY
+      lastTime = nowTime
+    }
+
+    const reset = () => {
+      element.style.transform = 'translateY(0px)'
+    }
+
+    const onScroll = () => {
+      if (!rafId) rafId = window.requestAnimationFrame(update)
+      window.clearTimeout(stopTimerId)
+      stopTimerId = window.setTimeout(reset, 140)
+    }
+
+    window.addEventListener('scroll', onScroll, { passive: true })
+
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      window.clearTimeout(stopTimerId)
+      if (rafId) window.cancelAnimationFrame(rafId)
+      reset()
+    }
   }, [])
 
   useEffect(() => {
@@ -1061,6 +1114,7 @@ function Landing() {
               {/* Main logo card */}
               <div
                 className="hero-float relative rounded-3xl overflow-hidden"
+                ref={heroFloatRef}
                 style={{
                   background: '#ffffff',
                   border: '1px solid rgba(255,255,255,0.25)',
