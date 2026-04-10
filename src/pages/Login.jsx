@@ -88,7 +88,19 @@ function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-white via-zinc-100 to-red-100 dark:from-black dark:via-gray-900 dark:to-red-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-white via-zinc-100 to-red-100 dark:from-black dark:via-gray-900 dark:to-red-900 flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Fullscreen background video (login only) */}
+      <video
+        className="absolute inset-0 w-full h-full object-cover"
+        src="/login-background.mp4"
+        autoPlay
+        loop
+        muted
+        playsInline
+        aria-hidden="true"
+      />
+      <div className="absolute inset-0 bg-black/45" aria-hidden="true" />
+
       {/* Animated background elements */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-red-600 rounded-full mix-blend-multiply filter blur-3xl opacity-10 dark:opacity-20 animate-pulse"></div>
@@ -105,17 +117,29 @@ function Login() {
               className="w-16 h-16 object-contain"
             />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">KUSGAN Volunteer</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">Community Service under Cares Department</p>
+          <h1 className="text-3xl font-bold text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.55)]">
+            KUSGAN Volunteer
+          </h1>
+          <p
+            className="mt-2 text-sm font-medium text-white/80 drop-shadow-[0_2px_8px_rgba(0,0,0,0.55)]"
+          >
+            Community Service under Cares Department
+          </p>
         </div>
 
         {/* Login Form */}
-<div className="bg-white dark:bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-8 border border-red-600">
+<div
+          className="backdrop-blur-2xl rounded-2xl shadow-2xl p-8 border border-white/20"
+          style={{
+            background: 'linear-gradient(145deg, rgba(255,255,255,0.18), rgba(255,255,255,0.04))',
+            boxShadow: '0 24px 70px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.25)',
+          }}
+        >
           <div className="flex flex-wrap items-center justify-between gap-2 mb-5">
             <button
               type="button"
               onClick={() => navigate('/landing')}
-              className="inline-flex items-center gap-2 text-xs text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
+              className="inline-flex items-center gap-2 text-xs text-white/70 hover:text-white"
             >
               <ArrowLeft size={14} />
               Back to Landing
@@ -129,7 +153,7 @@ function Login() {
               Recruitment
             </button>
           </div>
-          <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-6">
+          <h2 className="text-2xl font-semibold text-white mb-6 drop-shadow-[0_2px_10px_rgba(0,0,0,0.4)]">
             Welcome Back
           </h2>
 
@@ -150,19 +174,19 @@ function Login() {
             <div className="relative">
               <label
                 htmlFor="login-id-number"
-                className="block text-gray-700 dark:text-gray-300 text-sm font-medium mb-2"
+                className="block text-white/75 text-sm font-medium mb-2"
               >
                 ID Number
               </label>
               <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-400" size={18} />
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 text-white/50" size={18} />
                 <input
                   id="login-id-number"
                   name="idNumber"
                   type="text"
                   value={idNumber}
                   onChange={(e) => setIdNumber(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 bg-white dark:bg-gray-900/50 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
+                  className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
                   placeholder="Enter your ID number"
                   autoComplete="username"
                   required
@@ -174,19 +198,19 @@ function Login() {
             <div className="relative">
               <label
                 htmlFor="login-password"
-                className="block text-gray-700 dark:text-gray-300 text-sm font-medium mb-2"
+                className="block text-white/75 text-sm font-medium mb-2"
               >
                 Password
               </label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-white/50" size={18} />
                 <input
                   id="login-password"
                   name="password"
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-12 py-3 bg-white dark:bg-gray-900/50 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
+                  className="w-full pl-10 pr-12 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
                   placeholder="Enter your password"
                   autoComplete="current-password"
                   required
@@ -195,7 +219,7 @@ function Login() {
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white transition-colors"
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>

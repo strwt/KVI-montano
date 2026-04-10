@@ -1137,7 +1137,12 @@ function Landing() {
                   className="text-center mt-3 pb-1 pt-3"
                   style={{ borderTop: '1px solid rgba(0,0,0,0.07)' }}
                 >
-                  <p className="text-xs tracking-widest uppercase font-semibold" style={{ color: '#6b7280' }}>KUSGAN Volunteer Inc.</p>
+                  <p
+                    className="text-xs tracking-widest uppercase font-semibold"
+                    style={{ color: 'rgba(107,114,128,0.75)' }}
+                  >
+                    KUSGAN Volunteer Inc.
+                  </p>
                 </div>
               </div>
 
