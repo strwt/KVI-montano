@@ -1797,7 +1797,6 @@ function Landing() {
                     type="text"
                     value={donationForm.name}
                     onChange={event => setDonationForm(prev => ({ ...prev, name: event.target.value }))}
-                    placeholder="Your name"
                     className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-red-400 focus:outline-none"
                   />
                 </div>
@@ -1810,7 +1809,6 @@ function Landing() {
                     type="email"
                     value={donationForm.email}
                     onChange={event => setDonationForm(prev => ({ ...prev, email: event.target.value }))}
-                    placeholder="you@example.com"
                     className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-red-400 focus:outline-none"
                   />
                 </div>
