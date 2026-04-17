@@ -30,6 +30,15 @@ const DONATION_ACCOUNT_NAME = 'Kusgan Volunteers Inc.'
 const DONATION_ACCOUNT_NUMBER = '003168018017'
 const DONATION_NOTIFICATION_EMAIL = 'kusganvolunteersinc@gmail.com'
 
+const THEME = {
+  // Royal blue palette (keeps enough contrast for white text)
+  navy: '#4169E1', // royalblue
+  navyDeep: '#1E3A8A', // deep royal
+  navyMid: '#93C5FD', // light royal tint
+  yellow: '#FACC15',
+  yellowText: '#FDE68A',
+}
+
 const NAV_LINKS = [
   { label: 'Home', href: '#home' },
   { label: 'Services', href: '#services' },
@@ -225,7 +234,7 @@ function NavBar({ navigate }) {
       }`}
       style={{
         background: scrolled
-          ? 'rgba(6,6,6,0.88)'
+          ? 'rgba(4,18,33,0.9)'
           : 'transparent',
         backdropFilter: scrolled ? 'blur(24px)' : 'none',
         borderBottom: scrolled ? '1px solid rgba(255,255,255,0.07)' : '1px solid transparent',
@@ -240,13 +249,13 @@ function NavBar({ navigate }) {
         >
           <div
             className="w-9 h-9 rounded-full bg-white p-1.5 shadow-lg transition-all duration-200"
-            style={{ boxShadow: '0 0 0 2px rgba(220,38,38,0.3)' }}
+            style={{ boxShadow: '0 0 0 2px rgba(250,204,21,0.32)' }}
           >
             <img src={HERO_IMAGE} alt="KUSGAN logo" className="w-full h-full object-contain" />
           </div>
           <div className="text-left">
             <p className="font-bold text-sm leading-tight font-heading tracking-widest text-white">KUSGAN</p>
-            <p className="text-[9px] text-red-400 tracking-[0.2em] uppercase">Volunteer Inc.</p>
+            <p className="text-[9px] text-yellow-300 tracking-[0.2em] uppercase">Volunteer Inc.</p>
           </div>
         </button>
 
@@ -256,10 +265,10 @@ function NavBar({ navigate }) {
             <a
               key={link.label}
               href={link.href}
-              className="text-sm text-gray-400 hover:text-white transition-colors duration-200 relative group"
+              className="text-sm text-white-400 hover:text-white transition-colors duration-200 relative group"
             >
               {link.label}
-              <span className="absolute -bottom-0.5 left-0 w-0 h-px bg-red-500 group-hover:w-full transition-all duration-300 rounded-full" />
+              <span className="absolute -bottom-0.5 left-0 w-0 h-px bg-yellow-400 group-hover:w-full transition-all duration-300 rounded-full" />
             </a>
           ))}
         </nav>
@@ -283,7 +292,7 @@ function NavBar({ navigate }) {
         <div
           className="md:hidden px-4 py-5 space-y-1 border-t"
           style={{
-            background: 'rgba(6,6,6,0.96)',
+            background: 'rgba(4,18,33,0.96)',
             backdropFilter: 'blur(24px)',
             borderColor: 'rgba(255,255,255,0.08)',
           }}
@@ -293,9 +302,9 @@ function NavBar({ navigate }) {
               key={link.label}
               href={link.href}
               onClick={() => setMobileOpen(false)}
-              className="flex items-center gap-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 px-3 py-2.5 rounded-xl transition-colors"
+              className="flex items-center gap-3 text-sm text-white-300 hover:text-white hover:bg-white/5 px-3 py-2.5 rounded-xl transition-colors"
             >
-              <span className="w-1 h-1 rounded-full bg-red-500" />
+              <span className="w-1 h-1 rounded-full bg-yellow-400" />
               {link.label}
             </a>
           ))}
@@ -310,7 +319,7 @@ function NavBar({ navigate }) {
             <button
               type="button"
               onClick={() => navigate('/recruitment')}
-              className="flex-1 text-sm py-2.5 rounded-xl bg-red-600 text-white font-semibold"
+              className="flex-1 text-sm py-2.5 rounded-xl bg-yellow-400 text-slate-900 font-semibold hover:bg-yellow-300 transition-colors"
             >
               Join Us
             </button>
@@ -325,24 +334,24 @@ function SectionHeader({ eyebrow, title, subtitle, centered = false }) {
   return (
     <div className={`mb-10 sm:mb-12 ${centered ? 'text-center' : ''}`}>
       {eyebrow && (
-        <span
-          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold tracking-widest uppercase mb-4 border"
-          style={{
-            background: 'rgba(220,38,38,0.1)',
-            borderColor: 'rgba(220,38,38,0.25)',
-            color: '#fca5a5',
-          }}
-        >
-          {eyebrow}
-        </span>
-      )}
+          <span
+            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold tracking-widest uppercase mb-4 border"
+            style={{
+              background: 'rgba(250,204,21,0.12)',
+              borderColor: 'rgba(250,204,21,0.28)',
+              color: THEME.yellowText,
+            }}
+          >
+            {eyebrow}
+          </span>
+        )}
       <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white font-heading leading-tight">
         {title}
       </h2>
       {subtitle && (
         <div className={`mt-3 flex items-center gap-3 ${centered ? 'justify-center' : ''}`}>
-          <div className="w-8 h-0.5 bg-red-600 rounded-full shrink-0" />
-          <p className="text-sm sm:text-base text-gray-400 leading-relaxed">{subtitle}</p>
+          <div className="w-8 h-0.5 bg-yellow-400 rounded-full shrink-0" />
+          <p className="text-sm sm:text-base text-white-400 leading-relaxed">{subtitle}</p>
         </div>
       )}
     </div>
@@ -360,7 +369,7 @@ function OrgPersonCard({ person, large = false, size = 'normal' }) {
   return (
     <article className="text-center mx-auto">
       <div
-        className={`mx-auto rounded-2xl overflow-hidden ${sizeClass} ${size === 'board' ? '' : 'aspect-[3/4]'} bg-gray-900`}
+        className={`mx-auto rounded-2xl overflow-hidden ${sizeClass} ${size === 'board' ? '' : 'aspect-[3/4]'} bg-white-900`}
         style={{
           border: '1px solid rgba(255,255,255,0.15)',
           boxShadow: large
@@ -379,9 +388,9 @@ function OrgPersonCard({ person, large = false, size = 'normal' }) {
         <span
           className="mt-1 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold border"
           style={{
-            background: 'rgba(220,38,38,0.15)',
-            borderColor: 'rgba(220,38,38,0.3)',
-            color: '#fca5a5',
+            background: 'rgba(250,204,21,0.14)',
+            borderColor: 'rgba(250,204,21,0.32)',
+            color: THEME.yellowText,
           }}
         >
           {Icon ? <Icon size={10} /> : null}
@@ -389,7 +398,7 @@ function OrgPersonCard({ person, large = false, size = 'normal' }) {
         </span>
       ) : null}
       {person.committee ? (
-        <p className="mt-1 text-[10px] uppercase tracking-widest" style={{ color: 'rgba(248,113,113,0.7)' }}>
+        <p className="mt-1 text-[10px] uppercase tracking-widest" style={{ color: 'rgba(253,230,138,0.75)' }}>
           {person.committee}
         </p>
       ) : null}
@@ -1008,7 +1017,7 @@ function Landing() {
   }
 
   return (
-    <div ref={pageRef} className="min-h-screen text-white overflow-x-hidden" style={{ background: '#080808' }}>
+    <div ref={pageRef} className="min-h-screen text-white overflow-x-hidden" style={{ background: THEME.navyDeep }}>
       {/* ── NAVBAR ── */}
       <NavBar navigate={navigate} />
 
@@ -1018,7 +1027,7 @@ function Landing() {
         <div className="absolute inset-0 pointer-events-none">
           <div
             className="absolute inset-0"
-            style={{ background: 'linear-gradient(135deg, #000000 0%, #0d0d0d 50%, #1a0505 100%)' }}
+            style={{ background: `linear-gradient(135deg, ${THEME.navyDeep} 0%, ${THEME.navy} 50%, ${THEME.navyMid} 100%)` }}
           />
           {/* Subtle grid */}
           <div
@@ -1032,15 +1041,15 @@ function Landing() {
           {/* Glowing orbs */}
           <div
             className="absolute -top-40 -right-40 rounded-full"
-            style={{ width: 600, height: 600, background: 'radial-gradient(circle, rgba(185,28,28,0.18) 0%, transparent 70%)' }}
+            style={{ width: 600, height: 600, background: 'radial-gradient(circle, rgba(250,204,21,0.14) 0%, transparent 70%)' }}
           />
           <div
             className="absolute top-1/2 -left-64 rounded-full"
-            style={{ width: 500, height: 500, background: 'radial-gradient(circle, rgba(153,27,27,0.16) 0%, transparent 70%)' }}
+            style={{ width: 500, height: 500, background: 'radial-gradient(circle, rgba(250,204,21,0.12) 0%, transparent 70%)' }}
           />
           <div
             className="absolute -bottom-40 right-1/3 rounded-full"
-            style={{ width: 400, height: 400, background: 'radial-gradient(circle, rgba(220,38,38,0.1) 0%, transparent 70%)' }}
+            style={{ width: 400, height: 400, background: 'radial-gradient(circle, rgba(250,204,21,0.1) 0%, transparent 70%)' }}
           />
         </div>
 
@@ -1055,12 +1064,12 @@ function Landing() {
               <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold leading-[1.02] font-heading tracking-tight">
                 KUSGAN
               </h1>
-              <p className="text-xl sm:text-2xl lg:text-3xl font-semibold mt-2 leading-snug font-heading" style={{ color: '#f87171' }}>
+              <p className="text-xl sm:text-2xl lg:text-3xl font-semibold mt-2 leading-snug font-heading" style={{ color: THEME.yellow }}>
                 Volunteerism for<br className="hidden sm:block" /> Inclusive Communities
               </p>
             </div>
 
-            <p className="text-base sm:text-lg text-gray-400 max-w-lg leading-relaxed">
+            <p className="text-base sm:text-lg text-white-400 max-w-lg leading-relaxed">
               Serbisyong Kusgan represents strength, unity, and genuine care for the community. It delivers dedicated service with unwavering commitment, reaching those who need support the most. A stronger, safer, and more compassionate community begins with consistent and selfless action.
             </p>            {/* Stat chips */}
             <div className="flex flex-wrap gap-2.5">
@@ -1076,9 +1085,9 @@ function Landing() {
                       backdropFilter: 'blur(8px)',
                     }}
                   >
-                    <Icon size={13} className="text-red-400 shrink-0" />
+                    <Icon size={13} className="text-yellow-300 shrink-0" />
                     <span className="text-white font-bold text-sm font-heading">{stat.value}</span>
-                    <span className="text-gray-500 text-xs">{stat.label}</span>
+                    <span className="text-white-500 text-xs">{stat.label}</span>
                   </div>
                 )
               })}
@@ -1089,8 +1098,8 @@ function Landing() {
               <button
                 type="button"
                 onClick={() => navigate('/login')}
-                className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-semibold hover:-translate-y-0.5 transition-all duration-200"
-                style={{ boxShadow: '0 8px 24px rgba(185,28,28,0.45)' }}
+                className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl bg-yellow-400 hover:bg-yellow-300 text-slate-900 font-semibold hover:-translate-y-0.5 transition-all duration-200"
+                style={{ boxShadow: '0 8px 24px rgba(250,204,21,0.35)' }}
               >
                 <LogIn size={17} />
                 Login
@@ -1160,7 +1169,7 @@ function Landing() {
                 className="absolute -z-10 rounded-3xl"
                 style={{
                   inset: 0,
-                  background: 'radial-gradient(circle, rgba(185,28,28,0.3) 0%, transparent 70%)',
+                  background: 'radial-gradient(circle, rgba(250,204,21,0.22) 0%, transparent 70%)',
                   filter: 'blur(40px)',
                   transform: 'translateY(24px) scale(0.85)',
                 }}
@@ -1183,13 +1192,13 @@ function Landing() {
         data-reveal
         className="reveal-on-scroll relative overflow-hidden"
         style={{
-          background: 'linear-gradient(90deg, rgba(127,29,29,0.25) 0%, rgba(185,28,28,0.18) 50%, rgba(127,29,29,0.25) 100%)',
-          borderTop: '1px solid rgba(185,28,28,0.2)',
-          borderBottom: '1px solid rgba(185,28,28,0.2)',
+          background: 'linear-gradient(90deg, rgba(4,18,33,0.85) 0%, rgba(7,26,47,0.85) 50%, rgba(4,18,33,0.85) 100%)',
+          borderTop: '1px solid rgba(250,204,21,0.18)',
+          borderBottom: '1px solid rgba(250,204,21,0.18)',
         }}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12">
-          <p className="text-center text-[10px] tracking-[0.2em] uppercase text-gray-500 mb-4">Partnered by</p>
+          <p className="text-center text-[10px] tracking-[0.2em] uppercase text-white-500 mb-4">Partnered by</p>
           <div className="space-y-3">
             <div className="sponsor-marquee">
                                           <div
@@ -1263,7 +1272,7 @@ function Landing() {
                   </div>
 
                   <h3 className="font-bold text-white text-base mb-2 font-heading">{service.title}</h3>
-                  <p className="text-sm text-gray-500 leading-relaxed">{service.description}</p>
+                  <p className="text-sm text-white-500 leading-relaxed">{service.description}</p>
                 </article>
               )
             })}
@@ -1302,9 +1311,9 @@ function Landing() {
                     onClick={() => setStructureKey(view.key)}
                     className="w-full sm:w-auto px-4 sm:px-5 py-2 rounded-xl sm:rounded-full text-xs sm:text-sm font-semibold transition-all duration-200 text-center leading-snug"
                     style={{
-                      background: isActive ? 'rgba(220,38,38,0.2)' : 'transparent',
-                      color: isActive ? '#fee2e2' : '#9ca3af',
-                      border: isActive ? '1px solid rgba(248,113,113,0.4)' : '1px solid transparent',
+                      background: isActive ? 'rgba(250,204,21,0.16)' : 'transparent',
+                      color: isActive ? THEME.yellowText : '#9ca3af',
+                      border: isActive ? '1px solid rgba(250,204,21,0.4)' : '1px solid transparent',
                     }}
                   >
                     {view.label}
@@ -1319,15 +1328,15 @@ function Landing() {
               <div className="w-full max-w-none space-y-6">
                 <div className="w-full flex flex-col items-center">
                   <div className="w-full flex items-center gap-3 mb-2">
-                    <div className="flex-1 h-px" style={{ background: 'linear-gradient(to right, transparent, rgba(220,38,38,0.25))' }} />
+                    <div className="flex-1 h-px" style={{ background: 'linear-gradient(to right, transparent, rgba(250,204,21,0.25))' }} />
                     <span
                       className="px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase border shrink-0 inline-flex flex-col items-center leading-tight"
-                      style={{ color: '#fca5a5', background: 'rgba(220,38,38,0.1)', borderColor: 'rgba(220,38,38,0.2)' }}
+                      style={{ color: THEME.yellowText, background: 'rgba(250,204,21,0.12)', borderColor: 'rgba(250,204,21,0.28)' }}
                     >
                       <span className="tracking-widest uppercase">OIC</span>
-                      <span className="text-[9px] font-semibold tracking-wide normal-case">(Officer in Charge)</span>
+                      <span className="text-[9px] font-semibold tracking-wide normal-case">(Community Development Officer)</span>
                     </span>
-                    <div className="flex-1 h-px" style={{ background: 'linear-gradient(to left, transparent, rgba(220,38,38,0.25))' }} />
+                    <div className="flex-1 h-px" style={{ background: 'linear-gradient(to left, transparent, rgba(250,204,21,0.25))' }} />
                   </div>
 
                   {overallOicPeople.length > 0 ? (
@@ -1337,7 +1346,7 @@ function Landing() {
                           key={`overall-oic-${person.name}`}
                           type="button"
                           onClick={() => openPerson(person)}
-                          className="w-full sm:w-auto rounded-lg px-4 py-2 text-center text-[11px] sm:text-xs font-semibold text-white border transition hover:border-red-400/70 hover:bg-red-600/15"
+                          className="w-full sm:w-auto rounded-lg px-4 py-2 text-center text-[11px] sm:text-xs font-semibold text-white border transition hover:border-yellow-300/70 hover:bg-yellow-400/10"
                           style={{
                             background: 'rgba(12,12,12,0.85)',
                             borderColor: 'rgba(255,255,255,0.12)',
@@ -1351,7 +1360,7 @@ function Landing() {
                     </div>
                   ) : (
                     <div
-                      className="w-full max-w-md rounded-xl border px-4 py-3 text-center text-sm font-semibold text-gray-300"
+                      className="w-full max-w-md rounded-xl border px-4 py-3 text-center text-sm font-semibold text-white-300"
                       style={{ background: 'rgba(12,12,12,0.65)', borderColor: 'rgba(255,255,255,0.12)' }}
                     >
                       No OIC assigned
@@ -1360,9 +1369,9 @@ function Landing() {
                 </div>
 
                 <div className="w-full flex items-center gap-3 mb-2">
-                  <div className="flex-1 h-px" style={{ background: 'linear-gradient(to right, transparent, rgba(220,38,38,0.25))' }} />
+                  <div className="flex-1 h-px" style={{ background: 'linear-gradient(to right, transparent, rgba(250,204,21,0.25))' }} />
                   
-                  <div className="flex-1 h-px" style={{ background: 'linear-gradient(to left, transparent, rgba(220,38,38,0.25))' }} />
+                  <div className="flex-1 h-px" style={{ background: 'linear-gradient(to left, transparent, rgba(250,204,21,0.25))' }} />
                 </div>
 
                 <div
@@ -1392,7 +1401,7 @@ function Landing() {
                 >
                   {committeeGroups.length === 0 ? (
                     <div
-                      className="w-full rounded-2xl border border-white/10 bg-black/60 p-6 text-center text-sm text-gray-400"
+                      className="w-full rounded-2xl border border-white/10 bg-black/60 p-6 text-center text-sm text-white-400"
                       style={{ boxShadow: '0 8px 24px rgba(0,0,0,0.35)' }}
                     >
                       No volunteer data available yet.
@@ -1408,16 +1417,16 @@ function Landing() {
                           <span
                             className="px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase border shrink-0"
                             style={{
-                              color: '#fca5a5',
-                              background: 'rgba(220,38,38,0.1)',
-                              borderColor: 'rgba(220,38,38,0.2)',
+                              color: THEME.yellowText,
+                              background: 'rgba(250,204,21,0.12)',
+                              borderColor: 'rgba(250,204,21,0.28)',
                             }}
                           >
                             {group.committee}
                           </span>
                         </div>
                         {group.members.length === 0 ? (
-                          <p className="text-xs text-gray-400">No members assigned yet.</p>
+                          <p className="text-xs text-white-400">No members assigned yet.</p>
                         ) : (
                           <div className="flex flex-col gap-2 items-center">
                             {group.members.map(person => (
@@ -1425,7 +1434,7 @@ function Landing() {
                                 key={person.name}
                                 type="button"
                                 onClick={() => openPerson(person)}
-                                className="w-full rounded-lg px-2.5 py-2 text-center text-[11px] sm:text-xs font-semibold text-white border transition hover:border-red-500/40 hover:bg-red-600/10"
+                                className="w-full rounded-lg px-2.5 py-2 text-center text-[11px] sm:text-xs font-semibold text-white border transition hover:border-yellow-400/40 hover:bg-yellow-400/10"
                                 style={{
                                   background: 'rgba(12,12,12,0.85)',
                                   borderColor: 'rgba(255,255,255,0.12)',
@@ -1450,7 +1459,7 @@ function Landing() {
                 </div>
 
                 {/* Connector */}
-                <div className="w-px h-8 my-1" style={{ background: 'linear-gradient(to bottom, rgba(220,38,38,0.55), rgba(220,38,38,0.15))' }} />
+                <div className="w-px h-8 my-1" style={{ background: 'linear-gradient(to bottom, rgba(250,204,21,0.55), rgba(250,204,21,0.15))' }} />
 
                 {/* Vice Chairperson */}
                 <div className="w-full max-w-[180px]">
@@ -1458,7 +1467,7 @@ function Landing() {
                 </div>
 
                 {/* Connector to executive director */}
-                <div className="w-px h-8 my-1" style={{ background: 'linear-gradient(to bottom, rgba(220,38,38,0.55), rgba(220,38,38,0.15))' }} />
+                <div className="w-px h-8 my-1" style={{ background: 'linear-gradient(to bottom, rgba(250,204,21,0.55), rgba(250,204,21,0.15))' }} />
 
                 {/* Executive Director */}
                 <div className="w-full max-w-[180px]">
@@ -1466,18 +1475,18 @@ function Landing() {
                 </div>
 
                 {/* Connector to members */}
-                <div className="w-px h-8 my-1" style={{ background: 'linear-gradient(to bottom, rgba(220,38,38,0.55), rgba(220,38,38,0.15))' }} />
+                <div className="w-px h-8 my-1" style={{ background: 'linear-gradient(to bottom, rgba(250,204,21,0.55), rgba(250,204,21,0.15))' }} />
 
                 {/* Board members label */}
                 <div className="w-full flex items-center gap-3 mb-6 max-w-4xl">
-                  <div className="flex-1 h-px" style={{ background: 'linear-gradient(to right, transparent, rgba(220,38,38,0.25))' }} />
+                  <div className="flex-1 h-px" style={{ background: 'linear-gradient(to right, transparent, rgba(250,204,21,0.25))' }} />
                   <span
                     className="px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase border shrink-0"
-                    style={{ color: '#fca5a5', background: 'rgba(220,38,38,0.1)', borderColor: 'rgba(220,38,38,0.2)' }}
+                    style={{ color: THEME.yellowText, background: 'rgba(250,204,21,0.12)', borderColor: 'rgba(250,204,21,0.28)' }}
                   >
                     Board Members
                   </span>
-                  <div className="flex-1 h-px" style={{ background: 'linear-gradient(to left, transparent, rgba(220,38,38,0.25))' }} />
+                  <div className="flex-1 h-px" style={{ background: 'linear-gradient(to left, transparent, rgba(250,204,21,0.25))' }} />
                 </div>
 
                 <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-5xl place-items-center">
@@ -1516,9 +1525,9 @@ function Landing() {
                   boxShadow: '0 24px 60px rgba(0,0,0,0.35)',
                 }}
               >
-                <div className="absolute top-0 left-0 right-0 h-0.5 rounded-t-3xl" style={{ background: 'linear-gradient(90deg, #dc2626, #f87171)' }} />
+                <div className="absolute top-0 left-0 right-0 h-0.5 rounded-t-3xl" style={{ background: `linear-gradient(90deg, ${THEME.yellow}, ${THEME.yellowText})` }} />
                 <h3 className="text-xl sm:text-2xl font-bold text-white font-heading mb-3">What is Kusgan?</h3>
-                <div className="space-y-4 text-sm sm:text-base leading-relaxed text-gray-300">
+                <div className="space-y-4 text-sm sm:text-base leading-relaxed text-white-300">
                   <p>
                     Kusgan Volunteers Inc. (KVI) is a community-driven volunteer organization rooted in Cagayan de Oro City,
                     built to mobilize people for meaningful action when communities need it most. It unites individuals and
@@ -1545,9 +1554,9 @@ function Landing() {
                   boxShadow: '0 24px 60px rgba(0,0,0,0.35)',
                 }}
               >
-                <div className="absolute top-0 left-0 right-0 h-0.5 rounded-t-3xl" style={{ background: 'linear-gradient(90deg, #dc2626, #f87171)' }} />
+                <div className="absolute top-0 left-0 right-0 h-0.5 rounded-t-3xl" style={{ background: `linear-gradient(90deg, ${THEME.yellow}, ${THEME.yellowText})` }} />
                 <h3 className="text-xl sm:text-2xl font-bold text-white font-heading mb-3">History</h3>
-                <div className="space-y-4 text-sm sm:text-base leading-relaxed text-gray-300">
+                <div className="space-y-4 text-sm sm:text-base leading-relaxed text-white-300">
                   <p>
                     On the 7th day of November 2020, Kusgan Volunteers Inc. (KVI) was founded by Noel "Doy Danlag"
                     Raboy and Jerson Ebal. Their passion for volunteerism and community service motivated them to build
@@ -1573,14 +1582,14 @@ function Landing() {
                   border: '1px solid rgba(255,255,255,0.08)',
                 }}
               >
-                <div className="absolute top-0 left-0 right-0 h-0.5 bg-red-600 rounded-t-2xl" />
+                <div className="absolute top-0 left-0 right-0 h-0.5 bg-yellow-400 rounded-t-2xl" />
                 <div
                   className="absolute bottom-0 right-0 w-32 h-32 rounded-full -z-0"
-                  style={{ background: 'radial-gradient(circle, rgba(220,38,38,0.06) 0%, transparent 70%)' }}
+                  style={{ background: 'radial-gradient(circle, rgba(250,204,21,0.07) 0%, transparent 70%)' }}
                 />
-                <p className="text-xs font-bold tracking-widest uppercase mb-2" style={{ color: '#f87171' }}>Mission</p>
+                <p className="text-xs font-bold tracking-widest uppercase mb-2" style={{ color: THEME.yellow }}>Mission</p>
                 <h3 className="text-lg font-bold text-white font-heading mb-2">Our Purpose</h3>
-                <p className="text-sm text-gray-400 leading-relaxed relative">
+                <p className="text-sm text-white-400 leading-relaxed relative">
                   to be catalyst of community involvement though volunteerism and creating social inclusion for a better world to live in
 
                 </p>
@@ -1595,15 +1604,15 @@ function Landing() {
               >
                 <div
                   className="absolute top-0 left-0 right-0 h-0.5 rounded-t-2xl"
-                  style={{ background: 'linear-gradient(90deg, #dc2626, #f87171)' }}
+                  style={{ background: `linear-gradient(90deg, ${THEME.yellow}, ${THEME.yellowText})` }}
                 />
                 <div
                   className="absolute bottom-0 left-0 w-32 h-32 rounded-full"
-                  style={{ background: 'radial-gradient(circle, rgba(220,38,38,0.06) 0%, transparent 70%)' }}
+                  style={{ background: 'radial-gradient(circle, rgba(250,204,21,0.07) 0%, transparent 70%)' }}
                 />
-                <p className="text-xs font-bold tracking-widest uppercase mb-2" style={{ color: '#f87171' }}>Vision</p>
+                <p className="text-xs font-bold tracking-widest uppercase mb-2" style={{ color: THEME.yellow }}>Vision</p>
                 <h3 className="text-lg font-bold text-white font-heading mb-2">Our Future</h3>
-                <p className="text-sm text-gray-400 leading-relaxed relative">
+                <p className="text-sm text-white-400 leading-relaxed relative">
                   To inspire everyone through volunteerism.
                 </p>
               </article>
@@ -1646,7 +1655,7 @@ function Landing() {
                     </p>
                   </div>
                   {/* Red dot accent */}
-                  <div className="absolute top-3 right-3 w-2 h-2 rounded-full bg-red-500 opacity-80" />
+                  <div className="absolute top-3 right-3 w-2 h-2 rounded-full bg-yellow-400 opacity-80" />
                 </article>
               ))}
             </div>
@@ -1659,7 +1668,7 @@ function Landing() {
       <section data-reveal className="reveal-on-scroll relative overflow-hidden py-20 sm:py-28">
         <div
           className="absolute inset-0"
-          style={{ background: 'linear-gradient(135deg, #4a0000 0%, #7f1d1d 35%, #3d0000 100%)' }}
+          style={{ background: `linear-gradient(135deg, ${THEME.navyDeep} 0%, ${THEME.navy} 45%, ${THEME.navyMid} 100%)` }}
         />
         {/* Diamond pattern overlay */}
         <div
@@ -1683,7 +1692,7 @@ function Landing() {
 
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white font-heading leading-tight mb-4">
             Ready to Make a<br />
-            <span style={{ color: '#fca5a5' }}>Difference?</span>
+            <span style={{ color: THEME.yellowText }}>Difference?</span>
           </h2>
           <p className="text-base sm:text-lg max-w-lg mx-auto mb-10 leading-relaxed" style={{ color: 'rgba(252,165,165,0.75)' }}>
             Join KUSGAN and become part of a growing community dedicated to meaningful action and lasting impact.
@@ -1693,7 +1702,7 @@ function Landing() {
             <button
               type="button"
               onClick={() => navigate('/recruitment')}
-              className="inline-flex w-full sm:w-56 h-12 items-center justify-center gap-2.5 px-8 rounded-xl bg-white text-red-700 font-bold hover:-translate-y-0.5 transition-all duration-200 hover:bg-gray-50"
+              className="inline-flex w-full sm:w-56 h-12 items-center justify-center gap-2.5 px-8 rounded-xl bg-yellow-400 text-slate-900 font-bold hover:-translate-y-0.5 transition-all duration-200 hover:bg-yellow-300"
               style={{ boxShadow: '0 16px 48px rgba(0,0,0,0.4)' }}
             >
               <Handshake size={18} />
@@ -1741,7 +1750,7 @@ function Landing() {
           >
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-xs font-semibold tracking-[0.2em] uppercase text-red-300">Donation</p>
+                <p className="text-xs font-semibold tracking-[0.2em] uppercase text-yellow-200">Donation</p>
                 <h3 className="mt-2 text-xl font-bold text-white font-heading">Donate to KUSGAN</h3>
                 <p className="mt-1 text-sm text-white/60">
                   Your contribution goes directly toward sustaining our operations, supporting volunteer activities, and expanding our reach to more communities. Even the smallest donation fuels real change.
@@ -1797,7 +1806,7 @@ function Landing() {
                     type="text"
                     value={donationForm.name}
                     onChange={event => setDonationForm(prev => ({ ...prev, name: event.target.value }))}
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-red-400 focus:outline-none"
+                    className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-yellow-300 focus:outline-none"
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -1809,7 +1818,7 @@ function Landing() {
                     type="email"
                     value={donationForm.email}
                     onChange={event => setDonationForm(prev => ({ ...prev, email: event.target.value }))}
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-red-400 focus:outline-none"
+                    className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-yellow-300 focus:outline-none"
                   />
                 </div>
               </div>
@@ -1824,7 +1833,7 @@ function Landing() {
                   value={donationForm.referenceNo}
                   onChange={event => setDonationForm(prev => ({ ...prev, referenceNo: event.target.value }))}
                   placeholder="Bank reference / transaction number"
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-red-400 focus:outline-none"
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-yellow-300 focus:outline-none"
                 />
               </div>
 
@@ -1832,7 +1841,7 @@ function Landing() {
                 <button
                   type="submit"
                   disabled={donationSubmitting}
-                  className="inline-flex items-center justify-center rounded-xl bg-red-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-red-700"
+                  className="inline-flex items-center justify-center rounded-xl bg-yellow-400 px-5 py-2.5 text-sm font-semibold text-slate-900 hover:bg-yellow-300"
                 >
                   {donationSubmitting ? 'Submitting...' : 'Submit'}
                 </button>
@@ -1859,7 +1868,7 @@ function Landing() {
                 }}
               />
             </div>
-            <p className="text-xs font-semibold tracking-[0.2em] uppercase text-red-300">Profile</p>
+            <p className="text-xs font-semibold tracking-[0.2em] uppercase text-yellow-200">Profile</p>
             <h3 className="mt-2 text-xl font-bold text-white font-heading">{selectedPerson.name}</h3>
 
             <div className="mt-5 rounded-xl border border-white/10 bg-white/5 p-4 text-left">
@@ -1908,7 +1917,7 @@ function Landing() {
       <footer
         className="relative py-12 sm:py-14"
         style={{
-          background: '#050505',
+          background: THEME.navyDeep,
           borderTop: '1px solid rgba(255,255,255,0.06)',
         }}
       >
@@ -1925,46 +1934,46 @@ function Landing() {
                 </div>
                 <div>
                   <p className="font-bold text-white font-heading tracking-widest text-sm">KUSGAN</p>
-                  <p className="text-[9px] text-red-400 tracking-[0.2em] uppercase">Volunteer Inc.</p>
+                  <p className="text-[9px] text-yellow-300 tracking-[0.2em] uppercase">Volunteer Inc.</p>
                 </div>
               </div>
-              <p className="text-sm text-gray-600 leading-relaxed max-w-xs">
+              <p className="text-sm text-white-600 leading-relaxed max-w-xs">
                 Mobilizing communities through compassion, service, and unity for a better tomorrow.
               </p>
             </div>
 
             {/* Contact */}
             <div className="flex flex-col items-start text-left">
-              <h4 className="text-xs font-bold text-gray-400 font-heading mb-3 tracking-widest uppercase">
+              <h4 className="text-xs font-bold text-white-400 font-heading mb-3 tracking-widest uppercase">
                 CONTACT
               </h4>
-              <div className="space-y-5 text-sm text-gray-400 max-w-sm">
+              <div className="space-y-5 text-sm text-white-400 max-w-sm">
                 <p className="leading-relaxed flex flex-wrap items-baseline justify-start gap-x-2">
-                  <span className="text-gray-500 shrink-0">Address:</span>
+                  <span className="text-white-500 shrink-0">Address:</span>
                   <span className="min-w-0">Zone 5 Bulua, Cagayan de Oro City</span>
                 </p>
                 <p className="leading-relaxed flex flex-wrap items-baseline justify-start gap-x-2">
-                  <span className="text-gray-500 shrink-0">Contact number:</span>
-                  <a href="tel:09676651777" className="hover:text-gray-300 transition-colors tabular-nums">
+                  <span className="text-white-500 shrink-0">Contact number:</span>
+                  <a href="tel:09676651777" className="hover:text-white-300 transition-colors tabular-nums">
                     09676651777
                   </a>
                 </p>
                 <p className="leading-relaxed flex flex-wrap items-baseline justify-start gap-x-2">
-                  <span className="text-gray-500 shrink-0">Facebook:</span>
+                  <span className="text-white-500 shrink-0">Facebook:</span>
                   <a
                     href="https://www.facebook.com/KusganVolunteersINC"
                     target="_blank"
                     rel="noreferrer"
-                    className="hover:text-gray-300 transition-colors break-all min-w-0"
+                    className="hover:text-white-300 transition-colors break-all min-w-0"
                   >
                     https://www.facebook.com/KusganVolunteersINC
                   </a>
                 </p>
                 <p className="leading-relaxed flex flex-wrap items-baseline justify-start gap-x-2">
-                  <span className="text-gray-500 shrink-0">Email:</span>
+                  <span className="text-white-500 shrink-0">Email:</span>
                   <a
                     href="mailto:kusganvolunteersinc@gmail.com"
-                    className="hover:text-gray-300 transition-colors break-all min-w-0"
+                    className="hover:text-white-300 transition-colors break-all min-w-0"
                   >
                     kusganvolunteersinc@gmail.com
                   </a>
@@ -1974,7 +1983,7 @@ function Landing() {
           </div>
 
           {/* Copyright */}
-            <p className="text-xs" style={{ color: '#374151' }}>
+            <p className="text-xs" style={{ color: '#ffffff' }}>
               © {new Date().getFullYear()} Developed By : Niel Caspillo, Prince Laurence Montaño, and Dun Kenneth Salon
             </p>
     
