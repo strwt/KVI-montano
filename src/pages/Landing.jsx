@@ -418,6 +418,16 @@ function NavBar({ navigate }) {
               </>
             )}
           </div>
+
+          <button
+            type="button"
+            onClick={() => navigate('/login')}
+            className="inline-flex items-center gap-2 rounded-xl bg-yellow-400 px-4 py-2 text-sm font-semibold text-slate-900 shadow-sm transition-colors hover:bg-yellow-300"
+            title="Login"
+          >
+            <LogIn size={16} />
+            Login
+          </button>
         </nav>
 
         {/* Desktop CTA */}
@@ -1401,18 +1411,6 @@ function Landing() {
             >
               <Handshake size={18} />
               Join Us Today
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate('/login')}
-              className="inline-flex w-full sm:w-56 h-12 items-center justify-center gap-2.5 px-8 rounded-xl text-white font-semibold hover:-translate-y-0.5 transition-all duration-200 border"
-              style={{
-                background: 'rgba(255,255,255,0.08)',
-                borderColor: 'rgba(255,255,255,0.25)',
-              }}
-            >
-              <LogIn size={18} />
-              Member Login
             </button>
             <button
               type="button"
