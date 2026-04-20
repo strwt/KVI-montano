@@ -15,6 +15,7 @@ import Login from './pages/Login'
 import Landing from './pages/Landing'
 import Recruitment from './pages/Recruitment'
 import OrganizationStructure from './pages/OrganizationStructure'
+import WhoWeAre from './pages/WhoWeAre'
 import Settings from './pages/Settings'
 import CategoryManagement from './pages/CategoryManagement'
 import CommitteeManagement from './pages/CommitteeManagement'
@@ -130,6 +131,8 @@ function AppRoutes() {
       <Route path="/register" element={<Navigate to="/login" replace />} />
       <Route path="/organization/board" element={<OrganizationStructure mode="board" />} />
       <Route path="/organization/kusgan" element={<OrganizationStructure mode="kusgan" />} />
+      <Route path="/who-we-are/overview" element={<WhoWeAre mode="overview" />} />
+      <Route path="/who-we-are/mission-vision" element={<WhoWeAre mode="mission-vision" />} />
 
       {/* Protected Routes */}
       <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
