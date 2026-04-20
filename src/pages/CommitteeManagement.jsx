@@ -185,18 +185,18 @@ function CommitteeManagement() {
   const deletingCommitteeAssignedCount = committeeToDelete ? (userCountByCommittee[committeeToDelete] || 0) : 0
 
   return (
-    <div className="animate-fade-in text-gray-900 dark:text-zinc-100">
+    <div className="animate-fade-in text-white">
       <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800 dark:text-zinc-100">Committee Management</h2>
-          <p className="text-sm text-gray-500 dark:text-zinc-400">Add, edit, or delete committees</p>
+          <h2 className="text-2xl font-bold text-white">Committee Management</h2>
+          <p className="text-sm text-white/70">Add, edit, or delete committees</p>
         </div>
       </div>
 
-      <div className="bg-white dark:bg-zinc-900 border border-red-600 rounded-2xl shadow-md p-5">
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-[0_10px_20px_rgba(0,0,0,0.25)] backdrop-blur-md">
         <div className="flex items-center gap-2 mb-3">
-          <Users size={18} className="text-red-600" />
-          <h3 className="font-semibold text-gray-800 dark:text-zinc-100">Committees</h3>
+          <Users size={18} className="text-yellow-300" />
+          <h3 className="font-semibold text-white">Committees</h3>
         </div>
 
         {committeeError && <p className="text-sm text-red-600 mb-3">{committeeError}</p>}
@@ -209,7 +209,7 @@ function CommitteeManagement() {
             value={committeeName}
             onChange={e => setCommitteeName(e.target.value)}
             placeholder="New committee name"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+            className="w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-white shadow-sm backdrop-blur-md focus:border-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
             disabled={committeeActionBusy}
             autoComplete="off"
           />
@@ -224,16 +224,16 @@ function CommitteeManagement() {
 
         <div className="space-y-2 max-h-[520px] overflow-auto pr-1">
           {committeeOptions.length === 0 ? (
-            <p className="text-sm text-gray-500 dark:text-zinc-400">No committees available.</p>
+            <p className="text-sm text-white/70">No committees available.</p>
           ) : (
             committeeOptions.map(name => (
               <div
                 key={name}
-                className="flex items-start justify-between gap-3 rounded-xl border border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2"
+                className="flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2"
               >
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-gray-800 dark:text-zinc-100 truncate">{name}</p>
-                  <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5">
+                  <p className="text-sm font-semibold text-white truncate">{name}</p>
+                  <p className="mt-0.5 text-xs text-white/70">
                     {userCountByCommittee[name] || 0} assigned
                   </p>
                 </div>
@@ -263,9 +263,9 @@ function CommitteeManagement() {
 
       {isAdmin && showEditCommitteeModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="w-full max-w-xl bg-white dark:bg-zinc-900 rounded-xl shadow-2xl p-5 space-y-4 animate-fade-in-up">
+          <div className="w-full max-w-xl rounded-2xl border border-white/10 bg-[#041221]/95 p-5 text-white shadow-2xl backdrop-blur-xl space-y-4 animate-fade-in-up">
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-gray-800 dark:text-zinc-100">Edit Committee</h3>
+              <h3 className="font-semibold text-white">Edit Committee</h3>
               <button
                 type="button"
                 onClick={() => {
@@ -275,7 +275,7 @@ function CommitteeManagement() {
                   setEditedCommitteeName('')
                   setCommitteeError('')
                 }}
-                className="px-3 py-1.5 bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-100 rounded-lg hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                className="rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-sm font-semibold text-white shadow-sm backdrop-blur-md transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={committeeActionBusy}
               >
                 Close
@@ -288,7 +288,7 @@ function CommitteeManagement() {
                 value={editedCommitteeName}
                 onChange={e => setEditedCommitteeName(e.target.value)}
                 placeholder="New committee name"
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+                className="rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-white shadow-sm backdrop-blur-md focus:border-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
                 required
               />
               <button
@@ -305,9 +305,9 @@ function CommitteeManagement() {
 
       {isAdmin && showDeleteCommitteeModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="w-full max-w-xl bg-white dark:bg-zinc-900 rounded-xl shadow-2xl p-5 space-y-4 animate-fade-in-up">
+          <div className="w-full max-w-xl rounded-2xl border border-white/10 bg-[#041221]/95 p-5 text-white shadow-2xl backdrop-blur-xl space-y-4 animate-fade-in-up">
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-gray-800 dark:text-zinc-100">Delete Committee</h3>
+              <h3 className="font-semibold text-white">Delete Committee</h3>
               <button
                 type="button"
                 onClick={() => {
@@ -317,23 +317,23 @@ function CommitteeManagement() {
                   setFallbackCommittee('')
                   setCommitteeError('')
                 }}
-                className="px-3 py-1.5 bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-100 rounded-lg hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                className="rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-sm font-semibold text-white shadow-sm backdrop-blur-md transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={committeeActionBusy}
               >
                 Close
               </button>
             </div>
 
-            <div className="space-y-2 text-sm text-gray-700 dark:text-zinc-200">
+            <div className="space-y-2 text-sm text-white/80">
               <p>
                 You are about to delete <span className="font-semibold">{committeeToDelete}</span>.
               </p>
               {deletingCommitteeAssignedCount > 0 ? (
-                <p className="text-amber-700 dark:text-amber-300">
+                <p className="text-amber-200">
                   {deletingCommitteeAssignedCount} user(s) are assigned. Choose a fallback committee to reassign them.
                 </p>
               ) : (
-                <p className="text-gray-500 dark:text-zinc-400">
+                <p className="text-white/70">
                   No users are assigned to this committee.
                 </p>
               )}
@@ -341,11 +341,11 @@ function CommitteeManagement() {
 
             {deletingCommitteeAssignedCount > 0 && (
               <div className="space-y-1">
-                <label className="block text-xs text-gray-500 dark:text-zinc-400">Reassign to</label>
+                <label className="block text-xs text-white/70">Reassign to</label>
                 <select
                   value={fallbackCommittee}
                   onChange={e => setFallbackCommittee(e.target.value)}
-                  className="w-full h-10 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+                  className="h-10 w-full rounded-lg border border-white/15 bg-white/5 px-3 text-white shadow-sm backdrop-blur-md focus:border-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
                   disabled={committeeActionBusy}
                 >
                   <option value="">Select committee</option>
@@ -362,7 +362,7 @@ function CommitteeManagement() {
               <button
                 type="button"
                 onClick={() => setShowDeleteCommitteeModal(false)}
-                className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-100 hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                className="rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-white shadow-sm backdrop-blur-md transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={committeeActionBusy}
               >
                 Cancel
@@ -370,7 +370,7 @@ function CommitteeManagement() {
               <button
                 type="button"
                 onClick={handleCommitteeDelete}
-                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                className="rounded-lg border border-red-300/30 bg-red-500/20 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-500/30 disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={committeeActionBusy}
               >
                 Delete
