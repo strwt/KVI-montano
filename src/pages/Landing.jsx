@@ -1198,8 +1198,19 @@ function Landing() {
         }}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12">
-          <p className="text-center text-[10px] tracking-[0.2em] uppercase text-white-500 mb-4">Partnered by</p>
-          <div className="space-y-3">
+          <div
+            className="relative overflow-hidden rounded-[28px] px-4 py-5 sm:px-6 sm:py-6"
+            style={{
+              background: 'transparent',
+              boxShadow: 'none',
+            }}
+          >
+            <div
+              className="absolute -top-24 right-0 h-48 w-48 rounded-full"
+              style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.06) 0%, transparent 70%)' }}
+            />
+            <p className="relative text-center text-[10px] tracking-[0.2em] uppercase text-white-500 mb-4 sm:mb-5">Partnered by</p>
+            <div className="space-y-3 relative">
             <div className="sponsor-marquee">
                                           <div
                 className="sponsor-marquee-track sponsor-marquee-track--ltr"
@@ -1209,13 +1220,19 @@ function Landing() {
                   <div
                     key={`${filename}-${index}`}
                     data-sponsor-logo
-                    className="sponsor-marquee-item h-16 w-16 sm:h-20 sm:w-20 shrink-0 rounded-full bg-white p-1 shadow-lg overflow-hidden"
+                    className="sponsor-marquee-item h-16 w-16 sm:h-20 sm:w-20 shrink-0 rounded-full p-1.5 overflow-hidden"
+                    style={{
+                      background: 'linear-gradient(145deg, rgba(255,255,255,0.2), rgba(255,255,255,0.08))',
+                      border: '1px solid rgba(255,255,255,0.24)',
+                      boxShadow: '0 16px 32px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.32)',
+                      backdropFilter: 'blur(18px)',
+                    }}
                     title={filename.replace(/\.(png|jpe?g|webp)$/i, '')}
                   >
                     <img
                       src={`/${encodeURIComponent(filename)}`}
                       alt={filename.replace(/\.(png|jpe?g|webp)$/i, '').replace(/[-_]/g, ' ')}
-                      className="h-full w-full object-contain"
+                      className="h-full w-full object-contain rounded-full bg-white/90"
                       loading="lazy"
                       onError={e => {
                         const wrapper = e.currentTarget.closest('[data-sponsor-logo]')
@@ -1226,8 +1243,7 @@ function Landing() {
                 ))}
               </div>
             </div>
-
-            
+            </div>
           </div>
         </div>
       </div>
@@ -1247,13 +1263,18 @@ function Landing() {
                   key={service.key}
                   className="group relative rounded-2xl overflow-hidden p-6 transition-all duration-300 hover:-translate-y-1.5"
                   style={{
-                    background: 'rgba(12,12,12,0.9)',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+                    background: 'linear-gradient(150deg, rgba(255,255,255,0.14), rgba(255,255,255,0.05))',
+                    border: '1px solid rgba(255,255,255,0.14)',
+                    boxShadow: '0 18px 42px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.18)',
+                    backdropFilter: 'blur(18px)',
                   }}
                 >
                   {/* Top accent line */}
                   <div className="absolute top-0 left-0 right-0 h-0.5 rounded-t-2xl" style={{ background: service.accent }} />
+                  <div
+                    className="absolute inset-x-0 top-0 h-20 pointer-events-none"
+                    style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.12), transparent)' }}
+                  />
 
                   {/* Hover glow */}
                   <div
@@ -1272,7 +1293,7 @@ function Landing() {
                   </div>
 
                   <h3 className="font-bold text-white text-base mb-2 font-heading">{service.title}</h3>
-                  <p className="text-sm text-white-500 leading-relaxed">{service.description}</p>
+                  <p className="text-sm text-white/76 leading-relaxed">{service.description}</p>
                 </article>
               )
             })}
@@ -1520,14 +1541,19 @@ function Landing() {
               <article
                 className="rounded-3xl p-6 sm:p-8 lg:p-10 relative overflow-hidden"
                 style={{
-                  background: 'rgba(8,8,8,0.92)',
-                  border: '1px solid rgba(255,255,255,0.08)',
-                  boxShadow: '0 24px 60px rgba(0,0,0,0.35)',
+                  background: 'linear-gradient(150deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05))',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                  boxShadow: '0 24px 60px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.18)',
+                  backdropFilter: 'blur(18px)',
                 }}
               >
                 <div className="absolute top-0 left-0 right-0 h-0.5 rounded-t-3xl" style={{ background: `linear-gradient(90deg, ${THEME.yellow}, ${THEME.yellowText})` }} />
+                <div
+                  className="absolute inset-x-0 top-0 h-24"
+                  style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.12), transparent)' }}
+                />
                 <h3 className="text-xl sm:text-2xl font-bold text-white font-heading mb-3">What is Kusgan?</h3>
-                <div className="space-y-4 text-sm sm:text-base leading-relaxed text-white-300">
+                <div className="space-y-4 text-sm sm:text-base leading-relaxed text-white/82">
                   <p>
                     Kusgan Volunteers Inc. (KVI) is a community-driven volunteer organization rooted in Cagayan de Oro City,
                     built to mobilize people for meaningful action when communities need it most. It unites individuals and
@@ -1549,14 +1575,19 @@ function Landing() {
               <article
                 className="rounded-3xl p-6 sm:p-8 lg:p-10 relative overflow-hidden"
                 style={{
-                  background: 'rgba(8,8,8,0.92)',
-                  border: '1px solid rgba(255,255,255,0.08)',
-                  boxShadow: '0 24px 60px rgba(0,0,0,0.35)',
+                  background: 'linear-gradient(150deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05))',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                  boxShadow: '0 24px 60px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.18)',
+                  backdropFilter: 'blur(18px)',
                 }}
               >
                 <div className="absolute top-0 left-0 right-0 h-0.5 rounded-t-3xl" style={{ background: `linear-gradient(90deg, ${THEME.yellow}, ${THEME.yellowText})` }} />
+                <div
+                  className="absolute inset-x-0 top-0 h-24"
+                  style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.12), transparent)' }}
+                />
                 <h3 className="text-xl sm:text-2xl font-bold text-white font-heading mb-3">History</h3>
-                <div className="space-y-4 text-sm sm:text-base leading-relaxed text-white-300">
+                <div className="space-y-4 text-sm sm:text-base leading-relaxed text-white/82">
                   <p>
                     On the 7th day of November 2020, Kusgan Volunteers Inc. (KVI) was founded by Noel "Doy Danlag"
                     Raboy and Jerson Ebal. Their passion for volunteerism and community service motivated them to build
@@ -1578,18 +1609,24 @@ function Landing() {
               <article
                 className="rounded-2xl p-6 relative overflow-hidden"
                 style={{
-                  background: 'rgba(12,12,12,0.9)',
-                  border: '1px solid rgba(255,255,255,0.08)',
+                  background: 'linear-gradient(150deg, rgba(255,255,255,0.14), rgba(255,255,255,0.05))',
+                  border: '1px solid rgba(255,255,255,0.14)',
+                  boxShadow: '0 18px 42px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.18)',
+                  backdropFilter: 'blur(18px)',
                 }}
               >
                 <div className="absolute top-0 left-0 right-0 h-0.5 bg-yellow-400 rounded-t-2xl" />
+                <div
+                  className="absolute inset-x-0 top-0 h-16"
+                  style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.12), transparent)' }}
+                />
                 <div
                   className="absolute bottom-0 right-0 w-32 h-32 rounded-full -z-0"
                   style={{ background: 'radial-gradient(circle, rgba(250,204,21,0.07) 0%, transparent 70%)' }}
                 />
                 <p className="text-xs font-bold tracking-widest uppercase mb-2" style={{ color: THEME.yellow }}>Mission</p>
                 <h3 className="text-lg font-bold text-white font-heading mb-2">Our Purpose</h3>
-                <p className="text-sm text-white-400 leading-relaxed relative">
+                <p className="text-sm text-white/80 leading-relaxed relative">
                   to be catalyst of community involvement though volunteerism and creating social inclusion for a better world to live in
 
                 </p>
@@ -1598,8 +1635,10 @@ function Landing() {
               <article
                 className="rounded-2xl p-6 relative overflow-hidden"
                 style={{
-                  background: 'rgba(12,12,12,0.9)',
-                  border: '1px solid rgba(255,255,255,0.08)',
+                  background: 'linear-gradient(150deg, rgba(255,255,255,0.14), rgba(255,255,255,0.05))',
+                  border: '1px solid rgba(255,255,255,0.14)',
+                  boxShadow: '0 18px 42px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.18)',
+                  backdropFilter: 'blur(18px)',
                 }}
               >
                 <div
@@ -1607,12 +1646,16 @@ function Landing() {
                   style={{ background: `linear-gradient(90deg, ${THEME.yellow}, ${THEME.yellowText})` }}
                 />
                 <div
+                  className="absolute inset-x-0 top-0 h-16"
+                  style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.12), transparent)' }}
+                />
+                <div
                   className="absolute bottom-0 left-0 w-32 h-32 rounded-full"
                   style={{ background: 'radial-gradient(circle, rgba(250,204,21,0.07) 0%, transparent 70%)' }}
                 />
                 <p className="text-xs font-bold tracking-widest uppercase mb-2" style={{ color: THEME.yellow }}>Vision</p>
                 <h3 className="text-lg font-bold text-white font-heading mb-2">Our Future</h3>
-                <p className="text-sm text-white-400 leading-relaxed relative">
+                <p className="text-sm text-white/80 leading-relaxed relative">
                   To inspire everyone through volunteerism.
                 </p>
               </article>
