@@ -383,6 +383,11 @@ export default function OrganizationStructure({ mode = 'board' }) {
     if (!scroller) return
     if (event.button !== undefined && event.button !== 0) return
 
+    const target = event.target
+    if (target instanceof Element) {
+      if (target.closest('button, a, input, select, textarea, [role="button"]')) return
+    }
+
     committeeDragMovedRef.current = false
     setCommitteeDragging(true)
     committeeDragStartXRef.current = event.clientX
