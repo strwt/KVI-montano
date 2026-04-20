@@ -332,7 +332,7 @@ function NavBar({ navigate }) {
                   role="menuitem"
                 >
                   <div>
-                    <p className="text-sm font-semibold text-slate-900">Board Organizational Structure</p>
+                    <p className="text-sm font-semibold text-slate-900">Board Members</p>
                   </div>
                 </button>
                 <button
@@ -1566,7 +1566,7 @@ function Landing() {
               <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-yellow-300/25 bg-yellow-400/10 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-yellow-100">
                 Board
               </div>
-              <h3 className="mb-3 text-2xl font-bold text-white">Board Organizational Structure</h3>
+              <h3 className="mb-3 text-2xl font-bold text-white">Board Members</h3>
               <button
                 type="button"
                 onClick={() => navigate('/organization/board')}
