@@ -332,7 +332,7 @@ function NavBar({ navigate }) {
                   role="menuitem"
                 >
                   <div>
-                    <p className="text-sm font-semibold text-slate-900">Board Organizational Structure</p>
+                    <p className="text-sm font-semibold text-slate-900">Board Members</p>
                   </div>
                 </button>
                 <button
@@ -418,6 +418,16 @@ function NavBar({ navigate }) {
               </>
             )}
           </div>
+
+          <button
+            type="button"
+            onClick={() => navigate('/login')}
+            className="inline-flex items-center gap-2 rounded-xl bg-yellow-400 px-4 py-2 text-sm font-semibold text-slate-900 shadow-sm transition-colors hover:bg-yellow-300"
+            title="Login"
+          >
+            <LogIn size={16} />
+            Login
+          </button>
         </nav>
 
         {/* Desktop CTA */}
@@ -1404,18 +1414,6 @@ function Landing() {
             </button>
             <button
               type="button"
-              onClick={() => navigate('/login')}
-              className="inline-flex w-full sm:w-56 h-12 items-center justify-center gap-2.5 px-8 rounded-xl text-white font-semibold hover:-translate-y-0.5 transition-all duration-200 border"
-              style={{
-                background: 'rgba(255,255,255,0.08)',
-                borderColor: 'rgba(255,255,255,0.25)',
-              }}
-            >
-              <LogIn size={18} />
-              Member Login
-            </button>
-            <button
-              type="button"
               onClick={openDonation}
               className="inline-flex w-full sm:w-56 h-12 items-center justify-center gap-2.5 px-8 rounded-xl text-white font-semibold hover:-translate-y-0.5 transition-all duration-200 border"
               style={{
@@ -1568,7 +1566,7 @@ function Landing() {
               <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-yellow-300/25 bg-yellow-400/10 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-yellow-100">
                 Board
               </div>
-              <h3 className="mb-3 text-2xl font-bold text-white">Board Organizational Structure</h3>
+              <h3 className="mb-3 text-2xl font-bold text-white">Board Members</h3>
               <button
                 type="button"
                 onClick={() => navigate('/organization/board')}
