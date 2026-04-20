@@ -1031,12 +1031,12 @@ function AdminAttendance() {
                         : null
 
                       const tone = cell.status === 'Present'
-                        ? 'border-emerald-200 bg-emerald-50/70 dark:border-emerald-800/50 dark:bg-emerald-950/30'
-                        : 'border-neutral-200 bg-neutral-50/70 dark:border-zinc-700 dark:bg-zinc-950/20'
+                        ? 'border-emerald-300/30 bg-emerald-400/10'
+                        : 'border-white/15 bg-white/5'
 
                       const badgeTone = cell.status === 'Present'
-                        ? 'border-emerald-200 bg-emerald-100 text-emerald-700 dark:border-emerald-800/50 dark:bg-emerald-900/40 dark:text-emerald-200'
-                        : 'border-neutral-200 bg-neutral-100 text-neutral-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200'
+                        ? 'border-emerald-300/30 bg-emerald-400/10 text-emerald-200'
+                        : 'border-white/15 bg-white/5 text-white/80'
 
                       const titleParts = [`${cell.label}: ${cell.status}`]
                       if (timeInLabel) titleParts.push(`In: ${timeInLabel}`)
@@ -1046,18 +1046,18 @@ function AdminAttendance() {
                         <div
                           key={cell.dateKey || `day-${index}`}
                           className={`flex h-[84px] sm:h-[100px] lg:h-[120px] min-w-0 flex-col justify-between overflow-hidden rounded-xl border p-2 sm:p-2.5 lg:p-3 ${tone} ${
-                            isToday ? 'ring-2 ring-yellow-400 ring-offset-2 ring-offset-blue-900' : ''
+                            isToday ? 'ring-2 ring-yellow-400 ring-offset-2 ring-offset-[#041221]' : ''
                           }`}
                           title={titleParts.join(' | ')}
                         >
                           <div className="flex items-start justify-between gap-2">
-                            <span className="text-xs sm:text-sm font-semibold text-neutral-900 dark:text-zinc-100">{dayNumber}</span>
+                            <span className="text-xs sm:text-sm font-semibold text-white">{dayNumber}</span>
                             <span className={`inline-flex max-w-[64px] sm:max-w-[80px] lg:max-w-[92px] truncate rounded-full border px-2 py-0.5 text-[10px] sm:text-xs font-semibold ${badgeTone}`}>
                               {cell.status}
                             </span>
                           </div>
                           {(timeInLabel || timeOutLabel) ? (
-                            <div className="min-w-0 space-y-0.5 sm:space-y-1 text-[10px] sm:text-xs text-neutral-600 dark:text-neutral-300">
+                            <div className="min-w-0 space-y-0.5 sm:space-y-1 text-[10px] sm:text-xs text-white/80">
                               {timeInLabel && (
                                 <div className="flex min-w-0 items-center gap-1">
                                   <Clock size={12} className="shrink-0" />
@@ -1072,7 +1072,7 @@ function AdminAttendance() {
                               )}
                             </div>
                           ) : (
-                            <span className="text-[10px] sm:text-xs text-neutral-500 dark:text-neutral-400">No record</span>
+                            <span className="text-[10px] sm:text-xs text-white/60">No record</span>
                           )}
                         </div>
                       )
