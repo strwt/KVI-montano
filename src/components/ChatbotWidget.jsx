@@ -6,14 +6,14 @@ import { useAuth } from '../context/AuthContext'
 const PAGE_SUGGESTIONS = [
   {
     match: ({ pathname, hash }) => pathname.startsWith('/landing') && hash === '#services',
-    title: 'Services',
+    title: 'Programs',
     suggestions: [
       'What services does KVI offer?',
       'Where can I see the partners of KVI?',
       'How do I go back to Home?',
     ],
     links: [
-      { label: 'Services', to: '/landing#services' },
+      { label: 'Programs', to: '/landing#services' },
       { label: 'Home', to: '/landing' },
       { label: 'About', to: '/landing#about' },
     ],
@@ -43,7 +43,7 @@ const PAGE_SUGGESTIONS = [
     links: [
       { label: 'About', to: '/landing#about' },
       { label: 'Home', to: '/landing' },
-      { label: 'Services', to: '/landing#services' },
+      { label: 'Programs', to: '/landing#services' },
     ],
   },
   {

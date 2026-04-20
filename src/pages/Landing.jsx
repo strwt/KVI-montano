@@ -42,8 +42,7 @@ const THEME = {
 
 const NAV_LINKS = [
   { label: 'Home', href: '#home' },
-  { label: 'Services', href: '#services' },
-  { label: 'About', href: '#about' },
+  { label: 'Programs', href: '#services' },
 ]
 
 const SPONSOR_LOGOS = [
@@ -81,7 +80,8 @@ const SERVICES = [
   {
     key: 'environmental',
     title: 'Environmental',
-    description: 'Tree planting, clean-up drives, and ecosystem care for greener communities.',
+    description:
+      'This refers to organized efforts that aim to protect, restore, and sustain the natural environment. Activities such as tree planting, clean-up drives, and ecosystem care help reduce pollution, restore biodiversity, and promote environmental awareness. In KUSGAN Volunteers Inc., environmental service reflects their commitment to building greener and more sustainable communities by actively involving volunteers in hands-on ecological initiatives that create long-term positive impact.',
     icon: Leaf,
     iconClass: 'icon-theme-environmental',
     accent: '#22c55e',
@@ -91,7 +91,8 @@ const SERVICES = [
   {
     key: 'relief',
     title: 'Relief Operation',
-    description: 'Rapid volunteer coordination and emergency support during disasters.',
+    description:
+      'Relief operations involve immediate and coordinated responses to emergencies and disasters, ensuring that affected communities receive essential aid such as food, water, shelter, and support. It requires fast action, teamwork, and efficient resource distribution. In KUSGAN Volunteers Inc., this represents their role as a rapid-response volunteer group that mobilizes quickly during calamities, providing organized assistance and helping communities recover during critical times.',
     icon: Activity,
     iconClass: 'icon-theme-relief',
     accent: '#3b82f6',
@@ -101,7 +102,8 @@ const SERVICES = [
   {
     key: 'fire',
     title: 'Fire Response',
-    description: 'Community fire incident assistance and coordinated response support.',
+    description:
+      'Fire response refers to assisting in fire-related emergencies through coordinated action, safety measures, and support to minimize damage and protect lives. This includes preparedness, response coordination, and community awareness. In KUSGAN Volunteers Inc., fire response highlights their dedication to public safety by supporting fire incidents, working alongside authorities, and ensuring that communities are better prepared and protected against fire hazards.',
     icon: Flame,
     iconClass: 'icon-theme-fire',
     accent: '#f97316',
@@ -111,7 +113,8 @@ const SERVICES = [
   {
     key: 'medical',
     title: 'Medical',
-    description: 'Medical missions, first aid support, and health outreach programs.',
+    description:
+      'Medical service focuses on promoting health and well-being through outreach programs such as medical missions, first aid assistance, and healthcare education. It aims to make healthcare accessible, especially to underserved communities. In KUSGAN Volunteers Inc., this reflects their mission to care for people by organizing health-related activities, providing basic medical support, and extending compassion through community-based healthcare initiatives.',
     icon: HeartPulse,
     iconClass: 'icon-theme-medical',
     accent: '#ef4444',
@@ -219,7 +222,9 @@ function NavBar({ navigate }) {
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [managementOpen, setManagementOpen] = useState(false)
+  const [whoWeAreOpen, setWhoWeAreOpen] = useState(false)
   const managementMenuRef = useRef(null)
+  const whoWeAreMenuRef = useRef(null)
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 50)
@@ -231,6 +236,9 @@ function NavBar({ navigate }) {
     const onPointerDown = event => {
       if (!managementMenuRef.current?.contains(event.target)) {
         setManagementOpen(false)
+      }
+      if (!whoWeAreMenuRef.current?.contains(event.target)) {
+        setWhoWeAreOpen(false)
       }
     }
 
@@ -352,6 +360,74 @@ function NavBar({ navigate }) {
               </>
             )}
           </div>
+
+          <div
+            className="relative flex items-center"
+            ref={whoWeAreMenuRef}
+            onMouseEnter={() => setWhoWeAreOpen(true)}
+            onMouseLeave={() => setWhoWeAreOpen(false)}
+          >
+            <button
+              type="button"
+              onClick={() => setWhoWeAreOpen(true)}
+              className={`group relative inline-flex items-center gap-1 text-sm transition-colors duration-200 ${
+                whoWeAreOpen ? 'text-white' : 'text-white-400 hover:text-white'
+              }`}
+              aria-expanded={whoWeAreOpen}
+              aria-haspopup="menu"
+            >
+              Who We Are
+              <ChevronDown size={15} className={`transition-transform duration-200 ${whoWeAreOpen ? 'rotate-180' : ''}`} />
+              <span className={`absolute -bottom-0.5 left-0 h-px rounded-full bg-yellow-400 transition-all duration-300 ${whoWeAreOpen ? 'w-full' : 'w-0 group-hover:w-full'}`} />
+            </button>
+
+            {whoWeAreOpen && (
+              <>
+                <div
+                  aria-hidden="true"
+                  className="absolute left-1/2 top-full z-40 h-4 w-80 -translate-x-1/2"
+                />
+                <div
+                  className="absolute left-1/2 top-full z-50 mt-4 w-80 -translate-x-1/2 rounded-2xl border p-2"
+                  role="menu"
+                  style={{
+                    background: '#ffffff',
+                    borderColor: 'rgba(226,232,240,0.95)',
+                    boxShadow: '0 20px 40px rgba(0,0,0,0.18)',
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setWhoWeAreOpen(false)
+                      navigate('/who-we-are/overview')
+                    }}
+                    className="flex w-full items-start rounded-xl px-3 py-3 text-left transition-colors hover:bg-slate-50"
+                    role="menuitem"
+                  >
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">What is Kusgan and History</p>
+                      <p className="mt-1 text-xs text-slate-500">Open the KUSGAN overview and history page.</p>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setWhoWeAreOpen(false)
+                      navigate('/who-we-are/mission-vision')
+                    }}
+                    className="flex w-full items-start rounded-xl px-3 py-3 text-left transition-colors hover:bg-slate-50"
+                    role="menuitem"
+                  >
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">Mission and Vision</p>
+                      <p className="mt-1 text-xs text-slate-500">Open the mission and vision page.</p>
+                    </div>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </nav>
 
         {/* Desktop CTA */}
@@ -413,6 +489,33 @@ function NavBar({ navigate }) {
               >
                 <span className="h-1 w-1 rounded-full bg-yellow-400" />
                 KUSGAN Committee
+              </button>
+            </div>
+          </div>
+          <div className="px-3 pt-1">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-yellow-200/80">Who We Are</p>
+            <div className="space-y-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileOpen(false)
+                  navigate('/who-we-are/overview')
+                }}
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-white-300 transition-colors hover:bg-white/5 hover:text-white"
+              >
+                <span className="h-1 w-1 rounded-full bg-yellow-400" />
+                What is Kusgan and History
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileOpen(false)
+                  navigate('/who-we-are/mission-vision')
+                }}
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-white-300 transition-colors hover:bg-white/5 hover:text-white"
+              >
+                <span className="h-1 w-1 rounded-full bg-yellow-400" />
+                Mission and Vision
               </button>
             </div>
           </div>
@@ -1358,7 +1461,7 @@ function Landing() {
       <section id="services" data-reveal className="reveal-on-scroll relative pt-20 pb-28 sm:pt-24 sm:pb-36">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <SectionHeader
-            title="Our Services"
+            title="Our Programs"
             subtitle="Focused volunteer initiatives making real community impact."
           />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
@@ -1475,7 +1578,7 @@ function Landing() {
       </section>
 
       {/* ── ABOUT ── */}
-      <section id="about" data-reveal className="reveal-on-scroll relative py-20 sm:py-24">
+      <section id="about" data-reveal aria-hidden="true" className="hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-5xl mx-auto">
             <SectionHeader
