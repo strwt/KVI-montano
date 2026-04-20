@@ -584,9 +584,9 @@ function EventLocationPicker({ address, location, onAddressInput, onLocationSele
   return (
     <div className="space-y-3">
       <div className="relative">
-        <label htmlFor="event-location-address" className="block text-sm font-medium text-gray-700 mb-2">Address</label>
+        <label htmlFor="event-location-address" className="block text-sm text-white/80 mb-2">Address</label>
         <div className="relative">
-          <MapPin size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <MapPin size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/45" />
           <input
             id="event-location-address"
             name="address"
@@ -625,17 +625,17 @@ function EventLocationPicker({ address, location, onAddressInput, onLocationSele
               }
             }}
             placeholder="Search address"
-            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+            className="w-full rounded-lg border border-white/20 bg-white/10 pl-10 pr-4 py-3 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-red-500"
             required
             autoComplete="street-address"
           />
-          {isSearching && <Loader2 size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 animate-spin" />}
+          {isSearching && <Loader2 size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/45 animate-spin" />}
         </div>
         {showSuggestions && (isSearching || suggestions.length > 0 || searchHint) && (
-          <div className="absolute z-20 mt-1 w-full bg-white border border-red-100 rounded-xl shadow-lg max-h-56 overflow-y-auto">
-            {isSearching && <p className="px-3 py-2 text-sm text-gray-500">Searching...</p>}
+          <div className="absolute z-20 mt-1 w-full max-h-56 overflow-y-auto rounded-xl border border-white/20 bg-slate-950/95 shadow-lg backdrop-blur-xl">
+            {isSearching && <p className="px-3 py-2 text-sm text-white/65">Searching...</p>}
             {!isSearching && suggestions.length === 0 && searchHint && (
-              <p className="px-3 py-2 text-sm text-gray-500">{searchHint}</p>
+              <p className="px-3 py-2 text-sm text-white/65">{searchHint}</p>
             )}
             {!isSearching &&
               suggestions.map((item, index) => (
@@ -644,8 +644,8 @@ function EventLocationPicker({ address, location, onAddressInput, onLocationSele
                   type="button"
                   onMouseEnter={() => setActiveSuggestionIndex(index)}
                   onClick={() => selectSuggestion(item)}
-                  className={`w-full text-left px-3 py-2 text-sm border-b border-gray-100 last:border-b-0 transition-colors ${
-                    activeSuggestionIndex === index ? 'bg-red-50 text-red-700' : 'text-gray-700 hover:bg-gray-50'
+                  className={`w-full text-left px-3 py-2 text-sm border-b border-white/10 last:border-b-0 transition-colors ${
+                    activeSuggestionIndex === index ? 'bg-red-500/18 text-red-100' : 'text-white/80 hover:bg-white/10'
                   }`}
                 >
                   {renderHighlightedAddress(item.display_name, address)}
@@ -655,11 +655,11 @@ function EventLocationPicker({ address, location, onAddressInput, onLocationSele
         )}
       </div>
 
-<div className="relative isolate z-0 rounded-2xl border border-red-600 shadow-sm overflow-hidden">
+<div className="relative isolate z-0 rounded-2xl border border-white/20 shadow-sm overflow-hidden">
         <div ref={mapContainerRef} className="relative z-0 h-52 sm:h-64 md:h-72 w-full" />
       </div>
-      {mapError && <p className="text-sm text-red-600">{mapError}</p>}
-      <p className="text-xs text-gray-500">Type partial or full address. Press Enter or choose a suggestion to pin exactly.</p>
+      {mapError && <p className="text-sm text-red-300">{mapError}</p>}
+      <p className="text-xs text-white/65">Type partial or full address. Press Enter or choose a suggestion to pin exactly.</p>
     </div>
   )
 }
@@ -781,9 +781,9 @@ function AssignMembersPicker({ allMembers, selectedIds, onChange, label = 'Assig
 
   return (
     <div className="space-y-2" ref={panelRef}>
-      <label htmlFor={inputId} className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
+      <label htmlFor={inputId} className="block text-sm text-white/80 mb-2">{label}</label>
       <div className="relative">
-        <Users size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        <Users size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/45" />
         <input
           id={inputId}
           name="memberSearch"
@@ -796,12 +796,12 @@ function AssignMembersPicker({ allMembers, selectedIds, onChange, label = 'Assig
             setOpen(true)
           }}
           placeholder={placeholder}
-          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+          className="w-full rounded-lg border border-white/20 bg-white/10 pl-10 pr-4 py-3 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-red-500"
         />
         {open && (
-          <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-56 overflow-y-auto">
+          <div className="absolute z-20 mt-1 w-full max-h-56 overflow-y-auto rounded-xl border border-white/20 bg-slate-950/95 shadow-lg backdrop-blur-xl">
             {filteredMembers.length === 0 && (
-              <p className="px-3 py-2 text-sm text-gray-500">No members found.</p>
+              <p className="px-3 py-2 text-sm text-white/65">No members found.</p>
             )}
             {filteredMembers.map(member => {
               const checked = selectedIds.includes(member.id)
@@ -810,13 +810,13 @@ function AssignMembersPicker({ allMembers, selectedIds, onChange, label = 'Assig
                   key={member.id}
                   type="button"
                   onClick={() => toggleMember(member.id)}
-                  className={`w-full text-left px-3 py-2 text-sm border-b border-gray-100 last:border-b-0 flex items-center justify-between ${
-                    checked ? 'bg-red-50 text-red-700' : 'hover:bg-gray-50 text-gray-700'
+                  className={`w-full text-left px-3 py-2 text-sm border-b border-white/10 last:border-b-0 flex items-center justify-between ${
+                    checked ? 'bg-red-500/18 text-red-100' : 'hover:bg-white/10 text-white/80'
                   }`}
                 >
                   <span className="truncate pr-3">
                     {member.name}
-                    <span className="ml-2 text-xs text-gray-500">
+                    <span className="ml-2 text-xs text-white/45">
                       {member.committee ? `${member.committee}` : ''}{member.branch ? ` / ${member.branch}` : ''}
                     </span>
                   </span>
@@ -835,7 +835,7 @@ function AssignMembersPicker({ allMembers, selectedIds, onChange, label = 'Assig
               key={member.id}
               type="button"
               onClick={() => toggleMember(member.id)}
-              className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-50 border border-red-200 text-red-700 text-xs hover:bg-red-100"
+              className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-red-400/40 bg-red-500/15 text-red-100 text-xs hover:bg-red-500/25"
             >
               {member.name}
               <X size={12} />
@@ -2892,41 +2892,51 @@ function Calendar({ listOnly = false }) {
       )}
 
       {canManageEvents && showEventForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-3 sm:p-4">
-          <div className="relative isolate w-full max-w-3xl animate-fade-in-up max-h-[92vh] overflow-y-auto rounded-2xl border border-transparent [background:linear-gradient(#ffffff,#ffffff)_padding-box,linear-gradient(135deg,rgba(248,113,113,.55),rgba(185,28,28,.28),rgba(15,23,42,.4))_border-box] shadow-2xl">
-            <div className="flex items-center justify-between p-4 sm:p-5 border-b border-gray-200 sticky top-0 bg-white z-50 rounded-t-2xl">
-              <h3 className="text-lg font-semibold text-gray-800">{editingEventId ? 'Update Event' : 'Create New Event'}</h3>
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-3 sm:p-4">
+          <div
+            className="relative isolate w-full max-w-3xl animate-fade-in-up max-h-[92vh] overflow-y-auto rounded-3xl border border-white/20 shadow-2xl"
+            style={{
+              background: 'linear-gradient(145deg, rgba(255,255,255,0.18), rgba(255,255,255,0.04))',
+              boxShadow: '0 24px 70px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.25)',
+              backdropFilter: 'blur(24px)',
+            }}
+          >
+            <div className="flex items-center justify-between p-4 sm:p-5 border-b border-white/10 sticky top-0 bg-slate-950/45 backdrop-blur-xl z-50 rounded-t-3xl">
+              <div>
+                <h3 className="text-lg font-semibold text-white">{editingEventId ? 'Update Event' : 'Create New Event'}</h3>
+                <p className="mt-1 text-sm text-white/70">Enter the event details in the same mirrored glass style as the recruitment form.</p>
+              </div>
               <button
                 onClick={() => {
                   resetForm()
                   setShowEventForm(false)
                 }}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 hover:bg-white/10 rounded-lg transition-colors"
               >
-                <X size={20} className="text-gray-500" />
+                <X size={20} className="text-white/70" />
               </button>
             </div>
 
             <form onSubmit={handleAddEvent} className="p-4 sm:p-6 space-y-5">
-              {formError && <p className="text-sm text-red-600">{formError}</p>}
+              {formError && <p className="rounded-lg border border-red-400/40 bg-red-500/20 p-3 text-sm text-red-100">{formError}</p>}
 
-              <div className="layout-glow rounded-2xl p-4 sm:p-5 bg-white">
-                <h4 className="text-sm font-semibold text-gray-800 uppercase tracking-wide mb-3">Category</h4>
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
+                <h4 className="text-sm font-semibold text-white uppercase tracking-wide mb-3">Category</h4>
                 <div className="space-y-4">
   	                  <div className="grid grid-cols-1 gap-4">
   	                    <div>
-	                      <label htmlFor="event-form-category" className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+	                      <label htmlFor="event-form-category" className="block text-sm text-white/80 mb-2">Category</label>
 	                      <div className="relative">
                         <SelectedCategoryIcon
                           size={16}
-                          className={`absolute left-3 top-1/2 -translate-y-1/2 ${selectedCategoryMeta?.text || 'text-gray-500'} ${selectedCategoryMeta?.iconClass || ''}`}
+                          className={`absolute left-3 top-1/2 -translate-y-1/2 ${selectedCategoryMeta?.text || 'text-white/45'} ${selectedCategoryMeta?.iconClass || ''}`}
                         />
 	                        <select
                             id="event-form-category"
                             name="category"
 	                          value={formData.category}
 	                          onChange={e => setFormData({ ...formData, category: e.target.value })}
-	                          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+	                          className="w-full pl-10 pr-4 py-3 border border-white/20 bg-white/10 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
 	                          required
 		                        >
 		                          <option value="" disabled>
@@ -2952,27 +2962,27 @@ function Calendar({ listOnly = false }) {
 	                  {/* Partners + Activity fields are collected when marking an event as Done. */}
 
                   <div>
-                    <label htmlFor="event-form-content" className="block text-sm font-medium text-gray-700 mb-2">Content</label>
+                    <label htmlFor="event-form-content" className="block text-sm text-white/80 mb-2">Content</label>
                     <textarea
                       id="event-form-content"
                       name="content"
                       value={formData.content}
                       onChange={e => setFormData({ ...formData, content: e.target.value })}
                       rows={3}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                      className="w-full px-4 py-3 border border-white/20 bg-white/10 text-white placeholder-white/40 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                     />
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label htmlFor="event-form-date-time" className="block text-sm font-medium text-gray-700 mb-2">Date and Time</label>
+                      <label htmlFor="event-form-date-time" className="block text-sm text-white/80 mb-2">Date and Time</label>
                       <input
                         id="event-form-date-time"
                         name="dateTime"
                         type="datetime-local"
                         value={formData.dateTime}
                         onChange={e => setFormData({ ...formData, dateTime: e.target.value })}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                        className="w-full px-4 py-3 border border-white/20 bg-white/10 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                         required
                       />
                     </div>
@@ -2988,8 +2998,8 @@ function Calendar({ listOnly = false }) {
 	                </div>
 	              </div>
 
-              <div className="layout-glow relative isolate z-0 rounded-2xl p-4 sm:p-5 bg-white">
-                <h4 className="text-sm font-semibold text-gray-800 uppercase tracking-wide mb-3">Location</h4>
+              <div className="relative isolate z-0 rounded-2xl border border-white/10 p-4 sm:p-5 bg-white/5">
+                <h4 className="text-sm font-semibold text-white uppercase tracking-wide mb-3">Location</h4>
                 <EventLocationPicker
                   address={formData.address}
                   location={formData.location}
@@ -3013,7 +3023,7 @@ function Calendar({ listOnly = false }) {
               <div className="flex flex-col sm:flex-row gap-3 pt-2">
                 <button
                   type="submit"
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all"
+                  className="flex-1 px-6 py-3 rounded-lg bg-gradient-to-r from-yellow-400 to-amber-300 text-slate-950 font-semibold hover:from-yellow-300 hover:to-amber-200 transition-colors shadow-[0_16px_34px_rgba(250,204,21,0.28)]"
                 >
                   {editingEventId ? 'Save Changes' : 'Save Event'}
                 </button>
@@ -3023,7 +3033,7 @@ function Calendar({ listOnly = false }) {
                     resetForm()
                     setShowEventForm(false)
                   }}
-                  className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                  className="px-6 py-3 rounded-lg border border-white/20 bg-white/10 text-white hover:bg-white/15 transition-colors"
                 >
                   Cancel
                 </button>

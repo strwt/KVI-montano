@@ -19,7 +19,7 @@ const PAGE_SUGGESTIONS = [
     ],
   },
   {
-    match: ({ pathname, hash }) => pathname.startsWith('/landing') && hash === '#organizational-structure',
+    match: ({ pathname }) => pathname.startsWith('/organization/'),
     title: 'Organization Structure',
     suggestions: [
       'Where is the Board Organizational Structure?',
@@ -27,9 +27,9 @@ const PAGE_SUGGESTIONS = [
       'How do I see member details?',
     ],
     links: [
-      { label: 'Structure', to: '/landing#organizational-structure' },
+      { label: 'Board Structure', to: '/organization/board' },
+      { label: 'KUSGAN Committee', to: '/organization/kusgan' },
       { label: 'Home', to: '/landing' },
-      { label: 'About', to: '/landing#about' },
     ],
   },
   {
@@ -509,9 +509,9 @@ const buildResponse = (input, role) => {
   }
   if (text.includes('structure') || text.includes('board') || text.includes('organization')) {
     return response([
-      'Go to Landing and open the Structure section.',
-      'Click Board Organizational Structure to see the leaders.',
-      'Click KUSGAN Organization Structure to view committees and members, then click a name to view details.',
+      'Go to Landing and open the Management dropdown in the header.',
+      'Click Board Organizational Structure to open the board page.',
+      'Click KUSGAN Committee to open the committee page.',
     ])
   }
   if (text.includes('about') || text.includes('mission') || text.includes('vision') || text.includes('values') || text.includes('contact')) {

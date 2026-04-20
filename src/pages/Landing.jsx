@@ -22,6 +22,7 @@ import {
   Menu,
   X,
   ArrowRight,
+  ChevronDown,
 } from 'lucide-react'
 
 const HERO_IMAGE = '/kvi.png'
@@ -42,7 +43,6 @@ const THEME = {
 const NAV_LINKS = [
   { label: 'Home', href: '#home' },
   { label: 'Services', href: '#services' },
-  { label: 'Structure', href: '#organizational-structure' },
   { label: 'About', href: '#about' },
 ]
 
@@ -218,11 +218,24 @@ const ORGANIZATION_VIEWS = [
 function NavBar({ navigate }) {
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [managementOpen, setManagementOpen] = useState(false)
+  const managementMenuRef = useRef(null)
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 50)
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  useEffect(() => {
+    const onPointerDown = event => {
+      if (!managementMenuRef.current?.contains(event.target)) {
+        setManagementOpen(false)
+      }
+    }
+
+    window.addEventListener('mousedown', onPointerDown)
+    return () => window.removeEventListener('mousedown', onPointerDown)
   }, [])
 
   return (
@@ -271,6 +284,74 @@ function NavBar({ navigate }) {
               <span className="absolute -bottom-0.5 left-0 w-0 h-px bg-yellow-400 group-hover:w-full transition-all duration-300 rounded-full" />
             </a>
           ))}
+
+          <div
+            className="relative flex items-center"
+            ref={managementMenuRef}
+            onMouseEnter={() => setManagementOpen(true)}
+            onMouseLeave={() => setManagementOpen(false)}
+          >
+            <button
+              type="button"
+              onClick={() => setManagementOpen(true)}
+              className={`group relative inline-flex items-center gap-1 text-sm transition-colors duration-200 ${
+                managementOpen ? 'text-white' : 'text-white-400 hover:text-white'
+              }`}
+              aria-expanded={managementOpen}
+              aria-haspopup="menu"
+            >
+              Management
+              <ChevronDown size={15} className={`transition-transform duration-200 ${managementOpen ? 'rotate-180' : ''}`} />
+              <span className={`absolute -bottom-0.5 left-0 h-px rounded-full bg-yellow-400 transition-all duration-300 ${managementOpen ? 'w-full' : 'w-0 group-hover:w-full'}`} />
+            </button>
+
+            {managementOpen && (
+              <>
+                <div
+                  aria-hidden="true"
+                  className="absolute left-1/2 top-full z-40 h-4 w-72 -translate-x-1/2"
+                />
+              <div
+                className="absolute left-1/2 top-full z-50 mt-4 w-72 -translate-x-1/2 rounded-2xl border p-2"
+                role="menu"
+                style={{
+                  background: '#ffffff',
+                  borderColor: 'rgba(226,232,240,0.95)',
+                  boxShadow: '0 20px 40px rgba(0,0,0,0.18)',
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setManagementOpen(false)
+                    navigate('/organization/board')
+                  }}
+                  className="flex w-full items-start rounded-xl px-3 py-3 text-left transition-colors hover:bg-slate-50"
+                  role="menuitem"
+                >
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">Board Organizational Structure</p>
+                    <p className="mt-1 text-xs text-slate-500">Open the dedicated board structure page.</p>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setManagementOpen(false)
+                    navigate('/organization/kusgan')
+                  }}
+                  className="flex w-full items-start rounded-xl px-3 py-3 text-left transition-colors hover:bg-slate-50"
+                  role="menuitem"
+                >
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">KUSGAN Committee</p>
+                    <p className="mt-1 text-xs text-slate-500">Open the committee structure page.</p>
+                  </div>
+                </button>
+              </div>
+              </>
+            )}
+          </div>
         </nav>
 
         {/* Desktop CTA */}
@@ -308,6 +389,33 @@ function NavBar({ navigate }) {
               {link.label}
             </a>
           ))}
+          <div className="px-3 pt-1">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-yellow-200/80">Management</p>
+            <div className="space-y-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileOpen(false)
+                  navigate('/organization/board')
+                }}
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-white-300 transition-colors hover:bg-white/5 hover:text-white"
+              >
+                <span className="h-1 w-1 rounded-full bg-yellow-400" />
+                Board Organizational Structure
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileOpen(false)
+                  navigate('/organization/kusgan')
+                }}
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-white-300 transition-colors hover:bg-white/5 hover:text-white"
+              >
+                <span className="h-1 w-1 rounded-full bg-yellow-400" />
+                KUSGAN Committee
+              </button>
+            </div>
+          </div>
           <div className="flex gap-3 pt-4 mt-2 border-t border-white/8">
             <button
               type="button"
@@ -421,8 +529,6 @@ function Landing() {
   const [kusganVolunteerPeople, setKusganVolunteerPeople] = useState([])
   const [landingMembersLoading, setLandingMembersLoading] = useState(true)
   const landingMembersLoadedRef = useRef(false)
-  const [structureKey, setStructureKey] = useState('board')
-  const activeStructure = ORGANIZATION_VIEWS.find(view => view.key === structureKey) || ORGANIZATION_VIEWS[0]
   const [selectedPerson, setSelectedPerson] = useState(null)
   const [donationOpen, setDonationOpen] = useState(false)
   const [donationForm, setDonationForm] = useState({ name: '', email: '', referenceNo: '' })
@@ -1302,7 +1408,7 @@ function Landing() {
       </section>
 
       {/* ── ORGANIZATIONAL STRUCTURE ── */}
-      <section id="organizational-structure" data-reveal className="reveal-on-scroll relative py-20 sm:py-24">
+      <section id="organizational-structure" data-reveal aria-hidden="true" className="hidden">
         {/* Subtle bg differentiation */}
         <div
           className="absolute inset-0 pointer-events-none"
@@ -1310,219 +1416,60 @@ function Landing() {
         />
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <SectionHeader
-            title="Organization Structure"
-            subtitle={activeStructure.subtitle}
+            title="Management"
+            subtitle="Choose which organization structure you want to open."
           />
 
-          <div className="flex flex-col sm:flex-row sm:flex-wrap items-center justify-center gap-3 mb-8">
-            <div
-              className="flex flex-col sm:inline-flex sm:flex-row w-full sm:w-auto rounded-2xl sm:rounded-full p-1 border gap-1"
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <article
+              className="rounded-3xl border p-6 sm:p-8"
               style={{
                 background: 'rgba(12,12,12,0.7)',
                 borderColor: 'rgba(255,255,255,0.12)',
                 boxShadow: '0 10px 30px rgba(0,0,0,0.35)',
               }}
             >
-              {ORGANIZATION_VIEWS.map(view => {
-                const isActive = view.key === activeStructure.key
-                return (
-                  <button
-                    key={view.key}
-                    type="button"
-                    onClick={() => setStructureKey(view.key)}
-                    className="w-full sm:w-auto px-4 sm:px-5 py-2 rounded-xl sm:rounded-full text-xs sm:text-sm font-semibold transition-all duration-200 text-center leading-snug"
-                    style={{
-                      background: isActive ? 'rgba(250,204,21,0.16)' : 'transparent',
-                      color: isActive ? THEME.yellowText : '#9ca3af',
-                      border: isActive ? '1px solid rgba(250,204,21,0.4)' : '1px solid transparent',
-                    }}
-                  >
-                    {view.label}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          <div className="flex flex-col items-center">
-            {activeStructure.key === 'kusgan' ? (
-              <div className="w-full max-w-none space-y-6">
-                <div className="w-full flex flex-col items-center">
-                  <div className="w-full flex items-center gap-3 mb-2">
-                    <div className="flex-1 h-px" style={{ background: 'linear-gradient(to right, transparent, rgba(250,204,21,0.25))' }} />
-                    <span
-                      className="px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase border shrink-0 inline-flex flex-col items-center leading-tight"
-                      style={{ color: THEME.yellowText, background: 'rgba(250,204,21,0.12)', borderColor: 'rgba(250,204,21,0.28)' }}
-                    >
-                      <span className="tracking-widest uppercase">OIC</span>
-                      <span className="text-[9px] font-semibold tracking-wide normal-case">(Community Development Officer)</span>
-                    </span>
-                    <div className="flex-1 h-px" style={{ background: 'linear-gradient(to left, transparent, rgba(250,204,21,0.25))' }} />
-                  </div>
-
-                  {overallOicPeople.length > 0 ? (
-                    <div className="flex flex-col sm:flex-row flex-wrap gap-2 items-center justify-center w-full">
-                      {overallOicPeople.map(person => (
-                        <button
-                          key={`overall-oic-${person.name}`}
-                          type="button"
-                          onClick={() => openPerson(person)}
-                          className="w-full sm:w-auto rounded-lg px-4 py-2 text-center text-[11px] sm:text-xs font-semibold text-white border transition hover:border-yellow-300/70 hover:bg-yellow-400/10"
-                          style={{
-                            background: 'rgba(12,12,12,0.85)',
-                            borderColor: 'rgba(255,255,255,0.12)',
-                            boxShadow: '0 10px 22px rgba(0,0,0,0.35)',
-                            minWidth: '220px',
-                          }}
-                        >
-                          {person.name}
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <div
-                      className="w-full max-w-md rounded-xl border px-4 py-3 text-center text-sm font-semibold text-white-300"
-                      style={{ background: 'rgba(12,12,12,0.65)', borderColor: 'rgba(255,255,255,0.12)' }}
-                    >
-                      No OIC assigned
-                    </div>
-                  )}
-                </div>
-
-                <div className="w-full flex items-center gap-3 mb-2">
-                  <div className="flex-1 h-px" style={{ background: 'linear-gradient(to right, transparent, rgba(250,204,21,0.25))' }} />
-                  
-                  <div className="flex-1 h-px" style={{ background: 'linear-gradient(to left, transparent, rgba(250,204,21,0.25))' }} />
-                </div>
-
-                <div
-                  className="flex flex-nowrap gap-6 overflow-x-auto pb-2 landing-scrollbar snap-x snap-mandatory"
-                  style={{
-                    scrollbarGutter: 'stable',
-                    cursor: committeeDragging ? 'grabbing' : 'grab',
-                    userSelect: committeeDragging ? 'none' : 'auto',
-                    touchAction: 'pan-x',
-                    WebkitOverflowScrolling: 'touch',
-                    paddingInline: '16px',
-                    scrollPaddingInline: '16px',
-                  }}
-                  ref={committeeScrollRef}
-                  onPointerDown={onCommitteePointerDown}
-                  onPointerMove={onCommitteePointerMove}
-                  onPointerUp={endCommitteeDrag}
-                  onPointerCancel={endCommitteeDrag}
-                  onPointerLeave={committeeDragging ? endCommitteeDrag : undefined}
-                  onClickCapture={(event) => {
-                    if (committeeDragMovedRef.current) {
-                      event.preventDefault()
-                      event.stopPropagation()
-                      committeeDragMovedRef.current = false
-                    }
-                  }}
-                >
-                  {committeeGroups.length === 0 ? (
-                    <div
-                      className="w-full rounded-2xl border border-white/10 bg-black/60 p-6 text-center text-sm text-white-400"
-                      style={{ boxShadow: '0 8px 24px rgba(0,0,0,0.35)' }}
-                    >
-                      No volunteer data available yet.
-                    </div>
-                  ) : (
-                    committeeGroups.map(group => (
-                      <div
-                        key={group.committee}
-                        className="shrink-0 text-center"
-                        style={{ minWidth: '220px', maxWidth: '220px', width: '100%' }}
-                      >
-                        <div className="flex items-center justify-center gap-2 mb-3">
-                          <span
-                            className="px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase border shrink-0"
-                            style={{
-                              color: THEME.yellowText,
-                              background: 'rgba(250,204,21,0.12)',
-                              borderColor: 'rgba(250,204,21,0.28)',
-                            }}
-                          >
-                            {group.committee}
-                          </span>
-                        </div>
-                        {group.members.length === 0 ? (
-                          <p className="text-xs text-white-400">No members assigned yet.</p>
-                        ) : (
-                          <div className="flex flex-col gap-2 items-center">
-                            {group.members.map(person => (
-                              <button
-                                key={person.name}
-                                type="button"
-                                onClick={() => openPerson(person)}
-                                className="w-full rounded-lg px-2.5 py-2 text-center text-[11px] sm:text-xs font-semibold text-white border transition hover:border-yellow-400/40 hover:bg-yellow-400/10"
-                                style={{
-                                  background: 'rgba(12,12,12,0.85)',
-                                  borderColor: 'rgba(255,255,255,0.12)',
-                                  boxShadow: '0 6px 14px rgba(0,0,0,0.3)',
-                                }}
-                              >
-                                {person.name}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    ))
-                  )}
-                </div>
+              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-yellow-300/25 bg-yellow-400/10 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-yellow-100">
+                Board
               </div>
-            ) : (
-              <>
-                {/* Board Chairperson */}
-                <div className="w-full max-w-[180px]">
-                  <OrgPersonCard person={BOARD_STRUCTURE.chairperson} size="board" />
-                </div>
+              <h3 className="mb-3 text-2xl font-bold text-white">Board Organizational Structure</h3>
+              <p className="mb-6 text-sm leading-relaxed text-white/72">
+                Open the dedicated board page to view the executive board and board members in a cleaner standalone layout.
+              </p>
+              <button
+                type="button"
+                onClick={() => navigate('/organization/board')}
+                className="inline-flex items-center gap-2 rounded-xl bg-yellow-400 px-5 py-3 text-sm font-semibold text-slate-900 transition hover:bg-yellow-300"
+              >
+                Open Board Structure
+                <ArrowRight size={16} />
+              </button>
+            </article>
 
-                {/* Connector */}
-                <div className="w-px h-8 my-1" style={{ background: 'linear-gradient(to bottom, rgba(250,204,21,0.55), rgba(250,204,21,0.15))' }} />
-
-                {/* Vice Chairperson */}
-                <div className="w-full max-w-[180px]">
-                  <OrgPersonCard person={BOARD_STRUCTURE.viceChairperson} size="board" />
-                </div>
-
-                {/* Connector to executive director */}
-                <div className="w-px h-8 my-1" style={{ background: 'linear-gradient(to bottom, rgba(250,204,21,0.55), rgba(250,204,21,0.15))' }} />
-
-                {/* Executive Director */}
-                <div className="w-full max-w-[180px]">
-                  <OrgPersonCard person={BOARD_STRUCTURE.executiveDirector} size="board" />
-                </div>
-
-                {/* Connector to members */}
-                <div className="w-px h-8 my-1" style={{ background: 'linear-gradient(to bottom, rgba(250,204,21,0.55), rgba(250,204,21,0.15))' }} />
-
-                {/* Board members label */}
-                <div className="w-full flex items-center gap-3 mb-6 max-w-4xl">
-                  <div className="flex-1 h-px" style={{ background: 'linear-gradient(to right, transparent, rgba(250,204,21,0.25))' }} />
-                  <span
-                    className="px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase border shrink-0"
-                    style={{ color: THEME.yellowText, background: 'rgba(250,204,21,0.12)', borderColor: 'rgba(250,204,21,0.28)' }}
-                  >
-                    Board Members
-                  </span>
-                  <div className="flex-1 h-px" style={{ background: 'linear-gradient(to left, transparent, rgba(250,204,21,0.25))' }} />
-                </div>
-
-                <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-5xl place-items-center">
-                  {BOARD_STRUCTURE.officers.slice(0, 4).map(officer => (
-                    <OrgPersonCard key={officer.name} person={officer} size="board" />
-                  ))}
-                </div>
-
-                <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-4xl mt-4 place-items-center">
-                  {BOARD_STRUCTURE.officers.slice(4).map(officer => (
-                    <OrgPersonCard key={officer.name} person={officer} size="board" />
-                  ))}
-                </div>
-              </>
-            )}
+            <article
+              className="rounded-3xl border p-6 sm:p-8"
+              style={{
+                background: 'rgba(12,12,12,0.7)',
+                borderColor: 'rgba(255,255,255,0.12)',
+                boxShadow: '0 10px 30px rgba(0,0,0,0.35)',
+              }}
+            >
+              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-yellow-300/25 bg-yellow-400/10 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-yellow-100">
+                Committee
+              </div>
+              <h3 className="mb-3 text-2xl font-bold text-white">KUSGAN Committee</h3>
+              <p className="mb-6 text-sm leading-relaxed text-white/72">
+                Open the committee page to view OIC assignments and grouped committees in their own separate screen.
+              </p>
+              <button
+                type="button"
+                onClick={() => navigate('/organization/kusgan')}
+                className="inline-flex items-center gap-2 rounded-xl bg-yellow-400 px-5 py-3 text-sm font-semibold text-slate-900 transition hover:bg-yellow-300"
+              >
+                Open KUSGAN Committee
+                <ArrowRight size={16} />
+              </button>
+            </article>
           </div>
         </div>
       </section>
