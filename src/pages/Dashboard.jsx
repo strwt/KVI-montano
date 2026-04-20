@@ -598,7 +598,8 @@ function Dashboard() {
                     state: { openCreateEventForm: true },
                   })
                 }
-                className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-yellow-300/30 bg-yellow-400 px-6 py-2 text-[14px] font-semibold text-slate-900 transition-all duration-200 hover:scale-[1.02] hover:bg-yellow-300"
+                className="inline-flex cursor-pointer items-center justify-center gap-2 px-7 py-3.5 rounded-xl bg-yellow-400 text-[14px] font-semibold text-slate-900 hover:-translate-y-0.5 transition-all duration-200 hover:bg-yellow-300"
+                style={{ boxShadow: '0 8px 24px rgba(250,204,21,0.35)' }}
               >
                 {t('Create Event')}
                 <ArrowRight size={16} />
@@ -649,14 +650,14 @@ function Dashboard() {
         </div>
       </section>
       <section className="grid grid-cols-12 gap-4">
-        <article className="col-span-12 rounded-2xl border border-white/10 bg-white/5 p-5 shadow-[0_10px_20px_rgba(0,0,0,0.25)] backdrop-blur-md md:p-6">
+        <article className="col-span-12 rounded-2xl border border-slate-200 bg-[#ffffff] p-5 text-slate-900 shadow-[0_14px_28px_rgba(15,23,42,0.12)] md:p-6">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-[24px] font-semibold text-white">{t('Recent Activity')}</h2>
+            <h2 className="text-[24px] font-semibold text-[#041221]">{t('Recent Activity')}</h2>
             {isAdmin && (
               <button
                 type="button"
                 onClick={() => navigate('/calendar')}
-                className="cursor-pointer rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-[14px] font-medium text-white transition-all duration-200 hover:scale-[1.02] hover:bg-white/10 backdrop-blur-md"
+                className="cursor-pointer rounded-lg border border-slate-200 bg-[#ffffff] px-4 py-2 text-[14px] font-medium text-slate-700 transition-all duration-200 hover:scale-[1.02] hover:bg-[#ffffff] hover:border-slate-300 hover:shadow-sm"
               >
                 {t('View All')}
               </button>
@@ -674,7 +675,7 @@ function Dashboard() {
                   type="button"
                   key={`${event.id || 'event'}-${resolveEventDate(event) || 'no-date'}-${index}`}
                   onClick={() => handleOpenEventInCalendar(event)}
-                  className={`group flex w-full cursor-pointer items-start gap-4 rounded-xl border border-white/10 bg-white/5 p-3 text-left text-white transition-all duration-200 hover:scale-[1.02] hover:bg-white/10 hover:shadow-[0_14px_24px_rgba(0,0,0,0.25)] backdrop-blur-md md:p-4 ${
+                  className={`group flex w-full cursor-pointer items-start gap-4 rounded-xl border border-slate-200 bg-[#ffffff] p-3 text-left text-slate-900 transition-all duration-200 hover:scale-[1.02] hover:bg-[#ffffff] hover:border-slate-300 hover:shadow-[0_14px_24px_rgba(15,23,42,0.14)] md:p-4 ${
                     animatedStats ? 'animate-fade-in-up' : 'opacity-0'
                   }`}
                   style={{ animationDelay: `${index * 0.08}s` }}
@@ -683,13 +684,13 @@ function Dashboard() {
                     <span className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-400 text-slate-900">
                       <CalendarIcon size={14} />
                     </span>
-                    {index !== recentEvents.length - 1 && <span className="mt-2 h-12 w-px bg-white/20" />}
+                    {index !== recentEvents.length - 1 && <span className="mt-2 h-12 w-px bg-slate-200" />}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[18px] font-medium text-white">
+                    <p className="truncate text-[18px] font-medium text-slate-900">
                       {event.title || t('Untitled Event')}
                     </p>
-                    <p className="mt-1 text-[14px] text-white/70">
+                    <p className="mt-1 text-[14px] text-slate-500">
                       {dayjs(resolveEventDate(event)).format('MMM D, YYYY h:mm A')}
                     </p>
                   </div>
@@ -702,7 +703,7 @@ function Dashboard() {
                 </button>
               )
             })}
-            {recentEvents.length === 0 && <p className="py-4 text-center text-[14px] text-white/70">{t('No activity yet')}</p>}
+            {recentEvents.length === 0 && <p className="py-4 text-center text-[14px] text-slate-500">{t('No activity yet')}</p>}
           </div>
         </article>
       </section>

@@ -2344,10 +2344,10 @@ function Calendar({ listOnly = false }) {
                     ref={el => {
                       eventRefs.current[item.id] = el
                     }}
-                    className={`layout-glow rounded-xl border bg-gray-50 transition-all duration-500 ${
+                    className={`layout-glow rounded-xl border bg-[#ffffff] transition-all duration-500 ${
                       highlightedEventId === item.id
                         ? 'border-red-400 ring-2 ring-red-300 shadow-lg shadow-red-100'
-                        : 'border-gray-200'
+                        : 'border-slate-200'
                     }`}
                   >
                     <div
@@ -2362,7 +2362,7 @@ function Calendar({ listOnly = false }) {
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
-                          <span className="text-xs uppercase tracking-wide text-gray-500">{getCategoryLabel(item.category)}</span>
+                          <span className="text-xs uppercase tracking-wide text-slate-500">{getCategoryLabel(item.category)}</span>
                           {item.branch && <span className="ml-2 text-xs text-red-600 font-medium">{item.branch}</span>}
                           <span className={`ml-2 inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold border ${item.status === 'done' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-red-100 text-red-700 border-red-200'}`}>
                             {item.status === 'done' ? 'Done' : 'On-going'}
@@ -2377,8 +2377,8 @@ function Calendar({ listOnly = false }) {
                               Assigned to you
                             </span>
                           )}
-                          <h4 className="font-semibold text-gray-800 mt-1 truncate">{item.title}</h4>
-                          <p className="text-sm text-gray-500 mt-1">{dayjs(item.dateTime).format('MMMM D, YYYY h:mm A')}</p>
+                          <h4 className="font-semibold text-slate-900 mt-1 truncate">{item.title}</h4>
+                          <p className="text-sm text-slate-500 mt-1">{dayjs(item.dateTime).format('MMMM D, YYYY h:mm A')}</p>
                         </div>
                         <div className="flex items-center gap-2">
                           {canManageEvents && (
@@ -2387,38 +2387,38 @@ function Calendar({ listOnly = false }) {
                                 e.stopPropagation()
                                 confirmDeleteEvent(item.id)
                               }}
-                              className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                             >
                               <Trash2 size={16} />
                             </button>
                           )}
-                          <span className="text-xs text-gray-500">{isExpanded ? 'Hide' : 'Expand'}</span>
+                          <span className="text-xs text-slate-500">{isExpanded ? 'Hide' : 'Expand'}</span>
                         </div>
                       </div>
                     </div>
 
                     {isExpanded && (
-                      <div className="px-4 pb-4 border-t border-gray-200 pt-3 text-sm text-gray-700">
+                      <div className="px-4 pb-4 border-t border-slate-200 pt-3 text-sm text-slate-700">
                         <div className={`${item.address ? 'grid grid-cols-1 lg:grid-cols-2 gap-3 items-start' : ''}`}>
 	                          <div className="space-y-3">
 	                            <p>{item.content || 'No content provided.'}</p>
 	                            {renderDoneDetails(item)}
-	                            <div className="flex items-center gap-2 text-gray-600">
+	                            <div className="flex items-center gap-2 text-slate-600">
 	                              <Clock size={14} />
 	                              <span>{dayjs(item.dateTime).format('h:mm A')}</span>
 	                            </div>
-                            <div className="flex items-center gap-2 text-gray-600">
+                            <div className="flex items-center gap-2 text-slate-600">
                               <User size={14} />
                               <span>{item.createdBy || 'Unknown creator'}</span>
                             </div>
                             {item.address && (
-                              <div className="flex items-start gap-2 text-gray-600">
+                              <div className="flex items-start gap-2 text-slate-600">
                                 <MapPin size={14} className="mt-0.5" />
                                 <span>{item.address}</span>
                               </div>
                             )}
                             {involvedMembers.length === 0 && membersInvolveText ? (
-                              <div className="flex items-start gap-2 text-gray-600">
+                              <div className="flex items-start gap-2 text-slate-600">
                                 <Users size={14} className="mt-0.5" />
                                 <span className="min-w-0 truncate">Members Involve: {membersInvolveText}</span>
                               </div>
@@ -2527,7 +2527,8 @@ function Calendar({ listOnly = false }) {
                   setShowEventForm(true)
                 }}
                 disabled={createCategoryKeys.length === 0}
-                className="inline-flex items-center gap-2 rounded-xl border border-yellow-300/30 bg-yellow-400 px-4 py-2 text-sm font-semibold text-slate-900 shadow-lg transition-all duration-200 hover:scale-[1.02] hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-70"
+                className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl bg-yellow-400 text-slate-900 font-semibold hover:-translate-y-0.5 transition-all duration-200 hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-70"
+                style={{ boxShadow: '0 8px 24px rgba(250,204,21,0.35)' }}
               >
                 <Plus size={18} />
                 Add Event
@@ -2568,8 +2569,8 @@ function Calendar({ listOnly = false }) {
               }}
               className={`layout-glow relative h-full min-h-[170px] sm:min-h-[190px] text-left rounded-xl p-6 border transition-all transform overflow-hidden ${
                 month.hasEvents
-                  ? 'bg-white shadow-md border-red-200 hover:shadow-xl hover:border-red-300 hover:-translate-y-1'
-                  : 'bg-gray-50 shadow-sm border-gray-200 opacity-70 hover:opacity-90'
+                  ? 'bg-[#ffffff] shadow-md border-red-200 hover:shadow-xl hover:border-red-300 hover:-translate-y-1'
+                  : 'bg-[#ffffff] shadow-sm border-slate-200 opacity-70 hover:opacity-90'
               }`}
             >
               {month.hasEvents && <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${getMonthColor(index)}`} />}
@@ -2580,19 +2581,19 @@ function Calendar({ listOnly = false }) {
                       className={`w-10 h-10 rounded-lg flex items-center justify-center ${
                         month.hasEvents
                           ? `bg-gradient-to-r ${getMonthColor(index)} text-white`
-                          : 'bg-gray-200 text-gray-500'
+                          : 'bg-slate-100 text-slate-600'
                       }`}
                     >
                       <CalendarIcon size={18} />
                     </div>
                     <div className="min-w-0">
-                      <p className="font-semibold text-gray-800 truncate">{month.monthName}</p>
-                      <p className="text-xs text-gray-500">{currentYear}</p>
+                      <p className="font-semibold text-slate-900 truncate">{month.monthName}</p>
+                      <p className="text-xs text-slate-500">{currentYear}</p>
                     </div>
                   </div>
                   <span
                     className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      month.hasEvents ? 'bg-red-100 text-red-700' : 'bg-gray-200 text-gray-500'
+                      month.hasEvents ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'
                     }`}
                   >
                     {month.items.length}
@@ -2611,7 +2612,7 @@ function Calendar({ listOnly = false }) {
 	                      return (
 	                        <div
 	                          key={`${month.monthKey}-${item.id || itemIndex}`}
-                          className="rounded-md border p-2 transition-colors cursor-pointer bg-gray-50 border-gray-200 hover:bg-red-50 hover:border-red-200"
+                          className="rounded-md border p-2 transition-colors cursor-pointer bg-[#ffffff] border-slate-200 hover:bg-[#ffffff] hover:border-slate-300"
                           onClick={e => {
                             e.stopPropagation()
                             setSelectedMonthKey(month.monthKey)
@@ -2620,9 +2621,9 @@ function Calendar({ listOnly = false }) {
                             setSelectedDateFilter('')
                           }}
                         >
-                          <p className="text-[11px] text-gray-500 truncate">
-                            <span className="font-semibold text-red-700">{categoryLabel}</span> | {dayjs(item.dateTime).format('MMM D, YYYY')}
-                          </p>
+                           <p className="text-[11px] text-slate-500 truncate">
+                             <span className="font-semibold text-red-700">{categoryLabel}</span> | {dayjs(item.dateTime).format('MMM D, YYYY')}
+                           </p>
 	                          <div className="flex items-center justify-end gap-2">
 	                            <div className="flex items-center gap-1">
 	                              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold border ${
@@ -2758,10 +2759,10 @@ function Calendar({ listOnly = false }) {
                     ref={el => {
                       eventRefs.current[item.id] = el
                     }}
-                    className={`layout-glow rounded-xl border bg-gray-50 transition-all duration-500 ${
+                    className={`layout-glow rounded-xl border bg-[#ffffff] transition-all duration-500 ${
                       highlightedEventId === item.id
                         ? 'border-red-400 ring-2 ring-red-300 shadow-lg shadow-red-100'
-                        : 'border-gray-200'
+                        : 'border-slate-200'
                     }`}
                   >
                     <div
@@ -2776,13 +2777,13 @@ function Calendar({ listOnly = false }) {
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
-                          <span className="text-xs uppercase tracking-wide text-gray-500">{getCategoryLabel(item.category)}</span>
+                          <span className="text-xs uppercase tracking-wide text-slate-500">{getCategoryLabel(item.category)}</span>
                           {item.branch && <span className="ml-2 text-xs text-red-600 font-medium">{item.branch}</span>}
                           <span className={`ml-2 inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold border ${item.status === 'done' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-red-100 text-red-700 border-red-200'}`}>
                             {item.status === 'done' ? 'Done' : 'On-going'}
                           </span>
-                          <h4 className="font-semibold text-gray-800 mt-1 truncate">{item.title}</h4>
-                          <p className="text-sm text-gray-500 mt-1">{dayjs(item.dateTime).format('MMMM D, YYYY h:mm A')}</p>
+                          <h4 className="font-semibold text-slate-900 mt-1 truncate">{item.title}</h4>
+                          <p className="text-sm text-slate-500 mt-1">{dayjs(item.dateTime).format('MMMM D, YYYY h:mm A')}</p>
                         </div>
                         <div className="flex items-center gap-2">
                           {canManageEvents && (
@@ -2791,38 +2792,38 @@ function Calendar({ listOnly = false }) {
                                 e.stopPropagation()
                                 confirmDeleteEvent(item.id)
                               }}
-                              className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                             >
                               <Trash2 size={16} />
                             </button>
                           )}
-                          <span className="text-xs text-gray-500">{isExpanded ? 'Hide' : 'Expand'}</span>
+                          <span className="text-xs text-slate-500">{isExpanded ? 'Hide' : 'Expand'}</span>
                         </div>
                       </div>
                     </div>
 
                     {isExpanded && (
-                      <div className="px-4 pb-4 border-t border-gray-200 pt-3 text-sm text-gray-700">
+                      <div className="px-4 pb-4 border-t border-slate-200 pt-3 text-sm text-slate-700">
                         <div className={`${item.address ? 'grid grid-cols-1 lg:grid-cols-2 gap-3 items-start' : ''}`}>
 	                          <div className="space-y-3">
 	                            <p>{item.content || 'No content provided.'}</p>
 	                            {renderDoneDetails(item)}
-	                            <div className="flex items-center gap-2 text-gray-600">
+	                            <div className="flex items-center gap-2 text-slate-600">
 	                              <Clock size={14} />
 	                              <span>{dayjs(item.dateTime).format('h:mm A')}</span>
 	                            </div>
-                            <div className="flex items-center gap-2 text-gray-600">
+                            <div className="flex items-center gap-2 text-slate-600">
                               <User size={14} />
                               <span>{item.createdBy || 'Unknown creator'}</span>
                             </div>
                             {item.address && (
-                              <div className="flex items-start gap-2 text-gray-600">
+                              <div className="flex items-start gap-2 text-slate-600">
                                 <MapPin size={14} className="mt-0.5" />
                                 <span>{item.address}</span>
                               </div>
                             )}
                             {involvedMembers.length === 0 && membersInvolveText ? (
-                              <div className="flex items-start gap-2 text-gray-600">
+                              <div className="flex items-start gap-2 text-slate-600">
                                 <Users size={14} className="mt-0.5" />
                                 <span className="min-w-0 truncate">Members Involve: {membersInvolveText}</span>
                               </div>
