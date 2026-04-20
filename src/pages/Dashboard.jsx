@@ -615,23 +615,27 @@ function Dashboard() {
             {operations.map((category, index) => {
               const color = categoryColorByKey[category.key] || CATEGORY_COLOR_SEEDS.uncategorized
               return (
-                 <button
+                  <button
                    key={category.key}
-                   type="button"
-                   onClick={() => navigate(getEventsCategoryRoute(category.key))}
-                  className={`group relative h-full cursor-pointer rounded-xl border bg-white p-4 text-left text-slate-900 transition-all duration-200 hover:scale-[1.02] hover:bg-slate-50 hover:shadow-[0_12px_22px_rgba(0,0,0,0.25)] backdrop-blur-md ${
+                  type="button"
+                  onClick={() => navigate(getEventsCategoryRoute(category.key))}
+                  className={`group relative h-full cursor-pointer rounded-xl border p-4 text-left transition-all duration-200 hover:scale-[1.02] hover:shadow-[0_16px_28px_rgba(15,23,42,0.18)] ${
                     animatedStats ? 'animate-fade-in-up' : 'opacity-0'
                   }`}
-                  style={{ animationDelay: `${index * 0.06}s`, borderColor: color }}
+                  style={{
+                    animationDelay: `${index * 0.06}s`,
+                    background: '#ffffff',
+                    borderColor: '#e2e8f0',
+                    color: '#0f172a',
+                    boxShadow: '0 14px 28px rgba(15,23,42,0.12)',
+                  }}
                 >
                   <div className="relative">
                     <div
-                      className="mb-2 flex h-10 w-10 items-center justify-center rounded-lg border bg-white/5"
-                      style={{ borderColor: color }}
+                      className="mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-transparent"
                     >
                       <category.icon
                         size={18}
-                        className={getIconThemeClass(category.key)}
                         style={{ color }}
                       />
                     </div>
