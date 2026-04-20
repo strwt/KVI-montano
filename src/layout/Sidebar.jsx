@@ -51,14 +51,14 @@ const navActiveTone = 'text-slate-900 bg-slate-50 border-l-2 border-yellow-400'
       )}
 
       <aside
-        className={`fixed left-0 top-0 h-full shadow-2xl z-40 w-64 flex flex-col transition-transform md:transition-all md:translate-x-0 duration-300 ${shellTone} ${
+        className={`fixed left-0 top-0 h-full z-40 w-64 flex flex-col transition-transform md:transition-all md:translate-x-0 duration-300 ${shellTone} ${
           isOpen ? 'translate-x-0 md:w-64' : '-translate-x-full md:w-20'
         }`}
       >
         {/* Toggle Button */}
         <button
           onClick={toggleSidebar}
-          className={`hidden md:flex absolute -right-3 top-20 rounded-full p-1 shadow-lg transition-all z-50 ${sidebarAccentTone}`}
+          className={`hidden md:flex absolute -right-3 top-20 rounded-full p-1 transition-all z-50 ${sidebarAccentTone}`}
         >
           {isOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
         </button>
@@ -131,7 +131,7 @@ const navActiveTone = 'text-slate-900 bg-slate-50 border-l-2 border-yellow-400'
                 if (window.innerWidth < 768 && isOpen) toggleSidebar()
               }}
               className={({ isActive }) =>
-                `group relative flex items-center gap-3 rounded-lg px-4 py-3 transition-all duration-200 hover:scale-[1.02] ${navTone} ${
+                `group relative flex items-center gap-3 rounded-lg px-4 py-3 transition-all duration-200 ${navTone} ${
                   isActive ? navActiveTone : 'border-l-2 border-transparent'
                 } ${!isOpen && 'justify-center px-3'}`
               }
@@ -152,7 +152,7 @@ const navActiveTone = 'text-slate-900 bg-slate-50 border-l-2 border-yellow-400'
                     return !current
                   })
                 }}
-                className={`group relative flex w-full items-center justify-between gap-3 rounded-lg border-l-2 border-transparent px-4 py-3 transition-all duration-200 hover:scale-[1.02] ${navTone} ${
+                className={`group relative flex w-full items-center justify-between gap-3 rounded-lg border-l-2 border-transparent px-4 py-3 transition-all duration-200 ${navTone} ${
                   !isOpen && 'justify-center px-3'
                 }`}
               >
