@@ -32,9 +32,9 @@ const DONATION_NOTIFICATION_EMAIL = 'kusganvolunteersinc@gmail.com'
 
 const THEME = {
   // Royal blue palette (keeps enough contrast for white text)
-  navy: '#4169E1', // royalblue
-  navyDeep: '#1E3A8A', // deep royal
-  navyMid: '#93C5FD', // light royal tint
+  navy: '#2b56d8', // royalblue
+  navyDeep: '#1a42af', // deep royal
+  navyMid: '#1b7ff2', // light royal tint
   yellow: '#FACC15',
   yellowText: '#FDE68A',
 }
