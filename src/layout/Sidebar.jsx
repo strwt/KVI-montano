@@ -12,20 +12,16 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
   const [managementOpen, setManagementOpen] = useState(null)
 
   const isAdmin = user?.role === 'admin'
-  const shellTone = darkMode
-    ? 'bg-gradient-to-b from-gray-900 to-black text-white'
-    : 'bg-gradient-to-b from-white to-gray-100 text-gray-900 border-r border-gray-200'
-  const navTone = darkMode
-    ? 'text-gray-300 hover:bg-gray-800 hover:text-white'
-    : 'text-gray-700 hover:bg-red-50 hover:text-gray-900'
-  const navActiveTone = darkMode
-    ? 'text-white bg-gray-800/80 border-l-2 border-red-600'
-    : 'text-red-700 bg-red-50 border-l-2 border-red-600'
-  const utilityBtnTone = darkMode
-    ? 'text-gray-300 hover:bg-red-600/20 hover:text-white'
-    : 'text-gray-700 hover:bg-red-50 hover:text-gray-900'
-  const userDividerTone = darkMode ? 'border-t border-gray-800' : 'border-t border-gray-200'
-  const userNameTone = darkMode ? 'text-white' : 'text-gray-900'
+  const shellTone = 'bg-[#041221]/90 text-white border-r border-white/10 backdrop-blur-xl'
+  const navTone = 'text-white-300 hover:bg-white/5 hover:text-white'
+  const navActiveTone = 'text-white bg-white/10 border-l-2 border-yellow-400'
+  const utilityBtnTone = 'text-white-300 hover:bg-white/10 hover:text-white'
+  const userDividerTone = 'border-t border-white/10'
+  const userNameTone = 'text-white'
+  const sidebarAccentTone = 'bg-yellow-400 text-slate-900 hover:bg-yellow-300'
+  const avatarTone = 'bg-white ring-2 ring-yellow-400/30'
+  const footerBorderTone = 'border-l border-white/10'
+  const footerButtonBorderTone = 'border-white/15'
   const managementRoutes = ['/members', '/category-management', '/committee-management']
   const isOnManagementRoute = managementRoutes.some(route => location.pathname.startsWith(route))
   const resolvedManagementOpen = managementOpen ?? isOnManagementRoute
@@ -62,7 +58,7 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
         {/* Toggle Button */}
         <button
           onClick={toggleSidebar}
-          className="hidden md:flex absolute -right-3 top-20 bg-red-600 text-white rounded-full p-1 shadow-lg hover:bg-red-700 transition-all z-50"
+          className={`hidden md:flex absolute -right-3 top-20 rounded-full p-1 shadow-lg transition-all z-50 ${sidebarAccentTone}`}
         >
           {isOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
         </button>
@@ -79,7 +75,7 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
                     navigate('/profile')
                     if (window.innerWidth < 768 && isOpen) toggleSidebar()
                   }}
-                  className={`w-20 h-20 rounded-full bg-red-600 border border-red-600 flex items-center justify-center overflow-hidden transition-colors ${utilityBtnTone}`}
+                  className={`w-20 h-20 rounded-full flex items-center justify-center overflow-hidden transition-colors ${avatarTone} ${utilityBtnTone}`}
                   aria-label={t('Profile')}
                   title={t('Profile')}
                 >
@@ -92,9 +88,13 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
                 <div className="flex flex-col items-center min-w-0">
                   <p className={`font-normal truncate ${userNameTone}`}>{user?.name || 'Guest'}</p>
                   {user?.role === 'admin' ? (
-                    <span className="inline-block mt-1 px-2 py-0.5 bg-red-600/20 text-red-600 text-xs rounded">Admin</span>
+                    <span
+                      className="inline-block mt-1 rounded px-2 py-0.5 text-xs border border-yellow-300/20 bg-yellow-300/15 text-yellow-200"
+                    >
+                      Admin
+                    </span>
                   ) : (user?.committeeRole || user?.committee_role) === 'OIC' ? (
-                    <span className="inline-block mt-1 px-2 py-0.5 bg-amber-500/15 text-amber-600 text-xs rounded border border-amber-500/20">
+                    <span className="inline-block mt-1 rounded px-2 py-0.5 text-xs border border-yellow-300/20 bg-yellow-300/15 text-yellow-200">
                       OIC
                     </span>
                   ) : null}
@@ -110,7 +110,7 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
               }}
               className={`w-full flex items-center justify-center p-2 rounded-lg transition-colors ${utilityBtnTone}`}
             >
-              <div className="w-12 h-12 rounded-full bg-red-600 border border-red-600 flex items-center justify-center overflow-hidden">
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center overflow-hidden ${avatarTone}`}>
                 <img
                   src={user?.profileImage || '/kvi.png'}
                   alt={user?.name || 'User'}
@@ -220,7 +220,7 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
 
         </div>
         {/* Footer Section */}
-        <div className={`mt-auto w-full p-4 space-y-3 ${userDividerTone} ${!isOpen && (darkMode ? 'border-l border-gray-800' : 'border-l border-gray-200')}`}>
+        <div className={`mt-auto w-full p-4 space-y-3 ${userDividerTone} ${!isOpen && footerBorderTone}`}>
           {isOpen ? (
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
@@ -232,15 +232,17 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
                   />
                 </div>
                 <div>
-                  <h1 className={`text-sm font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>KUSGAN</h1>
-                  <p className="text-xs text-red-600">Volunteer Inc.</p>
+                  <h1 className="text-sm font-semibold text-white">
+                    KUSGAN
+                  </h1>
+                  <p className="text-xs text-yellow-300">Volunteer Inc.</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={onToggleDarkMode}
-                  className={`inline-flex h-9 w-9 items-center justify-center rounded-full border border-red-600/60 transition-all ${utilityBtnTone}`}
+                  className={`inline-flex h-9 w-9 items-center justify-center rounded-full border ${footerButtonBorderTone} transition-all ${utilityBtnTone}`}
                   aria-label={darkMode ? t('Light Mode') : t('Dark Mode')}
                   title={darkMode ? t('Light Mode') : t('Dark Mode')}
                 >
@@ -249,7 +251,7 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className={`inline-flex h-9 w-9 items-center justify-center rounded-full border border-red-600/60 transition-all ${utilityBtnTone}`}
+                  className={`inline-flex h-9 w-9 items-center justify-center rounded-full border ${footerButtonBorderTone} transition-all ${utilityBtnTone}`}
                   aria-label={t('Logout')}
                   title={t('Logout')}
                 >
@@ -262,7 +264,7 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
               <button
                 type="button"
                 onClick={onToggleDarkMode}
-                className={`inline-flex h-9 w-9 items-center justify-center rounded-full border border-red-600/60 transition-all ${utilityBtnTone}`}
+                className={`inline-flex h-9 w-9 items-center justify-center rounded-full border ${footerButtonBorderTone} transition-all ${utilityBtnTone}`}
                 aria-label={darkMode ? t('Light Mode') : t('Dark Mode')}
                 title={darkMode ? t('Light Mode') : t('Dark Mode')}
               >
@@ -278,7 +280,7 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
               <button
                 type="button"
                 onClick={handleLogout}
-                className={`inline-flex h-9 w-9 items-center justify-center rounded-full border border-red-600/60 transition-all ${utilityBtnTone}`}
+                className={`inline-flex h-9 w-9 items-center justify-center rounded-full border ${footerButtonBorderTone} transition-all ${utilityBtnTone}`}
                 aria-label={t('Logout')}
                 title={t('Logout')}
               >

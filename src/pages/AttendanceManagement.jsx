@@ -752,17 +752,17 @@ function AdminAttendance() {
 
   return (
     <div className="animate-fade-in space-y-6">
-      <section className="rounded-2xl border border-red-600 bg-white p-6 shadow-[0_12px_30px_rgba(0,0,0,0.08)] dark:border-red-600 dark:bg-zinc-900">
+      <section className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-[0_12px_30px_rgba(0,0,0,0.25)] backdrop-blur-md">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-[14px] uppercase tracking-[0.12em] text-neutral-500 dark:text-neutral-300">Attendance</p>
-            <h1 className="text-[28px] font-semibold text-neutral-900 dark:text-zinc-100">Attendance Management</h1>
-            <p className="text-[14px] text-neutral-500 dark:text-neutral-300">
+            <p className="text-[14px] uppercase tracking-[0.12em] text-white/70">Attendance</p>
+            <h1 className="text-[28px] font-semibold text-white">Attendance Management</h1>
+            <p className="text-[14px] text-white/70">
               Track member presence, absences, and admin adjustments.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <label className="text-sm text-neutral-500 dark:text-neutral-300" htmlFor="attendance-date">
+            <label className="text-sm text-white/70" htmlFor="attendance-date">
               Select date
             </label>
             <input
@@ -770,12 +770,12 @@ function AdminAttendance() {
               type="date"
               value={selectedDate}
               onChange={event => setSelectedDate(event.target.value)}
-              className="rounded-lg border border-neutral-200 px-3 py-2 text-sm text-neutral-700 shadow-sm focus:border-red-500 focus:outline-none dark:border-neutral-700 dark:bg-zinc-900 dark:text-neutral-100"
+              className="rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm text-white shadow-sm backdrop-blur-md focus:border-yellow-300 focus:outline-none"
             />
             <button
               type="button"
               onClick={exportAttendancePdf}
-              className="inline-flex items-center gap-2 rounded-lg border border-red-600 bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-red-700"
+              className="inline-flex items-center gap-2 rounded-xl border border-yellow-300/30 bg-yellow-400 px-4 py-2 text-sm font-semibold text-slate-900 shadow-sm transition-all duration-200 hover:scale-[1.02] hover:bg-yellow-300"
             >
               <Download size={16} />
               Export PDF
@@ -785,26 +785,26 @@ function AdminAttendance() {
       </section>
 
       <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div className="rounded-2xl border border-green-200 bg-green-50 p-4 shadow-sm">
-          <div className="flex items-center gap-2 text-green-700">
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-[0_10px_20px_rgba(0,0,0,0.25)] backdrop-blur-md">
+          <div className="flex items-center gap-2 text-emerald-200">
             <UserCheck size={18} />
             <p className="text-sm font-semibold">Present</p>
           </div>
-          <p className="mt-2 text-2xl font-semibold text-green-900">{presentCount}</p>
+          <p className="mt-2 text-2xl font-semibold text-white">{presentCount}</p>
         </div>
-        <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 shadow-sm">
-          <div className="flex items-center gap-2 text-gray-700">
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-[0_10px_20px_rgba(0,0,0,0.25)] backdrop-blur-md">
+          <div className="flex items-center gap-2 text-white/70">
             <UserX size={18} />
             <p className="text-sm font-semibold">Absent</p>
           </div>
-          <p className="mt-2 text-2xl font-semibold text-gray-900">{absentCount}</p>
+          <p className="mt-2 text-2xl font-semibold text-white">{absentCount}</p>
         </div>
       </section>
 
-      <section className="rounded-2xl border border-red-600 bg-white p-5 shadow-[0_10px_20px_rgba(0,0,0,0.08)] dark:border-red-600 dark:bg-zinc-900">
+      <section className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-[0_10px_20px_rgba(0,0,0,0.25)] backdrop-blur-md">
         <div className="mb-4 flex items-center gap-2">
-          <ClipboardCheck size={18} className="text-red-600" />
-          <h2 className="text-[20px] font-semibold text-neutral-900 dark:text-zinc-100">Daily Attendance Table</h2>
+          <ClipboardCheck size={18} className="text-yellow-300" />
+          <h2 className="text-[20px] font-semibold text-white">Daily Attendance Table</h2>
         </div>
         {attendanceSaveError ? (
           <p className="mb-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -814,14 +814,14 @@ function AdminAttendance() {
         <div className="overflow-x-auto">
           <table className="w-full min-w-[640px] text-sm">
             <thead>
-              <tr className="text-left text-xs uppercase tracking-[0.14em] text-neutral-500">
+              <tr className="text-left text-xs uppercase tracking-[0.14em] text-white/70">
                 <th className="pb-3">Member</th>
                 <th className="pb-3">Time In</th>
                 <th className="pb-3">Time Out</th>
                 <th className="pb-3">Action</th>
               </tr>
             </thead>
-	            <tbody className="divide-y divide-neutral-100">
+	            <tbody className="divide-y divide-white/10">
 	              {presentRows.map(row => {
 	                const timeIn = row.timeInRaw && dayjs(row.timeInRaw).isValid()
 	                  ? dayjs(row.timeInRaw).format('h:mm A')
@@ -833,19 +833,19 @@ function AdminAttendance() {
                 const isSaving = String(attendanceSaveBusyId || '') === String(row.memberId)
 
                 return (
-                  <tr key={row.memberId} className="text-neutral-700">
+                  <tr key={row.memberId} className="text-white/80">
                     <td className="py-3">
                       <div>
                         <button
                           type="button"
                           onClick={() => openHistory(row.member)}
-                          className="text-left font-semibold text-neutral-900 hover:underline"
+                          className="text-left font-semibold text-white hover:underline"
                           title="View monthly attendance"
                         >
                           {row.member?.name || 'Member'}
                         </button>
                         {row.member?.role === 'admin' || (row.member?.committeeRole || row.member?.committee_role) === 'OIC' ? null : (
-                          <p className="text-xs text-neutral-500">{row.member?.committee || 'Unassigned'}</p>
+                          <p className="text-xs text-white/70">{row.member?.committee || 'Unassigned'}</p>
                         )}
                       </div>
                     </td>
@@ -921,7 +921,7 @@ function AdminAttendance() {
 	              })}
 	              {presentRows.length === 0 && (
 	                <tr>
-	                  <td className="py-6 text-center text-neutral-500 dark:text-neutral-400" colSpan={4}>
+	                  <td className="py-6 text-center text-white/70" colSpan={4}>
 	                    No present members recorded for this date.
 	                  </td>
 	                </tr>
@@ -939,23 +939,23 @@ function AdminAttendance() {
           onClick={closeHistory}
         >
           <div
-            className="w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-2xl border border-red-600 bg-white p-4 sm:p-6 shadow-2xl dark:border-red-600 dark:bg-zinc-900"
+            className="w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-2xl border border-white/10 bg-[#041221]/95 p-4 text-white shadow-2xl backdrop-blur-xl sm:p-6"
             onClick={event => event.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-xs uppercase tracking-[0.14em] text-neutral-500 dark:text-neutral-400">Attendance History</p>
-                <h3 className="mt-1 text-[20px] font-semibold text-neutral-900 dark:text-zinc-100">
+                <p className="text-xs uppercase tracking-[0.14em] text-white/70">Attendance History</p>
+                <h3 className="mt-1 text-[20px] font-semibold text-white">
                   {historyMember?.name || 'Member'}
                 </h3>
                 {historyMember?.role === 'admin' || (historyMember?.committeeRole || historyMember?.committee_role) === 'OIC' ? null : (
-                  <p className="text-sm text-neutral-500 dark:text-neutral-300">{historyMember?.committee || 'Unassigned'}</p>
+                  <p className="text-sm text-white/70">{historyMember?.committee || 'Unassigned'}</p>
                 )}
               </div>
               <button
                 type="button"
                 onClick={closeHistory}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-neutral-200 text-neutral-600 hover:border-neutral-300 hover:text-neutral-900 dark:border-zinc-700 dark:text-zinc-200"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/15 text-white/70 transition-colors hover:bg-white/10 hover:text-white"
                 aria-label="Close"
               >
                 <X size={16} />
@@ -964,7 +964,7 @@ function AdminAttendance() {
 
             <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div className="flex items-center gap-2">
-                <label htmlFor="history-month" className="text-sm font-medium text-neutral-600 dark:text-neutral-300">
+                <label htmlFor="history-month" className="text-sm font-medium text-white/70">
                   Month
                 </label>
                 <input
@@ -972,15 +972,15 @@ function AdminAttendance() {
                   type="month"
                   value={historyMonth}
                   onChange={event => setHistoryMonth(event.target.value)}
-                  className="rounded-lg border border-neutral-200 px-3 py-2 text-sm text-neutral-700 shadow-sm focus:border-red-500 focus:outline-none dark:border-neutral-700 dark:bg-zinc-900 dark:text-neutral-100"
+                  className="rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm text-white shadow-sm backdrop-blur-md focus:border-yellow-300 focus:outline-none"
                 />
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-2 rounded-full border border-green-200 bg-green-50 px-3 py-1 text-xs font-semibold text-green-700">
+                <span className="inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-400/10 px-3 py-1 text-xs font-semibold text-emerald-200">
                   <UserCheck size={14} />
                   Present: {historyPresentCount}
                 </span>
-                <span className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-semibold text-gray-700">
+                <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-semibold text-white/80">
                   <UserX size={14} />
                   Absent: {historyAbsentCount}
                 </span>
@@ -988,7 +988,7 @@ function AdminAttendance() {
                   type="button"
                   onClick={exportHistoryPdf}
                   disabled={historyLoading}
-                  className="inline-flex items-center gap-2 rounded-full border border-red-600 bg-red-600 px-4 py-1 text-xs font-semibold text-white shadow-sm transition-all hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex items-center gap-2 rounded-full border border-yellow-300/30 bg-yellow-400 px-4 py-1 text-xs font-semibold text-slate-900 shadow-sm transition-all duration-200 hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <Download size={14} />
                   Export PDF
@@ -1002,10 +1002,10 @@ function AdminAttendance() {
               </p>
             )}
 
-            <div className="mt-4 rounded-2xl border border-neutral-200 bg-white/60 p-3 sm:p-4 dark:border-zinc-700 dark:bg-zinc-950/20">
+            <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-3 backdrop-blur-md sm:p-4">
               <div className="overflow-x-auto">
                 <div className="min-w-[560px] sm:min-w-[720px] md:min-w-[840px] lg:min-w-[980px]">
-                  <div className="grid grid-cols-7 gap-2 sm:gap-2.5 lg:gap-3 text-center text-[11px] sm:text-xs lg:text-sm font-semibold text-neutral-500 dark:text-neutral-400">
+                  <div className="grid grid-cols-7 gap-2 text-center text-[11px] font-semibold text-white/70 sm:gap-2.5 sm:text-xs lg:gap-3 lg:text-sm">
                     {WEEKDAY_LABELS.map(label => (
                       <div key={label}>{label}</div>
                     ))}
@@ -1013,7 +1013,7 @@ function AdminAttendance() {
 
                   <div className="mt-2 sm:mt-3 max-h-[320px] sm:max-h-[420px] lg:max-h-[560px] overflow-y-auto pr-1">
                 {historyLoading ? (
-                  <p className="text-sm text-neutral-500 dark:text-neutral-300">Loading attendance...</p>
+                  <p className="text-sm text-white/70">Loading attendance...</p>
                 ) : (
                   <div className="grid grid-cols-7 gap-2 sm:gap-2.5 lg:gap-3">
                     {historyCalendarCells.map((cell, index) => {
@@ -1046,7 +1046,7 @@ function AdminAttendance() {
                         <div
                           key={cell.dateKey || `day-${index}`}
                           className={`flex h-[84px] sm:h-[100px] lg:h-[120px] min-w-0 flex-col justify-between overflow-hidden rounded-xl border p-2 sm:p-2.5 lg:p-3 ${tone} ${
-                            isToday ? 'ring-2 ring-red-600 ring-offset-2 ring-offset-white dark:ring-offset-zinc-900' : ''
+                            isToday ? 'ring-2 ring-yellow-400 ring-offset-2 ring-offset-blue-900' : ''
                           }`}
                           title={titleParts.join(' | ')}
                         >

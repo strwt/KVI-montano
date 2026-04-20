@@ -524,9 +524,9 @@ function CategoryManagement() {
   if (!isAdmin) {
     return (
       <div className="animate-fade-in space-y-4">
-        <header className="rounded-2xl border border-red-600 bg-gradient-to-br from-white to-neutral-100 p-6 text-neutral-900 dark:border-red-600 dark:from-black dark:to-neutral-900 dark:text-white">
-          <h1 className="text-[28px] font-semibold leading-tight text-black dark:text-white">{t('Category Management')}</h1>
-          <p className="mt-2 text-[14px] text-neutral-600 dark:text-neutral-300">
+        <header className="rounded-2xl border border-white/10 bg-white/5 p-6 text-white shadow-[0_12px_30px_rgba(0,0,0,0.25)] backdrop-blur-md">
+          <h1 className="text-[28px] font-semibold leading-tight text-white">{t('Category Management')}</h1>
+          <p className="mt-2 text-[14px] text-white/70">
             {t('Only admins can access this page.')}
           </p>
         </header>
@@ -536,16 +536,16 @@ function CategoryManagement() {
 
   return (
     <div className="animate-fade-in space-y-6">
-      <header className="rounded-2xl border border-red-600 bg-gradient-to-br from-white to-neutral-100 p-6 text-neutral-900 dark:border-red-600 dark:from-black dark:to-neutral-900 dark:text-white">
+      <header className="rounded-2xl border border-white/10 bg-white/5 p-6 text-white shadow-[0_12px_30px_rgba(0,0,0,0.25)] backdrop-blur-md">
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div className="space-y-1">
-            <h1 className="text-[28px] font-semibold leading-tight text-black dark:text-white">{t('Category Management')}</h1>
-            <p className="text-[14px] text-neutral-600 dark:text-neutral-300">
+            <h1 className="text-[28px] font-semibold leading-tight text-white">{t('Category Management')}</h1>
+            <p className="text-[14px] text-white/70">
               {t('Create categories with strict typed custom fields for safe reporting.')}
             </p>
           </div>
-          <div className="inline-flex items-center gap-2 rounded-xl border border-red-600 bg-white px-4 py-2 text-[14px] font-medium text-red-700 shadow-sm dark:bg-zinc-950 dark:text-red-300">
-            <Tags size={16} className="text-red-600" />
+          <div className="inline-flex items-center gap-2 rounded-xl border border-yellow-300/30 bg-yellow-400 px-4 py-2 text-[14px] font-semibold text-slate-900 shadow-sm">
+            <Tags size={16} className="text-slate-900" />
             {t('Admin Only')}
           </div>
         </div>
@@ -554,7 +554,7 @@ function CategoryManagement() {
       <section className="grid gap-4 lg:grid-cols-[1fr_360px]">
         <form
           onSubmit={handleSaveCategory}
-          className="rounded-2xl border border-red-600 bg-white p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] dark:border-red-600 dark:bg-zinc-900"
+          className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.25)] backdrop-blur-md"
         >
           <div className="mb-4 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
@@ -562,7 +562,7 @@ function CategoryManagement() {
                 {editingCategory ? t('Edit Category') : t('New Category')}
               </h2>
               {editingCategory && (
-                <span className="rounded-full border border-red-600 bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-700 dark:bg-red-950/30 dark:text-red-300">
+                <span className="rounded-full border border-yellow-300/30 bg-yellow-400/10 px-2 py-0.5 text-[11px] font-semibold text-yellow-200">
                   {t('Editing')}
                 </span>
               )}
@@ -586,7 +586,7 @@ function CategoryManagement() {
               value={categoryName}
               onChange={e => setCategoryName(e.target.value)}
               placeholder={t('e.g., Mangrove Planting')}
-              className="w-full rounded-xl border border-neutral-300 bg-white px-4 py-2 text-[14px] text-black focus:border-red-600 focus:outline-none dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+              className="w-full rounded-xl border border-neutral-300 bg-white px-4 py-2 text-[14px] text-black focus:border-yellow-300 focus:outline-none dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
             />
           </div>
 
@@ -595,7 +595,7 @@ function CategoryManagement() {
             <button
               type="button"
               onClick={handleAddFieldRow}
-              className="inline-flex items-center gap-2 rounded-xl border border-red-600 bg-white px-3 py-2 text-[13px] font-semibold text-red-700 hover:bg-red-50 dark:bg-zinc-950 dark:text-red-300 dark:hover:bg-red-950/30"
+              className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-[13px] font-semibold text-white shadow-sm backdrop-blur-md transition-colors hover:bg-white/10"
             >
               <Plus size={16} />
               {t('Add Field')}
@@ -616,7 +616,7 @@ function CategoryManagement() {
                     value={field.fieldName}
                     onChange={e => handleChangeField(index, { fieldName: e.target.value })}
                     placeholder={t('e.g., Seedling Count')}
-                    className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-[13px] text-black focus:border-red-600 focus:outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+                    className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-[13px] text-black focus:border-yellow-300 focus:outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
                   />
                 </div>
                 <div className="space-y-1">
@@ -626,7 +626,7 @@ function CategoryManagement() {
                   <select
                     value={field.fieldType}
                     onChange={e => handleChangeField(index, { fieldType: e.target.value })}
-                    className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-[13px] text-black focus:border-red-600 focus:outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+                    className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-[13px] text-black focus:border-yellow-300 focus:outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
                   >
                     <option value="">{t('Select type')}</option>
                     {field.fieldType && !FIELD_TYPES.some(type => type.value === field.fieldType) ? (
@@ -669,7 +669,7 @@ function CategoryManagement() {
                   type="button"
                   onClick={handleDeleteCategory}
                   disabled={saveState === 'saving'}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-600 bg-white px-5 py-2.5 text-[14px] font-semibold text-red-700 transition-all duration-200 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-70 dark:bg-zinc-950 dark:text-red-300 dark:hover:bg-red-950/30"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-300/30 bg-red-500/10 px-5 py-2.5 text-[14px] font-semibold text-red-200 transition-colors hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   <Trash2 size={16} />
                   {t('Delete')}
@@ -678,7 +678,7 @@ function CategoryManagement() {
               <button
                 type="submit"
                 disabled={saveState === 'saving'}
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-600 bg-red-600 px-5 py-2.5 text-[14px] font-semibold text-white transition-all duration-200 hover:scale-[1.01] hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-70"
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-yellow-300/30 bg-yellow-400 px-5 py-2.5 text-[14px] font-semibold text-slate-900 transition-all duration-200 hover:scale-[1.01] hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-70"
               >
                 <Save size={16} />
                 {saveState === 'saving' ? t('Saving...') : editingCategory ? t('Update Category') : t('Save Category')}
@@ -687,7 +687,7 @@ function CategoryManagement() {
           </div>
         </form>
 
-        <aside className="rounded-2xl border border-red-600 bg-white p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] dark:border-red-600 dark:bg-zinc-900">
+        <aside className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.25)] backdrop-blur-md">
           <div className="mb-3 flex items-center justify-between gap-2">
             <h2 className="text-[18px] font-semibold text-black dark:text-zinc-100">{t('Existing Categories')}</h2>
             <button

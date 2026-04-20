@@ -464,18 +464,18 @@ function Dashboard() {
   }
 
   return (
-    <div className="animate-fade-in space-y-6">
-      <section className="relative rounded-2xl border border-red-600 bg-gradient-to-br from-white to-neutral-100 p-6 text-neutral-900 shadow-[0_12px_30px_rgba(0,0,0,0.08)] transition-colors dark:from-black dark:to-neutral-900 dark:text-zinc-100 dark:shadow-[0_12px_30px_rgba(0,0,0,0.35)]">
-        <div className="absolute -right-16 -top-16 h-44 w-44 rounded-full bg-red-600/15 blur-3xl dark:bg-red-600/25" />
+    <div className="animate-fade-in space-y-6 text-white">
+      <section className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-6 shadow-[0_12px_30px_rgba(0,0,0,0.25)] backdrop-blur-md">
+        <div className="absolute -right-16 -top-16 h-44 w-44 rounded-full bg-yellow-400/15 blur-3xl" />
         <div className="relative z-10 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="space-y-2">
-            <p className="text-[14px] uppercase tracking-[0.12em] text-neutral-500 dark:text-neutral-300">{t('Volunteer Management')}</p>
+            <p className="text-[14px] uppercase tracking-[0.12em] text-white/70">{t('Volunteer Management')}</p>
             <h1 className="text-[32px] font-semibold leading-tight">
-              {t('Welcome back,')} <span className="text-red-500">{user?.name || t('Volunteer')}</span>
+              {t('Welcome back,')} <span className="text-yellow-300">{user?.name || t('Volunteer')}</span>
             </h1>
-            <p className="text-[14px] text-neutral-500 dark:text-neutral-300">KUSGAN Volunteer Inc. - Cares Department</p>
+            <p className="text-[14px] text-white/70">KUSGAN Volunteer Inc. - Cares Department</p>
             <div className="flex flex-wrap gap-2 pt-1">
-              <span className="rounded-lg border border-red-700/60 bg-red-600/15 px-3 py-1 text-[14px]">
+              <span className="rounded-lg border border-yellow-300/30 bg-yellow-300/10 px-3 py-1 text-[14px] text-yellow-200">
                 {userType === 'admin' ? t('Administrator') : (userType === 'oic' ? 'OIC' : t('Member'))}
               </span>
             </div>
@@ -489,33 +489,33 @@ function Dashboard() {
                     setNotificationsOpen(prev => !prev)
                   }}
                   data-notification-button
-                  className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl border border-red-600 bg-white text-red-600 transition-all duration-200 hover:scale-[1.02] hover:bg-red-50 dark:border-red-600 dark:bg-zinc-900 dark:text-red-300 dark:hover:bg-red-950/30"
+                  className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/15 bg-white/5 text-yellow-300 transition-all duration-200 hover:scale-[1.02] hover:bg-white/10 backdrop-blur-md"
                   aria-label={t('Notifications')}
                   title={t('Notifications')}
                 >
                   <Bell size={18} />
                   {unreadCount > 0 && (
-                    <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-red-600 ring-2 ring-white dark:ring-zinc-900" />
+                    <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-yellow-400 ring-2 ring-blue-900" />
                   )}
                 </button>
                 {notificationsOpen && (
                   <div
                     data-notification-panel
-                    className="absolute right-0 top-12 z-20 w-[320px] rounded-2xl border border-red-600 bg-white shadow-[0_16px_30px_rgba(0,0,0,0.12)] dark:border-red-600 dark:bg-zinc-950"
+                    className="absolute right-0 top-12 z-20 w-[320px] rounded-2xl border border-white/10 bg-[#041221]/95 shadow-[0_16px_30px_rgba(0,0,0,0.35)] backdrop-blur-xl"
                   >
-                    <div className="flex items-center justify-between border-b border-red-100 px-4 py-3 dark:border-red-900/40">
-                      <h3 className="text-sm font-semibold text-neutral-900 dark:text-zinc-100">
+                    <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+                      <h3 className="text-sm font-semibold text-white">
                         {t('Notifications')}
                       </h3>
                       <div className="flex items-center gap-2">
-                        <span className="rounded-full border border-red-600 bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-700 dark:bg-red-950/30 dark:text-red-300">
+                        <span className="rounded-full border border-yellow-300/30 bg-yellow-300/10 px-2 py-0.5 text-[11px] font-semibold text-yellow-200">
                           {unreadCount} {t('unread')}
                         </span>
                         {unreadCount === 0 && (
                           <button
                             type="button"
                             onClick={() => setNotificationsOpen(false)}
-                            className="inline-flex h-7 w-7 items-center justify-center rounded-full text-neutral-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40"
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-full text-white/60 hover:bg-white/10 hover:text-yellow-200"
                             aria-label={t('Close notifications')}
                             title={t('Close notifications')}
                           >
@@ -543,26 +543,26 @@ function Dashboard() {
                             }}
                             role="button"
                             tabIndex={0}
-                            className={`flex w-full items-start gap-3 border-b border-red-100 px-4 py-3 text-left transition-colors hover:bg-red-50 dark:border-red-900/40 dark:hover:bg-red-950/40 ${
-                              notification.readAt ? '' : 'bg-red-50/50 dark:bg-red-950/30'
+                            className={`flex w-full items-start gap-3 border-b border-white/10 px-4 py-3 text-left transition-colors hover:bg-white/5 ${
+                              notification.readAt ? '' : 'bg-white/5'
                             }`}
                           >
                             <div className="min-w-0 flex-1">
-                              <p className="truncate text-[13px] font-semibold text-neutral-900 dark:text-zinc-100">
+                              <p className="truncate text-[13px] font-semibold text-white">
                                 {notification.title || t('Untitled Event')}
                               </p>
-                              <p className="mt-1 text-[12px] text-neutral-500 dark:text-zinc-400">
+                              <p className="mt-1 text-[12px] text-white/70">
                                 {hasValidDate ? dayjs(notification.dateTime).format('MMM D, YYYY h:mm A') : t('Date TBA')}
                               </p>
                               {notification.details && (
-                                <p className="mt-1 line-clamp-2 text-[12px] text-neutral-600 dark:text-zinc-300">
+                                <p className="mt-1 line-clamp-2 text-[12px] text-white/80">
                                   {notification.details}
                                 </p>
                               )}
                             </div>
                             <div className="flex items-center gap-2">
                               {!notification.readAt && (
-                                <span className="mt-1 h-2 w-2 rounded-full bg-red-600" />
+                                <span className="mt-1 h-2 w-2 rounded-full bg-yellow-400" />
                               )}
                               <button
                                 type="button"
@@ -570,7 +570,7 @@ function Dashboard() {
                                   event.stopPropagation()
                                   dismissNotification(notification.id)
                                 }}
-                                className="inline-flex h-6 w-6 items-center justify-center rounded-full text-neutral-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40"
+                                className="inline-flex h-6 w-6 items-center justify-center rounded-full text-white/60 hover:bg-white/10 hover:text-yellow-200"
                                 aria-label={t('Remove notification')}
                                 title={t('Remove notification')}
                               >
@@ -581,7 +581,7 @@ function Dashboard() {
                         )
                       })}
                       {visibleNotifications.length === 0 && (
-                        <p className="px-4 py-6 text-center text-[13px] text-neutral-500 dark:text-zinc-400">
+                        <p className="px-4 py-6 text-center text-[13px] text-white/70">
                           {t('No notifications yet.')}
                         </p>
                       )}
@@ -598,7 +598,7 @@ function Dashboard() {
                     state: { openCreateEventForm: true },
                   })
                 }
-                className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-red-600 bg-red-600 px-6 py-2 text-[14px] font-semibold text-white transition-all duration-200 hover:scale-[1.02] hover:bg-red-700"
+                className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-yellow-300/30 bg-yellow-400 px-6 py-2 text-[14px] font-semibold text-slate-900 transition-all duration-200 hover:scale-[1.02] hover:bg-yellow-300"
               >
                 {t('Create Event')}
                 <ArrowRight size={16} />
@@ -610,23 +610,23 @@ function Dashboard() {
 
       <section className="grid grid-cols-12 gap-4">
         <div className="col-span-12">
-          <h2 className="mb-3 text-[24px] font-semibold text-black dark:text-zinc-100">{t('Events by Category')}</h2>
+          <h2 className="mb-3 text-[24px] font-semibold text-white">{t('Events by Category')}</h2>
           <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
             {operations.map((category, index) => {
               const color = categoryColorByKey[category.key] || CATEGORY_COLOR_SEEDS.uncategorized
               return (
-                <button
-                  key={category.key}
-                  type="button"
-                  onClick={() => navigate(getEventsCategoryRoute(category.key))}
-                  className={`group relative h-full cursor-pointer rounded-xl border bg-white p-4 text-left transition-all duration-200 hover:scale-[1.02] hover:shadow-[0_8px_14px_rgba(0,0,0,0.08)] dark:bg-zinc-900 ${
+                 <button
+                   key={category.key}
+                   type="button"
+                   onClick={() => navigate(getEventsCategoryRoute(category.key))}
+                  className={`group relative h-full cursor-pointer rounded-xl border bg-white p-4 text-left text-slate-900 transition-all duration-200 hover:scale-[1.02] hover:bg-slate-50 hover:shadow-[0_12px_22px_rgba(0,0,0,0.25)] backdrop-blur-md ${
                     animatedStats ? 'animate-fade-in-up' : 'opacity-0'
                   }`}
                   style={{ animationDelay: `${index * 0.06}s`, borderColor: color }}
                 >
                   <div className="relative">
                     <div
-                      className="mb-2 flex h-10 w-10 items-center justify-center rounded-lg border bg-neutral-100 dark:bg-zinc-800"
+                      className="mb-2 flex h-10 w-10 items-center justify-center rounded-lg border bg-white/5"
                       style={{ borderColor: color }}
                     >
                       <category.icon
@@ -635,24 +635,24 @@ function Dashboard() {
                         style={{ color }}
                       />
                     </div>
-                    <p className="text-[14px] text-neutral-500 dark:text-zinc-400">{t(category.label)}</p>
-                    <p className="text-[18px] font-semibold text-black dark:text-zinc-100">{categoryCounts[category.key] || 0}</p>
+                    <p className="text-[14px] text-slate-600">{t(category.label)}</p>
+                    <p className="text-[18px] font-semibold text-slate-900">{categoryCounts[category.key] || 0}</p>
                   </div>
                 </button>
               )
             })}
           </div>
-          </div> 
-	      </section>
+        </div>
+      </section>
       <section className="grid grid-cols-12 gap-4">
-        <article className="col-span-12 rounded-2xl border border-red-600 bg-white p-5 md:p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] dark:border-red-600 dark:bg-zinc-900">
+        <article className="col-span-12 rounded-2xl border border-white/10 bg-white/5 p-5 shadow-[0_10px_20px_rgba(0,0,0,0.25)] backdrop-blur-md md:p-6">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-[24px] font-semibold text-black dark:text-zinc-100">{t('Recent Activity')}</h2>
+            <h2 className="text-[24px] font-semibold text-white">{t('Recent Activity')}</h2>
             {isAdmin && (
               <button
                 type="button"
                 onClick={() => navigate('/calendar')}
-                className="cursor-pointer rounded-lg border border-red-600 bg-white px-4 py-2 text-[14px] font-medium text-red-600 transition-all duration-200 hover:scale-[1.02] hover:bg-red-50 dark:bg-zinc-900 dark:text-red-300 dark:hover:bg-red-950/30"
+                className="cursor-pointer rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-[14px] font-medium text-white transition-all duration-200 hover:scale-[1.02] hover:bg-white/10 backdrop-blur-md"
               >
                 {t('View All')}
               </button>
@@ -670,22 +670,22 @@ function Dashboard() {
                   type="button"
                   key={`${event.id || 'event'}-${resolveEventDate(event) || 'no-date'}-${index}`}
                   onClick={() => handleOpenEventInCalendar(event)}
-                  className={`group flex w-full cursor-pointer items-start gap-4 rounded-xl border border-red-600 bg-white p-3 md:p-4 text-left transition-all duration-200 hover:scale-[1.02] hover:shadow-[0_10px_16px_rgba(0,0,0,0.08)] dark:border-red-600 dark:bg-zinc-950 ${
+                  className={`group flex w-full cursor-pointer items-start gap-4 rounded-xl border border-white/10 bg-white/5 p-3 text-left text-white transition-all duration-200 hover:scale-[1.02] hover:bg-white/10 hover:shadow-[0_14px_24px_rgba(0,0,0,0.25)] backdrop-blur-md md:p-4 ${
                     animatedStats ? 'animate-fade-in-up' : 'opacity-0'
                   }`}
                   style={{ animationDelay: `${index * 0.08}s` }}
                 >
                   <div className="relative flex flex-col items-center">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-red-600 text-white">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-400 text-slate-900">
                       <CalendarIcon size={14} />
                     </span>
-                    {index !== recentEvents.length - 1 && <span className="mt-2 h-12 w-px bg-neutral-300 dark:bg-zinc-700" />}
+                    {index !== recentEvents.length - 1 && <span className="mt-2 h-12 w-px bg-white/20" />}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[18px] font-medium text-black dark:text-zinc-100">
+                    <p className="truncate text-[18px] font-medium text-white">
                       {event.title || t('Untitled Event')}
                     </p>
-                    <p className="mt-1 text-[14px] text-neutral-500 dark:text-zinc-400">
+                    <p className="mt-1 text-[14px] text-white/70">
                       {dayjs(resolveEventDate(event)).format('MMM D, YYYY h:mm A')}
                     </p>
                   </div>
@@ -698,13 +698,13 @@ function Dashboard() {
                 </button>
               )
             })}
-            {recentEvents.length === 0 && <p className="py-4 text-center text-[14px] text-neutral-500 dark:text-zinc-400">{t('No activity yet')}</p>}
+            {recentEvents.length === 0 && <p className="py-4 text-center text-[14px] text-white/70">{t('No activity yet')}</p>}
           </div>
         </article>
       </section>
 
-	    </div>
-	  )
-	}
+    </div>
+  )
+}
 
 export default Dashboard

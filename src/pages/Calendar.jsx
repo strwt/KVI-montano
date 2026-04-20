@@ -2490,11 +2490,11 @@ function Calendar({ listOnly = false }) {
   }
 
   return (
-    <div className="animate-fade-in max-w-7xl 2xl:max-w-[1500px] mx-auto text-gray-900 dark:text-zinc-100">
-      <div className="mb-7 flex items-start justify-between gap-4">
+    <div className="animate-fade-in max-w-7xl 2xl:max-w-[1500px] mx-auto text-white">
+      <section className="mb-6 flex flex-col gap-4 rounded-2xl border border-white/10 bg-white/5 p-6 shadow-[0_12px_30px_rgba(0,0,0,0.25)] backdrop-blur-md md:flex-row md:items-start md:justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800 dark:text-zinc-100">Calendar</h2>
-          <p className="text-sm text-gray-500 dark:text-zinc-400">
+          <h2 className="text-2xl font-bold text-white">Calendar</h2>
+          <p className="text-sm text-white/70">
             {selectedMonth ? `Events in ${selectedMonth.monthLabel}` : 'Select a month to view events'}
           </p>
         </div>
@@ -2510,8 +2510,8 @@ function Calendar({ listOnly = false }) {
             }}
             className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${
               showAllMonths && !selectedMonth
-                ? 'bg-red-600 text-white border-red-600'
-                : 'bg-white dark:bg-zinc-900 text-gray-700 dark:text-zinc-300 border-gray-300 dark:border-zinc-700 hover:bg-gray-50 dark:hover:bg-zinc-800'
+                ? 'border-yellow-300/30 bg-yellow-400 text-slate-900 hover:bg-yellow-300'
+                : 'border-white/15 bg-white/5 text-white hover:bg-white/10'
             }`}
           >
             <CalendarIcon size={16} />
@@ -2527,7 +2527,7 @@ function Calendar({ listOnly = false }) {
                   setShowEventForm(true)
                 }}
                 disabled={createCategoryKeys.length === 0}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all shadow-lg"
+                className="inline-flex items-center gap-2 rounded-xl border border-yellow-300/30 bg-yellow-400 px-4 py-2 text-sm font-semibold text-slate-900 shadow-lg transition-all duration-200 hover:scale-[1.02] hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-70"
               >
                 <Plus size={18} />
                 Add Event
@@ -2535,16 +2535,22 @@ function Calendar({ listOnly = false }) {
             </>
           )}
         </div>
-      </div>
+      </section>
 
       {!selectedMonth && (
         <div className="flex items-center justify-between mb-7">
-          <button onClick={() => setCurrentYear(prev => prev - 1)} className="p-2 rounded-lg bg-white shadow-md hover:bg-gray-50 transition-colors">
-            <ChevronLeft size={20} className="text-gray-600" />
+          <button
+            onClick={() => setCurrentYear(prev => prev - 1)}
+            className="rounded-xl border border-white/15 bg-white/5 p-2 shadow-md backdrop-blur-md transition-colors hover:bg-white/10"
+          >
+            <ChevronLeft size={20} className="text-white" />
           </button>
-          <h3 className="text-xl font-semibold text-gray-800">{currentYear}</h3>
-          <button onClick={() => setCurrentYear(prev => prev + 1)} className="p-2 rounded-lg bg-white shadow-md hover:bg-gray-50 transition-colors">
-            <ChevronRight size={20} className="text-gray-600" />
+          <h3 className="text-xl font-semibold text-white">{currentYear}</h3>
+          <button
+            onClick={() => setCurrentYear(prev => prev + 1)}
+            className="rounded-xl border border-white/15 bg-white/5 p-2 shadow-md backdrop-blur-md transition-colors hover:bg-white/10"
+          >
+            <ChevronRight size={20} className="text-white" />
           </button>
         </div>
       )}

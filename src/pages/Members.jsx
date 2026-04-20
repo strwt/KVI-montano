@@ -383,8 +383,8 @@ function Members() {
 
       {isAdmin && (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
-          <div className="bg-white border border-red-600 rounded-2xl shadow-md p-5 xl:col-span-2">
-            <h3 className="font-semibold text-gray-800 mb-3">Create Member</h3>
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-[0_10px_20px_rgba(0,0,0,0.25)] backdrop-blur-md xl:col-span-2">
+            <h3 className="mb-3 font-semibold text-white">Create Member</h3>
             {pendingApprovalRecruitmentId && (
               <div className="mb-3 p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm">
                 Recruitment approval in progress. Complete member creation to mark this application as approved.
@@ -650,7 +650,7 @@ function Members() {
               </div>
               <button
                 type="submit"
-                className="md:col-span-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                className="md:col-span-2 inline-flex items-center justify-center gap-2 rounded-xl border border-yellow-300/30 bg-yellow-400 px-4 py-2 text-sm font-semibold text-slate-900 transition-all duration-200 hover:scale-[1.01] hover:bg-yellow-300"
               >
                 {pendingApprovalRecruitmentId ? 'Approve & Create Account' : 'Create Member'}
               </button>
@@ -661,16 +661,16 @@ function Members() {
       )}
 
       {isAdmin && (
-        <div className="bg-white rounded-2xl shadow-md p-5 mb-6 animate-fade-in-up border border-red-600">
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-[0_10px_20px_rgba(0,0,0,0.25)] backdrop-blur-md mb-6 animate-fade-in-up">
           <div className="flex items-center justify-between gap-3 mb-4">
             <div>
-              <h3 className="font-semibold text-gray-800 flex items-center gap-2">
-                <BadgeCheck size={18} className="text-red-600" />
+              <h3 className="flex items-center gap-2 font-semibold text-white">
+                <BadgeCheck size={18} className="text-yellow-300" />
                 Recruitment Inbox
               </h3>
-              <p className="text-sm text-gray-500">Review pending applications and approve or reject.</p>
+              <p className="text-sm text-white/70">Review pending applications and approve or reject.</p>
             </div>
-            <span className="px-3 py-1 text-xs rounded-full bg-amber-100 text-amber-700 border border-amber-200">
+            <span className="rounded-full border border-amber-300/20 bg-amber-400/10 px-3 py-1 text-xs font-semibold text-amber-200">
               Pending: {pendingRecruitments.length}
             </span>
           </div>
@@ -681,7 +681,7 @@ function Members() {
 
           <div className="space-y-3">
             {pendingRecruitments.length === 0 && (
-              <div className="rounded-xl border border-dashed border-gray-300 p-5 text-center text-gray-500 text-sm">
+              <div className="rounded-xl border border-dashed border-white/15 bg-white/5 p-5 text-center text-sm text-white/70 backdrop-blur-md">
                 No pending recruitment applications.
               </div>
             )}
@@ -777,8 +777,8 @@ function Members() {
           </div>
 
           {processedRecruitments.length > 0 && (
-            <div className="mt-6 pt-5 border-t border-gray-200">
-              <h4 className="text-sm font-semibold text-gray-700 mb-3">Processed Applications</h4>
+            <div className="mt-6 border-t border-white/10 pt-5">
+              <h4 className="mb-3 text-sm font-semibold text-white/80">Processed Applications</h4>
               <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
                 {processedRecruitments.map(entry => (
                   <div key={entry.id} className="rounded-lg border border-gray-200 p-3 bg-white">
@@ -799,10 +799,10 @@ function Members() {
         </div>
       )}
 
-      <div className="bg-white rounded-2xl border border-red-600 shadow-md p-4 mb-4">
+      <div className="mb-4 rounded-2xl border border-white/10 bg-white/5 p-4 shadow-[0_10px_20px_rgba(0,0,0,0.25)] backdrop-blur-md">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/50" size={18} />
             <input
               type="text"
               placeholder="Search by name, email, or ID..."
@@ -811,11 +811,11 @@ function Members() {
                 setCurrentPage(1)
                 setSearchQuery(e.target.value)
               }}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="w-full rounded-lg border border-white/15 bg-white/5 py-2 pl-10 pr-4 text-white shadow-sm backdrop-blur-md placeholder:text-white/30 focus:border-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
             />
           </div>
           <div className="relative">
-            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-white/50" size={18} />
             <select
               value={roleFilter}
               onChange={e => {
@@ -823,7 +823,7 @@ function Members() {
                 setRoleFilter(e.target.value)
                 setCommitteeFilter('all')
               }}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="w-full rounded-lg border border-white/15 bg-white/5 py-2 pl-10 pr-4 text-white shadow-sm backdrop-blur-md focus:border-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
             >
               {ROLE_FILTER_OPTIONS.map(roleOption => (
                 <option key={roleOption.value} value={roleOption.value}>
@@ -840,7 +840,7 @@ function Members() {
                   setCurrentPage(1)
                   setCommitteeFilter(e.target.value)
                 }}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                className="w-full rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-white shadow-sm backdrop-blur-md focus:border-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
               >
                 <option value="all">All Committees</option>
                 {committeeOptions.map(committee => (
@@ -854,14 +854,14 @@ function Members() {
             <div />
           )}
           <div className="relative">
-            <Shield className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <Shield className="absolute left-3 top-1/2 -translate-y-1/2 text-white/50" size={18} />
             <select
               value={insuranceFilter}
               onChange={e => {
                 setCurrentPage(1)
                 setInsuranceFilter(e.target.value)
               }}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="w-full rounded-lg border border-white/15 bg-white/5 py-2 pl-10 pr-4 text-white shadow-sm backdrop-blur-md focus:border-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
             >
               <option value="all">All Insurance</option>
               <option value="insured">Insured</option>
@@ -872,20 +872,20 @@ function Members() {
       </div>
 
       {isAdmin && (
-        <div className="bg-white rounded-2xl border border-red-600 shadow-md p-4 mb-4">
+        <div className="mb-4 rounded-2xl border border-white/10 bg-white/5 p-4 shadow-[0_10px_20px_rgba(0,0,0,0.25)] backdrop-blur-md">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-            <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+            <label className="inline-flex items-center gap-2 text-sm text-white/80">
               <input
                 ref={selectAllRef}
                 type="checkbox"
                 checked={allSelectedOnPage}
                 onChange={handleSelectAllOnPage}
-                className="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+                className="h-4 w-4 rounded border-white/30 bg-white/5 text-yellow-400 focus:ring-yellow-400/40"
               />
               Select all on this page
             </label>
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs text-gray-500">Selected: {selectedCount}</span>
+              <span className="text-xs text-white/70">Selected: {selectedCount}</span>
               <button
                 type="button"
                 onClick={() => {
@@ -893,7 +893,7 @@ function Members() {
                   setShowBulkDeleteModal(true)
                 }}
                 disabled={selectedCount === 0}
-                className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                className="rounded-lg border border-red-300/30 bg-red-500/20 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-500/30 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Delete selected
               </button>
@@ -901,7 +901,7 @@ function Members() {
                 type="button"
                 onClick={clearSelection}
                 disabled={selectedCount === 0}
-                className="px-3 py-2 rounded-lg bg-gray-100 text-gray-700 text-sm hover:bg-gray-200 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                className="rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm font-semibold text-white shadow-sm backdrop-blur-md transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Clear
               </button>
@@ -912,9 +912,9 @@ function Members() {
 
       {isAdmin && showBulkDeleteModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="w-full max-w-lg bg-white dark:bg-zinc-900 rounded-xl shadow-2xl p-5 space-y-4 animate-fade-in-up">
+          <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-[#041221]/95 p-5 text-white shadow-2xl backdrop-blur-xl space-y-4 animate-fade-in-up">
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-gray-800 dark:text-zinc-100">Delete Selected Members</h3>
+              <h3 className="font-semibold text-white">Delete Selected Members</h3>
               <button
                 type="button"
                 onClick={() => {
@@ -922,7 +922,7 @@ function Members() {
                   setShowBulkDeleteModal(false)
                   setBulkDeleteError('')
                 }}
-                className="px-3 py-1.5 bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-100 rounded-lg hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                className="rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-sm font-semibold text-white shadow-sm backdrop-blur-md transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={bulkDeleteBusy}
               >
                 Close
@@ -948,7 +948,7 @@ function Members() {
                   setShowBulkDeleteModal(false)
                   setBulkDeleteError('')
                 }}
-                className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-100 hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                className="rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-white shadow-sm backdrop-blur-md transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={bulkDeleteBusy}
               >
                 Cancel
@@ -956,7 +956,7 @@ function Members() {
               <button
                 type="button"
                 onClick={handleBulkDelete}
-                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                className="rounded-lg border border-red-300/30 bg-red-500/20 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-500/30 disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={bulkDeleteBusy || selectedCount === 0}
               >
                 Confirm Delete
@@ -968,26 +968,26 @@ function Members() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {currentMembers.length === 0 ? (
-          <div className="col-span-full bg-white rounded-xl border border-red-600 shadow-md p-12 text-center">
-            <Users size={48} className="mx-auto text-gray-300 mb-4" />
-            <p className="text-gray-500">No members found for the selected filters</p>
+          <div className="col-span-full rounded-2xl border border-white/10 bg-white/5 p-12 text-center shadow-[0_10px_20px_rgba(0,0,0,0.25)] backdrop-blur-md">
+            <Users size={48} className="mx-auto mb-4 text-white/40" />
+            <p className="text-white/70">No members found for the selected filters</p>
           </div>
         ) : (
           currentMembers.map((member, index) => (
             <div
               key={member.id}
-              className="bg-white rounded-xl border border-red-600 shadow-md p-6 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 animate-fade-in relative"
+              className="relative animate-fade-in rounded-2xl border border-white/10 bg-white/5 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.25)] backdrop-blur-md transition-all duration-300 hover:scale-[1.01]"
               style={{ animationDelay: `${index * 0.1}s` }}
             >
               {isAdmin && (
                 <div className="absolute top-4 right-4">
-                  <label className="inline-flex items-center gap-2 text-xs text-gray-600">
+                  <label className="inline-flex items-center gap-2 text-xs text-white/70">
                     <input
                       type="checkbox"
                       checked={selectedMemberIds.has(String(member?.id || '').trim())}
                       onChange={() => toggleMemberSelection(member.id)}
                       onClick={(event) => event.stopPropagation()}
-                      className="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+                      className="h-4 w-4 rounded border-white/30 bg-white/5 text-yellow-400 focus:ring-yellow-400/40"
                       aria-label={`Select ${member.name}`}
                     />
                   </label>
@@ -1007,7 +1007,7 @@ function Members() {
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-gray-800 text-lg truncate">{member.name}</h3>
+                    <h3 className="truncate text-lg font-semibold text-white">{member.name}</h3>
                     {(() => {
                       const memberCommitteeRole = member?.committeeRole || member?.committee_role || 'Member'
                       const memberType = memberCommitteeRole === 'OIC' ? 'oic' : (member.role === 'admin' ? 'admin' : 'member')
@@ -1022,12 +1022,12 @@ function Members() {
                 </div>
 
                 <div className="space-y-3">
-                  <div className="flex items-center gap-3 text-sm text-gray-600">
-                    <Mail size={16} className="text-gray-400" />
+                  <div className="flex items-center gap-3 text-sm text-white/80">
+                    <Mail size={16} className="text-white/50" />
                     <span className="truncate">{member.email || 'N/A'}</span>
                   </div>
-                  <div className="flex items-center gap-3 text-sm text-gray-600">
-                    <Calendar size={16} className="text-gray-400" />
+                  <div className="flex items-center gap-3 text-sm text-white/80">
+                    <Calendar size={16} className="text-white/50" />
 	                    <span>
 	                      Joined{' '}
 	                      {member.memberSince && dayjs(member.memberSince).isValid()
@@ -1035,10 +1035,10 @@ function Members() {
 	                        : 'N/A'}
 	                    </span>
                   </div>
-                  <div className="text-sm text-gray-600">
+                  <div className="text-sm text-white/80">
                     <span>Contact: {member.contactNumber || 'N/A'}</span>
                   </div>
-                  <div className="text-sm text-gray-600">
+                  <div className="text-sm text-white/80">
                     <span>
                       Insurance:{' '}
                       {member.insuranceStatus === 'Insured'
@@ -1046,7 +1046,7 @@ function Members() {
                         : member.insuranceStatus || 'N/A'}
                     </span>
                   </div>
-                  <div className="text-sm text-gray-600">
+                  <div className="text-sm text-white/80">
                     <span>Blood Type: {member.bloodType || 'N/A'}</span>
                   </div>
                 </div>
@@ -1075,7 +1075,7 @@ function Members() {
                 </div>
 
                 {isAdmin && (
-                  <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-center text-sm text-gray-500">
+                  <div className="mt-4 flex items-center justify-center border-t border-white/10 pt-4 text-sm text-white/70">
                     <span className="flex items-center gap-1">
                       <ArrowLeft size={14} className="rotate-45" />
                       Click to view details
