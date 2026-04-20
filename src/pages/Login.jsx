@@ -3,6 +3,12 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { User, Lock, Eye, EyeOff, ArrowLeft, UserPlus } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
+const LANDING_THEME = {
+  navy: '#4169E1',
+  navyDeep: '#1E3A8A',
+  navyMid: '#93C5FD',
+}
+
 function Login() {
   const [idNumber, setIdNumber] = useState('')
   const [password, setPassword] = useState('')
@@ -88,23 +94,49 @@ function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-white via-zinc-100 to-red-100 dark:from-black dark:via-gray-900 dark:to-red-900 flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Fullscreen background video (login only) */}
-      <video
-        className="absolute inset-0 w-full h-full object-cover"
-        src="/login-background.mp4"
-        autoPlay
-        loop
-        muted
-        playsInline
-        aria-hidden="true"
-      />
-      <div className="absolute inset-0 bg-black/45" aria-hidden="true" />
-
-      {/* Animated background elements */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-red-600 rounded-full mix-blend-multiply filter blur-3xl opacity-10 dark:opacity-20 animate-pulse"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-red-600 rounded-full mix-blend-multiply filter blur-3xl opacity-10 dark:opacity-20 animate-pulse delay-1000"></div>
+    <div
+      className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden text-white"
+      style={{ background: LANDING_THEME.navyDeep }}
+    >
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div
+          className="absolute inset-0"
+          style={{
+            background: `linear-gradient(135deg, ${LANDING_THEME.navyDeep} 0%, ${LANDING_THEME.navy} 50%, ${LANDING_THEME.navyMid} 100%)`,
+          }}
+        />
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundImage:
+              'linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px)',
+            backgroundSize: '60px 60px',
+          }}
+        />
+        <div
+          className="absolute -top-40 -right-40 rounded-full"
+          style={{
+            width: 600,
+            height: 600,
+            background: `radial-gradient(circle, rgba(250,204,21,0.14) 0%, transparent 70%)`,
+          }}
+        />
+        <div
+          className="absolute top-1/2 -left-64 rounded-full"
+          style={{
+            width: 500,
+            height: 500,
+            background: 'radial-gradient(circle, rgba(250,204,21,0.12) 0%, transparent 70%)',
+          }}
+        />
+        <div
+          className="absolute -bottom-40 right-1/3 rounded-full"
+          style={{
+            width: 400,
+            height: 400,
+            background: 'radial-gradient(circle, rgba(250,204,21,0.1) 0%, transparent 70%)',
+          }}
+        />
       </div>
 
       <div className="relative w-full max-w-md">
@@ -128,7 +160,7 @@ function Login() {
         </div>
 
         {/* Login Form */}
-<div
+        <div
           className="backdrop-blur-2xl rounded-2xl shadow-2xl p-8 border border-white/20"
           style={{
             background: 'linear-gradient(145deg, rgba(255,255,255,0.18), rgba(255,255,255,0.04))',
@@ -147,7 +179,7 @@ function Login() {
             <button
               type="button"
               onClick={() => navigate('/recruitment')}
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-600/30 dark:text-red-100 dark:hover:bg-red-600/45 text-xs"
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-yellow-400 text-slate-950 hover:bg-yellow-300 text-xs font-semibold shadow-[0_10px_24px_rgba(250,204,21,0.28)] transition-colors"
             >
               <UserPlus size={14} />
               Recruitment
@@ -230,7 +262,7 @@ function Login() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3 bg-gradient-to-r from-red-600 to-red-700 text-white font-semibold rounded-lg hover:from-red-700 hover:to-red-800 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-900 transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-3 bg-gradient-to-r from-yellow-400 to-amber-300 text-slate-950 font-semibold rounded-lg hover:from-yellow-300 hover:to-amber-200 focus:outline-none focus:ring-2 focus:ring-yellow-300 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-900 transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_16px_34px_rgba(250,204,21,0.28)]"
             >
               {isLoading ? (
                 <span className="flex items-center justify-center gap-2">
