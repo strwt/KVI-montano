@@ -2651,17 +2651,24 @@ function Calendar({ listOnly = false }) {
       )}
 
       {!selectedMonth && !showAllMonths && visibleMonths.length === 0 && (
-        <div className="bg-white rounded-xl border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500 mt-5">
-          No months with events for {currentYear}. Click <span className="font-semibold text-gray-700">All Months</span> to show every month.
+        <div
+          className="mt-5 rounded-xl border p-6 text-center text-sm shadow-[0_14px_30px_rgba(15,23,42,0.08)]"
+          style={{
+            background: '#ffffff',
+            borderColor: '#e2e8f0',
+            color: '#475569',
+          }}
+        >
+          No months with events for {currentYear}. Click <span className="font-semibold" style={{ color: '#0f172a' }}>All Months</span> to show every month.
         </div>
       )}
 
       {selectedMonth && (
-        <div className="bg-white rounded-2xl shadow-xl overflow-hidden max-w-6xl mx-auto layout-glow dark:bg-zinc-900 dark:border dark:border-zinc-700 border border-red-600">
-          <div className="bg-gradient-to-r from-white to-gray-100 dark:from-gray-900 dark:to-black p-5 flex items-center justify-between border-b border-gray-200 dark:border-gray-800">
+        <div className="bg-white rounded-2xl shadow-xl overflow-hidden max-w-6xl mx-auto layout-glow border border-slate-200">
+          <div className="bg-gradient-to-r from-white to-slate-50 p-5 flex items-center justify-between border-b border-slate-200">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{selectedMonth.monthLabel}</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">{selectedMonth.items.length} event(s)</p>
+              <h3 className="text-lg font-semibold text-slate-900">{selectedMonth.monthLabel}</h3>
+              <p className="text-sm text-slate-500">{selectedMonth.items.length} event(s)</p>
             </div>
             <button
               onClick={() => {
