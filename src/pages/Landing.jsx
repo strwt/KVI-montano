@@ -125,37 +125,31 @@ const CORE_VALUES = [
     title: 'Kindness',
     description: 'Everyone with compassion and Care',
     image: '/Kindness.jpg',
-    letter: 'K',
   },
   {
     title: 'Unity',
     description: 'Working together as a team work for a common goal.',
     image: '/Unity.jpg',
-    letter: 'U',
   },
   {
     title: 'Service',
     description: 'Helping other and giving back to the community.',
     image: '/Service.jpg',
-    letter: 'S',
   },
   {
     title: 'Generosity',
     description: 'Giving time, resources, and effort selflessly..',
     image: '/Generosity.jpg',
-    letter: 'G',
   },
   {
     title: 'Aspiration',
     description: 'Striving to achieve our best and reach our goal.',
     image: '/Aspiration.jpg',
-    letter: 'A',
   },
   {
     title: 'Nurture',
     description: 'Nurture providing care and support to other thrive.',
     image: '/Nurture.jpg',
-    letter: 'N',
   },
 ]
 
@@ -647,7 +641,7 @@ function Landing() {
 
   const coerceString = (value) => String(value ?? '').trim()
 
-  const openPerson = (person) => {
+  const _openPerson = (person) => {
     if (!person?.name) return
     const allMembers = getAllMembers ? getAllMembers() : []
     const matched = (allMembers || []).find(
@@ -1000,7 +994,7 @@ function Landing() {
     return unique
   }, [committees, publicCommittees])
 
-  const committeeGroups = useMemo(() => {
+  const _committeeGroups = useMemo(() => {
     const trimmedOptions = committeeOptions.map(name => String(name || '').trim()).filter(Boolean)
 
     if (trimmedOptions.length === 0) {
@@ -1055,7 +1049,7 @@ function Landing() {
     return groups
   }, [committeeOptions, displayVolunteerPeople])
 
-  const overallOicPeople = useMemo(() => {
+  const _overallOicPeople = useMemo(() => {
     const oicPeople = []
 
     displayVolunteerPeople.forEach(person => {
@@ -1076,7 +1070,7 @@ function Landing() {
     })
   }, [displayVolunteerPeople])
 
-  const onCommitteePointerDown = (event) => {
+  const _onCommitteePointerDown = (event) => {
     const scroller = committeeScrollRef.current
     if (!scroller) return
     if (event.pointerType && event.pointerType !== 'mouse') return
@@ -1099,7 +1093,7 @@ function Landing() {
     }
   }
 
-  const onCommitteePointerMove = (event) => {
+  const _onCommitteePointerMove = (event) => {
     const scroller = committeeScrollRef.current
     if (!scroller) return
     if (!committeeDragging) return
@@ -1110,7 +1104,7 @@ function Landing() {
     scroller.scrollLeft = committeeDragStartScrollLeftRef.current - deltaX
   }
 
-  const endCommitteeDrag = (event) => {
+  const _endCommitteeDrag = (event) => {
     const scroller = committeeScrollRef.current
     if (scroller) {
       try {
@@ -1627,16 +1621,6 @@ function Landing() {
                         'linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.45) 55%, rgba(0,0,0,0.15) 100%)',
                     }}
                   />
-                  {/* Center letter */}
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <span
-                      aria-hidden="true"
-                      className="font-heading text-6xl sm:text-7xl font-black tracking-[0.2em] text-white drop-shadow-[0_10px_26px_rgba(0,0,0,0.65)]"
-                      style={{ textShadow: '0 0 18px rgba(255,255,255,0.55)' }}
-                    >
-                      {value.letter || String(value.title || '').trim().charAt(0).toUpperCase()}
-                    </span>
-                  </div>
                   {/* Content */}
                   <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-5">
                     <h4 className="text-lg font-bold text-white font-heading leading-tight">{value.title}</h4>
@@ -1644,8 +1628,6 @@ function Landing() {
                       {value.description}
                     </p>
                   </div>
-                  {/* Red dot accent */}
-                  <div className="absolute top-3 right-3 w-2 h-2 rounded-full bg-yellow-400 opacity-80" />
                 </article>
               ))}
             </div>
