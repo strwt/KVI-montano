@@ -13,8 +13,8 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
 
   const isAdmin = user?.role === 'admin'
   const shellTone = 'bg-[#041221]/90 text-white border-r border-white/10 backdrop-blur-xl'
-  const navTone = 'text-white-300 hover:bg-white/5 hover:text-white'
-  const navActiveTone = 'text-white bg-white/10 border-l-2 border-yellow-400'
+const navTone = 'text-white-300 hover:bg-white hover:text-slate-900'
+const navActiveTone = 'text-slate-900 bg-slate-50 border-l-2 border-yellow-400'
   const utilityBtnTone = 'text-white-300 hover:bg-white/10 hover:text-white'
   const userDividerTone = 'border-t border-white/10'
   const userNameTone = 'text-white'
@@ -165,8 +165,8 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
                 ) : null}
               </button>
 
-              {isOpen && resolvedManagementOpen && (
-                <div className="mt-1 space-y-1 pl-8">
+{isOpen && resolvedManagementOpen && (
+                <div className="mt-1 space-y-1 pl-8 bg-white/90 backdrop-blur-md rounded-lg p-2">
                   <NavLink
                     to="/members"
                     onClick={() => {
