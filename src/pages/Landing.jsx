@@ -128,37 +128,31 @@ const CORE_VALUES = [
     title: 'Kindness',
     description: 'Everyone with compassion and Care',
     image: '/Kindness.jpg',
-    letter: 'K',
   },
   {
     title: 'Unity',
     description: 'Working together as a team work for a common goal.',
     image: '/Unity.jpg',
-    letter: 'U',
   },
   {
     title: 'Service',
     description: 'Helping other and giving back to the community.',
     image: '/Service.jpg',
-    letter: 'S',
   },
   {
     title: 'Generosity',
     description: 'Giving time, resources, and effort selflessly..',
     image: '/Generosity.jpg',
-    letter: 'G',
   },
   {
     title: 'Aspiration',
     description: 'Striving to achieve our best and reach our goal.',
     image: '/Aspiration.jpg',
-    letter: 'A',
   },
   {
     title: 'Nurture',
     description: 'Nurture providing care and support to other thrive.',
     image: '/Nurture.jpg',
-    letter: 'N',
   },
 ]
 
@@ -338,8 +332,7 @@ function NavBar({ navigate }) {
                   role="menuitem"
                 >
                   <div>
-                    <p className="text-sm font-semibold text-slate-900">Board Organizational Structure</p>
-                    <p className="mt-1 text-xs text-slate-500">Open the dedicated board structure page.</p>
+                    <p className="text-sm font-semibold text-slate-900">Board Members</p>
                   </div>
                 </button>
                 <button
@@ -353,7 +346,6 @@ function NavBar({ navigate }) {
                 >
                   <div>
                     <p className="text-sm font-semibold text-slate-900">KUSGAN Committee</p>
-                    <p className="mt-1 text-xs text-slate-500">Open the committee structure page.</p>
                   </div>
                 </button>
               </div>
@@ -407,7 +399,6 @@ function NavBar({ navigate }) {
                   >
                     <div>
                       <p className="text-sm font-semibold text-slate-900">What is Kusgan and History</p>
-                      <p className="mt-1 text-xs text-slate-500">Open the KUSGAN overview and history page.</p>
                     </div>
                   </button>
                   <button
@@ -421,13 +412,22 @@ function NavBar({ navigate }) {
                   >
                     <div>
                       <p className="text-sm font-semibold text-slate-900">Mission and Vision</p>
-                      <p className="mt-1 text-xs text-slate-500">Open the mission and vision page.</p>
                     </div>
                   </button>
                 </div>
               </>
             )}
           </div>
+
+          <button
+            type="button"
+            onClick={() => navigate('/login')}
+            className="inline-flex items-center gap-2 rounded-xl bg-yellow-400 px-4 py-2 text-sm font-semibold text-slate-900 shadow-sm transition-colors hover:bg-yellow-300"
+            title="Login"
+          >
+            <LogIn size={16} />
+            Login
+          </button>
         </nav>
 
         {/* Desktop CTA */}
@@ -750,7 +750,7 @@ function Landing() {
 
   const coerceString = (value) => String(value ?? '').trim()
 
-  const openPerson = (person) => {
+  const _openPerson = (person) => {
     if (!person?.name) return
     const allMembers = getAllMembers ? getAllMembers() : []
     const matched = (allMembers || []).find(
@@ -1103,7 +1103,7 @@ function Landing() {
     return unique
   }, [committees, publicCommittees])
 
-  const committeeGroups = useMemo(() => {
+  const _committeeGroups = useMemo(() => {
     const trimmedOptions = committeeOptions.map(name => String(name || '').trim()).filter(Boolean)
 
     if (trimmedOptions.length === 0) {
@@ -1158,7 +1158,7 @@ function Landing() {
     return groups
   }, [committeeOptions, displayVolunteerPeople])
 
-  const overallOicPeople = useMemo(() => {
+  const _overallOicPeople = useMemo(() => {
     const oicPeople = []
 
     displayVolunteerPeople.forEach(person => {
@@ -1179,7 +1179,7 @@ function Landing() {
     })
   }, [displayVolunteerPeople])
 
-  const onCommitteePointerDown = (event) => {
+  const _onCommitteePointerDown = (event) => {
     const scroller = committeeScrollRef.current
     if (!scroller) return
     if (event.pointerType && event.pointerType !== 'mouse') return
@@ -1202,7 +1202,7 @@ function Landing() {
     }
   }
 
-  const onCommitteePointerMove = (event) => {
+  const _onCommitteePointerMove = (event) => {
     const scroller = committeeScrollRef.current
     if (!scroller) return
     if (!committeeDragging) return
@@ -1213,7 +1213,7 @@ function Landing() {
     scroller.scrollLeft = committeeDragStartScrollLeftRef.current - deltaX
   }
 
-  const endCommitteeDrag = (event) => {
+  const _endCommitteeDrag = (event) => {
     const scroller = committeeScrollRef.current
     if (scroller) {
       try {
@@ -1414,18 +1414,6 @@ function Landing() {
             </button>
             <button
               type="button"
-              onClick={() => navigate('/login')}
-              className="inline-flex w-full sm:w-56 h-12 items-center justify-center gap-2.5 px-8 rounded-xl text-white font-semibold hover:-translate-y-0.5 transition-all duration-200 border"
-              style={{
-                background: 'rgba(255,255,255,0.08)',
-                borderColor: 'rgba(255,255,255,0.25)',
-              }}
-            >
-              <LogIn size={18} />
-              Member Login
-            </button>
-            <button
-              type="button"
               onClick={openDonation}
               className="inline-flex w-full sm:w-56 h-12 items-center justify-center gap-2.5 px-8 rounded-xl text-white font-semibold hover:-translate-y-0.5 transition-all duration-200 border"
               style={{
@@ -1588,10 +1576,7 @@ function Landing() {
               <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-yellow-300/25 bg-yellow-400/10 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-yellow-100">
                 Board
               </div>
-              <h3 className="mb-3 text-2xl font-bold text-white">Board Organizational Structure</h3>
-              <p className="mb-6 text-sm leading-relaxed text-white/72">
-                Open the dedicated board page to view the executive board and board members in a cleaner standalone layout.
-              </p>
+              <h3 className="mb-3 text-2xl font-bold text-white">Board Members</h3>
               <button
                 type="button"
                 onClick={() => navigate('/organization/board')}
@@ -1614,9 +1599,6 @@ function Landing() {
                 Committee
               </div>
               <h3 className="mb-3 text-2xl font-bold text-white">KUSGAN Committee</h3>
-              <p className="mb-6 text-sm leading-relaxed text-white/72">
-                Open the committee page to view OIC assignments and grouped committees in their own separate screen.
-              </p>
               <button
                 type="button"
                 onClick={() => navigate('/organization/kusgan')}
@@ -1783,16 +1765,6 @@ function Landing() {
                         'linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.45) 55%, rgba(0,0,0,0.15) 100%)',
                     }}
                   />
-                  {/* Center letter */}
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <span
-                      aria-hidden="true"
-                      className="font-heading text-6xl sm:text-7xl font-black tracking-[0.2em] text-white drop-shadow-[0_10px_26px_rgba(0,0,0,0.65)]"
-                      style={{ textShadow: '0 0 18px rgba(255,255,255,0.55)' }}
-                    >
-                      {value.letter || String(value.title || '').trim().charAt(0).toUpperCase()}
-                    </span>
-                  </div>
                   {/* Content */}
                   <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-5">
                     <h4 className="text-lg font-bold text-white font-heading leading-tight">{value.title}</h4>
@@ -1800,8 +1772,6 @@ function Landing() {
                       {value.description}
                     </p>
                   </div>
-                  {/* Red dot accent */}
-                  <div className="absolute top-3 right-3 w-2 h-2 rounded-full bg-yellow-400 opacity-80" />
                 </article>
               ))}
             </div>

@@ -37,13 +37,13 @@ const BOARD_STRUCTURE = {
     image: '/Board Organizational Structure/Jerson Ebal.png',
   },
   officers: [
-    { name: 'Love Jhoye "Golden Jhoye" Raboy', position: 'Board Member', committee: 'Board', image: '/Board Organizational Structure/Love Jhoye Raboy.png' },
-    { name: 'Ardex "Strong Ian" Mejares', position: 'Board Member', committee: 'Board', image: '/Board Organizational Structure/KVI.png' },
-    { name: 'Renan Diaz', position: 'Board Member', committee: 'Board', image: '/Board Organizational Structure/Renan P. Diaz.png' },
-    { name: 'Kusgan Joselyn Piñalosa', position: 'Board Member', committee: 'Board', image: '/Board Organizational Structure/KVI.png' },
-    { name: 'Kusgan Niña Dinorog', position: 'Board Member', committee: 'Board', image: '/Board Organizational Structure/KVI.png' },
-    { name: 'Kusgan Joel Marcaida', position: 'Board Member', committee: 'Board', image: '/Board Organizational Structure/Joel Marcaida.jpg' },
-    { name: 'Kusgan Lord Ubod', position: 'Board Member', committee: 'Board', image: '/Board Organizational Structure/Lord Ubod.png' },
+    { name: 'Love Jhoye "Golden Jhoye" Raboy', position: 'Board Member', image: '/Board Organizational Structure/Love Jhoye Raboy.png' },
+    { name: 'Ardex "Strong Ian" Mejares', position: 'Board Member', image: '/Board Organizational Structure/KVI.png' },
+    { name: 'Renan Diaz', position: 'Board Member', image: '/Board Organizational Structure/Renan P. Diaz.png' },
+    { name: 'Kusgan Joselyn Piñalosa', position: 'Board Member', image: '/Board Organizational Structure/KVI.png' },
+    { name: 'Kusgan Niña Dinorog', position: 'Board Member', image: '/Board Organizational Structure/KVI.png' },
+    { name: 'Kusgan Joel Marcaida', position: 'Board Member', image: '/Board Organizational Structure/Joel Marcaida.jpg' },
+    { name: 'Kusgan Lord Ubod', position: 'Board Member', image: '/Board Organizational Structure/Lord Ubod.png' },
   ],
 }
 
@@ -373,10 +373,10 @@ export default function OrganizationStructure({ mode = 'board' }) {
       .sort((a, b) => a.committee.localeCompare(b.committee))
   }, [committeeOptions, displayVolunteerPeople])
 
-  const pageTitle = mode === 'kusgan' ? 'KUSGAN Committee' : 'Board Organizational Structure'
+  const pageTitle = mode === 'kusgan' ? 'KUSGAN Committee' : 'Board Members'
   const pageSubtitle = mode === 'kusgan'
     ? 'Browse committees, OIC assignments, and volunteer groupings.'
-    : 'View the executive board and board members in their own dedicated page.'
+    : 'Kusgan Board Members 2026.'
 
   const onCommitteePointerDown = (event) => {
     const scroller = committeeScrollRef.current
@@ -471,35 +471,24 @@ export default function OrganizationStructure({ mode = 'board' }) {
         <SectionHeader title={pageTitle} subtitle={pageSubtitle} />
 
         {mode === 'board' ? (
-          <div className="space-y-8">
-            <div className="rounded-3xl border border-white/15 bg-black/20 p-6 backdrop-blur-xl">
-              <div className="mb-6 flex items-center gap-3">
-                <div className="h-px flex-1 bg-gradient-to-r from-transparent to-yellow-300/25" />
-                <span className="rounded-full border border-yellow-300/30 bg-yellow-400/10 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-yellow-100">
-                  Executive Board
-                </span>
-                <div className="h-px flex-1 bg-gradient-to-l from-transparent to-yellow-300/25" />
-              </div>
-              <div className="flex flex-wrap items-start justify-center gap-6">
-                {[BOARD_STRUCTURE.chairperson, BOARD_STRUCTURE.viceChairperson, BOARD_STRUCTURE.executiveDirector].map(person => (
-                  <OrgPersonCard key={person.name} person={person} />
-                ))}
-              </div>
+          <div className="rounded-3xl border border-white/15 bg-black/20 p-6 backdrop-blur-xl">
+            <div className="mb-6 flex items-center gap-3">
+              <div className="h-px flex-1 bg-gradient-to-r from-transparent to-yellow-300/25" />
+              <span className="rounded-full border border-yellow-300/30 bg-yellow-400/10 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-yellow-100">
+                Executive Board
+              </span>
+              <div className="h-px flex-1 bg-gradient-to-l from-transparent to-yellow-300/25" />
+            </div>
+            <div className="flex flex-wrap items-start justify-center gap-6">
+              {[BOARD_STRUCTURE.chairperson, BOARD_STRUCTURE.viceChairperson, BOARD_STRUCTURE.executiveDirector].map(person => (
+                <OrgPersonCard key={person.name} person={person} />
+              ))}
             </div>
 
-            <div className="rounded-3xl border border-white/15 bg-black/20 p-6 backdrop-blur-xl">
-              <div className="mb-6 flex items-center gap-3">
-                <div className="h-px flex-1 bg-gradient-to-r from-transparent to-yellow-300/25" />
-                <span className="rounded-full border border-yellow-300/30 bg-yellow-400/10 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-yellow-100">
-                  Board Members
-                </span>
-                <div className="h-px flex-1 bg-gradient-to-l from-transparent to-yellow-300/25" />
-              </div>
-              <div className="grid grid-cols-1 place-items-center gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {BOARD_STRUCTURE.officers.map(person => (
-                  <OrgPersonCard key={person.name} person={person} />
-                ))}
-              </div>
+            <div className="mt-10 grid grid-cols-1 place-items-center gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {BOARD_STRUCTURE.officers.map(person => (
+                <OrgPersonCard key={person.name} person={person} />
+              ))}
             </div>
           </div>
         ) : (

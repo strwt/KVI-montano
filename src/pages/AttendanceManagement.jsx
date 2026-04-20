@@ -770,7 +770,7 @@ function AdminAttendance() {
               type="date"
               value={selectedDate}
               onChange={event => setSelectedDate(event.target.value)}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-yellow-400 focus:outline-none"
+              className="rounded-lg border border-slate-200 bg-[#ffffff] px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-yellow-400 focus:outline-none"
               style={{
                 colorScheme: 'light',
                 backgroundColor: '#ffffff',
@@ -818,18 +818,19 @@ function AdminAttendance() {
             {attendanceSaveError}
           </p>
         ) : null}
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px] text-sm">
-            <thead>
-              <tr className="text-left text-xs uppercase tracking-[0.14em] text-white/70">
-                <th className="pb-3">Member</th>
-                <th className="pb-3">Time In</th>
-                <th className="pb-3">Time Out</th>
-                <th className="pb-3">Action</th>
-              </tr>
-            </thead>
-	            <tbody className="divide-y divide-white/10">
-	              {presentRows.map(row => {
+        <div className="rounded-2xl bg-[#ffffff] overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] text-sm">
+              <thead className="bg-[#ffffff]">
+                <tr className="text-xs uppercase tracking-[0.14em] text-slate-600">
+                  <th className="pb-3 pt-3 px-3 text-left">Member</th>
+                  <th className="pb-3 pt-3 px-3 text-center">Time In</th>
+                  <th className="pb-3 pt-3 px-3 text-center">Time Out</th>
+                  <th className="pb-3 pt-3 px-3 text-center">Action</th>
+                </tr>
+              </thead>
+	            <tbody className="divide-y divide-slate-200 bg-[#ffffff]">
+	              {presentRows.map((row, index) => {
 	                const timeIn = row.timeInRaw && dayjs(row.timeInRaw).isValid()
 	                  ? dayjs(row.timeInRaw).format('h:mm A')
 	                  : '-'
@@ -840,23 +841,30 @@ function AdminAttendance() {
                 const isSaving = String(attendanceSaveBusyId || '') === String(row.memberId)
 
                 return (
-                  <tr key={row.memberId} className="text-white/80">
-                    <td className="py-3">
-                      <div>
-                        <button
-                          type="button"
-                          onClick={() => openHistory(row.member)}
-                          className="text-left font-semibold text-white hover:underline"
-                          title="View monthly attendance"
-                        >
+                  <tr key={row.memberId} className={`text-slate-900 ${index % 2 === 0 ? 'bg-[#ffffff]' : 'bg-[#f8fafc]'}`}>
+                    <td className="py-3 px-3">
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => openHistory(row.member)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault()
+                            openHistory(row.member)
+                          }
+                        }}
+                        className="group block cursor-pointer rounded-md bg-[rgba(255,255,255,0.95)] px-2 py-1 -mx-1 -my-0.5 text-left transition-colors hover:bg-[#ffffff] focus-visible:bg-[#ffffff]"
+                        title="View monthly attendance"
+                      >
+                        <div className="font-semibold text-slate-900 group-hover:underline">
                           {row.member?.name || 'Member'}
-                        </button>
+                        </div>
                         {row.member?.role === 'admin' || (row.member?.committeeRole || row.member?.committee_role) === 'OIC' ? null : (
-                          <p className="text-xs text-white/70">{row.member?.committee || 'Unassigned'}</p>
+                          <p className="text-xs text-slate-600">{row.member?.committee || 'Unassigned'}</p>
                         )}
                       </div>
                     </td>
-                    <td className="py-3">
+                    <td className="py-3 px-3 text-center">
                       {isEditing ? (
                         <input
                           type="time"
@@ -864,7 +872,7 @@ function AdminAttendance() {
                           onChange={event =>
                             setEditingAttendance(prev => ({ ...prev, timeIn: event.target.value }))
                           }
-                          className="w-full rounded-lg border border-neutral-200 px-2 py-1 text-xs text-neutral-700 focus:border-red-500 focus:outline-none"
+                          className="w-full rounded-lg border border-slate-300 bg-[#ffffff] px-2 py-1 text-xs text-slate-900 focus:border-yellow-400 focus:outline-none"
                           style={{
                             colorScheme: 'light',
                             backgroundColor: '#ffffff',
@@ -874,13 +882,13 @@ function AdminAttendance() {
                           }}
                         />
                       ) : (
-                        <span className="inline-flex items-center gap-1 font-semibold text-white">
+                        <span className="inline-flex items-center gap-1 font-semibold text-slate-900">
                           <Clock size={12} />
                           {timeIn}
                         </span>
                       )}
                     </td>
-                    <td className="py-3">
+                    <td className="py-3 px-3 text-center">
                       {isEditing ? (
                         <input
                           type="time"
@@ -888,7 +896,7 @@ function AdminAttendance() {
                           onChange={event =>
                             setEditingAttendance(prev => ({ ...prev, timeOut: event.target.value }))
                           }
-                          className="w-full rounded-lg border border-neutral-200 px-2 py-1 text-xs text-neutral-700 focus:border-red-500 focus:outline-none"
+                          className="w-full rounded-lg border border-slate-300 bg-[#ffffff] px-2 py-1 text-xs text-slate-900 focus:border-yellow-400 focus:outline-none"
                           style={{
                             colorScheme: 'light',
                             backgroundColor: '#ffffff',
@@ -898,19 +906,19 @@ function AdminAttendance() {
                           }}
                         />
                       ) : (
-                        <span className="inline-flex items-center gap-1 font-semibold text-white">
+                        <span className="inline-flex items-center gap-1 font-semibold text-slate-900">
                           <Clock size={12} />
                           {timeOut}
                         </span>
                       )}
                     </td>
-                    <td className="py-3">
+                    <td className="py-3 px-3 text-center">
                       {isEditing ? (
-                        <div className="flex items-center gap-2">
+                        <div className="inline-flex items-center justify-center gap-2">
                           <button
                             type="button"
                             onClick={() => saveAttendanceFor(row.memberId)}
-                            className="inline-flex items-center gap-1 rounded-lg bg-red-600 px-2 py-1 text-xs font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="inline-flex items-center gap-1 rounded-lg bg-yellow-400 px-2 py-1 text-xs font-semibold text-slate-900 hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-60"
                             disabled={isSaving}
                           >
                             <Save size={12} />
@@ -919,7 +927,7 @@ function AdminAttendance() {
                           <button
                             type="button"
                             onClick={cancelEditing}
-                            className="inline-flex items-center gap-1 rounded-lg border border-neutral-200 px-2 py-1 text-xs font-semibold text-white hover:border-neutral-300 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-[#ffffff] px-2 py-1 text-xs font-semibold text-slate-800 hover:bg-[#f8fafc] disabled:cursor-not-allowed disabled:opacity-60"
                             disabled={isSaving}
                           >
                             <X size={12} />
@@ -930,7 +938,7 @@ function AdminAttendance() {
                         <button
                           type="button"
                           onClick={() => startEditing(row.memberId)}
-                          className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2 py-1 text-xs font-semibold text-white hover:border-red-300"
+                          className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-[#ffffff] px-2 py-1 text-xs font-semibold text-slate-800 hover:bg-[#f8fafc]"
                         >
                           <Pencil size={12} />
                           Edit
@@ -942,13 +950,14 @@ function AdminAttendance() {
 	              })}
 	              {presentRows.length === 0 && (
 	                <tr>
-	                  <td className="py-6 text-center text-white/70" colSpan={4}>
+	                  <td className="py-6 text-center text-slate-600 bg-[#ffffff]" colSpan={4}>
 	                    No present members recorded for this date.
 	                  </td>
 	                </tr>
 	              )}
 	            </tbody>
-          </table>
+            </table>
+          </div>
         </div>
       </section>
 
@@ -960,27 +969,27 @@ function AdminAttendance() {
           onClick={closeHistory}
         >
           <div
-            className="w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 text-slate-900 shadow-2xl sm:p-5"
-            style={{ backgroundColor: '#ffffff', color: '#0f172a' }}
+            className="w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl border border-slate-200 bg-[#ffffff] p-4 text-black shadow-2xl sm:p-5"
+            style={{ backgroundColor: '#ffffff', color: '#000000' }}
             onClick={event => event.stopPropagation()}
           >
             <div
-              className="flex items-start justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_8px_22px_rgba(15,23,42,0.05)]"
-              style={{ backgroundColor: '#ffffff', color: '#0f172a' }}
+              className="flex items-start justify-between gap-4 rounded-2xl border border-slate-200 bg-[#ffffff] p-4 shadow-[0_8px_22px_rgba(15,23,42,0.05)]"
+              style={{ backgroundColor: '#ffffff', color: '#000000' }}
             >
               <div>
-                <p className="text-xs uppercase tracking-[0.14em] text-slate-500">Attendance History</p>
-                <h3 className="mt-1 text-[20px] font-semibold text-slate-900">
+                <p className="text-xs uppercase tracking-[0.14em] text-black/70">Attendance History</p>
+                <h3 className="mt-1 text-[20px] font-semibold" style={{ color: '#000000' }}>
                   {historyMember?.name || 'Member'}
                 </h3>
                 {historyMember?.role === 'admin' || (historyMember?.committeeRole || historyMember?.committee_role) === 'OIC' ? null : (
-                  <p className="text-sm text-slate-500">{historyMember?.committee || 'Unassigned'}</p>
+                  <p className="text-sm text-black/70">{historyMember?.committee || 'Unassigned'}</p>
                 )}
               </div>
               <button
                 type="button"
                 onClick={closeHistory}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-black/60 transition-colors hover:bg-slate-100 hover:text-black"
                 aria-label="Close"
               >
                 <X size={16} />
@@ -988,11 +997,11 @@ function AdminAttendance() {
             </div>
 
             <div
-              className="mt-4 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_8px_22px_rgba(15,23,42,0.05)] md:flex-row md:items-center md:justify-between"
-              style={{ backgroundColor: '#ffffff', color: '#0f172a' }}
+              className="mt-4 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-[#ffffff] p-4 shadow-[0_8px_22px_rgba(15,23,42,0.05)] md:flex-row md:items-center md:justify-between"
+              style={{ backgroundColor: '#ffffff', color: '#000000' }}
             >
               <div className="flex items-center gap-2">
-                <label htmlFor="history-month" className="text-sm font-medium text-slate-600">
+                <label htmlFor="history-month" className="text-sm font-medium text-black/70">
                   Month
                 </label>
                 <input
@@ -1000,26 +1009,26 @@ function AdminAttendance() {
                   type="month"
                   value={historyMonth}
                   onChange={event => setHistoryMonth(event.target.value)}
-                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-yellow-400 focus:outline-none"
+                  className="rounded-lg border border-slate-200 bg-[#ffffff] px-3 py-2 text-sm text-black shadow-sm focus:border-yellow-400 focus:outline-none"
                   style={{
                     colorScheme: 'light',
                     backgroundColor: '#ffffff',
-                    color: '#0f172a',
-                    WebkitTextFillColor: '#0f172a',
+                    color: '#000000',
+                    WebkitTextFillColor: '#000000',
                     boxShadow: 'inset 0 0 0 1000px #ffffff',
                   }}
                 />
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <span
-                  className="inline-flex items-center gap-2 rounded-full border border-emerald-300 bg-white px-3 py-1 text-xs font-semibold text-emerald-700"
+                  className="inline-flex items-center gap-2 rounded-full border border-emerald-300 bg-[#ffffff] px-3 py-1 text-xs font-semibold text-emerald-700"
                   style={{ backgroundColor: '#ffffff' }}
                 >
                   <UserCheck size={14} />
                   Present: {historyPresentCount}
                 </span>
                 <span
-                  className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-700"
+                  className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-[#ffffff] px-3 py-1 text-xs font-semibold text-slate-700"
                   style={{ backgroundColor: '#ffffff' }}
                 >
                   <UserX size={14} />
@@ -1029,7 +1038,7 @@ function AdminAttendance() {
                   type="button"
                   onClick={exportHistoryPdf}
                   disabled={historyLoading}
-                  className="inline-flex items-center gap-2 rounded-full border border-yellow-400 bg-white px-4 py-1 text-xs font-semibold text-amber-700 shadow-sm transition-all duration-200 hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex items-center gap-2 rounded-full border border-yellow-400 bg-[#ffffff] px-4 py-1 text-xs font-semibold text-amber-700 shadow-sm transition-all duration-200 hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-60"
                   style={{ backgroundColor: '#ffffff' }}
                 >
                   <Download size={14} />
@@ -1045,28 +1054,28 @@ function AdminAttendance() {
             )}
 
             <div
-              className="mt-4 rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_10px_30px_rgba(15,23,42,0.06)] sm:p-4"
+              className="mt-4 rounded-2xl border border-slate-200 bg-[#ffffff] p-3 shadow-[0_10px_30px_rgba(15,23,42,0.06)] sm:p-4"
               style={{
                 backgroundColor: '#ffffff',
-                color: '#0f172a',
+                color: '#000000',
               }}
             >
               <div className="overflow-x-auto">
                 <div className="min-w-[560px] sm:min-w-[720px] md:min-w-[840px] lg:min-w-[980px]">
-                  <div className="grid grid-cols-7 gap-2 text-center text-[11px] font-semibold text-slate-600 sm:gap-2.5 sm:text-xs lg:gap-3 lg:text-sm">
+                  <div className="grid grid-cols-7 gap-2 text-center text-[11px] font-semibold text-black/70 sm:gap-2.5 sm:text-xs lg:gap-3 lg:text-sm">
                     {WEEKDAY_LABELS.map(label => (
                       <div key={label}>{label}</div>
                     ))}
                   </div>
 
-                  <div className="mt-2 rounded-2xl bg-white sm:mt-3 max-h-[320px] sm:max-h-[420px] lg:max-h-[560px] overflow-y-auto pr-1">
+                  <div className="mt-2 rounded-2xl bg-[#ffffff] sm:mt-3 max-h-[320px] sm:max-h-[420px] lg:max-h-[560px] overflow-y-auto pr-1">
                 {historyLoading ? (
-                  <p className="text-sm text-slate-500">Loading attendance...</p>
+                  <p className="text-sm text-black/70">Loading attendance...</p>
                 ) : (
-                  <div className="grid grid-cols-7 gap-2 rounded-2xl bg-white p-1 sm:gap-2.5 lg:gap-3">
+                  <div className="grid grid-cols-7 gap-2 rounded-2xl bg-[#ffffff] p-1 sm:gap-2.5 lg:gap-3">
                     {historyCalendarCells.map((cell, index) => {
                       if (cell.blank) {
-                        return <div key={cell.key || `blank-${index}`} className="h-[84px] sm:h-[100px] lg:h-[120px] rounded-xl bg-white" style={{ backgroundColor: '#ffffff' }} />
+                        return <div key={cell.key || `blank-${index}`} className="h-[84px] sm:h-[100px] lg:h-[120px] rounded-xl bg-[#ffffff]" style={{ backgroundColor: '#ffffff' }} />
                       }
 
                       const isToday = cell.dateKey === dayjs().format('YYYY-MM-DD')
@@ -1079,12 +1088,12 @@ function AdminAttendance() {
                         : null
 
                       const tone = cell.status === 'Present'
-                        ? 'border-emerald-200 bg-white'
-                        : 'border-slate-200 bg-white'
+                        ? 'border-emerald-200 bg-[#ffffff]'
+                        : 'border-slate-200 bg-[#ffffff]'
 
                       const badgeTone = cell.status === 'Present'
-                        ? 'border-emerald-300 bg-white text-emerald-700'
-                        : 'border-slate-300 bg-white text-slate-700'
+                        ? 'border-emerald-300 bg-[#ffffff] text-emerald-700'
+                        : 'border-slate-300 bg-[#ffffff] text-slate-700'
 
                       const titleParts = [`${cell.label}: ${cell.status}`]
                       if (timeInLabel) titleParts.push(`In: ${timeInLabel}`)
@@ -1096,17 +1105,17 @@ function AdminAttendance() {
                           className={`flex h-[84px] sm:h-[100px] lg:h-[120px] min-w-0 flex-col justify-between overflow-hidden rounded-xl border p-2 sm:p-2.5 lg:p-3 ${tone} ${
                             isToday ? 'ring-2 ring-yellow-400 ring-offset-2 ring-offset-white' : ''
                           }`}
-                          style={{ boxShadow: '0 8px 18px rgba(15,23,42,0.04)', backgroundColor: '#ffffff', color: '#0f172a' }}
+                          style={{ boxShadow: '0 8px 18px rgba(15,23,42,0.04)', backgroundColor: '#ffffff', color: '#000000' }}
                           title={titleParts.join(' | ')}
                         >
                           <div className="flex items-start justify-between gap-2">
-                            <span className="text-xs sm:text-sm font-semibold text-slate-900">{dayNumber}</span>
+                            <span className="text-xs sm:text-sm font-semibold text-black">{dayNumber}</span>
                             <span className={`inline-flex max-w-[64px] sm:max-w-[80px] lg:max-w-[92px] truncate rounded-full border px-2 py-0.5 text-[10px] sm:text-xs font-semibold ${badgeTone}`}>
                               {cell.status}
                             </span>
                           </div>
                           {(timeInLabel || timeOutLabel) ? (
-                            <div className="min-w-0 space-y-0.5 sm:space-y-1 text-[10px] sm:text-xs text-slate-700">
+                            <div className="min-w-0 space-y-0.5 sm:space-y-1 text-[10px] sm:text-xs text-black/80">
                               {timeInLabel && (
                                 <div className="flex min-w-0 items-center gap-1">
                                   <Clock size={12} className="shrink-0" />
@@ -1121,7 +1130,7 @@ function AdminAttendance() {
                               )}
                             </div>
                           ) : (
-                            <span className="text-[10px] sm:text-xs text-slate-500">No record</span>
+                            <span className="text-[10px] sm:text-xs text-black/60">No record</span>
                           )}
                         </div>
                       )
