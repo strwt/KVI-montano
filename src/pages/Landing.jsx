@@ -1694,7 +1694,7 @@ function Landing() {
             Ready to Make a<br />
             <span style={{ color: THEME.yellowText }}>Difference?</span>
           </h2>
-          <p className="text-base sm:text-lg max-w-lg mx-auto mb-10 leading-relaxed" style={{ color: 'rgba(252,165,165,0.75)' }}>
+          <p className="text-base sm:text-lg max-w-lg mx-auto mb-10 leading-relaxed" style={{ color: 'rgba(248, 240, 240, 0.88)' }}>
             Join KUSGAN and become part of a growing community dedicated to meaningful action and lasting impact.
           </p>
 

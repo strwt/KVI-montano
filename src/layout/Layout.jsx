@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Outlet } from 'react-router-dom'
+import { Outlet, useLocation } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import { Menu, X } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
@@ -12,6 +12,28 @@ const getInitialSidebarOpen = () => {
 function Layout() {
   const { darkMode, setDarkMode, loading } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(getInitialSidebarOpen)
+  const location = useLocation()
+  const dashboardThemeRoutes = [
+    '/',
+    '/calendar',
+    '/attendance-management',
+    '/report',
+    '/donations',
+    '/members',
+    '/category-management',
+    '/committee-management',
+  ]
+  const isDashboardThemeRoute = dashboardThemeRoutes.some(route => {
+    if (route === '/') return location.pathname === '/'
+    return location.pathname.startsWith(route)
+  })
+  const shellTone = isDashboardThemeRoute
+    ? 'bg-gradient-to-br from-blue-900 via-[#4169E1] to-blue-300 text-white'
+    : 'bg-neutral-100 dark:bg-neutral-900'
+  const mobileToggleTone = isDashboardThemeRoute
+    ? 'bg-yellow-400 text-slate-900 hover:bg-yellow-300'
+    : 'bg-red-600 text-white hover:bg-red-700'
+  const forcedDarkClass = isDashboardThemeRoute ? 'dark' : ''
 
   useEffect(() => {
     // Deterministic theme application avoids stale dark class state.
@@ -45,11 +67,11 @@ function Layout() {
   }
 
   return (
-    <div className="flex min-h-screen bg-neutral-100 dark:bg-neutral-900 w-full overflow-x-hidden transition-colors">
+    <div className={`flex min-h-screen w-full overflow-x-hidden transition-colors ${shellTone} ${forcedDarkClass}`}>
       {/* Mobile Toggle Button */}
       <button
         onClick={toggleSidebar}
-        className="fixed top-4 left-4 z-50 p-2 bg-red-600 text-white rounded-lg shadow-lg hover:bg-red-700 transition-all md:hidden"
+        className={`fixed top-4 left-4 z-50 rounded-lg p-2 shadow-lg transition-all md:hidden ${mobileToggleTone}`}
       >
         {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
       </button>

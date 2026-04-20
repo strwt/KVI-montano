@@ -1052,16 +1052,16 @@ const getFieldValue = (event, key, fallbackKeys = []) => {
 	  }
 
   return (
-    <div className="animate-fade-in space-y-6 max-w-7xl 2xl:max-w-[1500px] mx-auto text-gray-700 dark:text-zinc-300">
-      <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)]">
-	        <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-md p-5 border border-red-600 layout-glow">
+    <div className="animate-fade-in space-y-6 max-w-7xl 2xl:max-w-[1500px] mx-auto text-white">
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-[0_12px_30px_rgba(0,0,0,0.25)] backdrop-blur-md">
+	        <div className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-[0_10px_20px_rgba(0,0,0,0.25)] backdrop-blur-md">
 	        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
 	          <div className="flex items-center gap-2">
-	            <Filter size={18} className="text-red-600" />
+	            <Filter size={18} className="text-yellow-300" />
 	            <div>
-	              <h2 className="text-2xl font-bold text-gray-800 dark:text-zinc-100">Report - Statistics Overview</h2>
+	              <h2 className="text-2xl font-bold text-white">Report - Statistics Overview</h2>
 	              {dateWindowLabel && (
-	                <p className="text-sm text-gray-500 dark:text-zinc-400">{dateWindowLabel}</p>
+	                <p className="text-sm text-white/70">{dateWindowLabel}</p>
 	              )}
 	            </div>
 	          </div>
@@ -1069,13 +1069,13 @@ const getFieldValue = (event, key, fallbackKeys = []) => {
 
 	        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
 	          <div>
-	            <label htmlFor="report-date-range" className="block text-xs text-gray-500 dark:text-zinc-400 mb-1">Date Range</label>
+	            <label htmlFor="report-date-range" className="mb-1 block text-xs text-white/70">Date Range</label>
             <select
               id="report-date-range"
               name="datePreset"
               value={datePreset}
               onChange={e => setDatePreset(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-sm text-gray-700 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm text-white backdrop-blur-md focus:border-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
             >
               <option value="monthly">Monthly</option>
 	              <option value="quarterly">Quarterly</option>
@@ -1083,14 +1083,14 @@ const getFieldValue = (event, key, fallbackKeys = []) => {
 	            </select>
 	          </div>
 	          <div>
-	            <label htmlFor="report-month" className="block text-xs text-gray-500 dark:text-zinc-400 mb-1">Month</label>
+	            <label htmlFor="report-month" className="mb-1 block text-xs text-white/70">Month</label>
 	            <input
 	              id="report-month"
 	              type="month"
 	              value={reportMonth}
 	              onChange={e => setReportMonth(e.target.value)}
 	              disabled={datePreset !== 'monthly'}
-	              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-sm text-gray-700 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-60"
+	              className="w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm text-white backdrop-blur-md focus:border-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/40 disabled:opacity-60"
 	            />
 	          </div>
 	        </div>
@@ -1098,27 +1098,30 @@ const getFieldValue = (event, key, fallbackKeys = []) => {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-	        <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
-	          <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><BarChart3 size={18} className="text-red-600" />Events Per Category</h3>
+	        <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.25)] backdrop-blur-md">
+	          <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-white"><BarChart3 size={18} className="text-yellow-300" />Events Per Category</h3>
 	          <div className="space-y-3">
 	            {chartCategoryKeys.map(key => (
 	              <div key={key}>
-	                <div className="flex items-center justify-between text-sm mb-1"><span className="text-gray-600 dark:text-zinc-400">{getCategoryLabel(key)}</span><span className="font-semibold text-gray-800 dark:text-zinc-100">{eventCountByCategory[key] || 0}</span></div>
-	                <div className="w-full bg-gray-100 dark:bg-zinc-700 rounded-full h-2"><div className="h-2 rounded-full transition-all duration-300" style={{ width: `${((eventCountByCategory[key] || 0) / maxBarValue) * 100}%`, backgroundColor: getCategoryColor(key) }} /></div>
+	                <div className="mb-1 flex items-center justify-between text-sm">
+                    <span className="text-white/70">{getCategoryLabel(key)}</span>
+                    <span className="font-semibold text-white">{eventCountByCategory[key] || 0}</span>
+                  </div>
+	                <div className="h-2 w-full rounded-full bg-white/10"><div className="h-2 rounded-full transition-all duration-300" style={{ width: `${((eventCountByCategory[key] || 0) / maxBarValue) * 100}%`, backgroundColor: getCategoryColor(key) }} /></div>
 	              </div>
 	            ))}
 	          </div>
 	        </div>
 
-        <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
-          <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2"><PieChart size={18} className="text-red-600" />Category Distribution</h3>
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.25)] backdrop-blur-md">
+          <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-white"><PieChart size={18} className="text-yellow-300" />Category Distribution</h3>
           <div className="flex flex-col items-center">
             <div className="w-44 h-44 sm:w-48 sm:h-48 rounded-full mb-4" style={{ background: pieGradient }} />
 	            <div className="w-full space-y-2">
 	              {pieSegments.map(segment => (
 	                <div key={segment.key} className="flex items-center justify-between text-sm">
-	                  <span className="flex items-center gap-2 text-gray-600 dark:text-zinc-400"><span className="w-3 h-3 rounded-sm" style={{ backgroundColor: getCategoryColor(segment.key) }} />{getCategoryLabel(segment.key)}</span>
-	                  <span className="font-semibold text-gray-800 dark:text-zinc-100">{segment.value} ({segment.percent.toFixed(1)}%)</span>
+	                  <span className="flex items-center gap-2 text-white/70"><span className="w-3 h-3 rounded-sm" style={{ backgroundColor: getCategoryColor(segment.key) }} />{getCategoryLabel(segment.key)}</span>
+	                  <span className="font-semibold text-white">{segment.value} ({segment.percent.toFixed(1)}%)</span>
 	                </div>
 	              ))}
 	            </div>
@@ -1328,9 +1331,9 @@ const getFieldValue = (event, key, fallbackKeys = []) => {
 	          ))}
 		      </div>
 
-		      <div className="rounded-2xl border border-red-600 bg-white dark:bg-zinc-900 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.08)] layout-glow">
-		        <h3 className="text-lg font-semibold text-gray-800 dark:text-zinc-100 mb-4 flex items-center gap-2">
-		          <FileText size={18} className="text-red-600" />
+		      <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.25)] backdrop-blur-md">
+		        <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-white">
+		          <FileText size={18} className="text-yellow-300" />
 		          Entries By Category
 		        </h3>
 
