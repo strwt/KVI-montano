@@ -14,6 +14,7 @@ import Report from './pages/Report'
 import Login from './pages/Login'
 import Landing from './pages/Landing'
 import Recruitment from './pages/Recruitment'
+import OrganizationStructure from './pages/OrganizationStructure'
 import Settings from './pages/Settings'
 import CategoryManagement from './pages/CategoryManagement'
 import CommitteeManagement from './pages/CommitteeManagement'
@@ -127,6 +128,8 @@ function AppRoutes() {
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
       <Route path="/recruitment" element={<PublicRoute><Recruitment /></PublicRoute>} />
       <Route path="/register" element={<Navigate to="/login" replace />} />
+      <Route path="/organization/board" element={<OrganizationStructure mode="board" />} />
+      <Route path="/organization/kusgan" element={<OrganizationStructure mode="kusgan" />} />
 
       {/* Protected Routes */}
       <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
