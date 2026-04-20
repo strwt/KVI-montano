@@ -333,7 +333,6 @@ function NavBar({ navigate }) {
                 >
                   <div>
                     <p className="text-sm font-semibold text-slate-900">Board Organizational Structure</p>
-                    <p className="mt-1 text-xs text-slate-500">Open the dedicated board structure page.</p>
                   </div>
                 </button>
                 <button
@@ -347,7 +346,6 @@ function NavBar({ navigate }) {
                 >
                   <div>
                     <p className="text-sm font-semibold text-slate-900">KUSGAN Committee</p>
-                    <p className="mt-1 text-xs text-slate-500">Open the committee structure page.</p>
                   </div>
                 </button>
               </div>
@@ -401,7 +399,6 @@ function NavBar({ navigate }) {
                   >
                     <div>
                       <p className="text-sm font-semibold text-slate-900">What is Kusgan and History</p>
-                      <p className="mt-1 text-xs text-slate-500">Open the KUSGAN overview and history page.</p>
                     </div>
                   </button>
                   <button
@@ -415,7 +412,6 @@ function NavBar({ navigate }) {
                   >
                     <div>
                       <p className="text-sm font-semibold text-slate-900">Mission and Vision</p>
-                      <p className="mt-1 text-xs text-slate-500">Open the mission and vision page.</p>
                     </div>
                   </button>
                 </div>
@@ -1573,9 +1569,6 @@ function Landing() {
                 Board
               </div>
               <h3 className="mb-3 text-2xl font-bold text-white">Board Organizational Structure</h3>
-              <p className="mb-6 text-sm leading-relaxed text-white/72">
-                Open the dedicated board page to view the executive board and board members in a cleaner standalone layout.
-              </p>
               <button
                 type="button"
                 onClick={() => navigate('/organization/board')}
@@ -1598,9 +1591,6 @@ function Landing() {
                 Committee
               </div>
               <h3 className="mb-3 text-2xl font-bold text-white">KUSGAN Committee</h3>
-              <p className="mb-6 text-sm leading-relaxed text-white/72">
-                Open the committee page to view OIC assignments and grouped committees in their own separate screen.
-              </p>
               <button
                 type="button"
                 onClick={() => navigate('/organization/kusgan')}
