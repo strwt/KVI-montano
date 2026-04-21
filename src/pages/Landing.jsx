@@ -43,6 +43,7 @@ const THEME = {
 const NAV_LINKS = [
   { label: 'Home', href: '#home' },
   { label: 'Programs', href: '#services' },
+  { label: 'Contact Us', href: '#contact' },
 ]
 
 const SPONSOR_LOGOS = [
@@ -262,7 +263,7 @@ function NavBar({ navigate }) {
         borderBottom: scrolled ? '1px solid rgba(255,255,255,0.07)' : '1px solid transparent',
       }}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center">
         {/* Logo */}
         <button
           type="button"
@@ -282,12 +283,12 @@ function NavBar({ navigate }) {
         </button>
 
         {/* Desktop nav */}
-        <nav className="hidden md:flex items-center gap-7">
+        <nav className="hidden md:flex items-center gap-7 absolute left-1/2 -translate-x-1/2">
           {NAV_LINKS.map(link => (
             <a
               key={link.label}
               href={link.href}
-              className="text-sm text-white-400 hover:text-white transition-colors duration-200 relative group"
+              className="text-sm font-bold text-white-400 hover:text-white transition-colors duration-200 relative group"
             >
               {link.label}
               <span className="absolute -bottom-0.5 left-0 w-0 h-px bg-yellow-400 group-hover:w-full transition-all duration-300 rounded-full" />
@@ -303,7 +304,7 @@ function NavBar({ navigate }) {
             <button
               type="button"
               onClick={() => setManagementOpen(true)}
-              className={`group relative inline-flex items-center gap-1 text-sm transition-colors duration-200 ${
+              className={`group relative inline-flex items-center gap-1 text-sm font-bold transition-colors duration-200 ${
                 managementOpen ? 'text-white' : 'text-white-400 hover:text-white'
               }`}
               aria-expanded={managementOpen}
@@ -369,13 +370,13 @@ function NavBar({ navigate }) {
             <button
               type="button"
               onClick={() => setWhoWeAreOpen(true)}
-              className={`group relative inline-flex items-center gap-1 text-sm transition-colors duration-200 ${
+              className={`group relative inline-flex items-center gap-1 text-sm font-bold transition-colors duration-200 ${
                 whoWeAreOpen ? 'text-white' : 'text-white-400 hover:text-white'
               }`}
               aria-expanded={whoWeAreOpen}
               aria-haspopup="menu"
             >
-              Who We Are
+              About Us
               <ChevronDown size={15} className={`transition-transform duration-200 ${whoWeAreOpen ? 'rotate-180' : ''}`} />
               <span className={`absolute -bottom-0.5 left-0 h-px rounded-full bg-yellow-400 transition-all duration-300 ${whoWeAreOpen ? 'w-full' : 'w-0 group-hover:w-full'}`} />
             </button>
@@ -426,29 +427,29 @@ function NavBar({ navigate }) {
             )}
           </div>
 
+        </nav>
+
+        <div className="ml-auto flex items-center gap-2">
           <button
             type="button"
             onClick={() => navigate('/login')}
-            className="inline-flex items-center gap-2 rounded-xl bg-yellow-400 px-4 py-2 text-sm font-semibold text-slate-900 shadow-sm transition-colors hover:bg-yellow-300"
+            className="hidden md:inline-flex items-center gap-2 rounded-xl bg-yellow-400 px-4 py-2 text-sm font-semibold text-slate-900 shadow-sm transition-colors hover:bg-yellow-300"
             title="Login"
           >
             <LogIn size={16} />
             Login
           </button>
-        </nav>
 
-        {/* Desktop CTA */}
-       
-
-        {/* Mobile toggle */}
-        <button
-          type="button"
-          onClick={() => setMobileOpen(v => !v)}
-          className="md:hidden text-white p-2 rounded-lg hover:bg-white/10 transition-colors"
-          aria-label="Toggle menu"
-        >
-          {mobileOpen ? <X size={20} /> : <Menu size={20} />}
-        </button>
+          {/* Mobile toggle */}
+          <button
+            type="button"
+            onClick={() => setMobileOpen(v => !v)}
+            className="md:hidden text-white p-2 rounded-lg hover:bg-white/10 transition-colors"
+            aria-label="Toggle menu"
+          >
+            {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+        </div>
       </div>
 
       {/* Mobile menu */}
@@ -500,7 +501,7 @@ function NavBar({ navigate }) {
             </div>
           </div>
           <div className="px-3 pt-1">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-yellow-200/80">Who We Are</p>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-yellow-200/80">About Us</p>
             <div className="space-y-1">
               <button
                 type="button"
@@ -1655,7 +1656,7 @@ function Landing() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-5xl mx-auto">
             <SectionHeader
-              title="Who We Are"
+              title="About Us"
               centered
             />
 
@@ -1998,6 +1999,7 @@ function Landing() {
 
       {/* FOOTER */}
       <footer
+        id="contact"
         className="relative py-12 sm:py-14"
         style={{
           background: '#f3f4f6',
