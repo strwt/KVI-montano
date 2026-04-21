@@ -544,10 +544,6 @@ function CategoryManagement() {
               {t('Create categories with strict typed custom fields for safe reporting.')}
             </p>
           </div>
-          <div className="inline-flex items-center gap-2 rounded-xl border border-yellow-300/30 bg-yellow-400 px-4 py-2 text-[14px] font-semibold text-slate-900 shadow-sm">
-            <Tags size={16} className="text-slate-900" />
-            {t('Admin Only')}
-          </div>
         </div>
       </header>
 
@@ -606,10 +602,10 @@ function CategoryManagement() {
             {fields.map((field, index) => (
               <div
                 key={`field-${index}`}
-                className="grid gap-2 rounded-2xl border border-neutral-200 bg-neutral-50 p-3 md:grid-cols-[1fr_160px_44px] dark:border-zinc-700 dark:bg-zinc-950"
+                className="grid gap-2 rounded-2xl border border-slate-200 bg-[#ffffff] p-3 md:grid-cols-[1fr_160px_44px]"
               >
                 <div className="space-y-1">
-                  <label className="block text-[12px] font-medium text-neutral-700 dark:text-zinc-300">
+                  <label className="block text-[12px] font-medium text-slate-700">
                     {t('Field Name')}
                   </label>
                   <input
@@ -620,7 +616,7 @@ function CategoryManagement() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="block text-[12px] font-medium text-neutral-700 dark:text-zinc-300">
+                  <label className="block text-[12px] font-medium text-slate-700">
                     {t('Type')}
                   </label>
                   <select
@@ -648,7 +644,7 @@ function CategoryManagement() {
                   <button
                     type="button"
                     onClick={() => handleRemoveFieldRow(index)}
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-[#ffffff] text-slate-700 transition-colors hover:bg-slate-50"
                     aria-label={t('Remove field')}
                     title={t('Remove field')}
                   >
@@ -660,9 +656,6 @@ function CategoryManagement() {
           </div>
 
           <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div className="text-[13px] text-neutral-600 dark:text-zinc-400">
-              {t('Each field must have a required data type (text, number).')}
-            </div>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
               {editingCategory && (
                 <button
@@ -694,7 +687,7 @@ function CategoryManagement() {
               type="button"
               onClick={loadCategories}
               disabled={loadingCategories}
-              className="rounded-xl border border-neutral-300 bg-white px-3 py-1.5 text-[13px] text-neutral-700 hover:bg-neutral-50 disabled:opacity-70 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-900"
+              className="rounded-xl border border-slate-200 bg-[#ffffff] px-3 py-1.5 text-[13px] text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-70"
             >
               {loadingCategories ? t('Loading...') : t('Refresh')}
             </button>
@@ -702,7 +695,7 @@ function CategoryManagement() {
 
           <div className="space-y-2">
             {categories.length === 0 ? (
-              <p className="rounded-xl border border-neutral-200 bg-neutral-50 p-3 text-[13px] text-neutral-600 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-400">
+              <p className="rounded-xl border border-slate-200 bg-[#ffffff] p-3 text-[13px] text-slate-600">
                 {t('No categories yet.')}
               </p>
               ) : (
@@ -720,18 +713,18 @@ function CategoryManagement() {
                       onClick={() => handleSelectCategory(category)}
                       className={`flex w-full items-center justify-between gap-3 rounded-xl border px-3 py-2 text-left transition-colors ${
                         isSelected
-                          ? 'bg-neutral-50 dark:bg-zinc-900/40'
-                          : 'bg-white hover:bg-neutral-50 dark:bg-zinc-950 dark:hover:bg-zinc-900'
+                          ? 'bg-[#ffffff] shadow-[0_0_0_1px_rgba(15,23,42,0.06)]'
+                          : 'bg-[#ffffff] hover:bg-slate-50'
                       }`}
                       style={{ borderColor: color }}
                     >
                       <div className="min-w-0 flex items-center gap-2">
-                        <p className="truncate text-[14px] font-semibold text-black dark:text-zinc-100">
+                        <p className="truncate text-[14px] font-semibold text-slate-900">
                           {titleCaseFromKey(category.name) || category.name}
                         </p>
                       </div>
                       <div
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg border bg-white dark:bg-zinc-950"
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg border bg-[#ffffff]"
                         style={{ borderColor: color }}
                       >
                         <Pencil size={14} style={{ color }} />

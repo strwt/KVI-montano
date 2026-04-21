@@ -123,6 +123,13 @@ const SERVICES = [
   },
 ]
 
+const PROGRAM_IMAGES = {
+  environmental: 'environmental',
+  medical: 'medical',
+  relief: 'relief_operation',
+  fire: 'fire_response',
+}
+
 const CORE_VALUES = [
   {
     title: 'Kindness',
@@ -979,7 +986,13 @@ function Landing() {
 
 	      if (!supabaseEnabled || !supabase) {
 	        if (isMounted) {
-            setKusganVolunteerPeople(contextMemberPeopleRef.current || [])
+            const fallbackPeople =
+              Array.isArray(contextMemberPeopleRef.current) && contextMemberPeopleRef.current.length > 0
+                ? contextMemberPeopleRef.current
+                : normalizePeople(KUSGAN_VOLUNTEERS.map((name) => ({ name })))
+
+            setKusganVolunteerPeople(fallbackPeople)
+            landingMembersLoadedRef.current = true
             setLandingMembersLoading(false)
           }
 	        return
@@ -996,7 +1009,13 @@ function Landing() {
 	        if (error) {
 	          console.warn('Failed to load members for landing page.', error)
 	          if (isMounted) {
-              setKusganVolunteerPeople([])
+              const fallbackPeople =
+                Array.isArray(contextMemberPeopleRef.current) && contextMemberPeopleRef.current.length > 0
+                  ? contextMemberPeopleRef.current
+                  : normalizePeople(KUSGAN_VOLUNTEERS.map((name) => ({ name })))
+
+              setKusganVolunteerPeople(fallbackPeople)
+              landingMembersLoadedRef.current = true
               setLandingMembersLoading(false)
             }
 	          return
@@ -1009,7 +1028,13 @@ function Landing() {
       } catch (err) {
         console.warn('Failed to load members for landing page.', err)
         if (isMounted) {
-          setKusganVolunteerPeople([])
+          const fallbackPeople =
+            Array.isArray(contextMemberPeopleRef.current) && contextMemberPeopleRef.current.length > 0
+              ? contextMemberPeopleRef.current
+              : normalizePeople(KUSGAN_VOLUNTEERS.map((name) => ({ name })))
+
+          setKusganVolunteerPeople(fallbackPeople)
+          landingMembersLoadedRef.current = true
           setLandingMembersLoading(false)
         }
       }
@@ -1495,45 +1520,68 @@ function Landing() {
             title="Our Programs"
             subtitle="Focused volunteer initiatives making real community impact."
           />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
-            {SERVICES.map(service => {
+          <div className="space-y-6 sm:space-y-7">
+            {SERVICES.map((service, index) => {
               const Icon = service.icon
+              const imageBase = PROGRAM_IMAGES[service.key]
+              const imageSrc = imageBase ? `/Programs/${imageBase}.png` : ''
+              const reverse = index % 2 === 1
+
               return (
                 <article
                   key={service.key}
-                  className="group relative rounded-2xl overflow-hidden p-6 transition-all duration-300 hover:-translate-y-1.5"
+                  className="group relative overflow-hidden rounded-3xl border border-white/12 bg-white/5 backdrop-blur-xl"
                   style={{
-                    background: 'linear-gradient(150deg, rgba(255,255,255,0.14), rgba(255,255,255,0.05))',
-                    border: '1px solid rgba(255,255,255,0.14)',
-                    boxShadow: '0 18px 42px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.18)',
-                    backdropFilter: 'blur(18px)',
+                    boxShadow: '0 18px 42px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.12)',
                   }}
                 >
-                  {/* Top accent line */}
-                  <div className="absolute top-0 left-0 right-0 h-0.5 rounded-t-2xl" style={{ background: service.accent }} />
-                  <div
-                    className="absolute inset-x-0 top-0 h-20 pointer-events-none"
-                    style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.12), transparent)' }}
-                  />
+                  <div className={`grid grid-cols-1 gap-0 lg:grid-cols-2 ${reverse ? 'lg:[&>*:first-child]:order-2' : ''}`}>
+                    <div className="relative p-6 sm:p-8">
+                      <div className="absolute inset-x-0 top-0 h-0.5" style={{ background: service.accent }} />
+                      <div
+                        className="absolute inset-0 pointer-events-none opacity-60"
+                        style={{ background: `radial-gradient(ellipse at 0% 0%, ${service.accent}22 0%, transparent 60%)` }}
+                      />
 
-                  {/* Hover glow */}
-                  <div
-                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
-                    style={{
-                      background: `radial-gradient(ellipse at 50% 0%, ${service.accent}18 0%, transparent 65%)`,
-                    }}
-                  />
+                      <div className="relative flex items-start gap-4">
+                        <div
+                          className="shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center"
+                          style={{ background: service.iconBg, color: service.iconColor }}
+                        >
+                          <Icon size={22} className={service.iconClass} />
+                        </div>
+                        <div className="min-w-0">
+                          <h3 className="text-xl sm:text-2xl font-bold text-white font-heading">{service.title}</h3>
+                          <p className="mt-2 text-sm sm:text-base leading-relaxed text-white/80 max-w-xl">
+                            {service.description}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
 
-                  {/* Icon */}
-                  <div
-                    className={`relative w-11 h-11 rounded-xl flex items-center justify-center mb-4`}
-                    style={{ background: service.iconBg, color: service.iconColor }}
-                  >
-                    <Icon size={20} className={service.iconClass} />
+                    <div className="relative min-h-[220px] sm:min-h-[260px] lg:min-h-[260px]">
+                      <div
+                        className="absolute inset-0"
+                        style={{
+                          background: 'linear-gradient(90deg, rgba(4,18,33,0.25) 0%, rgba(4,18,33,0.05) 45%, rgba(4,18,33,0.0) 70%)',
+                        }}
+                      />
+                      {imageSrc ? (
+                        <img
+                          src={imageSrc}
+                          alt={`${service.title} program`}
+                          className="absolute inset-0 h-full w-full object-cover"
+                          loading="lazy"
+                          onError={(e) => {
+                            const fallback = imageBase ? `/Programs/${imageBase}.jpg` : ''
+                            if (!fallback) return
+                            if (e.currentTarget.src.endsWith('.jpg')) return
+                            e.currentTarget.src = fallback
+                          }}
+                        />
+                      ) : null}
+                    </div>
                   </div>
-
-                  <h3 className="font-bold text-white text-base mb-2 font-heading">{service.title}</h3>
-                  <p className="text-sm text-white/76 leading-relaxed">{service.description}</p>
                 </article>
               )
             })}
@@ -1948,18 +1996,18 @@ function Landing() {
         </div>
       ) : null}
 
-      {/* � FOOTER � */}
+      {/* FOOTER */}
       <footer
         className="relative py-12 sm:py-14"
         style={{
-          background: THEME.navyDeep,
-          borderTop: '1px solid rgba(255,255,255,0.06)',
+          background: '#f3f4f6',
+          borderTop: '1px solid rgba(15,23,42,0.12)',
         }}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div
-            className="grid grid-cols-1 md:grid-cols-2 gap-10 mb-10 pb-10"
-            style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+            className="grid grid-cols-1 gap-10 mb-10 pb-10 md:grid-cols-4"
+            style={{ borderBottom: '1px solid rgba(15,23,42,0.12)' }}
           >
             {/* Brand */}
             <div>
@@ -1968,57 +2016,79 @@ function Landing() {
                   <img src={HERO_IMAGE} alt="KUSGAN logo" className="w-full h-full object-contain" />
                 </div>
                 <div>
-                  <p className="font-bold text-white font-heading tracking-widest text-sm">KUSGAN</p>
-                  <p className="text-[9px] text-yellow-300 tracking-[0.2em] uppercase">Volunteer Inc.</p>
+                  <p className="font-bold text-slate-900 font-heading tracking-widest text-sm">KUSGAN</p>
+                  <p className="text-[9px] text-amber-700 tracking-[0.2em] uppercase">Volunteer Inc.</p>
                 </div>
               </div>
-              <p className="text-sm text-white-600 leading-relaxed max-w-xs">
+              <p className="text-sm text-slate-600 leading-relaxed max-w-xs">
                 Mobilizing communities through compassion, service, and unity for a better tomorrow.
               </p>
             </div>
 
-            {/* Contact */}
+            {/* Contact Us */}
             <div className="flex flex-col items-start text-left">
-              <h4 className="text-xs font-bold text-white-400 font-heading mb-3 tracking-widest uppercase">
-                CONTACT
+              <h4 className="text-xs font-bold text-slate-700 font-heading mb-3 tracking-widest uppercase">
+                Contact Us
               </h4>
-              <div className="space-y-5 text-sm text-white-400 max-w-sm">
+              <div className="space-y-4 text-sm text-slate-600 max-w-sm">
                 <p className="leading-relaxed flex flex-wrap items-baseline justify-start gap-x-2">
-                  <span className="text-white-500 shrink-0">Address:</span>
-                  <span className="min-w-0">Zone 5 Bulua, Cagayan de Oro City</span>
-                </p>
-                <p className="leading-relaxed flex flex-wrap items-baseline justify-start gap-x-2">
-                  <span className="text-white-500 shrink-0">Contact number:</span>
-                  <a href="tel:09676651777" className="hover:text-white-300 transition-colors tabular-nums">
+                  <span className="text-slate-700 shrink-0">Contact number:</span>
+                  <a href="tel:09676651777" className="hover:text-slate-900 transition-colors tabular-nums">
                     09676651777
                   </a>
                 </p>
                 <p className="leading-relaxed flex flex-wrap items-baseline justify-start gap-x-2">
-                  <span className="text-white-500 shrink-0">Facebook:</span>
-                  <a
-                    href="https://www.facebook.com/KusganVolunteersINC"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="hover:text-white-300 transition-colors break-all min-w-0"
-                  >
-                    https://www.facebook.com/KusganVolunteersINC
-                  </a>
-                </p>
-                <p className="leading-relaxed flex flex-wrap items-baseline justify-start gap-x-2">
-                  <span className="text-white-500 shrink-0">Email:</span>
+                  <span className="text-slate-700 shrink-0">Email:</span>
                   <a
                     href="mailto:kusganvolunteersinc@gmail.com"
-                    className="hover:text-white-300 transition-colors break-all min-w-0"
+                    className="hover:text-slate-900 transition-colors break-all min-w-0"
                   >
                     kusganvolunteersinc@gmail.com
                   </a>
                 </p>
               </div>
             </div>
+
+            {/* Follow Us */}
+            <div className="flex flex-col items-start text-left">
+              <h4 className="text-xs font-bold text-slate-700 font-heading mb-3 tracking-widest uppercase">
+                Follow Us
+              </h4>
+              <div className="text-sm text-slate-600 max-w-sm">
+                <a
+                  href="https://www.facebook.com/KusganVolunteers"
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="KUSGAN Volunteers on Facebook"
+                  className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white p-2 text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                    className="h-4 w-4"
+                    fill="currentColor"
+                  >
+                    <path d="M13.5 22v-8h2.7l.4-3H13.5V9.1c0-.9.2-1.5 1.5-1.5h1.6V5c-.3 0-1.4-.1-2.7-.1-2.7 0-4.5 1.6-4.5 4.6V11H6.7v3h2.7v8h4.1z" />
+                  </svg>
+                </a>
+              </div>
+            </div>
+
+            {/* Address */}
+            <div className="flex flex-col items-start text-left">
+              <h4 className="text-xs font-bold text-slate-700 font-heading mb-3 tracking-widest uppercase">
+                Address
+              </h4>
+              <div className="space-y-4 text-sm text-slate-600 max-w-sm">
+                <p className="leading-relaxed">
+                  <span className="min-w-0">Zone 5 Bulua, Cagayan de Oro City</span>
+                </p>
+              </div>
+            </div>
           </div>
 
           {/* Copyright */}
-            <p className="text-xs" style={{ color: '#ffffff' }}>
+            <p className="text-xs" style={{ color: '#334155' }}>
               © {new Date().getFullYear()} Developed By : Niel Caspillo, Prince Laurence Montaño, and Dun Kenneth Salon
             </p>
     

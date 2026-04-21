@@ -309,9 +309,9 @@ function Members() {
   }
 
   const getStatusBadgeClass = status => {
-    if (status === 'approved') return 'bg-green-100 text-green-700 border-green-200'
-    if (status === 'rejected') return 'bg-red-100 text-red-700 border-red-200'
-    return 'bg-amber-100 text-amber-700 border-amber-200'
+    if (status === 'approved') return 'bg-[#ffffff] text-green-700 border-green-200'
+    if (status === 'rejected') return 'bg-[#ffffff] text-red-700 border-red-200'
+    return 'bg-[#ffffff] text-amber-700 border-amber-200'
   }
 
 	  const handleApproveRecruitment = (recruitment) => {
@@ -407,7 +407,7 @@ function Members() {
                 />
               </div>
               <div className="flex flex-col items-center md:row-span-2">
-                <div className="w-[150px] h-[150px] overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
+                <div className="w-[150px] h-[150px] overflow-hidden rounded-lg border border-slate-200 bg-[#ffffff]">
                   {newMemberImagePreviewUrl ? (
                     <img
                       src={newMemberImagePreviewUrl}
@@ -415,7 +415,7 @@ function Members() {
                       className="h-full w-full object-cover"
                     />
                   ) : (
-                    <div className="h-full w-full flex items-center justify-center text-xs text-gray-400">
+                    <div className="h-full w-full flex items-center justify-center text-xs text-slate-400">
                       No preview
                     </div>
                   )}
@@ -781,14 +781,14 @@ function Members() {
               <h4 className="mb-3 text-sm font-semibold text-white/80">Processed Applications</h4>
               <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
                 {processedRecruitments.map(entry => (
-                  <div key={entry.id} className="rounded-lg border border-gray-200 p-3 bg-white">
+                  <div key={entry.id} className="rounded-lg border border-slate-200 p-3 bg-[#ffffff]">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-sm font-medium text-gray-800">{entry.fullName}</p>
+                      <p className="text-sm font-medium text-slate-900">{entry.fullName}</p>
                       <span className={`px-2 py-1 text-xs rounded-full border font-medium ${getStatusBadgeClass(entry.status)}`}>
                         {entry.status.toUpperCase()}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-slate-600 mt-1">
                       {entry.email} | {entry.idNumber || 'N/A'} | {entry.contactNumber || 'N/A'} | {entry.bloodType || 'N/A'} | Submitted {dayjs(entry.submittedAt).format('MMM D, YYYY')}
                     </p>
                   </div>
@@ -1066,6 +1066,7 @@ function Members() {
                       : memberType === 'oic'
                         ? 'bg-amber-50 text-amber-700 border-amber-200'
                         : 'bg-blue-50 text-blue-700 border-blue-200'
+                    if (memberType === 'member') return null
                     return (
                       <span className={`px-2 py-1 rounded text-xs border ${tone}`}>
                         Role: {label}

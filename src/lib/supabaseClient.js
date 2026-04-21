@@ -106,6 +106,12 @@ const createSafeStorage = ({ persistSession }) => {
 }
 
 const fetchWithTimeout = (input, init = {}) => {
+  if (Date.now() < fetchDisabledUntil) {
+    const error = new Error('Supabase request skipped due to recent network failures.')
+    error.name = 'SupabaseFetchDisabled'
+    return Promise.reject(error)
+  }
+
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), 15_000)
 
@@ -117,7 +123,24 @@ const fetchWithTimeout = (input, init = {}) => {
     }
   }
 
-  return fetch(input, { ...init, signal: controller.signal }).finally(() => clearTimeout(timeoutId))
+  return fetch(input, { ...init, signal: controller.signal })
+    .catch((error) => {
+      if (isLikelyNetworkFailure(error)) {
+        fetchDisabledUntil = Date.now() + SUPABASE_FETCH_DISABLE_MS
+      }
+      throw error
+    })
+    .finally(() => clearTimeout(timeoutId))
+}
+
+const SUPABASE_FETCH_DISABLE_MS = 30_000
+let fetchDisabledUntil = 0
+const isLikelyNetworkFailure = (error) => {
+  if (!error) return false
+  const name = String(error?.name || '')
+  if (name !== 'TypeError') return false
+  const message = String(error?.message || '').toLowerCase()
+  return message.includes('failed to fetch') || message.includes('networkerror')
 }
 
 const persistSession = parseEnvBool(import.meta.env.VITE_SUPABASE_PERSIST_SESSION, true)
@@ -125,17 +148,40 @@ const autoRefreshToken = parseEnvBool(import.meta.env.VITE_SUPABASE_AUTO_REFRESH
 const detectSessionInUrl = parseEnvBool(import.meta.env.VITE_SUPABASE_DETECT_SESSION_IN_URL, true)
 
 export const supabase = isSupabaseConfigured
-  ? createClient(supabaseUrl, supabaseAnonKey, {
-      global: {
-        fetch: fetchWithTimeout,
-      },
-      auth: {
-        storage: createSafeStorage({ persistSession }),
-        persistSession,
-        autoRefreshToken,
-        detectSessionInUrl,
-      },
-    })
+  ? (() => {
+      const globalScope = (() => {
+        try {
+          if (typeof window !== 'undefined') return window
+        } catch {
+          // ignore
+        }
+        return globalThis
+      })()
+
+      const globalKey = '__kusgan_supabase_client__'
+      const existing = globalScope?.[globalKey] || null
+      if (existing) return existing
+
+      const client = createClient(supabaseUrl, supabaseAnonKey, {
+        global: {
+          fetch: fetchWithTimeout,
+        },
+        auth: {
+          storage: createSafeStorage({ persistSession }),
+          persistSession,
+          autoRefreshToken,
+          detectSessionInUrl,
+        },
+      })
+
+      try {
+        if (globalScope) globalScope[globalKey] = client
+      } catch {
+        // ignore (non-writable global)
+      }
+
+      return client
+    })()
   : null
 
 if (!persistSession) clearSupabaseAuthLocalStorage()

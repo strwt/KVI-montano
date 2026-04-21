@@ -224,18 +224,28 @@ body {
   --tw-gradient-to: #0f172a var(--tw-gradient-to-position) !important;
 }
 
-/* Ensure native form controls fully match dark mode across pages */
+/* Keep native form controls light even in dark mode. */
 .dark input,
 .dark select,
 .dark textarea {
-  background-color: #111827;
-  color: #f3f4f6;
-  border-color: #374151;
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+  color-scheme: light;
+}
+
+/* Override the custom `.dark .bg-*` rules when a form control has bg utility classes. */
+.dark input[class*='bg-'],
+.dark select[class*='bg-'],
+.dark textarea[class*='bg-'] {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
 }
 
 .dark input::placeholder,
 .dark textarea::placeholder {
-  color: #9ca3af;
+  color: #64748b !important;
 }
 
 .dark input:focus,
