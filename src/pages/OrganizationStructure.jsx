@@ -94,9 +94,6 @@ function OrgPersonCard({ person }) {
           {person.position}
         </span>
       ) : null}
-      {person.committee ? (
-        <p className="mt-1 text-[10px] uppercase tracking-widest text-yellow-100/80">{person.committee}</p>
-      ) : null}
     </article>
   )
 }
@@ -114,6 +111,22 @@ function resolveProfileImage(value) {
   }
 }
 
+function formatMemberSince(value) {
+  if (!value) return ''
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return value.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+  }
+
+  const raw = String(value).trim()
+  if (!raw) return ''
+
+  const parsed = new Date(raw)
+  if (Number.isNaN(parsed.getTime())) return raw
+  return parsed.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+}
+
+const coerceString = (value) => String(value ?? '').trim()
+
 export default function OrganizationStructure({ mode = 'board' }) {
   const navigate = useNavigate()
   const { user, getAllMembers, getAdmins, committees } = useAuth()
@@ -122,7 +135,13 @@ export default function OrganizationStructure({ mode = 'board' }) {
   const [committeeNames, setCommitteeNames] = useState([])
   const [loadingPeople, setLoadingPeople] = useState(true)
   const [loadingCommittees, setLoadingCommittees] = useState(true)
+  const [selectedPerson, setSelectedPerson] = useState(null)
   const contextMemberPeopleRef = useRef([])
+  const committeeScrollRef = useRef(null)
+  const committeeDragStartXRef = useRef(0)
+  const committeeDragStartScrollLeftRef = useRef(0)
+  const committeeDragMovedRef = useRef(false)
+  const [committeeDragging, setCommitteeDragging] = useState(false)
 
   const contextMemberPeople = useMemo(() => {
     const members = getAllMembers ? getAllMembers() : []
@@ -132,8 +151,14 @@ export default function OrganizationStructure({ mode = 'board' }) {
       .map(member => ({
         name: String(member?.name || '').trim(),
         image: resolveProfileImage(member?.profileImage),
+        idNumber: String(member?.idNumber || member?.id_number || '').trim(),
+        contactNumber: String(member?.contactNumber || member?.contact_number || '').trim(),
+        bloodType: String(member?.bloodType || member?.blood_type || '').trim(),
+        role: String(member?.role || '').trim(),
         committee: String(member?.committee || '').trim(),
         committeeRole: String(member?.committeeRole || member?.committee_role || '').trim(),
+        memberSince: member?.memberSince || member?.member_since || '',
+        status: String(member?.status || '').trim(),
       }))
       .filter(person => person.name)
 
@@ -158,8 +183,14 @@ export default function OrganizationStructure({ mode = 'board' }) {
         .map(row => ({
           name: String(row?.name || '').trim(),
           image: resolveProfileImage(row?.profile_image || row?.profileImage),
+          idNumber: String(row?.id_number || row?.idNumber || '').trim(),
+          contactNumber: String(row?.contact_number || row?.contactNumber || '').trim(),
+          bloodType: String(row?.blood_type || row?.bloodType || '').trim(),
+          role: String(row?.role || '').trim(),
           committee: String(row?.committee || '').trim(),
           committeeRole: String(row?.committee_role || row?.committeeRole || '').trim(),
+          memberSince: row?.member_since || row?.memberSince || '',
+          status: String(row?.status || '').trim(),
         }))
         .filter(person => person.name)
 
@@ -344,6 +375,86 @@ export default function OrganizationStructure({ mode = 'board' }) {
     ? 'Browse committees, OIC assignments, and volunteer groupings.'
     : 'Kusgan Board Members 2026.'
 
+  const onCommitteePointerDown = (event) => {
+    const scroller = committeeScrollRef.current
+    if (!scroller) return
+    if (event.button !== undefined && event.button !== 0) return
+
+    const target = event.target
+    if (target instanceof Element) {
+      if (target.closest('button, a, input, select, textarea, [role="button"]')) return
+    }
+
+    committeeDragMovedRef.current = false
+    setCommitteeDragging(true)
+    committeeDragStartXRef.current = event.clientX
+    committeeDragStartScrollLeftRef.current = scroller.scrollLeft
+
+    try {
+      scroller.setPointerCapture?.(event.pointerId)
+    } catch {
+      // ignore
+    }
+  }
+
+  const onCommitteePointerMove = (event) => {
+    const scroller = committeeScrollRef.current
+    if (!scroller || !committeeDragging) return
+
+    const deltaX = event.clientX - committeeDragStartXRef.current
+    if (Math.abs(deltaX) > 5) committeeDragMovedRef.current = true
+    scroller.scrollLeft = committeeDragStartScrollLeftRef.current - deltaX
+  }
+
+  const endCommitteeDrag = (event) => {
+    const scroller = committeeScrollRef.current
+    if (scroller) {
+      try {
+        scroller.releasePointerCapture?.(event.pointerId)
+      } catch {
+        // ignore
+      }
+    }
+    setCommitteeDragging(false)
+  }
+
+  const handleCommitteePersonClick = (person) => {
+    if (committeeDragMovedRef.current) {
+      committeeDragMovedRef.current = false
+      return
+    }
+    openPerson(person)
+  }
+
+  const openPerson = (person) => {
+    if (!person?.name) return
+    const members = getAllMembers ? getAllMembers() : []
+    const admins = getAdmins ? getAdmins() : []
+    const combined = [...(Array.isArray(members) ? members : []), ...(Array.isArray(admins) ? admins : [])]
+    const matched = combined.find(
+      member => String(member?.name || '').trim().toLowerCase() === String(person.name || '').trim().toLowerCase()
+    )
+    const resolvedRole = coerceString(matched?.role || person?.role || 'member')
+    const resolvedCommitteeRole = coerceString(
+      matched?.committeeRole || matched?.committee_role || person?.committeeRole || person?.committee_role || 'Member'
+    )
+
+    setSelectedPerson({
+      name: person.name,
+      image: resolveProfileImage(matched?.profileImage || person.image),
+      idNumber: coerceString(matched?.idNumber || matched?.id_number || person.idNumber),
+      contactNumber: coerceString(matched?.contactNumber || matched?.contact_number || person.contactNumber),
+      bloodType: coerceString(matched?.bloodType || matched?.blood_type || person.bloodType),
+      role: resolvedRole,
+      committeeRole: resolvedCommitteeRole,
+      committee: (resolvedRole === 'admin' || resolvedCommitteeRole.toLowerCase() === 'oic')
+        ? ''
+        : coerceString(matched?.committee || person.committee),
+      memberSince: formatMemberSince(matched?.memberSince || matched?.member_since || person.memberSince),
+      status: coerceString(matched?.status || person.status),
+    })
+  }
+
   return (
     <div
       className="min-h-screen px-4 py-8 text-white sm:px-6 lg:px-8"
@@ -399,12 +510,14 @@ export default function OrganizationStructure({ mode = 'board' }) {
               ) : overallOicPeople.length > 0 ? (
                 <div className="flex flex-wrap items-center justify-center gap-3">
                   {overallOicPeople.map(person => (
-                    <div
+                    <button
+                      type="button"
                       key={person.name}
-                      className="min-w-[220px] rounded-lg border border-white/12 bg-black/45 px-4 py-2 text-center text-xs font-semibold text-white sm:text-sm"
+                      onClick={() => handleCommitteePersonClick(person)}
+                      className="min-w-[220px] rounded-lg border border-white/12 bg-black/45 px-4 py-2 text-center text-xs font-semibold text-white transition hover:border-yellow-300/35 hover:bg-white/10 sm:text-sm"
                     >
                       {person.name}
-                    </div>
+                    </button>
                   ))}
                 </div>
               ) : (
@@ -422,12 +535,21 @@ export default function OrganizationStructure({ mode = 'board' }) {
               </div>
             ) : (
               <div
+                ref={committeeScrollRef}
                 className="flex flex-nowrap gap-6 overflow-x-auto pb-2"
+                onPointerDown={onCommitteePointerDown}
+                onPointerMove={onCommitteePointerMove}
+                onPointerUp={endCommitteeDrag}
+                onPointerCancel={endCommitteeDrag}
+                onPointerLeave={endCommitteeDrag}
                 style={{
                   scrollbarGutter: 'stable',
                   WebkitOverflowScrolling: 'touch',
                   paddingInline: '16px',
                   scrollPaddingInline: '16px',
+                  cursor: committeeDragging ? 'grabbing' : 'grab',
+                  touchAction: 'pan-y',
+                  userSelect: committeeDragging ? 'none' : 'auto',
                 }}
               >
                 {committeeGroups.map(group => (
@@ -451,22 +573,26 @@ export default function OrganizationStructure({ mode = 'board' }) {
 
                     <div className="flex flex-col items-center gap-2">
                       {group.oic.map(person => (
-                        <div
+                        <button
+                          type="button"
                           key={`${group.committee}-oic-${person.name}`}
-                          className="w-full rounded-lg border border-yellow-300/20 bg-yellow-400/10 px-2.5 py-2 text-center text-[11px] font-semibold text-yellow-100 sm:text-xs"
+                          onClick={() => handleCommitteePersonClick(person)}
+                          className="w-full rounded-lg border border-yellow-300/20 bg-yellow-400/10 px-2.5 py-2 text-center text-[11px] font-semibold text-yellow-100 transition hover:border-yellow-300/40 hover:bg-yellow-400/15 sm:text-xs"
                         >
                           {person.name}
-                        </div>
+                        </button>
                       ))}
 
                       {group.members.length > 0 ? (
                         group.members.map(person => (
-                          <div
+                          <button
+                            type="button"
                             key={`${group.committee}-${person.name}`}
-                            className="w-full rounded-lg border border-white/12 bg-black/45 px-2.5 py-2 text-center text-[11px] font-semibold text-white sm:text-xs"
+                            onClick={() => handleCommitteePersonClick(person)}
+                            className="w-full rounded-lg border border-white/12 bg-black/45 px-2.5 py-2 text-center text-[11px] font-semibold text-white transition hover:border-yellow-300/25 hover:bg-white/10 sm:text-xs"
                           >
                             {person.name}
-                          </div>
+                          </button>
                         ))
                       ) : (
                         <div className="w-full rounded-lg border border-white/10 bg-black/35 px-2.5 py-2 text-center text-[11px] text-white/60 sm:text-xs">
@@ -481,6 +607,71 @@ export default function OrganizationStructure({ mode = 'board' }) {
           </div>
         )}
       </div>
+
+      {selectedPerson ? (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center px-4"
+          style={{ background: 'rgba(0,0,0,0.7)' }}
+          onClick={() => setSelectedPerson(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-white/10 bg-black/90 p-6 text-center"
+            onClick={event => event.stopPropagation()}
+          >
+            <div className="mx-auto mb-4 h-24 w-24 overflow-hidden rounded-2xl border border-white/10 bg-white">
+              <img
+                src={selectedPerson.image || HERO_IMAGE}
+                alt={selectedPerson.name}
+                className="h-full w-full object-cover"
+                onError={(event) => {
+                  if (event.currentTarget.src !== HERO_IMAGE) event.currentTarget.src = HERO_IMAGE
+                }}
+              />
+            </div>
+            <p className="text-xs font-semibold tracking-[0.2em] uppercase text-yellow-200">Profile</p>
+            <h3 className="mt-2 text-xl font-bold text-white">{selectedPerson.name}</h3>
+
+            <div className="mt-5 rounded-xl border border-white/10 bg-white/5 p-4 text-left">
+              <div className="grid grid-cols-1 gap-3 text-sm">
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-white/60">ID number</span>
+                  <span className="text-white tabular-nums">{selectedPerson.idNumber || '-'}</span>
+                </div>
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-white/60">Contact</span>
+                  <span className="text-white tabular-nums">{selectedPerson.contactNumber || '—'}</span>
+                </div>
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-white/60">Blood type</span>
+                  <span className="text-white">{selectedPerson.bloodType || '—'}</span>
+                </div>
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-white/60">Joined</span>
+                  <span className="text-white">{selectedPerson.memberSince || '—'}</span>
+                </div>
+                {selectedPerson.role !== 'admin' && selectedPerson.committeeRole.toLowerCase() !== 'oic' ? (
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="text-white/60">Committee</span>
+                    <span className="text-white">{selectedPerson.committee || '—'}</span>
+                  </div>
+                ) : null}
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-white/60">Status</span>
+                  <span className="text-white">{selectedPerson.status || '—'}</span>
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setSelectedPerson(null)}
+              className="mt-5 w-full rounded-xl border border-white/15 bg-white/5 py-2 text-sm font-semibold text-white hover:bg-white/10"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }
