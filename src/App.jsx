@@ -58,10 +58,11 @@ function AuthPendingState({ title = 'Loading your session...' }) {
 }
 
 function ProtectedRoute({ children }) {
-  const { user, authResolved } = useAuth()
+  const { user, authResolved, loading } = useAuth()
 
   if (!authResolved && !user) return <AuthPendingState />
   if (user && !user.role) return <AuthPendingState title="Loading account access..." />
+  if (user && loading) return <AuthPendingState title="Loading your data..." />
 
   if (!user) {
     return <Navigate to="/landing" replace />
@@ -71,10 +72,11 @@ function ProtectedRoute({ children }) {
 }
 
 function AdminRoute({ children }) {
-  const { user, authResolved } = useAuth()
+  const { user, authResolved, loading } = useAuth()
 
   if (!authResolved && !user) return <AuthPendingState title="Checking admin access..." />
   if (user && !user.role) return <AuthPendingState title="Loading account access..." />
+  if (user && loading) return <AuthPendingState title="Loading your data..." />
 
   if (!user) {
     return <Navigate to="/landing" replace />
@@ -88,10 +90,11 @@ function AdminRoute({ children }) {
 }
 
 function MemberRoute({ children }) {
-  const { user, authResolved } = useAuth()
+  const { user, authResolved, loading } = useAuth()
 
   if (!authResolved && !user) return <AuthPendingState title="Checking member access..." />
   if (user && !user.role) return <AuthPendingState title="Loading account access..." />
+  if (user && loading) return <AuthPendingState title="Loading your data..." />
 
   if (!user) {
     return <Navigate to="/landing" replace />
@@ -106,9 +109,9 @@ function MemberRoute({ children }) {
 
 // Public Route - Redirects to dashboard if already logged in
 function PublicRoute({ children }) {
-  const { user } = useAuth()
+  const { user, loading } = useAuth()
 
-  if (user) {
+  if (user?.role && !loading) {
     return <Navigate to="/" replace />
   }
 

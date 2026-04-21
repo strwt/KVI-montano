@@ -944,12 +944,12 @@ export function AuthProvider({ children }) {
         event === 'INITIAL_SESSION' || event === 'SIGNED_IN'
       if (!shouldHydrate) return
 
-      // Make the UI react instantly: session exists, auth is resolved, stop auth-loading immediately.
+      // Session exists; keep the app gated until hydration finishes.
       authEpochRef.current += 1
       clearProfileCache()
       const epoch = authEpochRef.current
       setAuthResolved(true)
-      setLoading(false)
+      setLoading(true)
       setUser(mapProfileToUser(null, authUser))
 
       void hydrateForUser(authUser, epoch)

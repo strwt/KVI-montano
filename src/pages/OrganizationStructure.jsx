@@ -94,9 +94,6 @@ function OrgPersonCard({ person }) {
           {person.position}
         </span>
       ) : null}
-      {person.committee ? (
-        <p className="mt-1 text-[10px] uppercase tracking-widest text-yellow-100/80">{person.committee}</p>
-      ) : null}
     </article>
   )
 }
