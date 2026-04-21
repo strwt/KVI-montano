@@ -10,12 +10,12 @@ const THEME = {
 }
 
 const CORE_VALUES = [
-  { title: 'Kindness', description: 'Everyone with compassion and Care', image: '/Kindness.jpg', letter: 'K' },
-  { title: 'Unity', description: 'Working together as a team work for a common goal.', image: '/Unity.jpg', letter: 'U' },
-  { title: 'Service', description: 'Helping other and giving back to the community.', image: '/Service.jpg', letter: 'S' },
-  { title: 'Generosity', description: 'Giving time, resources, and effort selflessly..', image: '/Generosity.jpg', letter: 'G' },
-  { title: 'Aspiration', description: 'Striving to achieve our best and reach our goal.', image: '/Aspiration.jpg', letter: 'A' },
-  { title: 'Nurture', description: 'Nurture providing care and support to other thrive.', image: '/Nurture.jpg', letter: 'N' },
+  { title: 'Kindness', description: 'Everyone with compassion and Care', image: '/Kindness.jpg'},
+  { title: 'Unity', description: 'Working together as a team work for a common goal.', image: '/Unity.jpg'},
+  { title: 'Service', description: 'Helping other and giving back to the community.', image: '/Service.jpg'},
+  { title: 'Generosity', description: 'Giving time, resources, and effort selflessly..', image: '/Generosity.jpg'},
+  { title: 'Aspiration', description: 'Striving to achieve our best and reach our goal.', image: '/Aspiration.jpg'},
+  { title: 'Nurture', description: 'Nurture providing care and support to other thrive.', image: '/Nurture.jpg'},
 ]
 
 function SectionHeader({ title, subtitle }) {

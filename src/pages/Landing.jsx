@@ -81,7 +81,7 @@ const SERVICES = [
     key: 'environmental',
     title: 'Environmental',
     description:
-      'This refers to organized efforts that aim to protect, restore, and sustain the natural environment. Activities such as tree planting, clean-up drives, and ecosystem care help reduce pollution, restore biodiversity, and promote environmental awareness. In KUSGAN Volunteers Inc., environmental service reflects their commitment to building greener and more sustainable communities by actively involving volunteers in hands-on ecological initiatives that create long-term positive impact.',
+      'Focuses on protecting and sustaining nature through activities like tree planting and clean-up drives. In KUSGAN Volunteers Inc., this shows their commitment to creating greener, more sustainable communities through active volunteer involvement.',
     icon: Leaf,
     iconClass: 'icon-theme-environmental',
     accent: '#22c55e',
@@ -92,7 +92,7 @@ const SERVICES = [
     key: 'relief',
     title: 'Relief Operation',
     description:
-      'Relief operations involve immediate and coordinated responses to emergencies and disasters, ensuring that affected communities receive essential aid such as food, water, shelter, and support. It requires fast action, teamwork, and efficient resource distribution. In KUSGAN Volunteers Inc., this represents their role as a rapid-response volunteer group that mobilizes quickly during calamities, providing organized assistance and helping communities recover during critical times.',
+      'Involves quick and organized response during disasters, providing essential aid to affected communities. In KUSGAN Volunteers Inc., it reflects their ability to mobilize rapidly and support recovery efforts during emergencies.',
     icon: Activity,
     iconClass: 'icon-theme-relief',
     accent: '#3b82f6',
@@ -103,7 +103,7 @@ const SERVICES = [
     key: 'fire',
     title: 'Fire Response',
     description:
-      'Fire response refers to assisting in fire-related emergencies through coordinated action, safety measures, and support to minimize damage and protect lives. This includes preparedness, response coordination, and community awareness. In KUSGAN Volunteers Inc., fire response highlights their dedication to public safety by supporting fire incidents, working alongside authorities, and ensuring that communities are better prepared and protected against fire hazards.',
+      'Covers coordinated assistance during fire incidents to ensure safety and reduce damage. In KUSGAN Volunteers Inc., it highlights their role in supporting fire emergencies and promoting community preparedness.',
     icon: Flame,
     iconClass: 'icon-theme-fire',
     accent: '#f97316',
@@ -114,7 +114,7 @@ const SERVICES = [
     key: 'medical',
     title: 'Medical',
     description:
-      'Medical service focuses on promoting health and well-being through outreach programs such as medical missions, first aid assistance, and healthcare education. It aims to make healthcare accessible, especially to underserved communities. In KUSGAN Volunteers Inc., this reflects their mission to care for people by organizing health-related activities, providing basic medical support, and extending compassion through community-based healthcare initiatives.',
+      'Aims to improve health through medical missions, first aid, and outreach programs. In KUSGAN Volunteers Inc., it represents their dedication to providing accessible care and supporting community well-being.',
     icon: HeartPulse,
     iconClass: 'icon-theme-medical',
     accent: '#ef4444',
