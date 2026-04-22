@@ -91,7 +91,6 @@ function Login() {
       if (didTimeout) return
 
       if (result.success) {
-        setInfo('Signed in.')
         setPostLoginWaiting(true)
       } else {
         setError(result.message || 'Login failed.')
