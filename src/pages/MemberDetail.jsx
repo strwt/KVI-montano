@@ -197,14 +197,6 @@ function MemberDetail() {
           <ArrowLeft size={20} />
           Back to Members
         </button>
-        {isAdmin && (
-          <button
-            onClick={openUpdateModal}
-            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-          >
-            Update
-          </button>
-        )}
       </div>
 
       {actionError && (
@@ -230,11 +222,22 @@ function MemberDetail() {
               />
             </div>
             <div className="flex-1">
-              <div className="flex items-center gap-3 mb-2 flex-wrap">
-                <h2 className="text-2xl font-bold text-white">{member.name}</h2>
-                <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getRoleBadge(memberType)}`}>
-                  {memberType === 'admin' ? 'Administrator' : (memberType === 'oic' ? 'OIC' : 'Member')}
-                </span>
+              <div className="mb-2 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <h2 className="text-2xl font-bold text-white">{member.name}</h2>
+                  <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getRoleBadge(memberType)}`}>
+                    {memberType === 'admin' ? 'Administrator' : (memberType === 'oic' ? 'OIC' : 'Member')}
+                  </span>
+                </div>
+                {isAdmin && (
+                  <button
+                    onClick={openUpdateModal}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-yellow-400 px-6 py-3 text-sm font-semibold text-slate-900 transition-all duration-200 hover:-translate-y-0.5 hover:bg-yellow-300"
+                    style={{ boxShadow: '0 8px 24px rgba(250,204,21,0.35)' }}
+                  >
+                    Update
+                  </button>
+                )}
               </div>
               
                 <div className="space-y-3 mt-4">
@@ -263,12 +266,14 @@ function MemberDetail() {
             <p className="mb-1 text-sm text-slate-200">ID Number</p>
             <p className="text-lg font-semibold text-white">{member.idNumber || 'N/A'}</p>
           </div>
-          <div className="rounded-xl border border-white/15 bg-white/5 p-5 shadow-[0_12px_30px_rgba(8,47,73,0.18)] backdrop-blur-md">
-            <p className="mb-1 text-sm text-slate-200">Role</p>
-            <p className="text-lg font-semibold text-white">
-              {memberType === 'admin' ? 'Administrator' : (memberType === 'oic' ? 'OIC' : 'Member')}
-            </p>
-          </div>
+          {memberType !== 'admin' ? (
+            <div className="rounded-xl border border-white/15 bg-white/5 p-5 shadow-[0_12px_30px_rgba(8,47,73,0.18)] backdrop-blur-md">
+              <p className="mb-1 text-sm text-slate-200">Role</p>
+              <p className="text-lg font-semibold text-white">
+                {memberType === 'oic' ? 'OIC' : 'Member'}
+              </p>
+            </div>
+          ) : null}
           <div className="rounded-xl border border-white/15 bg-white/5 p-5 shadow-[0_12px_30px_rgba(8,47,73,0.18)] backdrop-blur-md">
             <p className="mb-1 text-sm text-slate-200">Status</p>
             <p className={`text-lg font-semibold flex items-center gap-2 ${
@@ -639,13 +644,24 @@ function MemberDetail() {
                 <label htmlFor="update-member-image" className="mb-1 block text-sm font-medium text-white/85">
                   Profile Image (optional)
                 </label>
+                <div className="flex items-center gap-3 rounded-lg border border-white/20 bg-white/10 px-3 py-2">
+                  <label
+                    htmlFor="update-member-image"
+                    className="inline-flex cursor-pointer items-center justify-center rounded-md border border-white/15 bg-white/10 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/15"
+                  >
+                    Choose File
+                  </label>
+                  <span className="min-w-0 truncate text-sm text-white/85">
+                    {newProfileImageFile?.name || 'No file chosen'}
+                  </span>
+                </div>
                 <input
                   id="update-member-image"
                   name="profileImage"
                   type="file"
                   accept="image/*"
                   onChange={(e) => setNewProfileImageFile(e.target.files?.[0] || null)}
-                  className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-red-500 file:mr-3 file:border-0 file:bg-white/10 file:px-3 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-white/15"
+                  className="sr-only"
                 />
               </div>
 

@@ -423,13 +423,24 @@ function Members() {
               </div>
               <div>
                 <label htmlFor="create-member-image" className="block text-xs text-gray-500 mb-1">Profile Image (optional)</label>
+                <div className="flex h-10 items-center gap-3 rounded-lg border border-white/15 bg-white/5 px-3">
+                  <label
+                    htmlFor="create-member-image"
+                    className="inline-flex h-8 cursor-pointer items-center justify-center rounded-md border border-white/15 bg-white/10 px-3 text-sm font-semibold text-white transition-colors hover:bg-white/15"
+                  >
+                    Choose File
+                  </label>
+                  <span className="min-w-0 truncate text-sm text-white/80">
+                    {newMemberImageFile?.name || 'No file chosen'}
+                  </span>
+                </div>
                 <input
                   id="create-member-image"
                   name="profileImage"
                   type="file"
                   accept="image/*"
                   onChange={(e) => setNewMemberImageFile(e.target.files?.[0] || null)}
-                  className="w-full h-10 rounded-lg border border-white/15 bg-white/5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-red-500 file:mr-3 file:h-10 file:border-0 file:bg-white/10 file:px-3 file:text-sm file:font-medium file:text-white hover:file:bg-white/15"
+                  className="sr-only"
                 />
               </div>
               <div>
@@ -1066,7 +1077,7 @@ function Members() {
                       : memberType === 'oic'
                         ? 'bg-amber-50 text-amber-700 border-amber-200'
                         : 'bg-blue-50 text-blue-700 border-blue-200'
-                    if (memberType === 'member') return null
+                    if (memberType === 'member' || memberType === 'admin') return null
                     return (
                       <span className={`px-2 py-1 rounded text-xs border ${tone}`}>
                         Role: {label}
