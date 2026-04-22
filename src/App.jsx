@@ -21,6 +21,7 @@ import CategoryManagement from './pages/CategoryManagement'
 import CommitteeManagement from './pages/CommitteeManagement'
 import ChatbotWidget from './components/ChatbotWidget'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import { ConfirmProvider } from './context/ConfirmContext'
 import './index.css'
 
 function AuthPendingState({ title = 'Loading your session...' }) {
@@ -165,10 +166,12 @@ function AppRoutes() {
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <AppRoutes />
-        <ChatbotGate />
-      </Router>
+      <ConfirmProvider>
+        <Router>
+          <AppRoutes />
+          <ChatbotGate />
+        </Router>
+      </ConfirmProvider>
     </AuthProvider>
   )
 }

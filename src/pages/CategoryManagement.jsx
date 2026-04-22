@@ -3,6 +3,7 @@ import { Plus, Trash2, Save, Tags, Pencil } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useI18n } from '../i18n/useI18n'
 import { supabase } from '../lib/supabaseClient'
+import { useConfirm } from '../context/ConfirmContext'
 
 const normalizeCategoryKey = value =>
   String(value || '')
@@ -168,6 +169,7 @@ const normalizeFieldKey = (value) => normalizeName(value).toLowerCase()
 function CategoryManagement() {
   const { user, reloadCategories } = useAuth()
   const { t } = useI18n()
+  const confirm = useConfirm()
   const isAdmin = user?.role === 'admin'
 
   const [categories, setCategories] = useState([])
@@ -301,7 +303,21 @@ function CategoryManagement() {
     setFields(prev => [...(Array.isArray(prev) ? prev : []), { fieldId: null, fieldName: '', fieldType: '' }])
   }
 
-  const handleRemoveFieldRow = (index) => {
+  const handleRemoveFieldRow = async (index) => {
+    const currentFields = Array.isArray(fields) ? fields : []
+    if (currentFields.length <= 1) return
+    const removing = currentFields[index] || null
+    const label = String(removing?.fieldName || '').trim() || `Field ${index + 1}`
+
+    const ok = await confirm({
+      title: t('Remove field'),
+      description: `Remove "${label}"? This change will be applied when you save the category.`,
+      confirmText: t('Remove'),
+      cancelText: t('Cancel'),
+      danger: true,
+    })
+    if (!ok) return
+
     setFields(prev => {
       const next = Array.isArray(prev) ? [...prev] : []
       next.splice(index, 1)
@@ -477,6 +493,14 @@ function CategoryManagement() {
 
   const handleDeleteCategory = async () => {
     if (!editingCategory?.id) return
+    const ok = await confirm({
+      title: t('Delete'),
+      description: `Delete category "${String(editingCategory?.name || '').trim() || 'Untitled'}"? This cannot be undone.`,
+      confirmText: t('Delete'),
+      cancelText: t('Cancel'),
+      danger: true,
+    })
+    if (!ok) return
     setFormError('')
     setSaveState('saving')
     try {
@@ -643,7 +667,7 @@ function CategoryManagement() {
                 <div className="flex items-end justify-end">
                   <button
                     type="button"
-                    onClick={() => handleRemoveFieldRow(index)}
+                    onClick={() => void handleRemoveFieldRow(index)}
                     className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-[#ffffff] text-slate-700 transition-colors hover:bg-slate-50"
                     aria-label={t('Remove field')}
                     title={t('Remove field')}

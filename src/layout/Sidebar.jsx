@@ -3,10 +3,12 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { LayoutDashboard, Calendar, ChevronLeft, ChevronRight, Users, FileText, Sun, Moon, ClipboardCheck, LogOut, Tags, Settings, ChevronDown, ChevronUp, HandHeart } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useI18n } from '../i18n/useI18n'
+import { useConfirm } from '../context/ConfirmContext'
 
 function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
   const { user, logout } = useAuth()
   const { t } = useI18n()
+  const confirm = useConfirm()
   const navigate = useNavigate()
   const location = useLocation()
   const [managementOpen, setManagementOpen] = useState(null)
@@ -36,6 +38,14 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
   ]
 
   const handleLogout = async () => {
+    const ok = await confirm({
+      title: t('Logout'),
+      description: 'Are you sure you want to log out?',
+      confirmText: t('Logout'),
+      cancelText: 'Cancel',
+      danger: true,
+    })
+    if (!ok) return
     await logout()
     navigate('/landing', { replace: true })
   }

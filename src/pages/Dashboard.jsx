@@ -19,6 +19,7 @@ import { useI18n } from '../i18n/useI18n'
 import { supabase } from '../lib/supabaseClient'
 import { fetchSupabaseEvents, invalidateSupabaseEventsCache, isSupabaseEnabled } from '../lib/supabaseEvents'
 import { fetchMyNotifications } from '../lib/supabaseNotifications'
+import { useConfirm } from '../context/ConfirmContext'
 
 const normalizeCategoryKey = value =>
   String(value || '')
@@ -215,6 +216,7 @@ const getIconThemeClass = categoryKey => {
 function Dashboard() {
   const { user, categories } = useAuth()
   const { t } = useI18n()
+  const confirm = useConfirm()
   const navigate = useNavigate()
   const isAdmin = user?.role === 'admin'
   const userCommitteeRole = user?.committeeRole || user?.committee_role || 'Member'
@@ -458,6 +460,14 @@ function Dashboard() {
 
   const dismissNotification = async (notificationId) => {
     if (!notificationId) return
+    const ok = await confirm({
+      title: t('Remove notification'),
+      description: 'Remove this notification? You can still view the event in Calendar.',
+      confirmText: t('Remove'),
+      cancelText: t('Cancel'),
+      danger: true,
+    })
+    if (!ok) return
     const updated = notifications.filter(item => item.id !== notificationId)
     setNotifications(updated)
     await supabase.from('notifications').delete().eq('id', notificationId)

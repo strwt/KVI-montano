@@ -20,6 +20,7 @@ import {
   EyeOff,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { useConfirm } from '../context/ConfirmContext'
 import { useNavigate } from 'react-router-dom'
 import dayjs from 'dayjs'
 
@@ -51,6 +52,7 @@ function Members() {
     ensureAdminDataLoaded,
   } = useAuth()
   const navigate = useNavigate()
+  const confirm = useConfirm()
   const [searchQuery, setSearchQuery] = useState('')
   const [roleFilter, setRoleFilter] = useState('member')
   const [committeeFilter, setCommitteeFilter] = useState('all')
@@ -344,6 +346,14 @@ function Members() {
 
 	  const handleRejectRecruitment = async (recruitmentId) => {
 	    setRecruitmentActionError('')
+      const ok = await confirm({
+        title: 'Reject application?',
+        description: 'Rejecting will mark this recruitment as rejected.',
+        confirmText: 'Reject',
+        cancelText: 'Cancel',
+        danger: true,
+      })
+      if (!ok) return
 	    const result = await rejectRecruitment(recruitmentId)
 	    if (!result.success) {
 	      setRecruitmentActionError(result.message)
