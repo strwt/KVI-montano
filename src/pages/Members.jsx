@@ -1063,7 +1063,7 @@ function Members() {
 
                 <div className="mt-4 flex flex-wrap gap-2">
                   {member.role !== 'admin' && (member.committeeRole || member.committee_role) !== 'OIC' ? (
-                    <span className="px-2 py-1 rounded bg-red-50 text-red-700 text-xs border border-red-200">
+                    <span className="px-2 py-1 rounded text-xs border border-yellow-300/30 text-yellow-200">
                       Committee: {member.committee || 'N/A'}
                     </span>
                   ) : null}
