@@ -417,7 +417,10 @@ function Members() {
                 />
               </div>
               <div className="flex flex-col items-center md:row-span-2">
-                <div className="w-[150px] h-[150px] overflow-hidden rounded-lg border border-slate-200 bg-[#ffffff]">
+                <div
+                  className="flex h-[150px] w-[150px] items-center justify-center overflow-hidden rounded-2xl border border-slate-200 !bg-white shadow-[0_14px_32px_rgba(15,23,42,0.12)]"
+                  style={{ colorScheme: 'light', backgroundColor: '#ffffff' }}
+                >
                   {newMemberImagePreviewUrl ? (
                     <img
                       src={newMemberImagePreviewUrl}
@@ -425,7 +428,10 @@ function Members() {
                       className="h-full w-full object-cover"
                     />
                   ) : (
-                    <div className="h-full w-full flex items-center justify-center text-xs text-slate-400">
+                    <div
+                      className="flex h-full w-full items-center justify-center !bg-white text-xs text-slate-400"
+                      style={{ backgroundColor: '#ffffff' }}
+                    >
                       No preview
                     </div>
                   )}
@@ -433,13 +439,27 @@ function Members() {
               </div>
               <div>
                 <label htmlFor="create-member-image" className="block text-xs text-gray-500 mb-1">Profile Image (optional)</label>
+                <div
+                  className="flex min-h-[56px] items-center gap-3 rounded-xl border border-slate-200 !bg-white px-3 py-2 text-slate-700 shadow-[0_12px_30px_rgba(15,23,42,0.08)]"
+                  style={{ colorScheme: 'light', backgroundColor: '#ffffff' }}
+                >
+                  <label
+                    htmlFor="create-member-image"
+                    className="inline-flex cursor-pointer items-center justify-center rounded-xl bg-yellow-400 px-4 py-2 text-sm font-semibold text-slate-900 shadow-[0_8px_24px_rgba(250,204,21,0.35)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-yellow-300"
+                  >
+                    Choose File
+                  </label>
+                  <span className="min-w-0 truncate text-sm text-slate-600">
+                    {newMemberImageFile?.name || 'No file chosen'}
+                  </span>
+                </div>
                 <input
                   id="create-member-image"
                   name="profileImage"
                   type="file"
                   accept="image/*"
                   onChange={(e) => setNewMemberImageFile(e.target.files?.[0] || null)}
-                  className="w-full h-10 rounded-lg border border-white/15 bg-white/5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-red-500 file:mr-3 file:h-10 file:border-0 file:bg-white/10 file:px-3 file:text-sm file:font-medium file:text-white hover:file:bg-white/15"
+                  className="sr-only"
                 />
               </div>
               <div>
@@ -812,7 +832,11 @@ function Members() {
       <div className="mb-4 rounded-2xl border border-white/10 bg-white/5 p-4 shadow-[0_10px_20px_rgba(0,0,0,0.25)] backdrop-blur-md">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/50" size={18} />
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-slate-700"
+              size={18}
+              strokeWidth={2.25}
+            />
             <input
               type="text"
               placeholder="Search by name, email, or ID..."
@@ -821,11 +845,15 @@ function Members() {
                 setCurrentPage(1)
                 setSearchQuery(e.target.value)
               }}
-              className="w-full rounded-lg border border-white/15 bg-white/5 py-2 pl-10 pr-4 text-white shadow-sm backdrop-blur-md placeholder:text-white/30 focus:border-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
+              className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-10 pr-4 text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
             />
           </div>
           <div className="relative">
-            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-white/50" size={18} />
+            <Filter
+              className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-slate-700"
+              size={18}
+              strokeWidth={2.25}
+            />
             <select
               value={roleFilter}
               onChange={e => {
@@ -833,7 +861,7 @@ function Members() {
                 setRoleFilter(e.target.value)
                 setCommitteeFilter('all')
               }}
-              className="w-full rounded-lg border border-white/15 bg-white/5 py-2 pl-10 pr-4 text-white shadow-sm backdrop-blur-md focus:border-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
+              className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-10 pr-4 text-slate-900 shadow-sm focus:border-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
             >
               {ROLE_FILTER_OPTIONS.map(roleOption => (
                 <option key={roleOption.value} value={roleOption.value}>
@@ -850,7 +878,7 @@ function Members() {
                   setCurrentPage(1)
                   setCommitteeFilter(e.target.value)
                 }}
-                className="w-full rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-white shadow-sm backdrop-blur-md focus:border-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
+                className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2 text-slate-900 shadow-sm focus:border-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
               >
                 <option value="all">All Committees</option>
                 {committeeOptions.map(committee => (
@@ -864,14 +892,18 @@ function Members() {
             <div />
           )}
           <div className="relative">
-            <Shield className="absolute left-3 top-1/2 -translate-y-1/2 text-white/50" size={18} />
+            <Shield
+              className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-slate-700"
+              size={18}
+              strokeWidth={2.25}
+            />
             <select
               value={insuranceFilter}
               onChange={e => {
                 setCurrentPage(1)
                 setInsuranceFilter(e.target.value)
               }}
-              className="w-full rounded-lg border border-white/15 bg-white/5 py-2 pl-10 pr-4 text-white shadow-sm backdrop-blur-md focus:border-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
+              className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-10 pr-4 text-slate-900 shadow-sm focus:border-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
             >
               <option value="all">All Insurance</option>
               <option value="insured">Insured</option>
@@ -903,7 +935,7 @@ function Members() {
                   setShowBulkDeleteModal(true)
                 }}
                 disabled={selectedCount === 0}
-                className="rounded-lg border border-red-300/30 bg-red-500/20 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-500/30 disabled:cursor-not-allowed disabled:opacity-60"
+                className="rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(220,38,38,0.28)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Delete selected
               </button>
@@ -1076,7 +1108,7 @@ function Members() {
                       : memberType === 'oic'
                         ? 'bg-amber-50 text-amber-700 border-amber-200'
                         : 'bg-blue-50 text-blue-700 border-blue-200'
-                    if (memberType === 'member') return null
+                    if (memberType === 'member' || memberType === 'admin') return null
                     return (
                       <span className={`px-2 py-1 rounded text-xs border ${tone}`}>
                         Role: {label}

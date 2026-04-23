@@ -244,8 +244,8 @@ function Login() {
               >
                 ID Number
               </label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 text-white/50" size={18} />
+              <div className="relative text-black">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 text-black" size={18} />
                 <input
                   id="login-id-number"
                   name="idNumber"
@@ -269,8 +269,8 @@ function Login() {
               >
                 Password
               </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-white/50" size={18} />
+              <div className="relative text-black">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-black" size={18} />
                 <input
                   id="login-password"
                   name="password"
@@ -288,7 +288,7 @@ function Login() {
                   onClick={() => setShowPassword(!showPassword)}
                   disabled={isLoading || postLoginWaiting}
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-black transition-colors hover:text-black/80 disabled:opacity-60"
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
