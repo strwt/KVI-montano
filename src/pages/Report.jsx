@@ -1358,23 +1358,23 @@ const getFieldValue = (event, key, fallbackKeys = []) => {
 			            return (
 			              <div
 			                key={`entries-${categoryKey}`}
-			                className="rounded-xl border border-gray-200 dark:border-zinc-700 border-l-4 bg-white/60 dark:bg-zinc-900/40 p-4"
+			                className="rounded-xl border border-slate-200 border-l-4 bg-[#ffffff] p-4"
 			                style={{ borderLeftColor: categoryColor }}
 			              >
 			                <div className="flex flex-wrap items-center justify-between gap-2">
-			                  <h4 className="flex items-center gap-2 text-sm font-semibold text-gray-800 dark:text-zinc-100">
+			                  <h4 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
 			                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: categoryColor }} />
 			                    {getCategoryLabel(categoryKey)}
 			                  </h4>
 			                </div>
 			
 			                {events.length === 0 ? (
-			                  <div className="mt-3 text-sm text-gray-500 dark:text-zinc-400">No entries for this category in the selected date window.</div>
+			                  <div className="mt-3 text-sm text-slate-600">No entries for this category in the selected date window.</div>
 			                ) : (
 			                  <div className="mt-3 overflow-x-auto">
 			                    <table className="w-full min-w-[720px] text-sm">
 			                      <thead>
-			                        <tr className="text-left text-xs uppercase tracking-[0.14em] text-neutral-500 dark:text-neutral-400">
+			                        <tr className="text-left text-xs uppercase tracking-[0.14em] text-slate-600">
 			                          <th className="pb-2 pr-4">Title</th>
 			                          <th className="pb-2 pr-4">Date</th>
 			                          {numericKeys.map(key => (
@@ -1382,13 +1382,13 @@ const getFieldValue = (event, key, fallbackKeys = []) => {
 			                          ))}
 			                        </tr>
 			                      </thead>
-			                      <tbody className="divide-y divide-neutral-100 dark:divide-zinc-800">
+			                      <tbody className="divide-y divide-slate-200">
 			                        {events.map(event => {
 			                          const data = event?.categoryData && typeof event.categoryData === 'object' ? event.categoryData : {}
 			                          const dateLabel = event?._date?.isValid?.() ? event._date.format('YYYY-MM-DD') : ''
 			                          return (
-			                            <tr key={`row-${categoryKey}-${event.id}`} className="text-neutral-700 dark:text-zinc-200 align-top">
-			                              <td className="py-2 pr-4 font-medium text-neutral-900 dark:text-zinc-100">{event.title || '-'}</td>
+			                            <tr key={`row-${categoryKey}-${event.id}`} className="text-slate-700 align-top">
+			                              <td className="py-2 pr-4 font-medium text-slate-900">{event.title || '-'}</td>
 			                              <td className="py-2 pr-4 whitespace-nowrap">{dateLabel || '-'}</td>
 			                              {numericKeys.map(key => (
 			                                <td key={`cell-${categoryKey}-${event.id}-${key}`} className="py-2 pr-4 whitespace-nowrap">

@@ -835,7 +835,7 @@ function AssignMembersPicker({ allMembers, selectedIds, onChange, label = 'Assig
               key={member.id}
               type="button"
               onClick={() => toggleMember(member.id)}
-              className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-red-400/40 bg-red-500/15 text-red-100 text-xs hover:bg-red-500/25"
+              className="inline-flex items-center gap-2 rounded-full border border-red-700 bg-red-600 px-3 py-1 text-xs text-white hover:bg-red-700"
             >
               {member.name}
               <X size={12} />
@@ -2399,8 +2399,8 @@ function Calendar({ listOnly = false }) {
 
                     {isExpanded && (
                       <div className="px-4 pb-4 border-t border-slate-200 pt-3 text-sm text-slate-700">
-                        <div className={`${item.address ? 'grid grid-cols-1 lg:grid-cols-2 gap-3 items-start' : ''}`}>
-	                          <div className="space-y-3">
+                        <div className="grid grid-cols-1 gap-3 items-start">
+	                          <div className="min-w-0 space-y-3">
 	                            <p>{item.content || 'No content provided.'}</p>
 	                            {renderDoneDetails(item)}
 	                            <div className="flex items-center gap-2 text-slate-600">
@@ -2468,7 +2468,11 @@ function Calendar({ listOnly = false }) {
                               </div>
                             )}
                           </div>
-                          {item.address && <ReadOnlyEventMap address={item.address} location={item.location || null} />}
+                          {item.address && (
+                            <div className="w-full min-w-0 overflow-hidden">
+                              <ReadOnlyEventMap address={item.address} location={item.location || null} />
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}
@@ -2665,11 +2669,11 @@ function Calendar({ listOnly = false }) {
       )}
 
       {selectedMonth && (
-        <div className="bg-white rounded-2xl shadow-xl overflow-hidden max-w-6xl mx-auto layout-glow border border-slate-200">
-          <div className="bg-gradient-to-r from-white to-slate-50 p-5 flex items-center justify-between border-b border-slate-200">
+        <div className="max-w-6xl mx-auto overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-[0_12px_30px_rgba(0,0,0,0.25)] backdrop-blur-md">
+          <div className="flex items-center justify-between border-b border-white/10 bg-white/5 p-5 backdrop-blur-md">
             <div>
-              <h3 className="text-lg font-semibold text-slate-900">{selectedMonth.monthLabel}</h3>
-              <p className="text-sm text-slate-500">{selectedMonth.items.length} event(s)</p>
+              <h3 className="text-lg font-bold text-white">{selectedMonth.monthLabel}</h3>
+              <p className="text-sm font-semibold text-white">{selectedMonth.items.length} event(s)</p>
             </div>
             <button
               onClick={() => {
@@ -2685,19 +2689,19 @@ function Calendar({ listOnly = false }) {
             </button>
           </div>
 
-          <div className="p-4 sm:p-6 md:p-7 space-y-5">
+          <div className="space-y-5 bg-white/5 p-4 sm:p-6 md:p-7 backdrop-blur-sm">
             <div className="flex flex-col sm:flex-row gap-4">
               <input
                 type="text"
                 placeholder="Search events by title, content, address, or category..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
+                className="flex-1 rounded-lg border border-white/15 bg-white/10 px-4 py-3 text-white shadow-sm backdrop-blur-sm transition-all placeholder:text-white/45 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-red-500"
               />
               <select
                 value={selectedCategoryKey}
                 onChange={e => updateCategoryRoute(e.target.value)}
-                className="sm:w-64 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
+                className="sm:w-64 rounded-lg border border-white/15 bg-white/10 px-4 py-3 text-white shadow-sm backdrop-blur-sm transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-red-500"
               >
                 <option value="all">All Categories</option>
                 {filterCategoryKeys.map(category => (
@@ -2721,21 +2725,21 @@ function Calendar({ listOnly = false }) {
               </select>
             </div>
             {selectedDateFilter && (
-              <div className="flex items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2">
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/5 px-3 py-2 backdrop-blur-sm">
                 <p className="text-sm text-red-700">
                   Showing events for {dayjs(selectedDateFilter).format('MMMM D, YYYY')}
                 </p>
                 <button
                   type="button"
                   onClick={() => setSelectedDateFilter('')}
-                  className="text-xs px-2 py-1 rounded bg-white border border-red-200 text-red-700 hover:bg-red-100 transition-colors"
+                  className="rounded border border-white/15 bg-white/10 px-2 py-1 text-xs text-white transition-colors hover:bg-white/15"
                 >
                   Clear Date Filter
                 </button>
               </div>
             )}
 
-            <div className="space-y-3 max-h-[62vh] overflow-y-auto pr-1">
+            <div className="max-h-[62vh] space-y-3 overflow-y-auto rounded-2xl border border-white/10 bg-white/5 p-3 pr-2 backdrop-blur-md">
             {filteredItems.map(item => {
               const isExpanded = expandedItemId === item.id
               const storedMemberLabels = String(item.membersInvolve || '')
@@ -2897,31 +2901,39 @@ function Calendar({ listOnly = false }) {
           <div
             className="relative isolate w-full max-w-3xl animate-fade-in-up max-h-[92vh] overflow-y-auto rounded-3xl border border-white/20 shadow-2xl"
             style={{
-              background: 'linear-gradient(145deg, rgba(255,255,255,0.18), rgba(255,255,255,0.04))',
-              boxShadow: '0 24px 70px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.25)',
-              backdropFilter: 'blur(24px)',
+              background: 'linear-gradient(145deg, rgba(14,116,144,0.88), rgba(30,64,175,0.84) 52%, rgba(59,130,246,0.78))',
+              boxShadow: '0 24px 70px rgba(8,47,73,0.34), inset 0 1px 0 rgba(255,255,255,0.14)',
+              backdropFilter: 'blur(20px)',
             }}
           >
-            <div className="flex items-center justify-between p-4 sm:p-5 border-b border-white/10 sticky top-0 bg-slate-950/45 backdrop-blur-xl z-50 rounded-t-3xl">
+            <div
+              className="sticky top-0 z-50 flex items-center justify-between rounded-t-3xl border-b p-4 sm:p-5"
+              style={{
+                background: 'linear-gradient(180deg, rgba(14,116,144,0.96), rgba(30,64,175,0.9))',
+                borderColor: 'rgba(255,255,255,0.12)',
+                backdropFilter: 'blur(18px)',
+              }}
+            >
               <div>
-                <h3 className="text-lg font-semibold text-white">{editingEventId ? 'Update Event' : 'Create New Event'}</h3>
-                <p className="mt-1 text-sm text-white/70">Enter the event details in the same mirrored glass style as the recruitment form.</p>
+                <h3 className="text-lg font-semibold" style={{ color: '#f8fafc' }}>{editingEventId ? 'Update Event' : 'Create New Event'}</h3>
+                <p className="mt-1 text-sm" style={{ color: 'rgba(226,232,240,0.78)' }}>Enter the event details in the same mirrored glass style as the recruitment form.</p>
               </div>
               <button
                 onClick={() => {
                   resetForm()
                   setShowEventForm(false)
                 }}
-                className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                className="rounded-lg p-2 transition-colors hover:bg-white/10"
+                style={{ color: 'rgba(226,232,240,0.82)' }}
               >
-                <X size={20} className="text-white/70" />
+                <X size={20} />
               </button>
             </div>
 
             <form onSubmit={handleAddEvent} className="p-4 sm:p-6 space-y-5">
               {formError && <p className="rounded-lg border border-red-400/40 bg-red-500/20 p-3 text-sm text-red-100">{formError}</p>}
 
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-[0_12px_30px_rgba(2,8,23,0.22)] backdrop-blur-md sm:p-5">
                 <h4 className="text-sm font-semibold text-white uppercase tracking-wide mb-3">Category</h4>
                 <div className="space-y-4">
   	                  <div className="grid grid-cols-1 gap-4">
@@ -2999,7 +3011,7 @@ function Calendar({ listOnly = false }) {
 	                </div>
 	              </div>
 
-              <div className="relative isolate z-0 rounded-2xl border border-white/10 p-4 sm:p-5 bg-white/5">
+              <div className="relative isolate z-0 rounded-2xl border border-white/10 bg-white/5 p-4 shadow-[0_12px_30px_rgba(2,8,23,0.22)] backdrop-blur-md sm:p-5">
                 <h4 className="text-sm font-semibold text-white uppercase tracking-wide mb-3">Location</h4>
                 <EventLocationPicker
                   address={formData.address}
@@ -3034,7 +3046,7 @@ function Calendar({ listOnly = false }) {
                     resetForm()
                     setShowEventForm(false)
                   }}
-                  className="px-6 py-3 rounded-lg border border-white/20 bg-white/10 text-white hover:bg-white/15 transition-colors"
+                  className="px-6 py-3 rounded-lg border border-white/15 bg-white/5 text-white hover:bg-white/10 transition-colors"
                 >
                   Cancel
                 </button>
@@ -3544,17 +3556,24 @@ function Calendar({ listOnly = false }) {
 
       {selectedMember ? (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[70] p-4">
-          <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-gray-200 p-6">
+          <div
+            className="w-full max-w-md rounded-2xl border border-white/20 p-6 shadow-2xl"
+            style={{
+              background: 'linear-gradient(145deg, rgba(14,116,144,0.88), rgba(30,64,175,0.84) 52%, rgba(59,130,246,0.78))',
+              boxShadow: '0 24px 70px rgba(8,47,73,0.34), inset 0 1px 0 rgba(255,255,255,0.14)',
+              backdropFilter: 'blur(20px)',
+            }}
+          >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-xs font-semibold tracking-[0.2em] uppercase text-red-600">Member</p>
-                <h3 className="mt-2 text-xl font-bold text-gray-900 truncate">{selectedMember.name || '—'}</h3>
-                <p className="mt-1 text-sm text-gray-500 truncate">{selectedMember.idNumber || '—'}</p>
+                <p className="text-xs font-semibold tracking-[0.2em] uppercase text-cyan-100">Member</p>
+                <h3 className="mt-2 truncate text-xl font-bold text-white">{selectedMember.name || '—'}</h3>
+                <p className="mt-1 truncate text-sm text-slate-200">{selectedMember.idNumber || '—'}</p>
               </div>
               <button
                 type="button"
                 onClick={() => setSelectedMember(null)}
-                className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+                className="rounded-lg p-2 text-slate-200 transition-colors hover:bg-white/10 hover:text-white"
                 aria-label="Close member"
               >
                 <X size={18} />
@@ -3562,7 +3581,7 @@ function Calendar({ listOnly = false }) {
             </div>
 
             <div className="mt-4 flex justify-center">
-              <div className="h-24 w-24 overflow-hidden rounded-2xl border border-gray-200 bg-gray-50">
+              <div className="h-24 w-24 overflow-hidden rounded-2xl border border-white/15 bg-white/10">
                 {selectedMember.profileImage ? (
                   <img
                     src={selectedMember.profileImage}
@@ -3571,34 +3590,34 @@ function Calendar({ listOnly = false }) {
                     loading="lazy"
                   />
                 ) : (
-                  <div className="h-full w-full flex items-center justify-center text-xs text-gray-400">No image</div>
+                  <div className="flex h-full w-full items-center justify-center text-xs text-slate-200">No image</div>
                 )}
               </div>
             </div>
 
-            <div className="mt-5 rounded-xl border border-gray-200 bg-gray-50 p-4">
+            <div className="mt-5 rounded-xl border border-white/15 bg-white/10 p-4 backdrop-blur-md">
               <div className="grid grid-cols-1 gap-3 text-sm">
                 <div className="flex items-baseline justify-between gap-3">
-                  <span className="text-gray-500">Contact</span>
-                  <span className="text-gray-900 tabular-nums">{selectedMember.contactNumber || '—'}</span>
+                  <span className="text-slate-200">Contact</span>
+                  <span className="tabular-nums text-white">{selectedMember.contactNumber || '—'}</span>
                 </div>
                 <div className="flex items-baseline justify-between gap-3">
-                  <span className="text-gray-500">Blood type</span>
-                  <span className="text-gray-900">{selectedMember.bloodType || '—'}</span>
+                  <span className="text-slate-200">Blood type</span>
+                  <span className="text-white">{selectedMember.bloodType || '—'}</span>
                 </div>
                 <div className="flex items-baseline justify-between gap-3">
-                  <span className="text-gray-500">Member since</span>
-                  <span className="text-gray-900">{formatMemberSince(selectedMember.memberSince) || '—'}</span>
+                  <span className="text-slate-200">Member since</span>
+                  <span className="text-white">{formatMemberSince(selectedMember.memberSince) || '—'}</span>
                 </div>
                 {selectedMember.role !== 'admin' && (selectedMember.committeeRole || selectedMember.committee_role) !== 'OIC' ? (
                   <div className="flex items-baseline justify-between gap-3">
-                    <span className="text-gray-500">Committee</span>
-                    <span className="text-gray-900">{selectedMember.committee || '—'}</span>
+                    <span className="text-slate-200">Committee</span>
+                    <span className="text-white">{selectedMember.committee || '—'}</span>
                   </div>
                 ) : null}
                 <div className="flex items-baseline justify-between gap-3">
-                  <span className="text-gray-500">Status</span>
-                  <span className="text-gray-900">{selectedMember.status || selectedMember.accountStatus || '—'}</span>
+                  <span className="text-slate-200">Status</span>
+                  <span className="text-white">{selectedMember.status || selectedMember.accountStatus || '—'}</span>
                 </div>
               </div>
             </div>
@@ -3606,7 +3625,7 @@ function Calendar({ listOnly = false }) {
             <button
               type="button"
               onClick={() => setSelectedMember(null)}
-              className="mt-5 w-full rounded-xl border border-gray-300 bg-white py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+              className="mt-5 w-full rounded-xl border border-white/15 bg-white/10 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/15"
             >
               Close
             </button>

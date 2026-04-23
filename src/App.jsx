@@ -11,6 +11,7 @@ import Members from './pages/Members'
 import MemberDetail from './pages/MemberDetail'
 import Donations from './pages/Donations'
 import Report from './pages/Report'
+import AchievementsManagement from './pages/AchievementsManagement'
 import Login from './pages/Login'
 import Landing from './pages/Landing'
 import Recruitment from './pages/Recruitment'
@@ -21,6 +22,7 @@ import CategoryManagement from './pages/CategoryManagement'
 import CommitteeManagement from './pages/CommitteeManagement'
 import ChatbotWidget from './components/ChatbotWidget'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import { ConfirmProvider } from './context/ConfirmContext'
 import './index.css'
 
 function AuthPendingState({ title = 'Loading your session...' }) {
@@ -145,6 +147,7 @@ function AppRoutes() {
         <Route path="attendance-management" element={<AdminRoute><AttendanceManagement /></AdminRoute>} />
         <Route path="events" element={<Calendar listOnly />} />
         <Route path="report" element={<AdminRoute><Report /></AdminRoute>} />
+        <Route path="achievements" element={<AdminRoute><AchievementsManagement /></AdminRoute>} />
         <Route path="category-management" element={<AdminRoute><CategoryManagement /></AdminRoute>} />
         <Route path="committee-management" element={<AdminRoute><CommitteeManagement /></AdminRoute>} />
         <Route path="profile" element={<Profile />} />
@@ -165,10 +168,12 @@ function AppRoutes() {
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <AppRoutes />
-        <ChatbotGate />
-      </Router>
+      <ConfirmProvider>
+        <Router>
+          <AppRoutes />
+          <ChatbotGate />
+        </Router>
+      </ConfirmProvider>
     </AuthProvider>
   )
 }

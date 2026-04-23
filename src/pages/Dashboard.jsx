@@ -19,6 +19,7 @@ import { useI18n } from '../i18n/useI18n'
 import { supabase } from '../lib/supabaseClient'
 import { fetchSupabaseEvents, invalidateSupabaseEventsCache, isSupabaseEnabled } from '../lib/supabaseEvents'
 import { fetchMyNotifications } from '../lib/supabaseNotifications'
+import { useConfirm } from '../context/ConfirmContext'
 
 const normalizeCategoryKey = value =>
   String(value || '')
@@ -215,6 +216,7 @@ const getIconThemeClass = categoryKey => {
 function Dashboard() {
   const { user, categories } = useAuth()
   const { t } = useI18n()
+  const confirm = useConfirm()
   const navigate = useNavigate()
   const isAdmin = user?.role === 'admin'
   const userCommitteeRole = user?.committeeRole || user?.committee_role || 'Member'
@@ -458,6 +460,14 @@ function Dashboard() {
 
   const dismissNotification = async (notificationId) => {
     if (!notificationId) return
+    const ok = await confirm({
+      title: t('Remove notification'),
+      description: 'Remove this notification? You can still view the event in Calendar.',
+      confirmText: t('Remove'),
+      cancelText: t('Cancel'),
+      danger: true,
+    })
+    if (!ok) return
     const updated = notifications.filter(item => item.id !== notificationId)
     setNotifications(updated)
     await supabase.from('notifications').delete().eq('id', notificationId)
@@ -469,7 +479,6 @@ function Dashboard() {
         <div className="absolute -right-16 -top-16 h-44 w-44 rounded-full bg-yellow-400/15 blur-3xl" />
         <div className="relative z-10 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="space-y-2">
-            <p className="text-[14px] uppercase tracking-[0.12em] text-white/70">{t('Volunteer Management')}</p>
             <h1 className="text-[32px] font-semibold leading-tight">
               {t('Welcome back,')} <span className="text-yellow-300">{user?.name || t('Volunteer')}</span>
             </h1>

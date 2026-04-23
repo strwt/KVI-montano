@@ -795,6 +795,13 @@ function Landing() {
   const [publicCommittees, setPublicCommittees] = useState([])
   const [publicCommitteesLoaded, setPublicCommitteesLoaded] = useState(false)
   const [committeeDragging, setCommitteeDragging] = useState(false)
+  const [latestNewsItems, setLatestNewsItems] = useState([])
+  const [latestNewsLoading, setLatestNewsLoading] = useState(false)
+  const [latestNewsPage, setLatestNewsPage] = useState(1)
+  const [latestNewsTotalPages, setLatestNewsTotalPages] = useState(1)
+  const [selectedNewsItem, setSelectedNewsItem] = useState(null)
+
+  const LATEST_NEWS_PAGE_SIZE = 5
 
   const openDonation = () => {
     setDonationOpen(true)
@@ -874,6 +881,64 @@ function Landing() {
     window.location.href = `mailto:${DONATION_NOTIFICATION_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(lines.join('\n'))}`
     closeDonation()
   }
+
+  const resolveAchievementImage = (value) => {
+    const raw = String(value || '').trim()
+    if (!raw) return ''
+    if (raw.startsWith('/') || raw.startsWith('http')) return raw
+    if (raw.startsWith('data:image/')) return raw
+    try {
+      const { data } = supabase?.storage?.from?.('achievement-images')?.getPublicUrl?.(raw) || {}
+      return data?.publicUrl || ''
+    } catch {
+      return ''
+    }
+  }
+
+  const loadLatestNews = async (page = 1) => {
+    const nextPage = Math.max(1, Number(page || 1))
+    setLatestNewsPage(nextPage)
+
+    if (!supabaseEnabled || !supabase) {
+      setLatestNewsItems([])
+      setLatestNewsTotalPages(1)
+      return
+    }
+
+    setLatestNewsLoading(true)
+    try {
+      const { count, error: countError } = await supabase
+        .from('achievements')
+        .select('id', { count: 'exact', head: true })
+      if (countError) throw countError
+
+      const total = Number(count || 0)
+      const pages = Math.max(1, Math.ceil(total / LATEST_NEWS_PAGE_SIZE))
+      setLatestNewsTotalPages(pages)
+
+      const from = (nextPage - 1) * LATEST_NEWS_PAGE_SIZE
+      const to = from + LATEST_NEWS_PAGE_SIZE - 1
+      const { data, error } = await supabase
+        .from('achievements')
+        .select('id,title,occurred_at,location,description,image_paths,created_at')
+        .order('occurred_at', { ascending: false })
+        .range(from, to)
+      if (error) throw error
+
+      setLatestNewsItems(Array.isArray(data) ? data : [])
+    } catch (err) {
+      console.warn('Failed to load latest news.', err)
+      setLatestNewsItems([])
+      setLatestNewsTotalPages(1)
+    } finally {
+      setLatestNewsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    void loadLatestNews(1)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [supabaseEnabled])
 
   function resolveProfileImage(value) {
     const raw = String(value || '').trim()
@@ -1674,6 +1739,144 @@ function Landing() {
           </div>
         </div>
       </section>
+
+      {/* —— LATEST NEWS —— */}
+      <section data-reveal className="reveal-on-scroll relative pb-28 sm:pb-36">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <SectionHeader title="Latest News" subtitle="Recent achievements and updates from KUSGAN Volunteers Inc." />
+
+          {latestNewsLoading ? (
+            <div className="rounded-3xl border border-white/12 bg-white/5 p-6 text-center text-sm text-white/70 backdrop-blur-xl">
+              Loading latest news…
+            </div>
+          ) : latestNewsItems.length === 0 ? (
+            <div className="rounded-3xl border border-white/12 bg-white/5 p-6 text-center text-sm text-white/70 backdrop-blur-xl">
+              No news yet.
+            </div>
+          ) : (
+            <>
+              <div className="flex gap-4 overflow-x-auto pb-2 landing-scrollbar">
+                {latestNewsItems.slice(0, LATEST_NEWS_PAGE_SIZE).map(item => {
+                  const occurredAt = item?.occurred_at ? new Date(item.occurred_at) : null
+                  const dateLabel =
+                    occurredAt && !Number.isNaN(occurredAt.getTime())
+                      ? occurredAt.toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+                      : ''
+                  const images = Array.isArray(item?.image_paths) ? item.image_paths : []
+                  const imageUrl = images[0] ? resolveAchievementImage(images[0]) : ''
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setSelectedNewsItem(item)}
+                      className="group shrink-0 w-[260px] sm:w-[280px] rounded-3xl border border-white/12 bg-white/5 text-left backdrop-blur-xl transition-transform hover:-translate-y-0.5"
+                      style={{ boxShadow: '0 18px 42px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.10)' }}
+                    >
+                      <div className="h-36 w-full overflow-hidden rounded-t-3xl border-b border-white/10 bg-black/20">
+                        {imageUrl ? (
+                          <img
+                            src={imageUrl}
+                            alt=""
+                            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                          />
+                        ) : (
+                          <div className="h-full w-full flex items-center justify-center text-xs text-white/50">No image</div>
+                        )}
+                      </div>
+                      <div className="p-4">
+                        <p className="text-sm font-bold text-white line-clamp-2">
+                          {String(item?.title || '').trim() || 'Untitled'}
+                        </p>
+                        <p className="mt-2 text-xs text-white/65">
+                          {dateLabel}
+                          {item?.location ? ` • ${String(item.location).trim()}` : ''}
+                        </p>
+                        {item?.description ? (
+                          <p className="mt-2 text-xs text-white/70 line-clamp-3">{String(item.description).trim()}</p>
+                        ) : null}
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => void loadLatestNews(Math.max(1, latestNewsPage - 1))}
+                  disabled={latestNewsPage <= 1}
+                  className="rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-xs font-semibold text-white/80 transition-colors hover:bg-white/10 disabled:opacity-50"
+                >
+                  Previous
+                </button>
+                <span className="text-xs font-semibold text-white/70">
+                  Page {latestNewsPage} of {latestNewsTotalPages}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => void loadLatestNews(Math.min(latestNewsTotalPages, latestNewsPage + 1))}
+                  disabled={latestNewsPage >= latestNewsTotalPages}
+                  className="rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-xs font-semibold text-white/80 transition-colors hover:bg-white/10 disabled:opacity-50"
+                >
+                  Next
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </section>
+
+      {selectedNewsItem ? (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            aria-label="Close news"
+            onClick={() => setSelectedNewsItem(null)}
+          />
+          <div className="relative w-full max-w-2xl overflow-hidden rounded-3xl border border-white/12 bg-[#041221]/95 shadow-[0_20px_50px_rgba(0,0,0,0.55)] backdrop-blur-xl">
+            <div className="p-6">
+              <p className="text-lg font-bold text-white">{String(selectedNewsItem?.title || '').trim() || 'Untitled'}</p>
+              <p className="mt-1 text-sm text-white/70">
+                {selectedNewsItem?.occurred_at ? new Date(selectedNewsItem.occurred_at).toLocaleString() : ''}
+                {selectedNewsItem?.location ? ` • ${String(selectedNewsItem.location).trim()}` : ''}
+              </p>
+
+              {Array.isArray(selectedNewsItem?.image_paths) && selectedNewsItem.image_paths.length > 0 ? (
+                <div className="mt-4 flex gap-2 overflow-x-auto pb-2 landing-scrollbar">
+                  {selectedNewsItem.image_paths.map((path) => {
+                    const url = resolveAchievementImage(path)
+                    if (!url) return null
+                    return (
+                      <img
+                        key={path}
+                        src={url}
+                        alt=""
+                        className="h-28 w-40 shrink-0 rounded-2xl border border-white/10 object-cover"
+                        loading="lazy"
+                      />
+                    )
+                  })}
+                </div>
+              ) : null}
+
+              {selectedNewsItem?.description ? (
+                <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-white/80">
+                  {String(selectedNewsItem.description).trim()}
+                </p>
+              ) : null}
+
+              <button
+                type="button"
+                onClick={() => setSelectedNewsItem(null)}
+                className="mt-6 w-full rounded-xl border border-white/15 bg-white/5 py-2 text-sm font-semibold text-white hover:bg-white/10"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {/* ── ORGANIZATIONAL STRUCTURE ── */}
       <section id="organizational-structure" data-reveal aria-hidden="true" className="hidden">

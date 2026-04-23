@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import dayjs from 'dayjs'
-import { HandHeart, Trash2 } from 'lucide-react'
+import { RefreshCw, Trash2 } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
 import { isSupabaseEnabled } from '../lib/supabaseEvents'
 import { useAuth } from '../context/AuthContext'
@@ -133,7 +133,7 @@ function Donations() {
             className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-white shadow-sm backdrop-blur-md transition-colors hover:bg-white/10"
             disabled={loading}
           >
-            <HandHeart size={16} />
+            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
             Refresh
           </button>
         </div>
@@ -181,7 +181,7 @@ function Donations() {
                           type="button"
                           onClick={() => handleRequestDelete(row.id)}
                           disabled={Boolean(deletingId)}
-                          className="inline-flex items-center gap-2 rounded-lg border border-red-300/30 bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-200 transition-colors hover:bg-red-500/20 disabled:opacity-60"
+                          className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white shadow-[0_10px_24px_rgba(220,38,38,0.28)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-red-500 disabled:opacity-60"
                           aria-label="Delete donation record"
                           title="Delete donation record"
                         >
@@ -242,7 +242,7 @@ function Donations() {
                 type="button"
                 onClick={handleConfirmDelete}
                 disabled={Boolean(deletingId)}
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-300/30 bg-red-500/20 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-500/30 disabled:opacity-60"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(220,38,38,0.3)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-red-500 disabled:opacity-60"
               >
                 <Trash2 size={16} />
                 {deletingId ? 'Deleting...' : 'Delete'}
