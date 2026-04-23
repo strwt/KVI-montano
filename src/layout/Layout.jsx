@@ -18,6 +18,7 @@ function Layout() {
     '/calendar',
     '/attendance-management',
     '/report',
+    '/achievements',
     '/donations',
     '/members',
     '/profile',
