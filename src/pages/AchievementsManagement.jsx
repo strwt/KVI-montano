@@ -7,6 +7,11 @@ import dayjs from 'dayjs'
 
 const PAGE_SIZE = 20
 const MAX_FILES = 8
+const ACH_THEME = {
+  blue: '#2b56d8',
+  blueDeep: '#1a42af',
+  blueMid: '#60a5fa',
+}
 
 const toPublicImageUrl = (path) => {
   const raw = String(path || '').trim()
@@ -238,34 +243,56 @@ export default function AchievementsManagement() {
   if (!isAdmin) {
     return (
       <div className="animate-fade-in space-y-4">
-        <header className="rounded-2xl border border-white/10 bg-white/5 p-6 text-white shadow-[0_12px_30px_rgba(0,0,0,0.25)] backdrop-blur-md">
-          <h1 className="text-[28px] font-semibold leading-tight text-white">Achievements</h1>
-          <p className="mt-2 text-[14px] text-white/70">Only admins can access this page.</p>
+        <header
+          className="rounded-3xl border border-white/12 bg-white/5 p-6 shadow-[0_12px_30px_rgba(0,0,0,0.25)] backdrop-blur-xl"
+          style={{
+            background: `linear-gradient(135deg, rgba(43,86,216,0.22) 0%, rgba(255,255,255,0.06) 55%, rgba(26,66,175,0.18) 100%)`,
+          }}
+        >
+          <h1 className="text-[28px] font-bold leading-tight text-white">Achievements</h1>
+          <p className="mt-2 text-[14px] text-white/75">Only admins can access this page.</p>
         </header>
       </div>
     )
   }
 
   return (
-    <div className="animate-fade-in space-y-6 text-white">
-      <header className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-[0_12px_30px_rgba(0,0,0,0.25)] backdrop-blur-md">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-[28px] font-semibold leading-tight text-white">Achievements</h1>
-          <p className="text-[14px] text-white/70">Add latest news/achievements shown on the Landing page.</p>
+    <div
+      className="animate-fade-in space-y-6 text-white"
+      style={{
+        background: `radial-gradient(circle at 20% 0%, rgba(43,86,216,0.18) 0%, transparent 55%),
+          radial-gradient(circle at 80% 10%, rgba(96,165,250,0.16) 0%, transparent 55%)`,
+      }}
+    >
+      <header
+        className="relative overflow-hidden rounded-3xl border border-white/12 bg-white/5 p-6 shadow-[0_12px_30px_rgba(0,0,0,0.25)] backdrop-blur-xl"
+        style={{
+          background: `linear-gradient(135deg, rgba(43,86,216,0.26) 0%, rgba(255,255,255,0.06) 55%, rgba(26,66,175,0.22) 100%)`,
+        }}
+      >
+        <div className="absolute -right-20 -top-20 h-56 w-56 rounded-full blur-3xl" style={{ background: `${ACH_THEME.blueMid}22` }} />
+        <div className="absolute -left-24 -bottom-24 h-64 w-64 rounded-full blur-3xl" style={{ background: `${ACH_THEME.blue}22` }} />
+        <div className="relative flex flex-col gap-1">
+          <h1 className="text-[28px] font-bold leading-tight text-white">Achievements</h1>
+          <p className="text-[14px] text-white/75">Add latest news/achievements shown on the Landing page.</p>
         </div>
       </header>
 
       <section className="grid gap-4 lg:grid-cols-[1fr_420px]">
         <form
           onSubmit={handleSubmit}
-          className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.25)] backdrop-blur-md"
+          className="rounded-3xl border border-white/12 bg-white/5 p-6 shadow-[0_12px_26px_rgba(0,0,0,0.22)] backdrop-blur-xl"
         >
           <div className="mb-4 flex items-center justify-between gap-3">
-            <h2 className="text-lg font-semibold text-white">New Achievement</h2>
+            <h2 className="text-lg font-bold text-white">New Achievement</h2>
             <button
               type="submit"
               disabled={saving || !canUseSupabase}
-              className="inline-flex items-center gap-2 rounded-xl bg-yellow-400 px-4 py-2 text-sm font-semibold text-slate-900 transition-colors hover:bg-yellow-300 disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors disabled:opacity-60"
+              style={{
+                background: ACH_THEME.blue,
+                boxShadow: '0 16px 36px rgba(43,86,216,0.30)',
+              }}
             >
               <Plus size={16} />
               Save
@@ -285,52 +312,52 @@ export default function AchievementsManagement() {
 
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <div className="md:col-span-2">
-              <label className="mb-1 block text-xs font-semibold uppercase tracking-widest text-white/70">Title</label>
+              <label className="mb-1 block text-xs font-bold uppercase tracking-widest text-white/75">Title</label>
               <input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/30 focus:border-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/30"
+                className="w-full rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-white/35 focus:outline-none focus:ring-2 focus:ring-blue-400/35"
                 placeholder="Title"
                 required
               />
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-semibold uppercase tracking-widest text-white/70">Date & time</label>
+              <label className="mb-1 block text-xs font-bold uppercase tracking-widest text-white/75">Date & time</label>
               <input
                 type="datetime-local"
                 value={occurredAt}
                 onChange={(e) => setOccurredAt(e.target.value)}
-                className="w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-white focus:border-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/30"
+                className="w-full rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-400/35"
                 required
               />
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-semibold uppercase tracking-widest text-white/70">Location</label>
+              <label className="mb-1 block text-xs font-bold uppercase tracking-widest text-white/75">Location</label>
               <div className="relative">
-                <MapPin size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
+                <MapPin size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/45" />
                 <input
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
-                  className="w-full rounded-xl border border-white/15 bg-white/5 py-2 pl-10 pr-3 text-sm text-white placeholder:text-white/30 focus:border-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/30"
+                  className="w-full rounded-xl border border-white/15 bg-white/10 py-2 pl-10 pr-3 text-sm text-white placeholder:text-white/35 focus:outline-none focus:ring-2 focus:ring-blue-400/35"
                   placeholder="Location"
                 />
               </div>
             </div>
 
             <div className="md:col-span-2">
-              <label className="mb-1 block text-xs font-semibold uppercase tracking-widest text-white/70">Description</label>
+              <label className="mb-1 block text-xs font-bold uppercase tracking-widest text-white/75">Description</label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="min-h-[120px] w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/30 focus:border-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/30"
+                className="min-h-[120px] w-full rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-white/35 focus:outline-none focus:ring-2 focus:ring-blue-400/35"
                 placeholder="Description"
               />
             </div>
 
             <div className="md:col-span-2">
-              <label className="mb-1 block text-xs font-semibold uppercase tracking-widest text-white/70">
+              <label className="mb-1 block text-xs font-bold uppercase tracking-widest text-white/75">
                 Images (up to {MAX_FILES})
               </label>
               <input
@@ -338,29 +365,24 @@ export default function AchievementsManagement() {
                 accept="image/*"
                 multiple
                 onChange={(e) => setFiles(Array.from(e.target.files || []))}
-                className="w-full rounded-xl border border-white/15 bg-white/5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-yellow-400/30 file:mr-3 file:h-10 file:border-0 file:bg-white/10 file:px-3 file:text-sm file:font-medium file:text-white hover:file:bg-white/15"
+                className="w-full rounded-xl border border-white/15 bg-white/10 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-400/35 file:mr-3 file:h-10 file:border-0 file:bg-white/15 file:px-3 file:text-sm file:font-semibold file:text-white hover:file:bg-white/20"
               />
               {filePreviews.length > 0 ? (
                 <div className="mt-3 flex flex-wrap gap-2">
                   {filePreviews.map((entry) => (
-                    <div key={entry.url} className="h-16 w-16 overflow-hidden rounded-xl border border-white/15 bg-white/5">
+                    <div key={entry.url} className="h-16 w-16 overflow-hidden rounded-xl border border-white/12 bg-white/5">
                       <img src={entry.url} alt="Preview" className="h-full w-full object-cover" />
                     </div>
                   ))}
                 </div>
-              ) : (
-                <div className="mt-3 inline-flex items-center gap-2 text-xs text-white/60">
-                  <ImagePlus size={14} />
-                  No images selected.
-                </div>
-              )}
+              ) : null}
             </div>
           </div>
         </form>
 
-        <aside className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-[0_10px_20px_rgba(0,0,0,0.25)] backdrop-blur-md">
+        <aside className="rounded-3xl border border-white/12 bg-white/5 p-6 shadow-[0_12px_26px_rgba(0,0,0,0.22)] backdrop-blur-xl">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-white">Latest</h2>
+            <h2 className="text-lg font-bold text-white">Latest</h2>
             <button
               type="button"
               onClick={() => void load()}
@@ -371,9 +393,9 @@ export default function AchievementsManagement() {
           </div>
 
           {loading ? (
-            <div className="rounded-xl border border-white/10 bg-black/20 p-4 text-sm text-white/70">Loading...</div>
+            <div className="rounded-xl border border-white/12 bg-black/20 p-4 text-sm text-white/70">Loading...</div>
           ) : items.length === 0 ? (
-            <div className="rounded-xl border border-white/10 bg-black/20 p-4 text-sm text-white/70">No achievements yet.</div>
+            <div className="rounded-xl border border-white/12 bg-black/20 p-4 text-sm text-white/70">No achievements yet.</div>
           ) : (
             <div className="space-y-3">
               {items.map((item) => {
@@ -381,17 +403,17 @@ export default function AchievementsManagement() {
                 const firstImage = Array.isArray(item?.image_paths) ? item.image_paths[0] : ''
                 const imageUrl = firstImage ? toPublicImageUrl(firstImage) : ''
                 return (
-                  <div key={item.id} className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                  <div key={item.id} className="rounded-2xl border border-white/12 bg-black/20 p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="truncate text-sm font-semibold text-white">{item.title || 'Untitled'}</p>
-                        <p className="mt-1 text-xs text-white/60">{dateLabel}</p>
-                        {item.location ? <p className="mt-1 text-xs text-white/60">{item.location}</p> : null}
+                        <p className="mt-1 text-xs text-white/70">{dateLabel}</p>
+                        {item.location ? <p className="mt-1 text-xs text-white/70">{item.location}</p> : null}
                       </div>
                       <button
                         type="button"
                         onClick={() => void handleDelete(item)}
-                        className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white/70 transition-colors hover:bg-white/10 hover:text-red-200"
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/12 bg-white/5 text-white/70 transition-colors hover:bg-white/10 hover:text-red-200"
                         title="Delete"
                         aria-label="Delete achievement"
                       >
@@ -399,7 +421,7 @@ export default function AchievementsManagement() {
                       </button>
                     </div>
                     {imageUrl ? (
-                      <div className="mt-3 overflow-hidden rounded-xl border border-white/10 bg-white/5">
+                      <div className="mt-3 overflow-hidden rounded-xl border border-white/12 bg-white/5">
                         <img src={imageUrl} alt="" className="h-32 w-full object-cover" loading="lazy" />
                       </div>
                     ) : null}
@@ -413,4 +435,3 @@ export default function AchievementsManagement() {
     </div>
   )
 }
-
