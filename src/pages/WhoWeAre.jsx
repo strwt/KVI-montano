@@ -1,5 +1,8 @@
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
+import { supabase } from '../lib/supabaseClient'
+import { isSupabaseEnabled } from '../lib/supabaseEvents'
 
 const THEME = {
   navy: '#2b56d8',
@@ -17,6 +20,21 @@ const CORE_VALUES = [
   { title: 'Aspiration', description: 'Striving to achieve our best and reach our goal.', image: '/Aspiration.jpg'},
   { title: 'Nurture', description: 'Nurture providing care and support to other thrive.', image: '/Nurture.jpg'},
 ]
+
+const LATEST_NEWS_PAGE_SIZE = 6
+
+const resolveAchievementImage = (value) => {
+  const raw = String(value || '').trim()
+  if (!raw) return ''
+  if (raw.startsWith('/') || raw.startsWith('http')) return raw
+  if (raw.startsWith('data:image/')) return raw
+  try {
+    const { data } = supabase?.storage?.from?.('achievement-images')?.getPublicUrl?.(raw) || {}
+    return data?.publicUrl || ''
+  } catch {
+    return ''
+  }
+}
 
 function SectionHeader({ title, subtitle }) {
   return (
@@ -48,14 +66,75 @@ function GlassCard({ children, className = '' }) {
 
 export default function WhoWeAre({ mode = 'overview' }) {
   const navigate = useNavigate()
+  const supabaseEnabled = isSupabaseEnabled()
+  const [latestNewsItems, setLatestNewsItems] = useState([])
+  const [latestNewsLoading, setLatestNewsLoading] = useState(false)
+  const [latestNewsPage, setLatestNewsPage] = useState(1)
+  const [latestNewsTotalPages, setLatestNewsTotalPages] = useState(1)
+
+  const loadLatestNews = async (page = 1) => {
+    const nextPage = Math.max(1, Number(page || 1))
+    setLatestNewsPage(nextPage)
+
+    if (!supabaseEnabled || !supabase) {
+      setLatestNewsItems([])
+      setLatestNewsTotalPages(1)
+      return
+    }
+
+    setLatestNewsLoading(true)
+    try {
+      const { count, error: countError } = await supabase
+        .from('achievements')
+        .select('id', { count: 'exact', head: true })
+      if (countError) throw countError
+
+      const total = Number(count || 0)
+      const pages = Math.max(1, Math.ceil(total / LATEST_NEWS_PAGE_SIZE))
+      setLatestNewsTotalPages(pages)
+
+      const from = (nextPage - 1) * LATEST_NEWS_PAGE_SIZE
+      const to = from + LATEST_NEWS_PAGE_SIZE - 1
+      const { data, error } = await supabase
+        .from('achievements')
+        .select('id,title,occurred_at,location,description,image_paths,created_at')
+        .order('occurred_at', { ascending: false })
+        .range(from, to)
+      if (error) throw error
+
+      setLatestNewsItems(Array.isArray(data) ? data : [])
+    } catch (err) {
+      console.warn('Failed to load news.', err)
+      setLatestNewsItems([])
+      setLatestNewsTotalPages(1)
+    } finally {
+      setLatestNewsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (mode !== 'news') return
+    void loadLatestNews(1)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, supabaseEnabled])
 
   const pageTitle = mode === 'mission-vision'
     ? 'Mission and Vision'
-    : 'What is Kusgan and History'
+    : mode === 'news'
+      ? 'Latest News'
+      : 'What is Kusgan and History'
 
   const pageSubtitle = mode === 'mission-vision'
     ? 'Explore the purpose, future, and core values KUSGAN stands for.'
-    : 'Read the overview and historical foundation of KUSGAN.'
+    : mode === 'news'
+      ? 'Read the latest articles, achievements, and updates from KUSGAN Volunteers Inc.'
+      : 'Read the overview and historical foundation of KUSGAN.'
+
+  const topNavItems = useMemo(() => ([
+    { key: 'overview', label: 'Overview', to: '/who-we-are/overview' },
+    { key: 'mission-vision', label: 'Mission & Vision', to: '/who-we-are/mission-vision' },
+    { key: 'news', label: 'News', to: '/who-we-are/news' },
+  ]), [])
 
   return (
     <div
@@ -71,6 +150,23 @@ export default function WhoWeAre({ mode = 'overview' }) {
           <ArrowLeft size={15} />
           Back to Landing
         </button>
+
+        <div className="mb-8 flex flex-wrap gap-3">
+          {topNavItems.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              onClick={() => navigate(item.to)}
+              className={`rounded-xl border px-4 py-2.5 text-sm font-semibold transition-all ${
+                mode === item.key
+                  ? 'border-yellow-300/35 bg-yellow-400/15 text-yellow-100'
+                  : 'border-white/15 bg-white/8 text-white/80 hover:bg-white/12 hover:text-white'
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
 
         <SectionHeader title={pageTitle} subtitle={pageSubtitle} />
 
@@ -181,6 +277,102 @@ export default function WhoWeAre({ mode = 'overview' }) {
                 </article>
               ))}
             </div>
+          </div>
+        )}
+
+        {mode === 'news' && (
+          <div className="space-y-6">
+            {latestNewsLoading ? (
+              <GlassCard>
+                <p className="text-center text-sm text-white/75">Loading latest news...</p>
+              </GlassCard>
+            ) : latestNewsItems.length === 0 ? (
+              <GlassCard>
+                <p className="text-center text-sm text-white/75">No news yet.</p>
+              </GlassCard>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+                  {latestNewsItems.map((item) => {
+                    const description = String(item?.description || '').trim()
+                    const previewDescription = description.length > 160 ? `${description.slice(0, 160).trimEnd()}...` : description
+                    const occurredAt = item?.occurred_at ? new Date(item.occurred_at) : null
+                    const dateLabel =
+                      occurredAt && !Number.isNaN(occurredAt.getTime())
+                        ? occurredAt.toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+                        : ''
+                    const images = Array.isArray(item?.image_paths) ? item.image_paths : []
+                    const imageUrl = images[0] ? resolveAchievementImage(images[0]) : ''
+
+                    return (
+                      <article
+                        key={item.id}
+                        className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_24px_60px_rgba(0,0,0,0.18)]"
+                      >
+                        <div className="h-56 w-full overflow-hidden bg-slate-100">
+                          {imageUrl ? (
+                            <img
+                              src={imageUrl}
+                              alt=""
+                              className="h-full w-full object-cover"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-sm text-slate-400">No image</div>
+                          )}
+                        </div>
+                        <div className="space-y-3 p-5">
+                          <div className="inline-flex items-center rounded-full border border-yellow-300 bg-yellow-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-yellow-700">
+                            News Article
+                          </div>
+                          <h3 className="text-xl font-bold leading-tight text-slate-900">
+                            {String(item?.title || '').trim() || 'Untitled'}
+                          </h3>
+                          <p className="text-xs text-slate-500">
+                            {dateLabel}
+                            {item?.location ? ` • ${String(item.location).trim()}` : ''}
+                          </p>
+                          {description ? (
+                            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+                              <p className="text-sm leading-7 text-slate-700">{previewDescription}</p>
+                            </div>
+                          ) : null}
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/news/${item.id}`)}
+                            className="inline-flex w-full items-center justify-center rounded-xl border border-yellow-300 bg-yellow-400 px-4 py-3 text-sm font-semibold text-slate-900 transition-all hover:bg-yellow-300"
+                          >
+                            Read More Article
+                          </button>
+                        </div>
+                      </article>
+                    )
+                  })}
+                </div>
+
+                <div className="flex flex-wrap items-center justify-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => void loadLatestNews(Math.max(1, latestNewsPage - 1))}
+                    disabled={latestNewsPage <= 1}
+                    className="rounded-xl border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white/80 transition-colors hover:bg-white/15 disabled:opacity-50"
+                  >
+                    Previous
+                  </button>
+                  <span className="text-sm font-semibold text-white/75">
+                    Page {latestNewsPage} of {latestNewsTotalPages}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => void loadLatestNews(Math.min(latestNewsTotalPages, latestNewsPage + 1))}
+                    disabled={latestNewsPage >= latestNewsTotalPages}
+                    className="rounded-xl border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white/80 transition-colors hover:bg-white/15 disabled:opacity-50"
+                  >
+                    Next
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>
