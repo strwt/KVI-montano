@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, Calendar, ChevronLeft, ChevronRight, Users, FileText, Sun, Moon, ClipboardCheck, LogOut, Tags, Settings, ChevronDown, ChevronUp, HandHeart } from 'lucide-react'
+import { LayoutDashboard, Calendar, ChevronLeft, ChevronRight, Users, FileText, ClipboardCheck, LogOut, Tags, Settings, ChevronDown, ChevronUp, HandHeart } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useI18n } from '../i18n/useI18n'
 
-function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
+function Sidebar({ isOpen, toggleSidebar }) {
   const { user, logout } = useAuth()
   const { t } = useI18n()
   const navigate = useNavigate()
@@ -238,16 +238,7 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
                   <p className="text-xs text-yellow-300">Volunteer Inc.</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={onToggleDarkMode}
-                  className={`inline-flex h-9 w-9 items-center justify-center rounded-full border ${footerButtonBorderTone} transition-all ${utilityBtnTone}`}
-                  aria-label={darkMode ? t('Light Mode') : t('Dark Mode')}
-                  title={darkMode ? t('Light Mode') : t('Dark Mode')}
-                >
-                  {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-                </button>
+              <div className="flex flex-1 justify-center">
                 <button
                   type="button"
                   onClick={handleLogout}
@@ -261,15 +252,6 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
             </div>
           ) : (
             <div className="flex flex-col items-center gap-3">
-              <button
-                type="button"
-                onClick={onToggleDarkMode}
-                className={`inline-flex h-9 w-9 items-center justify-center rounded-full border ${footerButtonBorderTone} transition-all ${utilityBtnTone}`}
-                aria-label={darkMode ? t('Light Mode') : t('Dark Mode')}
-                title={darkMode ? t('Light Mode') : t('Dark Mode')}
-              >
-                {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-              </button>
               <div className="w-10 h-10 bg-white logo-no-dark rounded-full flex items-center justify-center overflow-hidden">
                 <img
                   src="/kvi.png"

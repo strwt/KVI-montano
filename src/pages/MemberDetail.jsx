@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ArrowLeft, Mail, Calendar, User, Trash2, Eye, EyeOff, Shield } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -14,6 +14,7 @@ function MemberDetail() {
   const [showUpdateModal, setShowUpdateModal] = useState(false)
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [newProfileImageFile, setNewProfileImageFile] = useState(null)
+  const [newProfileImagePreviewUrl, setNewProfileImagePreviewUrl] = useState('')
   const [actionError, setActionError] = useState('')
   const [editForm, setEditForm] = useState({
     type: 'member',
@@ -153,6 +154,24 @@ function MemberDetail() {
     setShowUpdateModal(false)
   }
 
+  useEffect(() => {
+    if (!newProfileImageFile) {
+      setNewProfileImagePreviewUrl('')
+      return undefined
+    }
+
+    const nextUrl = URL.createObjectURL(newProfileImageFile)
+    setNewProfileImagePreviewUrl(nextUrl)
+
+    return () => {
+      try {
+        URL.revokeObjectURL(nextUrl)
+      } catch {
+        // ignore
+      }
+    }
+  }, [newProfileImageFile])
+
   if (!authResolved || authLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -214,7 +233,7 @@ function MemberDetail() {
           }}
         >
           <div className="flex items-start gap-6">
-            <div className="w-24 h-24 rounded-full bg-gradient-to-r from-red-600 to-red-700 flex items-center justify-center flex-shrink-0 overflow-hidden">
+            <div className="flex h-24 w-24 flex-shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/70 bg-white shadow-[0_14px_32px_rgba(15,23,42,0.18)]">
               <img
                 src={member.profileImage || '/kvi.png'}
                 alt={member.name}
@@ -640,18 +659,37 @@ function MemberDetail() {
                 </div>
               </div>
 
+              <div className="md:col-span-2">
+                <label className="mb-2 block text-sm font-medium text-white/85">
+                  Profile Image Preview
+                </label>
+                <div
+                  className="flex h-[150px] w-[150px] items-center justify-center overflow-hidden rounded-2xl border border-slate-200 !bg-white shadow-[0_14px_32px_rgba(15,23,42,0.12)]"
+                  style={{ colorScheme: 'light', backgroundColor: '#ffffff' }}
+                >
+                  <img
+                    src={newProfileImagePreviewUrl || member.profileImage || '/kvi.png'}
+                    alt={newProfileImagePreviewUrl ? 'Selected profile preview' : member.name}
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+              </div>
+
               <div>
                 <label htmlFor="update-member-image" className="mb-1 block text-sm font-medium text-white/85">
                   Profile Image (optional)
                 </label>
-                <div className="flex items-center gap-3 rounded-lg border border-white/20 bg-white/10 px-3 py-2">
+                <div
+                  className="flex min-h-[56px] items-center gap-3 rounded-xl border border-slate-200 !bg-white px-3 py-2 text-slate-700 shadow-[0_12px_30px_rgba(15,23,42,0.08)]"
+                  style={{ colorScheme: 'light', backgroundColor: '#ffffff' }}
+                >
                   <label
                     htmlFor="update-member-image"
-                    className="inline-flex cursor-pointer items-center justify-center rounded-md border border-white/15 bg-white/10 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/15"
+                    className="inline-flex cursor-pointer items-center justify-center rounded-xl bg-yellow-400 px-4 py-2 text-sm font-semibold text-slate-900 shadow-[0_8px_24px_rgba(250,204,21,0.35)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-yellow-300"
                   >
                     Choose File
                   </label>
-                  <span className="min-w-0 truncate text-sm text-white/85">
+                  <span className="min-w-0 truncate text-sm text-slate-600">
                     {newProfileImageFile?.name || 'No file chosen'}
                   </span>
                 </div>
@@ -686,7 +724,8 @@ function MemberDetail() {
                   </button>
                   <button
                     type="submit"
-                    className="rounded-lg bg-red-600 px-4 py-2 text-white transition-colors hover:bg-red-700"
+                    className="inline-flex items-center justify-center rounded-xl bg-yellow-400 px-6 py-3 text-sm font-semibold text-slate-900 transition-all duration-200 hover:-translate-y-0.5 hover:bg-yellow-300"
+                    style={{ boxShadow: '0 8px 24px rgba(250,204,21,0.35)' }}
                   >
                     Save Changes
                   </button>

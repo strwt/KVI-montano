@@ -10,7 +10,7 @@ const getInitialSidebarOpen = () => {
 }
 
 function Layout() {
-  const { darkMode, setDarkMode, loading } = useAuth()
+  const { darkMode, loading } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(getInitialSidebarOpen)
   const location = useLocation()
   const dashboardThemeRoutes = [
@@ -79,8 +79,6 @@ function Layout() {
       <Sidebar
         isOpen={sidebarOpen}
         toggleSidebar={toggleSidebar}
-        darkMode={darkMode}
-        onToggleDarkMode={() => setDarkMode(!darkMode)}
       />
       
       <main 
