@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ImagePlus, MapPin, Plus, Trash2 } from 'lucide-react'
+import { MapPin, Plus, Trash2 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useConfirm } from '../context/ConfirmContext'
 import { supabase } from '../lib/supabaseClient'
@@ -7,10 +7,10 @@ import dayjs from 'dayjs'
 
 const PAGE_SIZE = 20
 const MAX_FILES = 8
-const ACH_THEME = {
-  blue: '#2b56d8',
-  blueDeep: '#1a42af',
-  blueMid: '#60a5fa',
+
+const BLUE_BACKGROUND = {
+  base: 'linear-gradient(145deg, rgba(43,86,216,0.32) 0%, rgba(4,18,33,0.92) 48%, rgba(26,66,175,0.28) 100%)',
+  glow: 'radial-gradient(circle at 20% 0%, rgba(96,165,250,0.18) 0%, transparent 55%), radial-gradient(circle at 85% 10%, rgba(43,86,216,0.16) 0%, transparent 55%)',
 }
 
 const toPublicImageUrl = (path) => {
@@ -242,58 +242,50 @@ export default function AchievementsManagement() {
 
   if (!isAdmin) {
     return (
-      <div className="animate-fade-in space-y-4">
-        <header
-          className="rounded-3xl border border-white/12 bg-white/5 p-6 shadow-[0_12px_30px_rgba(0,0,0,0.25)] backdrop-blur-xl"
-          style={{
-            background: `linear-gradient(135deg, rgba(43,86,216,0.22) 0%, rgba(255,255,255,0.06) 55%, rgba(26,66,175,0.18) 100%)`,
-          }}
+      <div className="animate-fade-in text-blue-50">
+        <div
+          className="relative overflow-hidden rounded-3xl border border-blue-200/20 p-6 shadow-[0_12px_30px_rgba(0,0,0,0.25)]"
+          style={{ background: BLUE_BACKGROUND.base }}
         >
-          <h1 className="text-[28px] font-bold leading-tight text-white">Achievements</h1>
-          <p className="mt-2 text-[14px] text-white/75">Only admins can access this page.</p>
-        </header>
+          <div className="pointer-events-none absolute inset-0" style={{ background: BLUE_BACKGROUND.glow }} />
+          <div className="relative flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+            <div>
+              <h2 className="text-2xl font-bold text-blue-50">Achievements</h2>
+              <p className="text-sm text-blue-100/80">Only admins can access this page.</p>
+            </div>
+          </div>
+        </div>
       </div>
     )
   }
 
   return (
-    <div
-      className="animate-fade-in space-y-6 text-white"
-      style={{
-        background: `radial-gradient(circle at 20% 0%, rgba(43,86,216,0.18) 0%, transparent 55%),
-          radial-gradient(circle at 80% 10%, rgba(96,165,250,0.16) 0%, transparent 55%)`,
-      }}
-    >
-      <header
-        className="relative overflow-hidden rounded-3xl border border-white/12 bg-white/5 p-6 shadow-[0_12px_30px_rgba(0,0,0,0.25)] backdrop-blur-xl"
-        style={{
-          background: `linear-gradient(135deg, rgba(43,86,216,0.26) 0%, rgba(255,255,255,0.06) 55%, rgba(26,66,175,0.22) 100%)`,
-        }}
+    <div className="animate-fade-in text-blue-50">
+      <div
+        className="relative overflow-hidden rounded-3xl border border-blue-200/20 p-6 shadow-[0_12px_30px_rgba(0,0,0,0.25)]"
+        style={{ background: BLUE_BACKGROUND.base }}
       >
-        <div className="absolute -right-20 -top-20 h-56 w-56 rounded-full blur-3xl" style={{ background: `${ACH_THEME.blueMid}22` }} />
-        <div className="absolute -left-24 -bottom-24 h-64 w-64 rounded-full blur-3xl" style={{ background: `${ACH_THEME.blue}22` }} />
-        <div className="relative flex flex-col gap-1">
-          <h1 className="text-[28px] font-bold leading-tight text-white">Achievements</h1>
-          <p className="text-[14px] text-white/75">Add latest news/achievements shown on the Landing page.</p>
-        </div>
-      </header>
+        <div className="pointer-events-none absolute inset-0" style={{ background: BLUE_BACKGROUND.glow }} />
 
-      <section className="grid gap-4 lg:grid-cols-[1fr_420px]">
-        <form
-          onSubmit={handleSubmit}
-          className="rounded-3xl border border-white/12 bg-white/5 p-6 shadow-[0_12px_26px_rgba(0,0,0,0.22)] backdrop-blur-xl"
-        >
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <h2 className="text-lg font-bold text-white">New Achievement</h2>
-            <button
-              type="submit"
-              disabled={saving || !canUseSupabase}
-              className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors disabled:opacity-60"
-              style={{
-                background: ACH_THEME.blue,
-                boxShadow: '0 16px 36px rgba(43,86,216,0.30)',
-              }}
-            >
+        <div className="relative flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
+          <div>
+            <h2 className="text-2xl font-bold text-blue-50">Achievements</h2>
+            <p className="text-sm text-blue-100/80">Add latest news/achievements shown on the Landing page.</p>
+          </div>
+        </div>
+
+        <section className="grid gap-4 lg:grid-cols-[1fr_420px]">
+          <form
+            onSubmit={handleSubmit}
+            className="rounded-2xl border border-blue-200/20 bg-blue-500/10 p-5 shadow-[0_10px_20px_rgba(0,0,0,0.25)] backdrop-blur-md"
+          >
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h3 className="font-semibold text-blue-50">New Achievement</h3>
+              <button
+                type="submit"
+                disabled={saving || !canUseSupabase}
+                className="inline-flex items-center gap-2 rounded-lg bg-yellow-400 px-4 py-2 text-sm font-semibold text-slate-900 shadow-[0_10px_24px_rgba(250,204,21,0.28)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-yellow-300 disabled:opacity-60"
+              >
               <Plus size={16} />
               Save
             </button>
@@ -310,67 +302,80 @@ export default function AchievementsManagement() {
             </div>
           ) : null}
 
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <div className="md:col-span-2">
-              <label className="mb-1 block text-xs font-bold uppercase tracking-widest text-white/75">Title</label>
-              <input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="w-full rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-white/35 focus:outline-none focus:ring-2 focus:ring-blue-400/35"
-                placeholder="Title"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="mb-1 block text-xs font-bold uppercase tracking-widest text-white/75">Date & time</label>
-              <input
-                type="datetime-local"
-                value={occurredAt}
-                onChange={(e) => setOccurredAt(e.target.value)}
-                className="w-full rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-400/35"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="mb-1 block text-xs font-bold uppercase tracking-widest text-white/75">Location</label>
-              <div className="relative">
-                <MapPin size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/45" />
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div className="md:col-span-2">
+                <label className="block text-xs text-blue-100/80 mb-1">Title</label>
                 <input
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  className="w-full rounded-xl border border-white/15 bg-white/10 py-2 pl-10 pr-3 text-sm text-white placeholder:text-white/35 focus:outline-none focus:ring-2 focus:ring-blue-400/35"
-                  placeholder="Location"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="w-full h-10 rounded-lg border border-blue-200/25 bg-blue-500/10 px-3 text-blue-50 placeholder:text-blue-100/50 focus:outline-none focus:ring-2 focus:ring-blue-300/50"
+                  placeholder="Title"
+                  required
                 />
               </div>
-            </div>
 
-            <div className="md:col-span-2">
-              <label className="mb-1 block text-xs font-bold uppercase tracking-widest text-white/75">Description</label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="min-h-[120px] w-full rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-white/35 focus:outline-none focus:ring-2 focus:ring-blue-400/35"
-                placeholder="Description"
-              />
-            </div>
+              <div>
+                <label className="block text-xs text-blue-100/80 mb-1">Date & time</label>
+                <input
+                  type="datetime-local"
+                  value={occurredAt}
+                  onChange={(e) => setOccurredAt(e.target.value)}
+                  className="w-full h-10 rounded-lg border border-blue-200/25 bg-blue-500/10 px-3 text-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-300/50"
+                  required
+                />
+              </div>
 
-            <div className="md:col-span-2">
-              <label className="mb-1 block text-xs font-bold uppercase tracking-widest text-white/75">
-                Images (up to {MAX_FILES})
-              </label>
+              <div>
+                <label className="block text-xs text-blue-100/80 mb-1">Location</label>
+                <div className="relative">
+                  <MapPin size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-100/60" />
+                  <input
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    className="w-full h-10 rounded-lg border border-blue-200/25 bg-blue-500/10 py-2 pl-10 pr-3 text-blue-50 placeholder:text-blue-100/50 focus:outline-none focus:ring-2 focus:ring-blue-300/50"
+                    placeholder="Location"
+                  />
+                </div>
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-xs text-blue-100/80 mb-1">Description</label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="min-h-[120px] w-full rounded-lg border border-blue-200/25 bg-blue-500/10 px-3 py-2 text-blue-50 placeholder:text-blue-100/50 focus:outline-none focus:ring-2 focus:ring-blue-300/50"
+                  placeholder="Description"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-xs text-blue-100/80 mb-1">Images (up to {MAX_FILES})</label>
+                <div className="flex min-h-[56px] items-center gap-3 rounded-xl border border-blue-200/25 bg-blue-500/10 px-3 py-2 text-blue-50 shadow-sm">
+                  <label
+                    className="inline-flex cursor-pointer items-center justify-center rounded-xl bg-yellow-400 px-4 py-2 text-sm font-semibold text-slate-900 shadow-[0_8px_24px_rgba(250,204,21,0.35)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-yellow-300"
+                    htmlFor="achievement-images"
+                  >
+                    Choose Files
+                  </label>
+                  <span className="min-w-0 truncate text-sm text-blue-100/80">
+                    {files.length ? `${files.length} file(s) selected` : 'No file chosen'}
+                  </span>
+                </div>
               <input
+                id="achievement-images"
                 type="file"
                 accept="image/*"
                 multiple
                 onChange={(e) => setFiles(Array.from(e.target.files || []))}
-                className="w-full rounded-xl border border-white/15 bg-white/10 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-400/35 file:mr-3 file:h-10 file:border-0 file:bg-white/15 file:px-3 file:text-sm file:font-semibold file:text-white hover:file:bg-white/20"
+                className="sr-only"
               />
               {filePreviews.length > 0 ? (
                 <div className="mt-3 flex flex-wrap gap-2">
                   {filePreviews.map((entry) => (
-                    <div key={entry.url} className="h-16 w-16 overflow-hidden rounded-xl border border-white/12 bg-white/5">
+                    <div
+                      key={entry.url}
+                      className="h-16 w-16 overflow-hidden rounded-xl border border-blue-200/25 bg-blue-500/10"
+                    >
                       <img src={entry.url} alt="Preview" className="h-full w-full object-cover" />
                     </div>
                   ))}
@@ -378,24 +383,24 @@ export default function AchievementsManagement() {
               ) : null}
             </div>
           </div>
-        </form>
+          </form>
 
-        <aside className="rounded-3xl border border-white/12 bg-white/5 p-6 shadow-[0_12px_26px_rgba(0,0,0,0.22)] backdrop-blur-xl">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-bold text-white">Latest</h2>
-            <button
-              type="button"
-              onClick={() => void load()}
-              className="rounded-xl border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold text-white/80 transition-colors hover:bg-white/10"
-            >
-              Refresh
-            </button>
-          </div>
+          <aside className="rounded-2xl border border-blue-200/20 bg-blue-500/10 p-5 shadow-[0_10px_20px_rgba(0,0,0,0.25)] backdrop-blur-md">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="font-semibold text-blue-50">Latest</h3>
+              <button
+                type="button"
+                onClick={() => void load()}
+                className="rounded-xl border border-blue-200/25 bg-blue-500/10 px-3 py-1.5 text-xs font-semibold text-blue-50 transition-colors hover:bg-blue-500/15"
+              >
+                Refresh
+              </button>
+            </div>
 
           {loading ? (
-            <div className="rounded-xl border border-white/12 bg-black/20 p-4 text-sm text-white/70">Loading...</div>
+            <div className="rounded-xl border border-blue-200/20 bg-blue-950/35 p-4 text-sm text-blue-100/80">Loading...</div>
           ) : items.length === 0 ? (
-            <div className="rounded-xl border border-white/12 bg-black/20 p-4 text-sm text-white/70">No achievements yet.</div>
+            <div className="rounded-xl border border-blue-200/20 bg-blue-950/35 p-4 text-sm text-blue-100/80">No achievements yet.</div>
           ) : (
             <div className="space-y-3">
               {items.map((item) => {
@@ -403,17 +408,17 @@ export default function AchievementsManagement() {
                 const firstImage = Array.isArray(item?.image_paths) ? item.image_paths[0] : ''
                 const imageUrl = firstImage ? toPublicImageUrl(firstImage) : ''
                 return (
-                  <div key={item.id} className="rounded-2xl border border-white/12 bg-black/20 p-4">
+                  <div key={item.id} className="rounded-2xl border border-blue-200/20 bg-blue-950/35 p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-white">{item.title || 'Untitled'}</p>
-                        <p className="mt-1 text-xs text-white/70">{dateLabel}</p>
-                        {item.location ? <p className="mt-1 text-xs text-white/70">{item.location}</p> : null}
+                        <p className="truncate text-sm font-semibold text-blue-50">{item.title || 'Untitled'}</p>
+                        <p className="mt-1 text-xs text-blue-100/80">{dateLabel}</p>
+                        {item.location ? <p className="mt-1 text-xs text-blue-100/80">{item.location}</p> : null}
                       </div>
                       <button
                         type="button"
                         onClick={() => void handleDelete(item)}
-                        className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/12 bg-white/5 text-white/70 transition-colors hover:bg-white/10 hover:text-red-200"
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-blue-200/25 bg-blue-500/10 text-blue-100/80 transition-colors hover:bg-blue-500/15 hover:text-red-200"
                         title="Delete"
                         aria-label="Delete achievement"
                       >
@@ -421,7 +426,7 @@ export default function AchievementsManagement() {
                       </button>
                     </div>
                     {imageUrl ? (
-                      <div className="mt-3 overflow-hidden rounded-xl border border-white/12 bg-white/5">
+                      <div className="mt-3 overflow-hidden rounded-xl border border-blue-200/20 bg-blue-500/10">
                         <img src={imageUrl} alt="" className="h-32 w-full object-cover" loading="lazy" />
                       </div>
                     ) : null}
@@ -431,7 +436,8 @@ export default function AchievementsManagement() {
             </div>
           )}
         </aside>
-      </section>
+        </section>
+      </div>
     </div>
   )
 }
