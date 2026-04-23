@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { KUSGAN_VOLUNTEERS } from '../data/kusganVolunteers'
 import { supabase } from '../lib/supabaseClient'
@@ -124,11 +124,35 @@ const SERVICES = [
   },
 ]
 
-const PROGRAM_IMAGES = {
-  environmental: 'environmental',
-  medical: 'medical',
-  relief: 'relief_operation',
-  fire: 'fire_response',
+const PROGRAM_SLIDES = {
+  environmental: [
+    '/Programs/environmental.jpg',
+    '/Programs/environmental01.jpg',
+    '/Programs/environmental02.jpg',
+    '/Programs/environmental03.jpeg',
+    '/Programs/environmental04.jpeg',
+  ],
+  relief: [
+    '/Programs/relief_operation.jpg',
+    '/Programs/relief_operation01.jpg',
+    '/Programs/relief_operation02.jpg',
+    '/Programs/relief_operation03.jpg',
+    '/Programs/relief_operation04.jpg',
+  ],
+  fire: [
+    '/Programs/fire_response.jpg',
+    '/Programs/fire_response01.jpg',
+    '/Programs/fire_response02.jpg',
+    '/Programs/fire_response03.jpg',
+    '/Programs/fire_response04.jpg',
+  ],
+  medical: [
+    '/Programs/medical.png',
+    '/Programs/medical01.JPG',
+    '/Programs/medical02.JPG',
+    '/Programs/medical03.png',
+    '/Programs/medical04.png',
+  ],
 }
 
 const CORE_VALUES = [
@@ -574,6 +598,128 @@ function SectionHeader({ eyebrow, title, subtitle, centered = false }) {
         </div>
       )}
     </div>
+  )
+}
+
+const HoverSlideshow = forwardRef(function HoverSlideshow({ images, alt, className, intervalMs = 900, isActive = false }, ref) {
+  const [activeIndex, setActiveIndex] = useState(0)
+  const [disabledImages, setDisabledImages] = useState([])
+
+  const slides = useMemo(() => {
+    const imageList = Array.isArray(images) ? images : []
+    if (!disabledImages.length) return imageList
+    return imageList.filter(src => !disabledImages.includes(src))
+  }, [disabledImages, images])
+
+  useEffect(() => {
+    if (!isActive) return undefined
+    if (slides.length < 2) return undefined
+
+    const intervalId = window.setInterval(() => {
+      setActiveIndex(prev => (prev + 1) % slides.length)
+    }, intervalMs)
+
+    return () => window.clearInterval(intervalId)
+  }, [intervalMs, isActive, slides.length])
+
+  useEffect(() => {
+    if (!isActive) return undefined
+    if (slides.length < 2) return undefined
+    const nextIndex = (activeIndex + 1) % slides.length
+    const preload = new Image()
+    preload.src = slides[nextIndex]
+    return undefined
+  }, [activeIndex, isActive, slides])
+
+  useImperativeHandle(ref, () => ({
+    reset: () => setActiveIndex(0),
+  }), [])
+
+  const safeActiveIndex = slides.length ? activeIndex % slides.length : 0
+  const displayIndex = isActive ? safeActiveIndex : 0
+  const currentSrc = slides[displayIndex]
+  if (!currentSrc) return null
+
+  return (
+    <img
+      src={currentSrc}
+      alt={alt}
+      className={className}
+      loading="lazy"
+      onError={() => {
+        setDisabledImages(prev => (prev.includes(currentSrc) ? prev : [...prev, currentSrc]))
+        setActiveIndex(0)
+      }}
+    />
+  )
+})
+
+function ProgramCard({ service, reverse }) {
+  const Icon = service.icon
+  const slides = PROGRAM_SLIDES[service.key] ?? []
+  const [isHovering, setIsHovering] = useState(false)
+  const slideshowRef = useRef(null)
+
+  return (
+    <article
+      className="group relative overflow-hidden rounded-3xl border border-white/12 bg-white/5 backdrop-blur-xl transition-transform transition-shadow duration-300 ease-out hover:-translate-y-1 hover:scale-[1.01] hover:border-white/20 hover:bg-white/7"
+      style={{
+        boxShadow: isHovering
+          ? '0 30px 78px rgba(0,0,0,0.48), 0 0 0 1px rgba(255,255,255,0.18), inset 0 1px 0 rgba(255,255,255,0.16)'
+          : '0 18px 42px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.12)',
+      }}
+      onMouseEnter={() => {
+        setIsHovering(true)
+        slideshowRef.current?.reset?.()
+      }}
+      onMouseLeave={() => {
+        setIsHovering(false)
+        slideshowRef.current?.reset?.()
+      }}
+    >
+        <div className={`grid grid-cols-1 gap-0 lg:grid-cols-2 ${reverse ? 'lg:[&>*:first-child]:order-2' : ''}`}>
+          <div className="relative p-6 sm:p-8">
+            <div className="absolute inset-x-0 top-0 h-0.5" style={{ background: service.accent }} />
+            <div
+              className="absolute inset-0 pointer-events-none opacity-45 transition-opacity duration-300 group-hover:opacity-75"
+              style={{ background: `radial-gradient(ellipse at 0% 0%, ${service.accent}22 0%, transparent 60%)` }}
+            />
+
+          <div className="relative flex items-start gap-4">
+            <div
+              className="shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center"
+              style={{ background: service.iconBg, color: service.iconColor }}
+            >
+              <Icon size={22} className={service.iconClass} />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-xl sm:text-2xl font-bold text-white font-heading">{service.title}</h3>
+              <p className="mt-2 text-sm sm:text-base leading-relaxed text-white/80 max-w-xl">
+                {service.description}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="relative min-h-[220px] sm:min-h-[260px] lg:min-h-[260px]">
+          <div
+            className="absolute inset-0"
+            style={{
+              background: 'linear-gradient(90deg, rgba(4,18,33,0.25) 0%, rgba(4,18,33,0.05) 45%, rgba(4,18,33,0.0) 70%)',
+            }}
+          />
+          {slides.length ? (
+            <HoverSlideshow
+              ref={slideshowRef}
+              isActive={isHovering}
+              images={slides}
+              alt={`${service.title} program`}
+              className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+            />
+          ) : null}
+        </div>
+      </div>
+    </article>
   )
 }
 
@@ -1587,70 +1733,9 @@ function Landing() {
             subtitle="Focused volunteer initiatives making real community impact."
           />
           <div className="space-y-6 sm:space-y-7">
-            {SERVICES.map((service, index) => {
-              const Icon = service.icon
-              const imageBase = PROGRAM_IMAGES[service.key]
-              const imageSrc = imageBase ? `/Programs/${imageBase}.png` : ''
-              const reverse = index % 2 === 1
-
-              return (
-                <article
-                  key={service.key}
-                  className="group relative overflow-hidden rounded-3xl border border-white/12 bg-white/5 backdrop-blur-xl"
-                  style={{
-                    boxShadow: '0 18px 42px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.12)',
-                  }}
-                >
-                  <div className={`grid grid-cols-1 gap-0 lg:grid-cols-2 ${reverse ? 'lg:[&>*:first-child]:order-2' : ''}`}>
-                    <div className="relative p-6 sm:p-8">
-                      <div className="absolute inset-x-0 top-0 h-0.5" style={{ background: service.accent }} />
-                      <div
-                        className="absolute inset-0 pointer-events-none opacity-60"
-                        style={{ background: `radial-gradient(ellipse at 0% 0%, ${service.accent}22 0%, transparent 60%)` }}
-                      />
-
-                      <div className="relative flex items-start gap-4">
-                        <div
-                          className="shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center"
-                          style={{ background: service.iconBg, color: service.iconColor }}
-                        >
-                          <Icon size={22} className={service.iconClass} />
-                        </div>
-                        <div className="min-w-0">
-                          <h3 className="text-xl sm:text-2xl font-bold text-white font-heading">{service.title}</h3>
-                          <p className="mt-2 text-sm sm:text-base leading-relaxed text-white/80 max-w-xl">
-                            {service.description}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="relative min-h-[220px] sm:min-h-[260px] lg:min-h-[260px]">
-                      <div
-                        className="absolute inset-0"
-                        style={{
-                          background: 'linear-gradient(90deg, rgba(4,18,33,0.25) 0%, rgba(4,18,33,0.05) 45%, rgba(4,18,33,0.0) 70%)',
-                        }}
-                      />
-                      {imageSrc ? (
-                        <img
-                          src={imageSrc}
-                          alt={`${service.title} program`}
-                          className="absolute inset-0 h-full w-full object-cover"
-                          loading="lazy"
-                          onError={(e) => {
-                            const fallback = imageBase ? `/Programs/${imageBase}.jpg` : ''
-                            if (!fallback) return
-                            if (e.currentTarget.src.endsWith('.jpg')) return
-                            e.currentTarget.src = fallback
-                          }}
-                        />
-                      ) : null}
-                    </div>
-                  </div>
-                </article>
-              )
-            })}
+            {SERVICES.map((service, index) => (
+              <ProgramCard key={service.key} service={service} reverse={index % 2 === 1} />
+            ))}
           </div>
         </div>
       </section>

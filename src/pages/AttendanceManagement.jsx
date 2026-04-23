@@ -751,8 +751,7 @@ function AdminAttendance() {
   }
 
   return (
-    <div className="animate-fade-in space-y-6">
-      <section className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-[0_12px_30px_rgba(0,0,0,0.25)] backdrop-blur-md">
+    <div className="animate-fade-in space-y-6">    <section className="rounded-2xl border border-white/10 bg-white p-6 shadow-[0_12px_30px_rgba(0,0,0,0.25)]">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-[14px] uppercase tracking-[0.12em] text-white/70">Attendance</p>
