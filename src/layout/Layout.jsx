@@ -20,6 +20,9 @@ function Layout() {
     '/report',
     '/donations',
     '/members',
+    '/profile',
+    '/account/edit',
+    '/change-password',
     '/category-management',
     '/committee-management',
   ]

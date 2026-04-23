@@ -25,6 +25,13 @@ function Sidebar({ isOpen, toggleSidebar }) {
   const managementRoutes = ['/members', '/category-management', '/committee-management']
   const isOnManagementRoute = managementRoutes.some(route => location.pathname.startsWith(route))
   const resolvedManagementOpen = managementOpen ?? isOnManagementRoute
+  const getNavLabelClass = (label) => {
+    const text = String(label || '')
+    if (text === 'Attendance Management') return 'min-w-0 whitespace-nowrap text-sm text-white'
+    if (text.length > 18) return 'min-w-0 whitespace-nowrap text-[12px] tracking-[-0.01em] text-white'
+    if (text.length > 12) return 'min-w-0 whitespace-nowrap text-[13px] tracking-[-0.01em] text-white'
+    return 'min-w-0 whitespace-nowrap text-sm text-white'
+  }
 
   const navItems = [
     { to: '/', icon: LayoutDashboard, label: t('Dashboard') },
@@ -63,7 +70,10 @@ function Sidebar({ isOpen, toggleSidebar }) {
           {isOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
         </button>
 
-        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pb-2">
+        <div
+          className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pb-2"
+          style={{ scrollbarGutter: 'stable' }}
+        >
         {/* User Section (Top) */}
         <div className={`p-6 ${!isOpen && 'px-2'}`}>
           {isOpen ? (
@@ -131,14 +141,14 @@ function Sidebar({ isOpen, toggleSidebar }) {
                 if (window.innerWidth < 768 && isOpen) toggleSidebar()
               }}
               className={({ isActive }) =>
-                `group relative flex items-center gap-3 rounded-lg px-4 py-3 transition-all duration-200 ${navTone} ${
+                `group relative flex min-h-[48px] items-center gap-2.5 rounded-lg px-3 py-3 transition-all duration-200 ${navTone} ${
                   isActive ? navActiveTone : 'border-l-2 border-transparent'
                 } ${!isOpen && 'justify-center px-3'}`
               }
               style={{ animationDelay: `${index * 0.1}s` }}
             >
-              <item.icon size={20} className={isOpen ? '' : 'mx-auto'} />
-              {isOpen && <span>{item.label}</span>}
+              <item.icon size={20} className={isOpen ? 'shrink-0' : 'mx-auto'} />
+              {isOpen && <span className={getNavLabelClass(item.label)}>{item.label}</span>}
             </NavLink>
           ))}
 
@@ -152,7 +162,7 @@ function Sidebar({ isOpen, toggleSidebar }) {
                     return !current
                   })
                 }}
-                className={`group relative flex w-full items-center justify-between gap-3 rounded-lg border-l-2 border-transparent px-4 py-3 transition-all duration-200 ${navTone} ${
+                className={`group relative flex min-h-[48px] w-full items-center justify-between gap-2.5 rounded-lg border-l-2 border-transparent px-3 py-3 transition-all duration-200 ${navTone} ${
                   !isOpen && 'justify-center px-3'
                 }`}
               >
@@ -173,13 +183,13 @@ function Sidebar({ isOpen, toggleSidebar }) {
                       if (window.innerWidth < 768 && isOpen) toggleSidebar()
                     }}
                     className={({ isActive }) =>
-                      `group relative flex items-center gap-3 rounded-lg px-4 py-2 text-sm transition-all duration-200 ${navTone} ${
+                      `group relative flex min-h-[40px] items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-all duration-200 ${navTone} ${
                         isActive ? navActiveTone : 'border-l-2 border-transparent'
                       }`
                     }
                   >
                     <Users size={18} />
-                    <span>{t('User Management')}</span>
+                    <span className={getNavLabelClass(t('User Management'))}>{t('User Management')}</span>
                   </NavLink>
 
                   <NavLink
@@ -188,13 +198,13 @@ function Sidebar({ isOpen, toggleSidebar }) {
                       if (window.innerWidth < 768 && isOpen) toggleSidebar()
                     }}
                     className={({ isActive }) =>
-                      `group relative flex items-center gap-3 rounded-lg px-4 py-2 text-sm transition-all duration-200 ${navTone} ${
+                      `group relative flex min-h-[40px] items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-all duration-200 ${navTone} ${
                         isActive ? navActiveTone : 'border-l-2 border-transparent'
                       }`
                     }
                   >
                     <Tags size={18} />
-                    <span>{t('Categories')}</span>
+                    <span className={getNavLabelClass(t('Categories'))}>{t('Categories')}</span>
                   </NavLink>
 
                   <NavLink
@@ -203,13 +213,13 @@ function Sidebar({ isOpen, toggleSidebar }) {
                       if (window.innerWidth < 768 && isOpen) toggleSidebar()
                     }}
                     className={({ isActive }) =>
-                      `group relative flex items-center gap-3 rounded-lg px-4 py-2 text-sm transition-all duration-200 ${navTone} ${
+                      `group relative flex min-h-[40px] items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-all duration-200 ${navTone} ${
                         isActive ? navActiveTone : 'border-l-2 border-transparent'
                       }`
                     }
                   >
                     <Users size={18} />
-                    <span>{t('Committee Management')}</span>
+                    <span className={getNavLabelClass(t('Committee Management'))}>{t('Committee Management')}</span>
                   </NavLink>
                 </div>
               )}
