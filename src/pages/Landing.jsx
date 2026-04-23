@@ -422,6 +422,19 @@ function NavBar({ navigate }) {
                       <p className="text-sm font-semibold text-slate-900">Mission and Vision</p>
                     </div>
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setWhoWeAreOpen(false)
+                      navigate('/who-we-are/news')
+                    }}
+                    className="flex w-full items-start rounded-xl px-3 py-3 text-left transition-colors hover:bg-slate-50"
+                    role="menuitem"
+                  >
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">News</p>
+                    </div>
+                  </button>
                 </div>
               </>
             )}
@@ -524,6 +537,17 @@ function NavBar({ navigate }) {
               >
                 <span className="h-1 w-1 rounded-full bg-yellow-400" />
                 Mission and Vision
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileOpen(false)
+                  navigate('/who-we-are/news')
+                }}
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-white-300 transition-colors hover:bg-white/5 hover:text-white"
+              >
+                <span className="h-1 w-1 rounded-full bg-yellow-400" />
+                News
               </button>
             </div>
           </div>
@@ -653,7 +677,6 @@ function Landing() {
   const [latestNewsLoading, setLatestNewsLoading] = useState(false)
   const [latestNewsPage, setLatestNewsPage] = useState(1)
   const [latestNewsTotalPages, setLatestNewsTotalPages] = useState(1)
-  const [selectedNewsItem, setSelectedNewsItem] = useState(null)
 
   const LATEST_NEWS_PAGE_SIZE = 5
 
@@ -1656,13 +1679,14 @@ function Landing() {
       </section>
 
       {/* —— LATEST NEWS —— */}
+            {/* -- LATEST NEWS -- */}
       <section data-reveal className="reveal-on-scroll relative pb-28 sm:pb-36">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <SectionHeader title="Latest News" subtitle="Recent achievements and updates from KUSGAN Volunteers Inc." />
 
           {latestNewsLoading ? (
             <div className="rounded-3xl border border-white/12 bg-white/5 p-6 text-center text-sm text-white/70 backdrop-blur-xl">
-              Loading latest news…
+              Loading latest news...
             </div>
           ) : latestNewsItems.length === 0 ? (
             <div className="rounded-3xl border border-white/12 bg-white/5 p-6 text-center text-sm text-white/70 backdrop-blur-xl">
@@ -1672,6 +1696,9 @@ function Landing() {
             <>
               <div className="flex gap-4 overflow-x-auto pb-2 landing-scrollbar">
                 {latestNewsItems.slice(0, LATEST_NEWS_PAGE_SIZE).map(item => {
+                  const description = String(item?.description || '').trim()
+                  const previewDescription = description.length > 120 ? `${description.slice(0, 120).trimEnd()}...` : description
+                  const showReadMore = description.length > 120
                   const occurredAt = item?.occurred_at ? new Date(item.occurred_at) : null
                   const dateLabel =
                     occurredAt && !Number.isNaN(occurredAt.getTime())
@@ -1679,11 +1706,10 @@ function Landing() {
                       : ''
                   const images = Array.isArray(item?.image_paths) ? item.image_paths : []
                   const imageUrl = images[0] ? resolveAchievementImage(images[0]) : ''
+
                   return (
-                    <button
+                    <article
                       key={item.id}
-                      type="button"
-                      onClick={() => setSelectedNewsItem(item)}
                       className="group shrink-0 w-[260px] sm:w-[280px] rounded-3xl border border-white/12 bg-white/5 text-left backdrop-blur-xl transition-transform hover:-translate-y-0.5"
                       style={{ boxShadow: '0 18px 42px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.10)' }}
                     >
@@ -1693,9 +1719,10 @@ function Landing() {
                             src={imageUrl}
                             alt=""
                             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                            loading="lazy"
                           />
                         ) : (
-                          <div className="h-full w-full flex items-center justify-center text-xs text-white/50">No image</div>
+                          <div className="flex h-full w-full items-center justify-center text-xs text-white/50">No image</div>
                         )}
                       </div>
                       <div className="p-4">
@@ -1704,13 +1731,28 @@ function Landing() {
                         </p>
                         <p className="mt-2 text-xs text-white/65">
                           {dateLabel}
-                          {item?.location ? ` • ${String(item.location).trim()}` : ''}
+                          {item?.location ? ` � ${String(item.location).trim()}` : ''}
                         </p>
-                        {item?.description ? (
-                          <p className="mt-2 text-xs text-white/70 line-clamp-3">{String(item.description).trim()}</p>
+                        {description ? (
+                          <>
+                            <div className="mt-3 rounded-2xl border border-white/10 bg-black/10 px-3 py-3">
+                              <p className="min-h-[3rem] text-xs leading-6 text-white/80">
+                                {previewDescription}
+                              </p>
+                            </div>
+                            {showReadMore ? (
+                              <button
+                                type="button"
+                                className="mt-3 inline-flex w-full items-center justify-center rounded-xl border border-yellow-300/35 bg-yellow-400/15 px-3 py-2 text-xs font-semibold text-yellow-200 transition-all duration-200 hover:bg-yellow-400/25 hover:text-yellow-100"
+                                onClick={() => navigate(`/news/${item.id}`)}
+                              >
+                                Read more
+                              </button>
+                            ) : null}
+                          </>
                         ) : null}
                       </div>
-                    </button>
+                    </article>
                   )
                 })}
               </div>
@@ -1740,60 +1782,6 @@ function Landing() {
           )}
         </div>
       </section>
-
-      {selectedNewsItem ? (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
-          <button
-            type="button"
-            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-            aria-label="Close news"
-            onClick={() => setSelectedNewsItem(null)}
-          />
-          <div className="relative w-full max-w-2xl overflow-hidden rounded-3xl border border-white/12 bg-[#041221]/95 shadow-[0_20px_50px_rgba(0,0,0,0.55)] backdrop-blur-xl">
-            <div className="p-6">
-              <p className="text-lg font-bold text-white">{String(selectedNewsItem?.title || '').trim() || 'Untitled'}</p>
-              <p className="mt-1 text-sm text-white/70">
-                {selectedNewsItem?.occurred_at ? new Date(selectedNewsItem.occurred_at).toLocaleString() : ''}
-                {selectedNewsItem?.location ? ` • ${String(selectedNewsItem.location).trim()}` : ''}
-              </p>
-
-              {Array.isArray(selectedNewsItem?.image_paths) && selectedNewsItem.image_paths.length > 0 ? (
-                <div className="mt-4 flex gap-2 overflow-x-auto pb-2 landing-scrollbar">
-                  {selectedNewsItem.image_paths.map((path) => {
-                    const url = resolveAchievementImage(path)
-                    if (!url) return null
-                    return (
-                      <img
-                        key={path}
-                        src={url}
-                        alt=""
-                        className="h-28 w-40 shrink-0 rounded-2xl border border-white/10 object-cover"
-                        loading="lazy"
-                      />
-                    )
-                  })}
-                </div>
-              ) : null}
-
-              {selectedNewsItem?.description ? (
-                <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-white/80">
-                  {String(selectedNewsItem.description).trim()}
-                </p>
-              ) : null}
-
-              <button
-                type="button"
-                onClick={() => setSelectedNewsItem(null)}
-                className="mt-6 w-full rounded-xl border border-white/15 bg-white/5 py-2 text-sm font-semibold text-white hover:bg-white/10"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {/* ── ORGANIZATIONAL STRUCTURE ── */}
       <section id="organizational-structure" data-reveal aria-hidden="true" className="hidden">
         {/* Subtle bg differentiation */}
         <div
@@ -2304,6 +2292,11 @@ function Landing() {
 }
 
 export default Landing
+
+
+
+
+
 
 
 

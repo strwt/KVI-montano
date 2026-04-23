@@ -14,6 +14,7 @@ import Report from './pages/Report'
 import AchievementsManagement from './pages/AchievementsManagement'
 import Login from './pages/Login'
 import Landing from './pages/Landing'
+import NewsArticle from './pages/NewsArticle'
 import Recruitment from './pages/Recruitment'
 import OrganizationStructure from './pages/OrganizationStructure'
 import WhoWeAre from './pages/WhoWeAre'
@@ -133,11 +134,13 @@ function AppRoutes() {
       <Route path="/landing" element={<PublicRoute><Landing /></PublicRoute>} />
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
       <Route path="/recruitment" element={<PublicRoute><Recruitment /></PublicRoute>} />
+      <Route path="/news/:id" element={<NewsArticle />} />
       <Route path="/register" element={<Navigate to="/login" replace />} />
       <Route path="/organization/board" element={<OrganizationStructure mode="board" />} />
       <Route path="/organization/kusgan" element={<OrganizationStructure mode="kusgan" />} />
       <Route path="/who-we-are/overview" element={<WhoWeAre mode="overview" />} />
       <Route path="/who-we-are/mission-vision" element={<WhoWeAre mode="mission-vision" />} />
+      <Route path="/who-we-are/news" element={<WhoWeAre mode="news" />} />
 
       {/* Protected Routes */}
       <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
