@@ -9,6 +9,7 @@ import deleteUsersHandler from './api/admin/delete-users.js'
 import uploadUserAvatarHandler from './api/admin/upload-user-avatar.js'
 import healthHandler from './api/health.js'
 import uploadAvatarHandler from './api/storage/upload-avatar.js'
+import uploadAchievementImageHandler from './api/storage/upload-achievement-image.js'
 
 const collectRawBody = async (req) => {
   if (req.method === 'GET' || req.method === 'HEAD') return undefined
@@ -48,6 +49,7 @@ const devApiPlugin = () => {
     ['/api/admin/delete-users', deleteUsersHandler],
     ['/api/admin/upload-user-avatar', uploadUserAvatarHandler],
     ['/api/storage/upload-avatar', uploadAvatarHandler],
+    ['/api/storage/upload-achievement-image', uploadAchievementImageHandler],
   ])
 
   return {

@@ -11,6 +11,7 @@ import Members from './pages/Members'
 import MemberDetail from './pages/MemberDetail'
 import Donations from './pages/Donations'
 import Report from './pages/Report'
+import AchievementsManagement from './pages/AchievementsManagement'
 import Login from './pages/Login'
 import Landing from './pages/Landing'
 import Recruitment from './pages/Recruitment'
@@ -146,6 +147,7 @@ function AppRoutes() {
         <Route path="attendance-management" element={<AdminRoute><AttendanceManagement /></AdminRoute>} />
         <Route path="events" element={<Calendar listOnly />} />
         <Route path="report" element={<AdminRoute><Report /></AdminRoute>} />
+        <Route path="achievements" element={<AdminRoute><AchievementsManagement /></AdminRoute>} />
         <Route path="category-management" element={<AdminRoute><CategoryManagement /></AdminRoute>} />
         <Route path="committee-management" element={<AdminRoute><CommitteeManagement /></AdminRoute>} />
         <Route path="profile" element={<Profile />} />

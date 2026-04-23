@@ -24,7 +24,7 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
   const avatarTone = 'bg-white ring-2 ring-yellow-400/30'
   const footerBorderTone = 'border-l border-white/10'
   const footerButtonBorderTone = 'border-white/15'
-  const managementRoutes = ['/members', '/category-management', '/committee-management']
+  const managementRoutes = ['/members', '/achievements', '/category-management', '/committee-management']
   const isOnManagementRoute = managementRoutes.some(route => location.pathname.startsWith(route))
   const resolvedManagementOpen = managementOpen ?? isOnManagementRoute
 
@@ -190,6 +190,21 @@ function Sidebar({ isOpen, toggleSidebar, darkMode, onToggleDarkMode }) {
                   >
                     <Users size={18} />
                     <span>{t('User Management')}</span>
+                  </NavLink>
+
+                  <NavLink
+                    to="/achievements"
+                    onClick={() => {
+                      if (window.innerWidth < 768 && isOpen) toggleSidebar()
+                    }}
+                    className={({ isActive }) =>
+                      `group relative flex items-center gap-3 rounded-lg px-4 py-2 text-sm transition-all duration-200 ${navTone} ${
+                        isActive ? navActiveTone : 'border-l-2 border-transparent'
+                      }`
+                    }
+                  >
+                    <Tags size={18} />
+                    <span>Achievements</span>
                   </NavLink>
 
                   <NavLink
