@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ArrowLeft, Mail, Calendar, User, Trash2, Eye, EyeOff, Shield } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -14,6 +14,7 @@ function MemberDetail() {
   const [showUpdateModal, setShowUpdateModal] = useState(false)
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [newProfileImageFile, setNewProfileImageFile] = useState(null)
+  const [newProfileImagePreviewUrl, setNewProfileImagePreviewUrl] = useState('')
   const [actionError, setActionError] = useState('')
   const [editForm, setEditForm] = useState({
     type: 'member',
@@ -153,6 +154,24 @@ function MemberDetail() {
     setShowUpdateModal(false)
   }
 
+  useEffect(() => {
+    if (!newProfileImageFile) {
+      setNewProfileImagePreviewUrl('')
+      return undefined
+    }
+
+    const nextUrl = URL.createObjectURL(newProfileImageFile)
+    setNewProfileImagePreviewUrl(nextUrl)
+
+    return () => {
+      try {
+        URL.revokeObjectURL(nextUrl)
+      } catch {
+        // ignore
+      }
+    }
+  }, [newProfileImageFile])
+
   if (!authResolved || authLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -197,14 +216,6 @@ function MemberDetail() {
           <ArrowLeft size={20} />
           Back to Members
         </button>
-        {isAdmin && (
-          <button
-            onClick={openUpdateModal}
-            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-          >
-            Update
-          </button>
-        )}
       </div>
 
       {actionError && (
@@ -222,7 +233,7 @@ function MemberDetail() {
           }}
         >
           <div className="flex items-start gap-6">
-            <div className="w-24 h-24 rounded-full bg-gradient-to-r from-red-600 to-red-700 flex items-center justify-center flex-shrink-0 overflow-hidden">
+            <div className="flex h-24 w-24 flex-shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/70 bg-white shadow-[0_14px_32px_rgba(15,23,42,0.18)]">
               <img
                 src={member.profileImage || '/kvi.png'}
                 alt={member.name}
@@ -230,11 +241,22 @@ function MemberDetail() {
               />
             </div>
             <div className="flex-1">
-              <div className="flex items-center gap-3 mb-2 flex-wrap">
-                <h2 className="text-2xl font-bold text-white">{member.name}</h2>
-                <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getRoleBadge(memberType)}`}>
-                  {memberType === 'admin' ? 'Administrator' : (memberType === 'oic' ? 'OIC' : 'Member')}
-                </span>
+              <div className="mb-2 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <h2 className="text-2xl font-bold text-white">{member.name}</h2>
+                  <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getRoleBadge(memberType)}`}>
+                    {memberType === 'admin' ? 'Administrator' : (memberType === 'oic' ? 'OIC' : 'Member')}
+                  </span>
+                </div>
+                {isAdmin && (
+                  <button
+                    onClick={openUpdateModal}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-yellow-400 px-6 py-3 text-sm font-semibold text-slate-900 transition-all duration-200 hover:-translate-y-0.5 hover:bg-yellow-300"
+                    style={{ boxShadow: '0 8px 24px rgba(250,204,21,0.35)' }}
+                  >
+                    Update
+                  </button>
+                )}
               </div>
               
                 <div className="space-y-3 mt-4">
@@ -263,12 +285,14 @@ function MemberDetail() {
             <p className="mb-1 text-sm text-slate-200">ID Number</p>
             <p className="text-lg font-semibold text-white">{member.idNumber || 'N/A'}</p>
           </div>
-          <div className="rounded-xl border border-white/15 bg-white/5 p-5 shadow-[0_12px_30px_rgba(8,47,73,0.18)] backdrop-blur-md">
-            <p className="mb-1 text-sm text-slate-200">Role</p>
-            <p className="text-lg font-semibold text-white">
-              {memberType === 'admin' ? 'Administrator' : (memberType === 'oic' ? 'OIC' : 'Member')}
-            </p>
-          </div>
+          {memberType !== 'admin' ? (
+            <div className="rounded-xl border border-white/15 bg-white/5 p-5 shadow-[0_12px_30px_rgba(8,47,73,0.18)] backdrop-blur-md">
+              <p className="mb-1 text-sm text-slate-200">Role</p>
+              <p className="text-lg font-semibold text-white">
+                {memberType === 'oic' ? 'OIC' : 'Member'}
+              </p>
+            </div>
+          ) : null}
           <div className="rounded-xl border border-white/15 bg-white/5 p-5 shadow-[0_12px_30px_rgba(8,47,73,0.18)] backdrop-blur-md">
             <p className="mb-1 text-sm text-slate-200">Status</p>
             <p className={`text-lg font-semibold flex items-center gap-2 ${
@@ -635,17 +659,47 @@ function MemberDetail() {
                 </div>
               </div>
 
+              <div className="md:col-span-2">
+                <label className="mb-2 block text-sm font-medium text-white/85">
+                  Profile Image Preview
+                </label>
+                <div
+                  className="flex h-[150px] w-[150px] items-center justify-center overflow-hidden rounded-2xl border border-slate-200 !bg-white shadow-[0_14px_32px_rgba(15,23,42,0.12)]"
+                  style={{ colorScheme: 'light', backgroundColor: '#ffffff' }}
+                >
+                  <img
+                    src={newProfileImagePreviewUrl || member.profileImage || '/kvi.png'}
+                    alt={newProfileImagePreviewUrl ? 'Selected profile preview' : member.name}
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+              </div>
+
               <div>
                 <label htmlFor="update-member-image" className="mb-1 block text-sm font-medium text-white/85">
                   Profile Image (optional)
                 </label>
+                <div
+                  className="flex min-h-[56px] items-center gap-3 rounded-xl border border-slate-200 !bg-white px-3 py-2 text-slate-700 shadow-[0_12px_30px_rgba(15,23,42,0.08)]"
+                  style={{ colorScheme: 'light', backgroundColor: '#ffffff' }}
+                >
+                  <label
+                    htmlFor="update-member-image"
+                    className="inline-flex cursor-pointer items-center justify-center rounded-xl bg-yellow-400 px-4 py-2 text-sm font-semibold text-slate-900 shadow-[0_8px_24px_rgba(250,204,21,0.35)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-yellow-300"
+                  >
+                    Choose File
+                  </label>
+                  <span className="min-w-0 truncate text-sm text-slate-600">
+                    {newProfileImageFile?.name || 'No file chosen'}
+                  </span>
+                </div>
                 <input
                   id="update-member-image"
                   name="profileImage"
                   type="file"
                   accept="image/*"
                   onChange={(e) => setNewProfileImageFile(e.target.files?.[0] || null)}
-                  className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-red-500 file:mr-3 file:border-0 file:bg-white/10 file:px-3 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-white/15"
+                  className="sr-only"
                 />
               </div>
 
@@ -670,7 +724,8 @@ function MemberDetail() {
                   </button>
                   <button
                     type="submit"
-                    className="rounded-lg bg-red-600 px-4 py-2 text-white transition-colors hover:bg-red-700"
+                    className="inline-flex items-center justify-center rounded-xl bg-yellow-400 px-6 py-3 text-sm font-semibold text-slate-900 transition-all duration-200 hover:-translate-y-0.5 hover:bg-yellow-300"
+                    style={{ boxShadow: '0 8px 24px rgba(250,204,21,0.35)' }}
                   >
                     Save Changes
                   </button>
