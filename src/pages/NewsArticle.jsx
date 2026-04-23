@@ -24,6 +24,9 @@ export default function NewsArticle() {
   const [item, setItem] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [previousId, setPreviousId] = useState('')
+  const [nextId, setNextId] = useState('')
+  const [navLoading, setNavLoading] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -64,6 +67,63 @@ export default function NewsArticle() {
     }
   }, [id, supabaseEnabled])
 
+  useEffect(() => {
+    let active = true
+
+    const loadNeighbors = async () => {
+      if (!supabaseEnabled || !supabase || !item?.occurred_at) {
+        if (!active) return
+        setPreviousId('')
+        setNextId('')
+        setNavLoading(false)
+        return
+      }
+
+      setNavLoading(true)
+      try {
+        const occurredAt = item.occurred_at
+
+        const previousPromise = supabase
+          .from('achievements')
+          .select('id')
+          .gt('occurred_at', occurredAt)
+          .order('occurred_at', { ascending: true })
+          .limit(1)
+
+        const nextPromise = supabase
+          .from('achievements')
+          .select('id')
+          .lt('occurred_at', occurredAt)
+          .order('occurred_at', { ascending: false })
+          .limit(1)
+
+        const [{ data: previousData, error: previousError }, { data: nextData, error: nextError }] = await Promise.all([
+          previousPromise,
+          nextPromise,
+        ])
+
+        if (previousError) throw previousError
+        if (nextError) throw nextError
+        if (!active) return
+
+        setPreviousId(Array.isArray(previousData) && previousData[0]?.id ? String(previousData[0].id) : '')
+        setNextId(Array.isArray(nextData) && nextData[0]?.id ? String(nextData[0].id) : '')
+      } catch (err) {
+        if (!active) return
+        console.warn('Failed to load previous/next article.', err)
+        setPreviousId('')
+        setNextId('')
+      } finally {
+        if (active) setNavLoading(false)
+      }
+    }
+
+    void loadNeighbors()
+    return () => {
+      active = false
+    }
+  }, [item, supabaseEnabled])
+
   const imageUrls = useMemo(() => {
     const paths = Array.isArray(item?.image_paths) ? item.image_paths : []
     return paths.map(resolveAchievementImage).filter(Boolean)
@@ -93,11 +153,11 @@ export default function NewsArticle() {
         <div className="relative mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
           <button
             type="button"
-            onClick={() => navigate('/who-we-are/news')}
-            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white/85 transition-colors hover:bg-white/10"
+            onClick={() => navigate('/landing')}
+            className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/5 px-4 py-2 text-sm font-semibold text-white shadow-none transition-colors hover:bg-white/10"
           >
             <ArrowLeft size={16} />
-            Back to News
+            Back to Landing Page
           </button>
 
           <div className="mt-6 rounded-[28px] border border-slate-200 bg-white p-4 shadow-[0_24px_70px_rgba(8,47,73,0.18)] md:p-5">
@@ -155,6 +215,25 @@ export default function NewsArticle() {
                   <p className="whitespace-pre-wrap text-sm leading-8 text-slate-700 md:text-base">
                     {String(item?.description || '').trim() || 'No content available.'}
                   </p>
+                </div>
+
+                <div className="flex items-center justify-between gap-3">
+                  <button
+                    type="button"
+                    disabled={navLoading || !previousId}
+                    onClick={() => navigate(`/news/${previousId}`)}
+                    className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-none transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    type="button"
+                    disabled={navLoading || !nextId}
+                    onClick={() => navigate(`/news/${nextId}`)}
+                    className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-none transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Next
+                  </button>
                 </div>
               </article>
             ) : (

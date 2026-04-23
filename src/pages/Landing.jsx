@@ -446,19 +446,6 @@ function NavBar({ navigate }) {
                       <p className="text-sm font-semibold text-slate-900">Mission and Vision</p>
                     </div>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setWhoWeAreOpen(false)
-                      navigate('/who-we-are/news')
-                    }}
-                    className="flex w-full items-start rounded-xl px-3 py-3 text-left transition-colors hover:bg-slate-50"
-                    role="menuitem"
-                  >
-                    <div>
-                      <p className="text-sm font-semibold text-slate-900">News</p>
-                    </div>
-                  </button>
                 </div>
               </>
             )}
@@ -561,17 +548,6 @@ function NavBar({ navigate }) {
               >
                 <span className="h-1 w-1 rounded-full bg-yellow-400" />
                 Mission and Vision
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setMobileOpen(false)
-                  navigate('/who-we-are/news')
-                }}
-                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-white-300 transition-colors hover:bg-white/5 hover:text-white"
-              >
-                <span className="h-1 w-1 rounded-full bg-yellow-400" />
-                News
               </button>
             </div>
           </div>
@@ -1783,7 +1759,6 @@ function Landing() {
                 {latestNewsItems.slice(0, LATEST_NEWS_PAGE_SIZE).map(item => {
                   const description = String(item?.description || '').trim()
                   const previewDescription = description.length > 120 ? `${description.slice(0, 120).trimEnd()}...` : description
-                  const showReadMore = description.length > 120
                   const occurredAt = item?.occurred_at ? new Date(item.occurred_at) : null
                   const dateLabel =
                     occurredAt && !Number.isNaN(occurredAt.getTime())
@@ -1795,10 +1770,9 @@ function Landing() {
                   return (
                     <article
                       key={item.id}
-                      className="group shrink-0 w-[260px] sm:w-[280px] rounded-3xl border border-white/12 bg-white/5 text-left backdrop-blur-xl transition-transform hover:-translate-y-0.5"
-                      style={{ boxShadow: '0 18px 42px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.10)' }}
+                      className="group flex shrink-0 w-[260px] sm:w-[280px] flex-col rounded-3xl border border-slate-200 bg-white text-left transition-transform hover:-translate-y-0.5"
                     >
-                      <div className="h-36 w-full overflow-hidden rounded-t-3xl border-b border-white/10 bg-black/20">
+                      <div className="h-36 w-full overflow-hidden rounded-t-3xl border-b border-slate-200 bg-slate-100">
                         {imageUrl ? (
                           <img
                             src={imageUrl}
@@ -1807,35 +1781,33 @@ function Landing() {
                             loading="lazy"
                           />
                         ) : (
-                          <div className="flex h-full w-full items-center justify-center text-xs text-white/50">No image</div>
+                          <div className="flex h-full w-full items-center justify-center text-xs text-slate-500">No image</div>
                         )}
                       </div>
-                      <div className="p-4">
-                        <p className="text-sm font-bold text-white line-clamp-2">
+                      <div className="flex flex-1 flex-col p-4">
+                        <p className="text-sm font-bold text-slate-900 line-clamp-2">
                           {String(item?.title || '').trim() || 'Untitled'}
                         </p>
-                        <p className="mt-2 text-xs text-white/65">
+                        <p className="mt-2 text-xs text-slate-500">
                           {dateLabel}
-                          {item?.location ? ` • ${String(item.location).trim()}` : ''}
+                          {item?.location ? ` â€¢ ${String(item.location).trim()}` : ''}
                         </p>
                         {description ? (
                           <>
-                            <div className="mt-3 rounded-2xl border border-white/10 bg-black/10 px-3 py-3">
-                              <p className="min-h-[3rem] text-xs leading-6 text-white/80">
+                            <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
+                              <p className="min-h-[3rem] text-xs leading-6 text-slate-700">
                                 {previewDescription}
                               </p>
                             </div>
-                            {showReadMore ? (
-                              <button
-                                type="button"
-                                className="mt-3 inline-flex w-full items-center justify-center rounded-xl border border-yellow-300/35 bg-yellow-400/15 px-3 py-2 text-xs font-semibold text-yellow-200 transition-all duration-200 hover:bg-yellow-400/25 hover:text-yellow-100"
-                                onClick={() => navigate(`/news/${item.id}`)}
-                              >
-                                Read more
-                              </button>
-                            ) : null}
                           </>
                         ) : null}
+                        <button
+                          type="button"
+                          className="mt-auto inline-flex w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-none transition-colors hover:bg-slate-50"
+                          onClick={() => navigate(`/news/${item.id}`)}
+                        >
+                          Read More
+                        </button>
                       </div>
                     </article>
                   )
