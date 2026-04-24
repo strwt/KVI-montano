@@ -172,9 +172,6 @@ export default function NewsArticle() {
             ) : item ? (
               <article className="space-y-6 rounded-[22px] border border-slate-200 bg-white p-6 shadow-[0_24px_70px_rgba(8,47,73,0.12)] md:p-8">
                 <header className="space-y-4">
-                  <div className="inline-flex items-center rounded-full border border-yellow-300 bg-yellow-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-yellow-700">
-                    Latest News
-                  </div>
                   <h1 className="max-w-3xl text-3xl font-bold leading-tight text-slate-900 md:text-4xl">
                     {String(item?.title || '').trim() || 'Untitled'}
                   </h1>

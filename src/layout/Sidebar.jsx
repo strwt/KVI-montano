@@ -15,8 +15,8 @@ function Sidebar({ isOpen, toggleSidebar }) {
 
   const isAdmin = user?.role === 'admin'
   const shellTone = 'bg-[#041221]/90 text-white border-r border-white/10 backdrop-blur-xl'
-const navTone = 'text-white-300 hover:bg-white hover:text-slate-900'
-const navActiveTone = 'text-slate-900 bg-slate-50 border-l-2 border-yellow-400'
+  const navTone = 'text-white/80 hover:bg-white/10 hover:text-white'
+  const navActiveTone = 'text-white bg-white/10 border border-white/15 backdrop-blur-xl shadow-none border-l-2 border-yellow-400'
   const utilityBtnTone = 'text-white-300 hover:bg-white/10 hover:text-white'
   const userDividerTone = 'border-t border-white/10'
   const userNameTone = 'text-white'
@@ -186,7 +186,7 @@ const navActiveTone = 'text-slate-900 bg-slate-50 border-l-2 border-yellow-400'
               </button>
 
 {isOpen && resolvedManagementOpen && (
-                <div className="mt-1 space-y-1 pl-8 bg-white/90 backdrop-blur-md rounded-lg p-2">
+                <div className="mt-1 space-y-1 pl-8 bg-[#041221]/60 border border-white/10 backdrop-blur-md rounded-lg p-2">
                   <NavLink
                     to="/members"
                     onClick={() => {

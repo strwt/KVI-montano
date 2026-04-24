@@ -959,11 +959,6 @@ export function AuthProvider({ children }) {
       handleAuthChange(event, session)
     })
 
-    void supabase.auth
-      .getSession()
-      .then(({ data }) => handleAuthChange('INITIAL_SESSION', data?.session || null))
-      .catch(() => setAuthResolved(true))
-
     return () => {
       disposed = true
       sub?.subscription?.unsubscribe?.()

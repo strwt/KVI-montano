@@ -8,21 +8,9 @@ import dayjs from 'dayjs'
 const PAGE_SIZE = 20
 const MAX_FILES = 8
 
-const toPublicImageUrl = (path) => {
-  const raw = String(path || '').trim()
-  if (!raw) return ''
-  if (raw.startsWith('http') || raw.startsWith('data:image/') || raw.startsWith('/')) return raw
-  try {
-    const { data } = supabase?.storage?.from?.('achievement-images')?.getPublicUrl?.(raw) || {}
-    return data?.publicUrl || ''
-  } catch {
-    return ''
-  }
-}
-
 const getAccessToken = async () => {
   try {
-    const { data } = await supabase?.auth?.getSession?.()
+    const { data } = (await supabase?.auth?.getSession?.()) || {}
     return data?.session?.access_token ? String(data.session.access_token) : ''
   } catch {
     return ''
@@ -83,7 +71,7 @@ export default function AchievementsManagement() {
     try {
       const { data, error: fetchError } = await supabase
         .from('achievements')
-        .select('id,title,occurred_at,location,description,image_paths,created_at')
+        .select('id,title,occurred_at,location')
         .order('occurred_at', { ascending: false })
         .limit(PAGE_SIZE)
 
@@ -453,8 +441,6 @@ export default function AchievementsManagement() {
               <div className="space-y-3">
                 {items.map((item) => {
                   const dateLabel = item?.occurred_at ? dayjs(item.occurred_at).format('MMM D, YYYY h:mm A') : ''
-                  const firstImage = Array.isArray(item?.image_paths) ? item.image_paths[0] : ''
-                  const imageUrl = firstImage ? toPublicImageUrl(firstImage) : ''
                   return (
                     <div
                       key={item.id}
@@ -479,14 +465,6 @@ export default function AchievementsManagement() {
                           <Trash2 size={16} />
                         </button>
                       </div>
-                      {item.description ? (
-                        <p className="mt-3 line-clamp-3 text-sm leading-6 text-white/80">{item.description}</p>
-                      ) : null}
-                      {imageUrl ? (
-                        <div className="mt-3 overflow-hidden rounded-2xl border border-white/15 bg-white/10">
-                          <img src={imageUrl} alt="" className="h-40 w-full object-cover" loading="lazy" />
-                        </div>
-                      ) : null}
                     </div>
                   )
                 })}
