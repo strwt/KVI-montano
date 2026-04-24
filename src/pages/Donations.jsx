@@ -147,35 +147,35 @@ function Donations() {
             <table className="min-w-full divide-y divide-white/10 text-sm">
               <thead className="bg-white/5">
                 <tr>
-                  <th className="px-4 py-3 text-left font-semibold text-white/80">Date</th>
-                  <th className="px-4 py-3 text-left font-semibold text-white/80">Name</th>
-                  <th className="px-4 py-3 text-left font-semibold text-white/80">Email</th>
-                  <th className="px-4 py-3 text-left font-semibold text-white/80">Reference No.</th>
-                  <th className="px-4 py-3 text-right font-semibold text-white/80">Actions</th>
+                  <th className="px-4 py-3 text-left font-semibold text-white/150">Date</th>
+                  <th className="px-4 py-3 text-left font-semibold text-white/150">Name</th>
+                  <th className="px-4 py-3 text-left font-semibold text-white/150">Email</th>
+                  <th className="px-4 py-3 text-left font-semibold text-white/150">Reference No.</th>
+                  <th className="px-4 py-3 text-right font-semibold text-white/150">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/10">
+              <tbody className="divide-y divide-white/102">
                 {loading ? (
                   <tr>
-                    <td className="px-4 py-6 text-white/70" colSpan={5}>
+                    <td className="px-4 py-6 text-white/100" colSpan={5}>
                       Loading donations...
                     </td>
                   </tr>
                 ) : donations.length === 0 ? (
                   <tr>
-                    <td className="px-4 py-6 text-white/70" colSpan={5}>
+                    <td className="px-4 py-6 text-white/100" colSpan={5}>
                       No donation records yet.
                     </td>
                   </tr>
                 ) : (
                   donations.map(row => (
                     <tr key={row.id} className="transition-colors hover:bg-white/5">
-                      <td className="px-4 py-3 text-white/80">
+                      <td className="px-4 py-3 text-white/100">
                         {row.created_at ? dayjs(row.created_at).format('MMM D, YYYY h:mm A') : 'N/A'}
                       </td>
-                      <td className="px-4 py-3 text-white/80">{row.donor_name || '-'}</td>
-                      <td className="px-4 py-3 text-white/80">{row.donor_email || '-'}</td>
-                      <td className="px-4 py-3 font-mono text-xs text-white/80">{row.reference_no || '-'}</td>
+                      <td className="px-4 py-3 text-white/100">{row.donor_name || '-'}</td>
+                      <td className="px-4 py-3 text-white/100">{row.donor_email || '-'}</td>
+                      <td className="px-4 py-3 font-mono text-xs text-white/100">{row.reference_no || '-'}</td>
                       <td className="px-4 py-3 text-right">
                         <button
                           type="button"
