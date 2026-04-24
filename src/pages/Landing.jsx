@@ -1606,64 +1606,6 @@ function Landing() {
         </div>
       </section>
 
-      {/* ── STATS STRIP ── */}
-      <section data-reveal className="reveal-on-scroll relative overflow-hidden py-20 sm:py-28">
-        <div
-          className="absolute inset-0"
-          style={{ background: `linear-gradient(135deg, ${THEME.navyDeep} 0%, ${THEME.navy} 45%, ${THEME.navyMid} 100%)` }}
-        />
-        <div
-          className="absolute inset-0 opacity-[0.04]"
-          style={{
-            backgroundImage:
-              "url(\"data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20 0L40 20L20 40L0 20Z' fill='%23ffffff'/%3E%3C/svg%3E\")",
-            backgroundSize: '40px 40px',
-          }}
-        />
-        <div
-          className="absolute -top-32 -right-32 rounded-full"
-          style={{ width: 500, height: 500, background: 'radial-gradient(circle, rgba(255,255,255,0.06) 0%, transparent 70%)' }}
-        />
-        <div
-          className="absolute -bottom-32 -left-32 rounded-full"
-          style={{ width: 500, height: 500, background: 'radial-gradient(circle, rgba(0,0,0,0.3) 0%, transparent 70%)' }}
-        />
-
-        <div className="relative max-w-4xl mx-auto px-4 sm:px-6 text-center">
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white font-heading leading-tight mb-4">
-            Ready to Make a<br />
-            <span style={{ color: THEME.yellowText }}>Difference?</span>
-          </h2>
-          <p className="text-base sm:text-lg max-w-lg mx-auto mb-10 leading-relaxed" style={{ color: 'rgba(248, 240, 240, 0.88)' }}>
-            Join KUSGAN and become part of a growing community dedicated to meaningful action and lasting impact.
-          </p>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <button
-              type="button"
-              onClick={() => navigate('/recruitment')}
-              className="inline-flex w-full sm:w-56 h-12 items-center justify-center gap-2.5 px-8 rounded-xl bg-yellow-400 text-slate-900 font-bold hover:-translate-y-0.5 transition-all duration-200 hover:bg-yellow-300"
-              style={{ boxShadow: '0 16px 48px rgba(0,0,0,0.4)' }}
-            >
-              <Handshake size={18} />
-              Join Us Today
-            </button>
-            <button
-              type="button"
-              onClick={openDonation}
-              className="inline-flex w-full sm:w-56 h-12 items-center justify-center gap-2.5 px-8 rounded-xl text-white font-semibold hover:-translate-y-0.5 transition-all duration-200 border"
-              style={{
-                background: 'rgba(0,0,0,0.18)',
-                borderColor: 'rgba(252,165,165,0.5)',
-              }}
-            >
-              <HandHeart size={18} />
-              Donate
-            </button>
-          </div>
-        </div>
-      </section>
-
       <div
         data-reveal
         className="reveal-on-scroll relative overflow-hidden"
@@ -1723,6 +1665,64 @@ function Landing() {
           </div>
         </div>
       </div>
+
+      {/* ── STATS STRIP ── */}
+      <section data-reveal className="reveal-on-scroll relative overflow-hidden py-20 sm:py-28">
+        <div
+          className="absolute inset-0"
+          style={{ background: `linear-gradient(135deg, ${THEME.navyDeep} 0%, ${THEME.navy} 45%, ${THEME.navyMid} 100%)` }}
+        />
+        <div
+          className="absolute inset-0 opacity-[0.04]"
+          style={{
+            backgroundImage:
+              "url(\"data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20 0L40 20L20 40L0 20Z' fill='%23ffffff'/%3E%3C/svg%3E\")",
+            backgroundSize: '40px 40px',
+          }}
+        />
+        <div
+          className="absolute -top-32 -right-32 rounded-full"
+          style={{ width: 500, height: 500, background: 'radial-gradient(circle, rgba(255,255,255,0.06) 0%, transparent 70%)' }}
+        />
+        <div
+          className="absolute -bottom-32 -left-32 rounded-full"
+          style={{ width: 500, height: 500, background: 'radial-gradient(circle, rgba(0,0,0,0.3) 0%, transparent 70%)' }}
+        />
+
+        <div className="relative max-w-4xl mx-auto px-4 sm:px-6 text-center">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white font-heading leading-tight mb-4">
+            Ready to Make a<br />
+            <span style={{ color: THEME.yellowText }}>Difference?</span>
+          </h2>
+          <p className="text-base sm:text-lg max-w-lg mx-auto mb-10 leading-relaxed" style={{ color: 'rgba(248, 240, 240, 0.88)' }}>
+            Join KUSGAN and become part of a growing community dedicated to meaningful action and lasting impact.
+          </p>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <button
+              type="button"
+              onClick={() => navigate('/recruitment')}
+              className="inline-flex w-full sm:w-56 h-12 items-center justify-center gap-2.5 px-8 rounded-xl bg-yellow-400 text-slate-900 font-bold hover:-translate-y-0.5 transition-all duration-200 hover:bg-yellow-300"
+              style={{ boxShadow: '0 16px 48px rgba(0,0,0,0.4)' }}
+            >
+              <Handshake size={18} />
+              Join Us Today
+            </button>
+            <button
+              type="button"
+              onClick={openDonation}
+              className="inline-flex w-full sm:w-56 h-12 items-center justify-center gap-2.5 px-8 rounded-xl text-white font-semibold hover:-translate-y-0.5 transition-all duration-200 border"
+              style={{
+                background: 'rgba(0,0,0,0.18)',
+                borderColor: 'rgba(252,165,165,0.5)',
+              }}
+            >
+              <HandHeart size={18} />
+              Donate
+            </button>
+          </div>
+        </div>
+      </section>
 
       {/* ── SERVICES ── */}
       <section id="services" data-reveal className="reveal-on-scroll relative pt-20 pb-28 sm:pt-24 sm:pb-36">
