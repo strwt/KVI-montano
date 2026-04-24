@@ -771,6 +771,48 @@ function OrgPersonCard({ person, large = false, size = 'normal' }) {
   )
 }
 
+function LatestNewsImageGallery({ imageUrls }) {
+  const urls = Array.isArray(imageUrls) ? imageUrls.filter(Boolean) : []
+
+  if (urls.length === 0) return null
+
+  const [heroUrl, ...restUrls] = urls
+
+  return (
+    <div className="mb-5">
+      <div className="mx-auto w-full max-w-4xl">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="overflow-hidden rounded-2xl bg-slate-100 sm:col-span-2">
+            <div className="relative h-64 w-full sm:h-80 md:h-[420px]">
+              <img
+                src={heroUrl}
+                alt=""
+                loading="lazy"
+                draggable={false}
+                className="absolute inset-0 block h-full w-full rounded-2xl bg-white object-contain"
+              />
+            </div>
+          </div>
+
+          {restUrls.map((url, index) => (
+            <div key={`${url}-${index}`} className="overflow-hidden rounded-2xl bg-slate-100">
+              <div className="relative h-40 w-full sm:h-48 md:h-56">
+                <img
+                  src={url}
+                  alt=""
+                  loading="lazy"
+                  draggable={false}
+                  className="absolute inset-0 block h-full w-full rounded-2xl object-cover"
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ── Main Page ──────────────────────────────────── */
 
 function Landing() {
@@ -778,7 +820,6 @@ function Landing() {
   const { user, getAllMembers, getAdmins, ensureAdminDataLoaded, committees } = useAuth()
   const supabaseEnabled = isSupabaseEnabled()
   const pageRef = useRef(null)
-  const heroFloatRef = useRef(null)
   const committeeScrollRef = useRef(null)
   const committeeDragStartXRef = useRef(0)
   const committeeDragStartScrollLeftRef = useRef(0)
@@ -799,6 +840,7 @@ function Landing() {
   const [latestNewsLoading, setLatestNewsLoading] = useState(false)
   const [latestNewsPage, setLatestNewsPage] = useState(1)
   const [latestNewsTotalPages, setLatestNewsTotalPages] = useState(1)
+  const [selectedNewsItem, setSelectedNewsItem] = useState(null)
 
   const LATEST_NEWS_PAGE_SIZE = 5
 
@@ -894,6 +936,50 @@ function Landing() {
     }
   }
 
+  const normalizeAchievementImagePaths = (value) => {
+    if (!value) return []
+    if (Array.isArray(value)) return value
+
+    if (typeof value === 'string') {
+      const trimmed = value.trim()
+      if (!trimmed) return []
+
+      // Postgres array literal: {"a","b"} or {a,b}
+      if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+        const inner = trimmed.slice(1, -1).trim()
+        if (!inner) return []
+        return inner
+          .split(',')
+          .map((entry) => String(entry || '').trim().replace(/^"+|"+$/g, '').replace(/^'+|'+$/g, ''))
+          .filter(Boolean)
+      }
+
+      try {
+        const parsed = JSON.parse(trimmed)
+        if (Array.isArray(parsed)) return parsed
+      } catch {
+        // ignore
+      }
+
+      if (trimmed.includes(',')) {
+        return trimmed
+          .split(',')
+          .map((entry) => String(entry || '').trim())
+          .filter(Boolean)
+      }
+
+      return [trimmed]
+    }
+
+    return []
+  }
+
+  const selectedNewsImages = useMemo(() => {
+    if (!selectedNewsItem) return []
+    const paths = normalizeAchievementImagePaths(selectedNewsItem?.image_paths)
+    return paths.map(resolveAchievementImage).filter(Boolean)
+  }, [selectedNewsItem])
+
   const loadLatestNews = async (page = 1) => {
     const nextPage = Math.max(1, Number(page || 1))
     setLatestNewsPage(nextPage)
@@ -938,6 +1024,22 @@ function Landing() {
     void loadLatestNews(1)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supabaseEnabled])
+
+  useEffect(() => {
+    if (!selectedNewsItem) return undefined
+
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') setSelectedNewsItem(null)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      document.body.style.overflow = previousOverflow
+    }
+  }, [selectedNewsItem])
 
   function resolveProfileImage(value) {
     const raw = String(value || '').trim()
@@ -1007,58 +1109,6 @@ function Landing() {
     )
     targets.forEach(t => observer.observe(t))
     return () => observer.disconnect()
-  }, [])
-
-  useEffect(() => {
-    const element = heroFloatRef.current
-    if (!element) return
-
-    const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches
-    if (prefersReducedMotion) return
-
-    let lastScrollY = window.scrollY
-    let lastTime = performance.now()
-    let rafId = 0
-    let stopTimerId = 0
-
-    element.style.willChange = 'transform'
-    element.style.transition = 'transform 220ms ease'
-
-    const clamp = (value, min, max) => Math.min(max, Math.max(min, value))
-
-    const update = () => {
-      rafId = 0
-      const nowY = window.scrollY
-      const nowTime = performance.now()
-      const dy = nowY - lastScrollY
-      const dt = Math.max(16, nowTime - lastTime)
-
-      const velocity = dy / dt // px per ms
-      const offset = clamp(-velocity * 140, -10, 10)
-
-      element.style.transform = `translateY(${offset.toFixed(2)}px)`
-      lastScrollY = nowY
-      lastTime = nowTime
-    }
-
-    const reset = () => {
-      element.style.transform = 'translateY(0px)'
-    }
-
-    const onScroll = () => {
-      if (!rafId) rafId = window.requestAnimationFrame(update)
-      window.clearTimeout(stopTimerId)
-      stopTimerId = window.setTimeout(reset, 140)
-    }
-
-    window.addEventListener('scroll', onScroll, { passive: true })
-
-    return () => {
-      window.removeEventListener('scroll', onScroll)
-      window.clearTimeout(stopTimerId)
-      if (rafId) window.cancelAnimationFrame(rafId)
-      reset()
-    }
   }, [])
 
   useEffect(() => {
@@ -1542,37 +1592,13 @@ function Landing() {
 
           {/* Right — logo visual with floating stat cards */}
           <div className="relative flex justify-center lg:justify-end">
-            <div className="relative w-full max-w-xs sm:max-w-sm">
+            <div className="relative w-full max-w-xs sm:max-w-sm bg-white rounded-3xl p-6">
               {/* Main logo card */}
-              <div
-                className="hero-float relative rounded-3xl overflow-hidden"
-                ref={heroFloatRef}
-                style={{
-                  background: '#ffffff',
-                  border: '1px solid rgba(255,255,255,0.25)',
-                  boxShadow:
-                    '0 40px 80px rgba(0,0,0,0.65), 0 0 0 1px rgba(255,255,255,0.12)',
-                  padding: '28px 28px 20px',
-                }}
-              >
-                <img
-                  src={HERO_IMAGE}
-                  alt="KUSGAN Volunteer Inc. logo"
-                  className="w-full h-60 sm:h-72 object-contain"
-                />
-                {/* Bottom label */}
-                <div
-                  className="text-center mt-3 pb-1 pt-3"
-                  style={{ borderTop: '1px solid rgba(0,0,0,0.07)' }}
-                >
-                  <p
-                    className="text-xs tracking-widest uppercase font-semibold"
-                    style={{ color: 'rgba(107,114,128,0.75)' }}
-                  >
-                    KUSGAN Volunteer Inc.
-                  </p>
-                </div>
-              </div>
+              <img
+                src={HERO_IMAGE}
+                alt="KUSGAN Volunteer Inc. logo"
+                className="w-full h-60 sm:h-72 object-contain"
+              />
 
               {/* Floating card — top-left */}
            
@@ -1584,15 +1610,7 @@ function Landing() {
               
 
               {/* Red glow behind card */}
-              <div
-                className="absolute -z-10 rounded-3xl"
-                style={{
-                  inset: 0,
-                  background: 'radial-gradient(circle, rgba(250,204,21,0.22) 0%, transparent 70%)',
-                  filter: 'blur(40px)',
-                  transform: 'translateY(24px) scale(0.85)',
-                }}
-              />
+
             </div>
           </div>
         </div>
@@ -1764,7 +1782,7 @@ function Landing() {
                     occurredAt && !Number.isNaN(occurredAt.getTime())
                       ? occurredAt.toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
                       : ''
-                  const images = Array.isArray(item?.image_paths) ? item.image_paths : []
+                  const images = normalizeAchievementImagePaths(item?.image_paths)
                   const imageUrl = images[0] ? resolveAchievementImage(images[0]) : ''
 
                   return (
@@ -1804,7 +1822,7 @@ function Landing() {
                         <button
                           type="button"
                           className="mt-auto inline-flex w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-none transition-colors hover:bg-slate-50"
-                          onClick={() => navigate(`/news/${item.id}`)}
+                          onClick={() => setSelectedNewsItem(item)}
                         >
                           Read More
                         </button>
@@ -2241,6 +2259,62 @@ function Landing() {
             >
               Close
             </button>
+          </div>
+        </div>
+      ) : null}
+
+      {selectedNewsItem ? (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center"
+          style={{ background: 'rgba(0,0,0,0.75)' }}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Latest news details"
+          onClick={() => setSelectedNewsItem(null)}
+        >
+          <div
+            className="w-screen max-w-none overflow-hidden rounded-2xl border border-slate-200 bg-white text-left text-slate-900 sm:w-[calc(100vw-2rem)]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="relative border-b border-slate-200 p-6">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold tracking-[0.2em] uppercase text-slate-700">Latest News</p>
+                <h3 className="mt-2 text-xl font-bold text-slate-900 font-heading">
+                  {String(selectedNewsItem?.title || '').trim() || 'Untitled'}
+                </h3>
+                <p className="mt-2 text-sm text-slate-600">
+                  {selectedNewsItem?.occurred_at
+                    ? new Date(selectedNewsItem.occurred_at).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+                    : ''}
+                  {selectedNewsItem?.location ? ` - ${String(selectedNewsItem.location).trim()}` : ''}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedNewsItem(null)}
+                className="absolute right-4 top-4 inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
+                aria-label="Close"
+                title="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="max-h-[70vh] overflow-y-auto p-6">
+              <LatestNewsImageGallery imageUrls={selectedNewsImages} />
+
+              {selectedNewsItem?.description ? (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="whitespace-pre-line text-sm leading-6 text-slate-700">
+                    {String(selectedNewsItem.description)}
+                  </p>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+                  No description.
+                </div>
+              )}
+            </div>
           </div>
         </div>
       ) : null}

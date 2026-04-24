@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { MapPin, Plus, Trash2 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useConfirm } from '../context/ConfirmContext'
@@ -8,6 +8,60 @@ import dayjs from 'dayjs'
 const PAGE_SIZE = 20
 const MAX_FILES = 8
 
+const toPublicImageUrl = (path) => {
+  const raw = String(path || '').trim()
+  if (!raw) return ''
+  if (raw.startsWith('http') || raw.startsWith('data:image/') || raw.startsWith('/')) return raw
+
+  try {
+    const storage = supabase && supabase.storage
+    if (!storage || typeof storage.from !== 'function') return ''
+    const bucket = storage.from('achievement-images')
+    const { data } = bucket.getPublicUrl(raw) || {}
+    return data?.publicUrl ? String(data.publicUrl) : ''
+  } catch {
+    return ''
+  }
+}
+
+const normalizeImagePaths = (value) => {
+  if (!value) return []
+  if (Array.isArray(value)) return value
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (!trimmed) return []
+
+    // Postgres array literal: {"a","b"} or {a,b}
+    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+      const inner = trimmed.slice(1, -1).trim()
+      if (!inner) return []
+      return inner
+        .split(',')
+        .map((entry) => String(entry || '').trim().replace(/^"+|"+$/g, '').replace(/^'+|'+$/g, ''))
+        .filter(Boolean)
+    }
+
+    try {
+      const parsed = JSON.parse(trimmed)
+      if (Array.isArray(parsed)) return parsed
+    } catch {
+      // ignore
+    }
+
+    if (trimmed.includes(',')) {
+      return trimmed
+        .split(',')
+        .map((entry) => String(entry || '').trim())
+        .filter(Boolean)
+    }
+
+    return [trimmed]
+  }
+
+  return []
+}
+
 const getAccessToken = async () => {
   try {
     const { data } = (await supabase?.auth?.getSession?.()) || {}
@@ -15,6 +69,54 @@ const getAccessToken = async () => {
   } catch {
     return ''
   }
+}
+
+function AchievementImageGallery({ imageUrls }) {
+  const urls = Array.isArray(imageUrls) ? imageUrls.filter(Boolean) : []
+  const [dimensionsByUrl, setDimensionsByUrl] = useState(() => new Map())
+
+  if (urls.length === 0) return null
+
+  return (
+    <div className="mt-4 space-y-5">
+      {urls.map((url, index) => {
+        const dims = dimensionsByUrl.get(url)
+        return (
+          <div key={`${url}-${index}`} className="flex justify-center">
+            <div className="w-full max-w-xl overflow-auto rounded-2xl border border-white/15 bg-white">
+              <img
+                src={url}
+                alt=""
+                loading="lazy"
+                draggable={false}
+                width={dims?.width}
+                height={dims?.height}
+                onLoad={(event) => {
+                  const element = event?.currentTarget
+                  if (!element) return
+                  const width = element.naturalWidth || 0
+                  const height = element.naturalHeight || 0
+                  if (!width || !height) return
+                  setDimensionsByUrl((prev) => {
+                    if (prev instanceof Map && prev.get(url)?.width === width && prev.get(url)?.height === height) return prev
+                    const next = prev instanceof Map ? new Map(prev) : new Map()
+                    next.set(url, { width, height })
+                    return next
+                  })
+                }}
+                className="mx-auto block max-w-none bg-white object-contain"
+                style={
+                  dims?.width && dims?.height
+                    ? { width: dims.width, height: dims.height }
+                    : { width: 'auto', height: 'auto' }
+                }
+              />
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
 }
 
 export default function AchievementsManagement() {
@@ -34,6 +136,22 @@ export default function AchievementsManagement() {
 
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
+  const [expandedId, setExpandedId] = useState(null)
+  const [editDraft, setEditDraft] = useState(null)
+  const [editSaving, setEditSaving] = useState(false)
+  const [editError, setEditError] = useState('')
+  const editInitIdRef = useRef(null)
+
+  const expandedItem = useMemo(() => {
+    if (!expandedId) return null
+    return (Array.isArray(items) ? items : []).find((entry) => String(entry?.id) === String(expandedId)) || null
+  }, [expandedId, items])
+
+  const selectedImageUrls = useMemo(() => {
+    if (!expandedItem) return []
+    const paths = normalizeImagePaths(expandedItem?.image_paths)
+    return paths.map(toPublicImageUrl).filter(Boolean)
+  }, [expandedItem])
 
   const canUseSupabase = Boolean(supabase)
 
@@ -71,7 +189,7 @@ export default function AchievementsManagement() {
     try {
       const { data, error: fetchError } = await supabase
         .from('achievements')
-        .select('id,title,occurred_at,location')
+        .select('id,title,occurred_at,location,description,image_paths,created_at')
         .order('occurred_at', { ascending: false })
         .limit(PAGE_SIZE)
 
@@ -89,6 +207,37 @@ export default function AchievementsManagement() {
     void load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    if (!expandedId) return undefined
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') setExpandedId(null)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [expandedId])
+
+  useEffect(() => {
+    if (!expandedItem) {
+      editInitIdRef.current = null
+      setEditDraft(null)
+      setEditError('')
+      setEditSaving(false)
+      return
+    }
+
+    if (String(editInitIdRef.current || '') === String(expandedItem?.id || '')) return
+    editInitIdRef.current = expandedItem?.id || null
+
+    setEditDraft({
+      title: String(expandedItem?.title || ''),
+      occurredAt: expandedItem?.occurred_at ? dayjs(expandedItem.occurred_at).format('YYYY-MM-DDTHH:mm') : '',
+      location: String(expandedItem?.location || ''),
+      description: String(expandedItem?.description || ''),
+    })
+    setEditError('')
+    setEditSaving(false)
+  }, [expandedItem])
 
   const resetForm = () => {
     setTitle('')
@@ -256,13 +405,14 @@ export default function AchievementsManagement() {
   }
 
   return (
-    <div
-      className="animate-fade-in rounded-[28px] border border-white/10 p-4 text-white shadow-[0_24px_70px_rgba(8,47,73,0.18)] md:p-5"
-      style={{
-        background: 'linear-gradient(145deg, rgba(14,116,144,0.62), rgba(30,64,175,0.58) 52%, rgba(96,165,250,0.48))',
-        backdropFilter: 'blur(16px)',
-      }}
-    >
+    <>
+      <div
+        className="animate-fade-in rounded-[28px] border border-white/10 p-4 text-white shadow-[0_24px_70px_rgba(8,47,73,0.18)] md:p-5"
+        style={{
+          background: 'linear-gradient(145deg, rgba(14,116,144,0.62), rgba(30,64,175,0.58) 52%, rgba(96,165,250,0.48))',
+          backdropFilter: 'blur(16px)',
+        }}
+      >
       <div
         className="relative mb-6 overflow-hidden rounded-3xl border border-white/15 p-1 shadow-[0_24px_70px_rgba(8,47,73,0.26)]"
         style={{
@@ -363,7 +513,7 @@ export default function AchievementsManagement() {
               <div>
                 <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-white/65">Location</label>
                 <div className="relative">
-                  <MapPin size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/55" />
+                  <MapPin size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-yellow-300/90" />
                   <input
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
@@ -441,6 +591,7 @@ export default function AchievementsManagement() {
               <div className="space-y-3">
                 {items.map((item) => {
                   const dateLabel = item?.occurred_at ? dayjs(item.occurred_at).format('MMM D, YYYY h:mm A') : ''
+                  const isExpanded = String(expandedId || '') === String(item?.id || '')
                   return (
                     <div
                       key={item.id}
@@ -451,20 +602,163 @@ export default function AchievementsManagement() {
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <p className="truncate text-base font-semibold text-white">{item.title || 'Untitled'}</p>
+                          <p className="break-words text-base font-semibold text-white line-clamp-2">{item.title || 'Untitled'}</p>
                           <p className="mt-1 text-xs text-white/70">{dateLabel}</p>
                           {item.location ? <p className="mt-1 text-xs text-white/70">{item.location}</p> : null}
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => void handleDelete(item)}
-                          className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-white/75 transition-colors hover:bg-red-500/15 hover:text-red-100"
-                          title="Delete"
-                          aria-label="Delete achievement"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setExpandedId((prev) => (String(prev || '') === String(item?.id || '') ? null : item?.id))}
+                            className="inline-flex h-9 items-center justify-center rounded-xl border border-white/15 bg-white/10 px-3 text-xs font-semibold text-white/85 transition-colors hover:bg-white/15 hover:text-white"
+                            aria-label="Read more"
+                            title="Read more"
+                          >
+                            {isExpanded ? 'Close' : 'Read more'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void handleDelete(item)}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-white/75 transition-colors hover:bg-red-500/15 hover:text-red-100"
+                            title="Delete"
+                            aria-label="Delete achievement"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
                       </div>
+
+                      {isExpanded ? (
+                        <div className="mt-4 rounded-2xl border border-white/15 bg-white/10 p-4">
+                          {editError ? (
+                            <div className="mb-3 rounded-xl border border-red-300/30 bg-red-500/10 px-3 py-2 text-sm text-red-100">
+                              {editError}
+                            </div>
+                          ) : null}
+
+                          <div className="grid gap-3 md:grid-cols-2">
+                            <label className="text-sm text-white/85">
+                              Title
+                              <input
+                                value={editDraft?.title ?? ''}
+                                onChange={(e) => setEditDraft((prev) => ({ ...(prev || {}), title: e.target.value }))}
+                                className="mt-1 w-full rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-white/50 outline-none focus:border-white/25"
+                                placeholder="Achievement title"
+                              />
+                            </label>
+
+                            <label className="text-sm text-white/85">
+                              Date & time
+                              <input
+                                type="datetime-local"
+                                value={editDraft?.occurredAt ?? ''}
+                                onChange={(e) => setEditDraft((prev) => ({ ...(prev || {}), occurredAt: e.target.value }))}
+                                className="mt-1 w-full rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-sm text-white outline-none focus:border-white/25"
+                              />
+                            </label>
+
+                            <label className="text-sm text-white/85 md:col-span-2">
+                              Location
+                              <input
+                                value={editDraft?.location ?? ''}
+                                onChange={(e) => setEditDraft((prev) => ({ ...(prev || {}), location: e.target.value }))}
+                                className="mt-1 w-full rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-white/50 outline-none focus:border-white/25"
+                                placeholder="Location"
+                              />
+                            </label>
+
+                            <label className="text-sm text-white/85 md:col-span-2">
+                              Description
+                              <textarea
+                                value={editDraft?.description ?? ''}
+                                onChange={(e) => setEditDraft((prev) => ({ ...(prev || {}), description: e.target.value }))}
+                                className="mt-1 min-h-[110px] w-full resize-none rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-white/50 outline-none focus:border-white/25"
+                                placeholder="Description"
+                              />
+                            </label>
+                          </div>
+
+                          {expandedItem?.id === item?.id && selectedImageUrls.length ? (
+                            <AchievementImageGallery
+                              key={expandedItem?.id || 'achievement-gallery'}
+                              imageUrls={selectedImageUrls}
+                            />
+                          ) : null}
+
+                          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (!expandedItem) return
+                                setEditDraft({
+                                  title: String(expandedItem?.title || ''),
+                                  occurredAt: expandedItem?.occurred_at ? dayjs(expandedItem.occurred_at).format('YYYY-MM-DDTHH:mm') : '',
+                                  location: String(expandedItem?.location || ''),
+                                  description: String(expandedItem?.description || ''),
+                                })
+                                setEditError('')
+                              }}
+                              className="inline-flex h-9 items-center justify-center rounded-xl border border-white/15 bg-white/10 px-3 text-xs font-semibold text-white/85 transition-colors hover:bg-white/15 hover:text-white"
+                              disabled={editSaving}
+                            >
+                              Reset
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                if (!expandedItem?.id) return
+                                if (editSaving) return
+                                setEditError('')
+
+                                const safeTitle = String(editDraft?.title || '').trim()
+                                if (!safeTitle) {
+                                  setEditError('Title is required.')
+                                  return
+                                }
+
+                                const parsed = dayjs(editDraft?.occurredAt)
+                                if (!parsed.isValid()) {
+                                  setEditError('Date & time is invalid.')
+                                  return
+                                }
+
+                                setEditSaving(true)
+                                try {
+                                  const payload = {
+                                    title: safeTitle,
+                                    occurred_at: parsed.toISOString(),
+                                    location: String(editDraft?.location || '').trim(),
+                                    description: String(editDraft?.description || '').trim(),
+                                  }
+
+                                  const { error: updateError } = await supabase
+                                    .from('achievements')
+                                    .update(payload)
+                                    .eq('id', expandedItem.id)
+
+                                  if (updateError) throw updateError
+
+                                  setItems((prev) =>
+                                    (Array.isArray(prev) ? prev : []).map((entry) =>
+                                      String(entry?.id) === String(expandedItem.id) ? { ...entry, ...payload } : entry
+                                    )
+                                  )
+                                  setSuccess('Updated.')
+                                } catch (err) {
+                                  setEditError(err?.message ? String(err.message) : 'Unable to update achievement.')
+                                } finally {
+                                  setEditSaving(false)
+                                }
+                              }}
+                              className="inline-flex h-9 items-center justify-center rounded-xl bg-yellow-300 px-3 text-xs font-semibold text-slate-900 shadow-[0_8px_24px_rgba(250,204,21,0.35)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-yellow-200 disabled:cursor-not-allowed disabled:opacity-70"
+                              disabled={editSaving}
+                            >
+                              {editSaving ? 'Saving…' : 'Save'}
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
                   )
                 })}
@@ -472,6 +766,7 @@ export default function AchievementsManagement() {
             )}
         </aside>
       </section>
-    </div>
+      </div>
+    </>
   )
 }

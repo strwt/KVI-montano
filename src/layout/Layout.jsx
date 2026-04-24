@@ -36,7 +36,7 @@ function Layout() {
     : 'bg-neutral-100 dark:bg-neutral-900'
   const mobileToggleTone = isDashboardThemeRoute
     ? 'bg-yellow-400 text-slate-900 hover:bg-yellow-300'
-    : 'bg-red-600 text-white hover:bg-red-700'
+    : 'bg-yellow-400 text-slate-900 hover:bg-yellow-300'
   const forcedDarkClass = isDashboardThemeRoute ? 'dark' : ''
 
   useEffect(() => {

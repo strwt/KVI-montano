@@ -6,12 +6,12 @@ const Button = React.forwardRef(function Button(
   ref
 ) {
   const base =
-    'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 disabled:pointer-events-none disabled:opacity-50'
+    'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400 disabled:pointer-events-none disabled:opacity-50'
 
   const variants = {
-    default: 'bg-red-600 text-white hover:bg-red-700',
+    default: 'bg-yellow-400 text-slate-900 hover:bg-yellow-300',
     secondary: 'bg-gray-100 text-gray-900 hover:bg-gray-200',
-    outline: 'border border-gray-300 bg-white hover:bg-gray-50 text-gray-900',
+    outline: 'border border-yellow-400/70 bg-transparent text-yellow-500 hover:bg-yellow-400/10',
     destructive: 'bg-red-600 text-white hover:bg-red-700',
     ghost: 'hover:bg-gray-100 text-gray-900',
   }
@@ -33,4 +33,3 @@ const Button = React.forwardRef(function Button(
 })
 
 export { Button }
-

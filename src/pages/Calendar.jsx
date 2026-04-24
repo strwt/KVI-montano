@@ -229,15 +229,15 @@ const CREATE_CATEGORY_KEYS = [
 ]
 
 const CATEGORY_META = {
-  tuli: { icon: HeartPulse, iconClass: '', bg: 'from-red-50 to-red-100', text: 'text-red-700' },
-  blood_letting: { icon: Activity, iconClass: '', bg: 'from-red-50 to-red-100', text: 'text-red-700' },
-  donations: { icon: FileText, iconClass: '', bg: 'from-red-50 to-red-100', text: 'text-red-700' },
-  environmental: { icon: Leaf, iconClass: '', bg: 'from-red-50 to-red-100', text: 'text-red-700' },
-  relief_operation: { icon: Activity, iconClass: '', bg: 'from-red-50 to-red-100', text: 'text-red-700' },
-  fire_response: { icon: Flame, iconClass: '', bg: 'from-red-50 to-red-100', text: 'text-red-700' },
-  water_distribution: { icon: Droplets, iconClass: '', bg: 'from-red-50 to-red-100', text: 'text-red-700' },
-  notes: { icon: FileText, iconClass: '', bg: 'from-red-50 to-red-100', text: 'text-red-700' },
-  medical: { icon: HeartPulse, iconClass: '', bg: 'from-red-50 to-red-100', text: 'text-red-700' },
+  tuli: { icon: HeartPulse, iconClass: '', bg: 'from-yellow-50 to-yellow-100', text: 'text-yellow-700' },
+  blood_letting: { icon: Activity, iconClass: '', bg: 'from-yellow-50 to-yellow-100', text: 'text-yellow-700' },
+  donations: { icon: FileText, iconClass: '', bg: 'from-yellow-50 to-yellow-100', text: 'text-yellow-700' },
+  environmental: { icon: Leaf, iconClass: '', bg: 'from-yellow-50 to-yellow-100', text: 'text-yellow-700' },
+  relief_operation: { icon: Activity, iconClass: '', bg: 'from-yellow-50 to-yellow-100', text: 'text-yellow-700' },
+  fire_response: { icon: Flame, iconClass: '', bg: 'from-yellow-50 to-yellow-100', text: 'text-yellow-700' },
+  water_distribution: { icon: Droplets, iconClass: '', bg: 'from-yellow-50 to-yellow-100', text: 'text-yellow-700' },
+  notes: { icon: FileText, iconClass: '', bg: 'from-yellow-50 to-yellow-100', text: 'text-yellow-700' },
+  medical: { icon: HeartPulse, iconClass: '', bg: 'from-yellow-50 to-yellow-100', text: 'text-yellow-700' },
 }
 
 const getDefaultDynamicFields = () =>

@@ -751,7 +751,8 @@ function AdminAttendance() {
   }
 
   return (
-    <div className="animate-fade-in space-y-6">    <section className="rounded-2xl border border-white/10 bg-white p-6 shadow-[0_12px_30px_rgba(0,0,0,0.25)]">
+    <div className="animate-fade-in space-y-6">
+      <section className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-[0_12px_30px_rgba(0,0,0,0.25)] backdrop-blur-md">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-[14px] uppercase tracking-[0.12em] text-white/70">Attendance</p>
@@ -937,9 +938,9 @@ function AdminAttendance() {
                         <button
                           type="button"
                           onClick={() => startEditing(row.memberId)}
-                          className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-[#ffffff] px-2 py-1 text-xs font-semibold text-slate-800 hover:bg-[#f8fafc]"
+                          className="inline-flex items-center gap-1 rounded-lg border border-yellow-300/70 bg-transparent px-2 py-1 text-xs font-semibold text-yellow-300 transition-colors hover:bg-yellow-300/10"
                         >
-                          <Pencil size={12} />
+                          <Pencil size={12} className="text-yellow-300" />
                           Edit
                         </button>
                       )}
@@ -978,11 +979,11 @@ function AdminAttendance() {
             >
               <div>
                 <p className="text-xs uppercase tracking-[0.14em] text-black/70">Attendance History</p>
-                <h3 className="mt-1 text-[20px] font-semibold" style={{ color: '#000000' }}>
+                <h3 className="mt-1 text-[20px] font-semibold text-yellow-600">
                   {historyMember?.name || 'Member'}
                 </h3>
                 {historyMember?.role === 'admin' || (historyMember?.committeeRole || historyMember?.committee_role) === 'OIC' ? null : (
-                  <p className="text-sm text-black/70">{historyMember?.committee || 'Unassigned'}</p>
+                  <p className="text-sm text-yellow-700/80">{historyMember?.committee || 'Unassigned'}</p>
                 )}
               </div>
               <button

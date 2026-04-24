@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 import { useEffect, useMemo, useState } from 'react'
 import {
   Activity,
@@ -7,6 +6,9 @@ import {
   Flame,
   FileText,
   HeartPulse,
+  HandHeart,
+  Sparkles,
+  Tags,
   Calendar as CalendarIcon,
   ArrowRight,
   Bell,
@@ -46,8 +48,8 @@ const titleCaseFromKey = key =>
     .toUpperCase()
 
 const CATEGORY_COLOR_SEEDS = {
-  tuli: '#ef4444', // red
-  blood_letting: '#b91c1c', // dark red
+  tuli: '#eab308', // yellow
+  blood_letting: '#f59e0b', // amber
   donations: '#f59e0b', // amber
   environmental: '#22c55e', // green
   relief_operation: '#3b82f6', // blue
@@ -195,6 +197,32 @@ const resolveEventDate = event => event.dateTime || event.date || null
 const getEventsCategoryRoute = categoryKey => `/events?category=${encodeURIComponent(categoryKey)}`
 const RECENT_ACTIVITY_LIMIT = 5
 
+const ICON_BY_KEY = {
+  tags: Tags,
+  sparkles: Sparkles,
+  activity: Activity,
+  heart_pulse: HeartPulse,
+  leaf: Leaf,
+  flame: Flame,
+  droplets: Droplets,
+  file_text: FileText,
+  hand_heart: HandHeart,
+}
+
+const resolveIconKey = (value) => {
+  const raw = String(value || '').trim()
+  if (raw && ICON_BY_KEY[raw]) return raw
+  return ''
+}
+
+const normalizeHexColor = (value) => {
+  const raw = String(value || '').trim()
+  if (!raw) return ''
+  const normalized = raw.startsWith('#') ? raw : `#${raw}`
+  if (!/^#[0-9a-f]{6}$/i.test(normalized)) return ''
+  return normalized.toLowerCase()
+}
+
 const getEventMatchKey = event => {
   const baseId = event?.id
   if (baseId !== undefined && baseId !== null && String(baseId).trim()) return `id:${baseId}`
@@ -202,15 +230,6 @@ const getEventMatchKey = event => {
   const title = event?.title || ''
   const category = event?.category || ''
   return `fallback:${dateValue}|${title}|${category}`
-}
-
-const getIconThemeClass = categoryKey => {
-  if (categoryKey === 'environmental') return 'icon-theme-environmental'
-  if (categoryKey === 'relief_operation') return 'icon-theme-relief'
-  if (categoryKey === 'fire_response') return 'icon-theme-fire'
-  if (categoryKey === 'notes') return 'icon-theme-notes'
-  if (categoryKey === 'medical') return 'icon-theme-medical'
-  return ''
 }
 
 function Dashboard() {
@@ -226,6 +245,7 @@ function Dashboard() {
   const [events, setEvents] = useState([])
   const [notifications, setNotifications] = useState([])
   const [notificationsOpen, setNotificationsOpen] = useState(false)
+  const [categoryMetaByKey, setCategoryMetaByKey] = useState({})
 
   useEffect(() => {
     const timer = setTimeout(() => setAnimatedStats(true), 100)
@@ -254,6 +274,42 @@ function Dashboard() {
       active = false
     }
   }, [categories, supabaseEnabled, user?.id])
+
+  useEffect(() => {
+    if (!supabaseEnabled) {
+      setCategoryMetaByKey({})
+      return
+    }
+
+    let active = true
+    const loadCategoryMeta = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('categories')
+          .select('name,icon_key,color')
+          .order('name', { ascending: true })
+        if (!active) return
+        if (error) throw error
+
+        const next = {}
+        ;(Array.isArray(data) ? data : []).forEach(row => {
+          const key = canonicalizeOperationKey(normalizeCategoryKey(row?.name))
+          if (!key) return
+          const iconKey = resolveIconKey(row?.icon_key)
+          const color = normalizeHexColor(row?.color)
+          next[key] = { iconKey, color }
+        })
+        setCategoryMetaByKey(next)
+      } catch {
+        if (active) setCategoryMetaByKey({})
+      }
+    }
+
+    void loadCategoryMeta()
+    return () => {
+      active = false
+    }
+  }, [supabaseEnabled])
 
   useEffect(() => {
     if (!notificationsOpen) return
@@ -405,13 +461,20 @@ function Dashboard() {
     return orderedKeys.map(key => ({
       key,
       label: categoryLabelByKey[key] || OPERATION_META[key]?.label || titleCaseFromKey(key) || 'Uncategorized',
-      icon: OPERATION_META[key]?.icon || FileText,
+      icon: ICON_BY_KEY[categoryMetaByKey?.[key]?.iconKey] || OPERATION_META[key]?.icon || FileText,
     }))
-  }, [categoryLabelByKey, events])
+  }, [categoryLabelByKey, categoryMetaByKey, events])
 
   const categoryColorByKey = useMemo(
-    () => buildCategoryColorMap(operations.map(category => category.key)),
-    [operations]
+    () => {
+      const base = buildCategoryColorMap(operations.map(category => category.key))
+      Object.entries(categoryMetaByKey || {}).forEach(([key, meta]) => {
+        const forced = normalizeHexColor(meta?.color)
+        if (forced) base[key] = forced
+      })
+      return base
+    },
+    [categoryMetaByKey, operations]
   )
 
   const categoryCounts = useMemo(() => {
@@ -489,7 +552,7 @@ function Dashboard() {
               </span>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="relative flex items-center gap-2">
             {!isAdmin && (
               <>
                 <button
@@ -510,21 +573,21 @@ function Dashboard() {
                 {notificationsOpen && (
                   <div
                     data-notification-panel
-                    className="absolute right-0 top-12 z-20 w-[320px] rounded-2xl border border-white/10 bg-[#041221]/95 shadow-[0_16px_30px_rgba(0,0,0,0.35)] backdrop-blur-xl"
+                    className="absolute right-0 top-12 z-20 w-[320px] rounded-2xl border border-slate-200 bg-white text-slate-900 shadow-[0_16px_30px_rgba(15,23,42,0.18)]"
                   >
-                    <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-                      <h3 className="text-sm font-semibold text-white">
+                    <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+                      <h3 className="text-sm font-semibold text-slate-900">
                         {t('Notifications')}
                       </h3>
                       <div className="flex items-center gap-2">
-                        <span className="rounded-full border border-yellow-300/30 bg-yellow-300/10 px-2 py-0.5 text-[11px] font-semibold text-yellow-200">
+                        <span className="rounded-full border border-yellow-400/40 bg-yellow-400/15 px-2 py-0.5 text-[11px] font-semibold text-yellow-700">
                           {unreadCount} {t('unread')}
                         </span>
                         {unreadCount === 0 && (
                           <button
                             type="button"
                             onClick={() => setNotificationsOpen(false)}
-                            className="inline-flex h-7 w-7 items-center justify-center rounded-full text-white/60 hover:bg-white/10 hover:text-yellow-200"
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-700"
                             aria-label={t('Close notifications')}
                             title={t('Close notifications')}
                           >
@@ -552,19 +615,19 @@ function Dashboard() {
                             }}
                             role="button"
                             tabIndex={0}
-                            className={`flex w-full items-start gap-3 border-b border-white/10 px-4 py-3 text-left transition-colors hover:bg-white/5 ${
-                              notification.readAt ? '' : 'bg-white/5'
+                            className={`flex w-full items-start gap-3 border-b border-slate-200 px-4 py-3 text-left transition-colors hover:bg-slate-50 ${
+                              notification.readAt ? '' : 'bg-yellow-50/60'
                             }`}
                           >
                             <div className="min-w-0 flex-1">
-                              <p className="truncate text-[13px] font-semibold text-white">
+                              <p className="truncate text-[13px] font-semibold text-slate-900">
                                 {notification.title || t('Untitled Event')}
                               </p>
-                              <p className="mt-1 text-[12px] text-white/70">
+                              <p className="mt-1 text-[12px] text-slate-600">
                                 {hasValidDate ? dayjs(notification.dateTime).format('MMM D, YYYY h:mm A') : t('Date TBA')}
                               </p>
                               {notification.details && (
-                                <p className="mt-1 line-clamp-2 text-[12px] text-white/80">
+                                <p className="mt-1 line-clamp-2 text-[12px] text-slate-700">
                                   {notification.details}
                                 </p>
                               )}
@@ -579,7 +642,7 @@ function Dashboard() {
                                   event.stopPropagation()
                                   dismissNotification(notification.id)
                                 }}
-                                className="inline-flex h-6 w-6 items-center justify-center rounded-full text-white/60 hover:bg-white/10 hover:text-yellow-200"
+                                className="inline-flex h-6 w-6 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700"
                                 aria-label={t('Remove notification')}
                                 title={t('Remove notification')}
                               >
@@ -629,13 +692,13 @@ function Dashboard() {
                    key={category.key}
                   type="button"
                   onClick={() => navigate(getEventsCategoryRoute(category.key))}
-                  className={`group relative h-full cursor-pointer rounded-xl border p-4 text-left transition-all duration-200 hover:scale-[1.02] hover:shadow-[0_16px_28px_rgba(15,23,42,0.18)] ${
+                  className={`group relative h-full cursor-pointer rounded-xl border p-4 text-left transition-all duration-200 hover:scale-[1.02] hover:bg-yellow-50/60 hover:shadow-[0_16px_28px_rgba(15,23,42,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/45 active:scale-[0.99] ${
                     animatedStats ? 'animate-fade-in-up' : 'opacity-0'
                   }`}
                   style={{
                     animationDelay: `${index * 0.06}s`,
                     background: '#ffffff',
-                    borderColor: '#e2e8f0',
+                    borderColor: color,
                     color: '#0f172a',
                     boxShadow: '0 14px 28px rgba(15,23,42,0.12)',
                   }}

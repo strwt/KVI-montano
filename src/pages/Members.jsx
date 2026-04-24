@@ -184,7 +184,7 @@ function Members() {
   const allSelectedOnPage = currentMemberIds.length > 0 && currentMemberIds.every(id => selectedMemberIds.has(id))
 
   const getRoleBadge = role => {
-    if (role === 'admin') return 'bg-red-100 text-red-700 border-red-200'
+    if (role === 'admin') return 'bg-yellow-100 text-yellow-800 border-yellow-200'
     if (role === 'oic') return 'bg-amber-100 text-amber-700 border-amber-200'
     return 'bg-blue-100 text-blue-700 border-blue-200'
   }
@@ -411,7 +411,7 @@ function Members() {
                   placeholder="Full name"
                   value={newMember.name}
                   onChange={e => setNewMember({ ...newMember, name: e.target.value })}
-                  className="w-full h-10 rounded-lg border border-white/15 bg-white/5 px-3 text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="w-full h-10 rounded-lg border border-white/15 bg-white/5 px-3 text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-yellow-300/35"
                   required
                   autoComplete="name"
                 />
@@ -471,7 +471,7 @@ function Members() {
                   placeholder="ID Number"
                   value={newMember.idNumber}
                   onChange={e => setNewMember({ ...newMember, idNumber: e.target.value })}
-                  className="w-full h-10 rounded-lg border border-white/15 bg-white/5 px-3 text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="w-full h-10 rounded-lg border border-white/15 bg-white/5 px-3 text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-yellow-300/35"
                   required
                   autoComplete="off"
                 />
@@ -486,14 +486,14 @@ function Members() {
                     placeholder="Temporary password"
                     value={newMember.password}
                     onChange={e => setNewMember({ ...newMember, password: e.target.value })}
-                    className="w-full h-10 rounded-lg border border-white/15 bg-white/5 px-3 pr-10 text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-red-500"
+                    className="w-full h-10 rounded-lg border border-white/15 bg-white/5 px-3 pr-10 text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-yellow-300/35"
                     required
                     autoComplete="new-password"
                   />
                   <button
                     type="button"
                     onClick={() => setShowTempPassword(prev => !prev)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-red-600"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-yellow-300"
                     aria-label={showTempPassword ? 'Hide password' : 'Show password'}
                     title={showTempPassword ? 'Hide password' : 'Show password'}
                   >
@@ -510,7 +510,7 @@ function Members() {
                   placeholder="Address"
                   value={newMember.address}
                   onChange={e => setNewMember({ ...newMember, address: e.target.value })}
-                  className="w-full h-10 rounded-lg border border-white/15 bg-white/5 px-3 text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="w-full h-10 rounded-lg border border-white/15 bg-white/5 px-3 text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-yellow-300/35"
                   autoComplete="street-address"
                 />
               </div>
@@ -523,7 +523,7 @@ function Members() {
                    placeholder="Contact Number"
                    value={newMember.contactNumber}
                    onChange={e => setNewMember({ ...newMember, contactNumber: e.target.value })}
-                   className="w-full h-10 rounded-lg border border-white/15 bg-white/5 px-3 text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-red-500"
+                   className="w-full h-10 rounded-lg border border-white/15 bg-white/5 px-3 text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-yellow-300/35"
                    autoComplete="tel"
                  />
                 </div>
@@ -540,7 +540,7 @@ function Members() {
                      placeholder="Emergency Contact Number"
                      value={newMember.emergencyContactNumber}
                      onChange={e => setNewMember({ ...newMember, emergencyContactNumber: e.target.value })}
-                     className="w-full h-10 rounded-lg border border-white/15 bg-white/5 px-3 text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-red-500"
+                     className="w-full h-10 rounded-lg border border-white/15 bg-white/5 px-3 text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-yellow-300/35"
                      autoComplete="tel"
                    />
                  </div>
@@ -553,7 +553,7 @@ function Members() {
                      placeholder="Emergency Contact Name"
                      value={newMember.emergencyContactName}
                      onChange={e => setNewMember({ ...newMember, emergencyContactName: e.target.value })}
-                     className="w-full h-10 rounded-lg border border-white/15 bg-white/5 px-3 text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-red-500"
+                     className="w-full h-10 rounded-lg border border-white/15 bg-white/5 px-3 text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-yellow-300/35"
                      autoComplete="name"
                    />
                  </div>
@@ -566,7 +566,7 @@ function Members() {
                      placeholder="Relationship"
                      value={newMember.emergencyContactRelationship}
                      onChange={e => setNewMember({ ...newMember, emergencyContactRelationship: e.target.value })}
-                     className="w-full h-10 rounded-lg border border-white/15 bg-white/5 px-3 text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-red-500"
+                     className="w-full h-10 rounded-lg border border-white/15 bg-white/5 px-3 text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-yellow-300/35"
                      autoComplete="off"
                    />
                  </div>
@@ -577,7 +577,7 @@ function Members() {
                    name="bloodType"
                    value={newMember.bloodType}
                    onChange={e => setNewMember({ ...newMember, bloodType: e.target.value })}
-                  className="w-full h-10 rounded-lg border border-white/15 bg-white/5 px-3 text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="w-full h-10 rounded-lg border border-white/15 bg-white/5 px-3 text-white focus:outline-none focus:ring-2 focus:ring-yellow-300/35"
                 >
                   <option value="">Select Blood Type</option>
                   {BLOOD_TYPE_OPTIONS.map(type => (
@@ -594,7 +594,7 @@ function Members() {
                   name="status"
                   value={newMember.status}
                   onChange={e => setNewMember({ ...newMember, status: e.target.value })}
-                  className="w-full h-10 rounded-lg border border-white/15 bg-white/5 px-3 text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="w-full h-10 rounded-lg border border-white/15 bg-white/5 px-3 text-white focus:outline-none focus:ring-2 focus:ring-yellow-300/35"
                   required
                 >
                   <option value="active">Active</option>
@@ -634,7 +634,7 @@ function Members() {
                       }
                     })
                   }}
-                  className="w-full h-10 rounded-lg border border-white/15 bg-white/5 px-3 text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="w-full h-10 rounded-lg border border-white/15 bg-white/5 px-3 text-white focus:outline-none focus:ring-2 focus:ring-yellow-300/35"
                   required
                 >
                   {ROLE_OPTIONS.map(roleOption => (
@@ -653,7 +653,7 @@ function Members() {
                     name="committee"
                     value={newMember.committee}
                     onChange={e => setNewMember({ ...newMember, committee: e.target.value })}
-                    className="w-full h-10 rounded-lg border border-white/15 bg-white/5 px-3 text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                    className="w-full h-10 rounded-lg border border-white/15 bg-white/5 px-3 text-white focus:outline-none focus:ring-2 focus:ring-yellow-300/35"
                     required
                   >
                     {committeeOptions.map(committee => (
@@ -674,7 +674,7 @@ function Members() {
                   type="date"
                   value={newMember.memberSince}
                   onChange={e => setNewMember({ ...newMember, memberSince: e.target.value })}
-                  className="w-full h-10 rounded-lg border border-white/15 bg-white/5 px-3 text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="w-full h-10 rounded-lg border border-white/15 bg-white/5 px-3 text-white focus:outline-none focus:ring-2 focus:ring-yellow-300/35"
                   autoComplete="off"
                 />
               </div>
@@ -1044,7 +1044,7 @@ function Members() {
                       className="w-16 h-16 rounded-full object-cover border-4 border-white shadow-lg" 
                     />
                   ) : (
-                    <div className="w-16 h-16 rounded-full bg-gradient-to-r from-red-600 to-red-700 flex items-center justify-center">
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-r from-yellow-400 to-yellow-500 flex items-center justify-center">
                       <span className="text-white font-bold text-xl">{member.name.charAt(0).toUpperCase()}</span>
                     </div>
                   )}

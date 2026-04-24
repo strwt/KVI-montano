@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Plus, Trash2, Save, Tags, Pencil } from 'lucide-react'
+import { Activity, Droplets, FileText, Flame, HandHeart, HeartPulse, Leaf, Plus, Save, Sparkles, Tags, Trash2 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useI18n } from '../i18n/useI18n'
 import { supabase } from '../lib/supabaseClient'
@@ -31,8 +31,8 @@ const titleCaseFromKey = key =>
     .toUpperCase()
 
 const CATEGORY_COLOR_SEEDS = {
-  tuli: '#ef4444', // red
-  blood_letting: '#b91c1c', // dark red
+  tuli: '#eab308', // yellow
+  blood_letting: '#f59e0b', // amber
   donations: '#f59e0b', // amber
   environmental: '#22c55e', // green
   relief_operation: '#3b82f6', // blue
@@ -166,6 +166,37 @@ const normalizeName = (value) =>
 
 const normalizeFieldKey = (value) => normalizeName(value).toLowerCase()
 
+const ICON_OPTIONS = [
+  { key: 'tags', label: 'Tags', Icon: Tags },
+  { key: 'sparkles', label: 'Sparkles', Icon: Sparkles },
+  { key: 'activity', label: 'Activity', Icon: Activity },
+  { key: 'heart_pulse', label: 'HeartPulse', Icon: HeartPulse },
+  { key: 'leaf', label: 'Leaf', Icon: Leaf },
+  { key: 'flame', label: 'Flame', Icon: Flame },
+  { key: 'droplets', label: 'Droplets', Icon: Droplets },
+  { key: 'file_text', label: 'FileText', Icon: FileText },
+  { key: 'hand_heart', label: 'HandHeart', Icon: HandHeart },
+]
+
+const ICON_BY_KEY = ICON_OPTIONS.reduce((map, entry) => {
+  map[entry.key] = entry.Icon
+  return map
+}, {})
+
+const resolveIconKey = (value) => {
+  const raw = String(value || '').trim()
+  if (raw && ICON_BY_KEY[raw]) return raw
+  return 'tags'
+}
+
+const normalizeHexColor = (value) => {
+  const raw = String(value || '').trim()
+  if (!raw) return ''
+  const normalized = raw.startsWith('#') ? raw : `#${raw}`
+  if (!/^#[0-9a-f]{6}$/i.test(normalized)) return ''
+  return normalized.toLowerCase()
+}
+
 function CategoryManagement() {
   const { user, reloadCategories } = useAuth()
   const { t } = useI18n()
@@ -176,11 +207,26 @@ function CategoryManagement() {
   const [loadingCategories, setLoadingCategories] = useState(false)
 
   const categoryColorByKey = useMemo(
-    () => buildCategoryColorMap(categories.map(category => category?.name)),
+    () => {
+      const base = buildCategoryColorMap(categories.map(category => category?.name))
+      categories.forEach(category => {
+        const key = toCategoryKey(category?.name)
+        const forced = normalizeHexColor(category?.color)
+        if (key && forced) base[key] = forced
+      })
+      return base
+    },
     [categories]
   )
 
+  const SelectedCategoryIcon = useMemo(
+    () => ICON_BY_KEY[resolveIconKey(categoryIconKey)] || Tags,
+    [categoryIconKey]
+  )
+
   const [categoryName, setCategoryName] = useState('')
+  const [categoryIconKey, setCategoryIconKey] = useState('tags')
+  const [categoryColor, setCategoryColor] = useState('#facc15')
   const [fields, setFields] = useState([{ fieldId: null, fieldName: '', fieldType: '' }])
   const [editingCategory, setEditingCategory] = useState(null)
   const [originalFields, setOriginalFields] = useState([])
@@ -191,6 +237,8 @@ function CategoryManagement() {
 
   const resetForm = () => {
     setCategoryName('')
+    setCategoryIconKey('tags')
+    setCategoryColor('#facc15')
     setFields([{ fieldId: null, fieldName: '', fieldType: '' }])
     setEditingCategory(null)
     setOriginalFields([])
@@ -215,8 +263,15 @@ function CategoryManagement() {
     if (!category?.id) return
     setFormError('')
     setSaveState('idle')
-    setEditingCategory({ id: category.id, name: category.name })
+    setEditingCategory({
+      id: category.id,
+      name: category.name,
+      iconKey: resolveIconKey(category?.icon_key || category?.iconKey),
+      color: normalizeHexColor(category?.color) || '#facc15',
+    })
     setCategoryName(titleCaseFromKey(category.name) || category.name)
+    setCategoryIconKey(resolveIconKey(category?.icon_key || category?.iconKey))
+    setCategoryColor(normalizeHexColor(category?.color) || '#facc15')
     try {
       const loaded = await loadCategoryFields(category.id)
       const mapped = loaded.map(row => ({
@@ -242,7 +297,7 @@ function CategoryManagement() {
     try {
       const { data, error } = await supabase
         .from('categories')
-        .select('id,name,created_at')
+        .select('id,name,icon_key,color,created_at')
         .order('name', { ascending: true })
 
       if (error) {
@@ -266,6 +321,9 @@ function CategoryManagement() {
     if (!isAdmin) return { ok: false, message: 'Only admins can manage categories.' }
     const key = toCategoryKey(categoryName)
     if (!key) return { ok: false, message: 'Category name is required.' }
+
+    const iconKey = resolveIconKey(categoryIconKey)
+    const color = normalizeHexColor(categoryColor)
 
     const cleanedFields = (Array.isArray(fields) ? fields : [])
       .map(entry => ({
@@ -296,8 +354,8 @@ function CategoryManagement() {
       seen.add(key)
     }
 
-    return { ok: true, key, fields: cleanedFields }
-  }, [categoryName, fields, isAdmin])
+    return { ok: true, key, fields: cleanedFields, iconKey, color }
+  }, [categoryColor, categoryIconKey, categoryName, fields, isAdmin])
 
   const handleAddFieldRow = () => {
     setFields(prev => [...(Array.isArray(prev) ? prev : []), { fieldId: null, fieldName: '', fieldType: '' }])
@@ -370,6 +428,17 @@ function CategoryManagement() {
           setEditingCategory(prev => (prev ? { ...prev, name: activeKey } : prev))
         }
 
+        const { error: metaError } = await supabase
+          .from('categories')
+          .update({
+            icon_key: validatedPayload.iconKey || null,
+            color: validatedPayload.color || null,
+          })
+          .eq('id', categoryId)
+
+        if (metaError) throw metaError
+        setEditingCategory(prev => (prev ? { ...prev, iconKey: validatedPayload.iconKey, color: validatedPayload.color } : prev))
+
         const nextFieldsById = new Map(
           validatedPayload.fields
             .filter(entry => entry.fieldId)
@@ -437,7 +506,7 @@ function CategoryManagement() {
         setSaveState('success')
         if (typeof reloadCategories === 'function') await reloadCategories()
         await loadCategories()
-        await handleSelectCategory({ id: categoryId, name: activeKey })
+        await handleSelectCategory({ id: categoryId, name: activeKey, icon_key: validatedPayload.iconKey, color: validatedPayload.color })
         return
       }
 
@@ -445,6 +514,8 @@ function CategoryManagement() {
         .from('categories')
         .insert({
           name: validatedPayload.key,
+          icon_key: validatedPayload.iconKey || null,
+          color: validatedPayload.color || null,
           created_by: user?.id || null,
         })
         .select('id,name')
@@ -610,6 +681,47 @@ function CategoryManagement() {
             />
           </div>
 
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="space-y-2">
+              <label className="block text-[14px] font-medium text-black dark:text-zinc-100">{t('Icon')}</label>
+              <div className="flex items-center gap-3">
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white">
+                  <SelectedCategoryIcon size={18} className="text-yellow-500" />
+                </span>
+                <select
+                  value={categoryIconKey}
+                  onChange={e => setCategoryIconKey(e.target.value)}
+                  className="h-10 w-full rounded-xl border border-neutral-300 bg-white px-3 text-[14px] text-black focus:border-yellow-300 focus:outline-none dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+                >
+                  {ICON_OPTIONS.map(option => (
+                    <option key={option.key} value={option.key}>
+                      {t(option.label)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-[14px] font-medium text-black dark:text-zinc-100">{t('Color')}</label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="color"
+                  value={normalizeHexColor(categoryColor) || '#facc15'}
+                  onChange={e => setCategoryColor(e.target.value)}
+                  className="h-10 w-14 cursor-pointer rounded-xl border border-slate-200 bg-white p-1"
+                  aria-label={t('Category color')}
+                />
+                <input
+                  value={categoryColor}
+                  onChange={e => setCategoryColor(e.target.value)}
+                  placeholder="#facc15"
+                  className="h-10 w-full rounded-xl border border-neutral-300 bg-white px-3 text-[14px] text-black focus:border-yellow-300 focus:outline-none dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+                />
+              </div>
+            </div>
+          </div>
+
           <div className="mt-6 flex items-center justify-between">
             <h3 className="text-[16px] font-semibold text-black dark:text-zinc-100">{t('Custom Fields')}</h3>
             <button
@@ -617,7 +729,7 @@ function CategoryManagement() {
               onClick={handleAddFieldRow}
               className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-[13px] font-semibold text-white shadow-sm backdrop-blur-md transition-colors hover:bg-white/10"
             >
-              <Plus size={16} />
+              <Plus size={16} className="text-yellow-300" />
               {t('Add Field')}
             </button>
           </div>
@@ -730,6 +842,7 @@ function CategoryManagement() {
                     categoryColorByKey[categoryKey] ||
                     CATEGORY_COLOR_SEEDS[categoryKey] ||
                     CATEGORY_COLOR_SEEDS.uncategorized
+                  const Icon = ICON_BY_KEY[resolveIconKey(category?.icon_key)] || Tags
                   return (
                     <button
                       key={category.id}
@@ -751,7 +864,7 @@ function CategoryManagement() {
                         className="inline-flex h-8 w-8 items-center justify-center rounded-lg border bg-[#ffffff]"
                         style={{ borderColor: color }}
                       >
-                        <Pencil size={14} style={{ color }} />
+                        <Icon size={14} style={{ color }} />
                       </div>
                     </button>
                   )

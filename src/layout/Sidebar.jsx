@@ -18,6 +18,7 @@ function Sidebar({ isOpen, toggleSidebar }) {
   const navTone = 'text-white/80 hover:bg-white/10 hover:text-white'
   const navActiveTone = 'text-white bg-white/10 border border-white/15 backdrop-blur-xl shadow-none border-l-2 border-yellow-400'
   const utilityBtnTone = 'text-white-300 hover:bg-white/10 hover:text-white'
+  const navIconTone = 'text-yellow-300 group-hover:text-yellow-200'
   const userDividerTone = 'border-t border-white/10'
   const userNameTone = 'text-white'
   const sidebarAccentTone = 'bg-yellow-400 text-slate-900 hover:bg-yellow-300'
@@ -157,7 +158,7 @@ function Sidebar({ isOpen, toggleSidebar }) {
               }
               style={{ animationDelay: `${index * 0.1}s` }}
             >
-              <item.icon size={20} className={isOpen ? 'shrink-0' : 'mx-auto'} />
+              <item.icon size={20} className={`${navIconTone} ${isOpen ? 'shrink-0' : 'mx-auto'}`} />
               {isOpen && <span className={getNavLabelClass(item.label)}>{item.label}</span>}
             </NavLink>
           ))}
@@ -177,7 +178,7 @@ function Sidebar({ isOpen, toggleSidebar }) {
                 }`}
               >
                 <div className={`flex items-center gap-3 ${!isOpen ? 'w-full justify-center' : ''}`}>
-                  <Settings size={20} className={isOpen ? '' : 'mx-auto'} />
+                  <Settings size={20} className={`${navIconTone} ${isOpen ? '' : 'mx-auto'}`} />
                   {isOpen && <span>{t('Management')}</span>}
                 </div>
                 {isOpen ? (
@@ -198,7 +199,7 @@ function Sidebar({ isOpen, toggleSidebar }) {
                       }`
                     }
                   >
-                    <Users size={18} />
+                    <Users size={18} className={navIconTone} />
                     <span className={getNavLabelClass(t('User Management'))}>{t('User Management')}</span>
                   </NavLink>
 
@@ -213,7 +214,7 @@ function Sidebar({ isOpen, toggleSidebar }) {
                       }`
                     }
                   >
-                    <Tags size={18} />
+                    <Tags size={18} className={navIconTone} />
                     <span>Achievements</span>
                   </NavLink>
 
@@ -228,7 +229,7 @@ function Sidebar({ isOpen, toggleSidebar }) {
                       }`
                     }
                   >
-                    <Tags size={18} />
+                    <Tags size={18} className={navIconTone} />
                     <span className={getNavLabelClass(t('Categories'))}>{t('Categories')}</span>
                   </NavLink>
 
@@ -243,7 +244,7 @@ function Sidebar({ isOpen, toggleSidebar }) {
                       }`
                     }
                   >
-                    <Users size={18} />
+                    <Users size={18} className={navIconTone} />
                     <span className={getNavLabelClass(t('Committee Management'))}>{t('Committee Management')}</span>
                   </NavLink>
                 </div>
@@ -281,7 +282,7 @@ function Sidebar({ isOpen, toggleSidebar }) {
                   aria-label={t('Logout')}
                   title={t('Logout')}
                 >
-                  <LogOut size={18} />
+                  <LogOut size={18} className="text-red-500" />
                 </button>
               </div>
             </div>
@@ -301,7 +302,7 @@ function Sidebar({ isOpen, toggleSidebar }) {
                 aria-label={t('Logout')}
                 title={t('Logout')}
               >
-                <LogOut size={18} />
+                <LogOut size={18} className="text-red-500" />
               </button>
             </div>
           )}

@@ -786,10 +786,10 @@ function ChatbotWidget() {
     >
       {isOpen && (
         <div
-          className="fixed rounded-2xl border border-red-600 bg-white shadow-2xl dark:bg-zinc-900 flex flex-col"
+          className="fixed rounded-2xl border border-yellow-400 bg-white shadow-2xl dark:bg-zinc-900 flex flex-col"
           style={chatPanelStyle}
         >
-          <div className="flex items-center justify-between border-b border-red-600/30 px-4 py-3">
+          <div className="flex items-center justify-between border-b border-yellow-400/30 px-4 py-3">
             <div>
               <p className="text-sm font-semibold text-gray-900 dark:text-white">{pageConfig.title}</p>
               <p className="text-xs text-gray-500 dark:text-zinc-400">Ask anything about the system.</p>
@@ -797,7 +797,7 @@ function ChatbotWidget() {
             <button
               type="button"
               onClick={() => setIsOpen(false)}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-red-600/50 text-red-600 hover:bg-red-50 dark:hover:bg-zinc-800"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-yellow-400/50 text-yellow-600 hover:bg-yellow-50 dark:hover:bg-zinc-800"
               aria-label="Close chat"
             >
               <X size={16} />
@@ -813,7 +813,7 @@ function ChatbotWidget() {
                 <div
                   className={`rounded-2xl px-3 py-2 text-sm leading-relaxed ${
                     message.role === 'user'
-                      ? 'bg-red-600 text-white'
+                      ? 'bg-yellow-400 text-slate-900'
                       : 'bg-zinc-100 text-gray-800 dark:bg-zinc-800 dark:text-zinc-100'
                   }`}
                 >
@@ -835,13 +835,13 @@ function ChatbotWidget() {
             <div ref={messagesEndRef} />
           </div>
 
-          <div className="border-t border-red-600/30 px-4 py-3 space-y-3">
+          <div className="border-t border-yellow-400/30 px-4 py-3 space-y-3">
             <div className="flex items-center justify-between gap-2">
               <p className="text-xs font-medium text-gray-500 dark:text-zinc-400">Quick actions</p>
               <button
                 type="button"
                 onClick={() => setShowSuggestions(prev => !prev)}
-                className="text-xs font-medium text-red-600 hover:text-red-700"
+                className="text-xs font-medium text-yellow-600 hover:text-yellow-700"
               >
                 {showSuggestions ? 'Hide suggestions' : 'Show suggestions'}
               </button>
@@ -852,7 +852,7 @@ function ChatbotWidget() {
                   key={link.label}
                   type="button"
                   onClick={() => handleQuickAction(link)}
-                  className="rounded-full border border-red-600/50 px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-50 dark:hover:bg-zinc-800"
+                  className="rounded-full border border-yellow-400/60 px-3 py-1 text-xs font-medium text-yellow-700 hover:bg-yellow-50 dark:hover:bg-zinc-800"
                 >
                   {link.label}
                 </button>
@@ -880,12 +880,12 @@ function ChatbotWidget() {
                   if (event.key === 'Enter') sendMessage(input)
                 }}
                 placeholder="Type your question..."
-                className="flex-1 rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-gray-800 outline-none focus:border-red-600 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+                className="flex-1 rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-gray-800 outline-none focus:border-yellow-400 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
               />
               <button
                 type="button"
                 onClick={() => sendMessage(input)}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-red-600 text-white hover:bg-red-700"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-yellow-400 text-slate-900 hover:bg-yellow-300"
                 aria-label="Send"
               >
                 <Send size={16} />
@@ -900,7 +900,7 @@ function ChatbotWidget() {
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
-        className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-red-600 text-white shadow-lg hover:bg-red-700 touch-none"
+        className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-yellow-400 text-slate-900 shadow-lg hover:bg-yellow-300 touch-none"
         aria-label="Open chat"
       >
         <MessageCircle size={20} />

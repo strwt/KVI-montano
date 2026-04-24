@@ -413,7 +413,7 @@ function Attendance() {
 
   return (
     <div className="animate-fade-in space-y-6">
-      <section className="rounded-2xl border border-red-600 bg-white p-6 shadow-[0_12px_30px_rgba(0,0,0,0.08)] dark:border-red-600 dark:bg-zinc-900">
+      <section className="rounded-2xl border border-yellow-300/50 bg-white/80 p-6 shadow-[0_12px_30px_rgba(0,0,0,0.08)] backdrop-blur-md dark:border-yellow-400/50 dark:bg-zinc-900/70">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-[14px] uppercase tracking-[0.12em] text-neutral-500 dark:text-neutral-300">Attendance</p>
@@ -447,24 +447,24 @@ function Attendance() {
       </section>
 
       <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <div className="rounded-2xl border border-red-600 bg-white p-4 shadow-sm dark:border-red-600 dark:bg-zinc-900">
+        <div className="rounded-2xl border border-yellow-300/50 bg-white/80 p-4 shadow-sm backdrop-blur-md dark:border-yellow-400/50 dark:bg-zinc-900/70">
           <p className="text-sm text-neutral-500 dark:text-neutral-400">Present Days</p>
           <p className="text-2xl font-semibold text-neutral-900 dark:text-zinc-100">{presentCount}</p>
         </div>
-        <div className="rounded-2xl border border-red-600 bg-white p-4 shadow-sm dark:border-red-600 dark:bg-zinc-900">
+        <div className="rounded-2xl border border-yellow-300/50 bg-white/80 p-4 shadow-sm backdrop-blur-md dark:border-yellow-400/50 dark:bg-zinc-900/70">
           <p className="text-sm text-neutral-500 dark:text-neutral-400">Absent Days</p>
           <p className="text-2xl font-semibold text-neutral-900 dark:text-zinc-100">{absentCount}</p>
         </div>
-        <div className="rounded-2xl border border-red-600 bg-white p-4 shadow-sm dark:border-red-600 dark:bg-zinc-900">
+        <div className="rounded-2xl border border-yellow-300/50 bg-white/80 p-4 shadow-sm backdrop-blur-md dark:border-yellow-400/50 dark:bg-zinc-900/70">
           <p className="text-sm text-neutral-500 dark:text-neutral-400">Assigned Activities</p>
           <p className="text-2xl font-semibold text-neutral-900 dark:text-zinc-100">{assignedEvents.length}</p>
         </div>
       </section>
 
       <section className="grid grid-cols-1 gap-4">
-        <article className="rounded-2xl border border-red-600 bg-white p-5 shadow-[0_10px_20px_rgba(0,0,0,0.08)] dark:border-red-600 dark:bg-zinc-900">
+        <article className="rounded-2xl border border-yellow-300/50 bg-white/80 p-5 shadow-[0_10px_20px_rgba(0,0,0,0.08)] backdrop-blur-md dark:border-yellow-400/50 dark:bg-zinc-900/70">
           <div className="mb-4 flex items-center gap-2">
-            <ClipboardList size={18} className="text-red-600" />
+            <ClipboardList size={18} className="text-yellow-500" />
             <h2 className="text-[20px] font-semibold text-neutral-900 dark:text-zinc-100">Monthly Attendance</h2>
           </div>
           <div className="rounded-2xl border border-neutral-200 bg-white/60 p-3 sm:p-4 dark:border-zinc-700 dark:bg-zinc-950/20">
@@ -506,7 +506,7 @@ function Attendance() {
                   <div
                     key={cell.dateKey || `day-${index}`}
                     className={`flex h-[84px] sm:h-[100px] lg:h-[120px] min-w-0 flex-col justify-between overflow-hidden rounded-xl border p-2 sm:p-2.5 lg:p-3 ${tone} ${
-                      isToday ? 'ring-2 ring-red-600 ring-offset-2 ring-offset-white dark:ring-offset-zinc-900' : ''
+                      isToday ? 'ring-2 ring-yellow-400 ring-offset-2 ring-offset-white dark:ring-offset-zinc-900' : ''
                     }`}
                     title={titleParts.join(' | ')}
                   >
@@ -543,21 +543,21 @@ function Attendance() {
           </div>
         </article>
 
-        <article className="rounded-2xl border border-red-600 bg-white p-5 shadow-[0_10px_20px_rgba(0,0,0,0.08)] dark:border-red-600 dark:bg-zinc-900">
+        <article className="rounded-2xl border border-yellow-300/50 bg-white/80 p-5 shadow-[0_10px_20px_rgba(0,0,0,0.08)] backdrop-blur-md dark:border-yellow-400/50 dark:bg-zinc-900/70">
           <div className="mb-4 flex items-center gap-2">
-            <Users size={18} className="text-red-600" />
+            <Users size={18} className="text-yellow-500" />
             <h2 className="text-[20px] font-semibold text-neutral-900 dark:text-zinc-100">Assigned Activities</h2>
           </div>
           <div className="max-h-[420px] overflow-y-auto space-y-2 pr-1">
             {assignedEvents.map((event, index) => (
-              <div key={`${event.id || 'event'}-${index}`} className="rounded-xl border border-red-100 bg-red-50/30 p-3">
+              <div key={`${event.id || 'event'}-${index}`} className="rounded-xl border border-yellow-200 bg-yellow-50/40 p-3">
                 <p className="text-sm font-semibold text-neutral-900">{event.title || 'Untitled Event'}</p>
                 <p className="text-xs text-neutral-500 mt-1">{dayjs(event.dateTime).format('MMM D, YYYY h:mm A')}</p>
                 <p className="text-xs text-neutral-500 mt-1">Category: {getCategoryLabel(event.category || 'notes')}</p>
                 <span className={`mt-2 inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
                   event.status === 'done'
                     ? 'border-green-200 bg-green-50 text-green-700'
-                    : 'border-red-200 bg-red-50 text-red-700'
+                    : 'border-yellow-300 bg-yellow-50 text-yellow-800'
                 }`}>
                   {event.status === 'done' ? 'Done' : 'On-going'}
                 </span>
