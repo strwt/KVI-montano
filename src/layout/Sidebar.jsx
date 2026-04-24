@@ -164,7 +164,7 @@ function Sidebar({ isOpen, toggleSidebar }) {
           ))}
 
           {isAdmin && (
-            <div>
+            <div className="relative">
               <button
                 type="button"
                 onClick={() => {
@@ -186,66 +186,78 @@ function Sidebar({ isOpen, toggleSidebar }) {
                 ) : null}
               </button>
 
-{isOpen && resolvedManagementOpen && (
-                <div className="mt-1 space-y-1 pl-8 bg-[#041221]/60 border border-white/10 backdrop-blur-md rounded-lg p-2">
+              {resolvedManagementOpen && (
+                <div
+                  className={`space-y-1 bg-[#041221]/60 border border-white/10 backdrop-blur-md rounded-lg p-2 ${
+                    isOpen ? 'mt-1 pl-8' : 'mt-1'
+                  }`}
+                >
                   <NavLink
                     to="/members"
                     onClick={() => {
+                      setManagementOpen(false)
                       if (window.innerWidth < 768 && isOpen) toggleSidebar()
                     }}
                     className={({ isActive }) =>
-                      `group relative flex min-h-[40px] items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-all duration-200 ${navTone} ${
+                      `group relative flex min-h-[40px] min-w-0 items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-all duration-200 ${navTone} ${
                         isActive ? navActiveTone : 'border-l-2 border-transparent'
-                      }`
+                      } ${!isOpen ? 'justify-center px-2' : ''}`
                     }
                   >
-                    <Users size={18} className={navIconTone} />
-                    <span className={getNavLabelClass(t('User Management'))}>{t('User Management')}</span>
+                    <Users size={18} className={`${navIconTone} shrink-0`} />
+                    {isOpen ? (
+                      <span className="min-w-0 truncate text-sm text-white">{t('User Management')}</span>
+                    ) : null}
                   </NavLink>
 
                   <NavLink
                     to="/achievements"
                     onClick={() => {
+                      setManagementOpen(false)
                       if (window.innerWidth < 768 && isOpen) toggleSidebar()
                     }}
                     className={({ isActive }) =>
-                      `group relative flex items-center gap-3 rounded-lg px-4 py-2 text-sm transition-all duration-200 ${navTone} ${
+                      `group relative flex min-w-0 items-center gap-3 rounded-lg px-4 py-2 text-sm transition-all duration-200 ${navTone} ${
                         isActive ? navActiveTone : 'border-l-2 border-transparent'
-                      }`
+                      } ${!isOpen ? 'justify-center px-2' : ''}`
                     }
                   >
-                    <Tags size={18} className={navIconTone} />
-                    <span>Achievements</span>
+                    <Tags size={18} className={`${navIconTone} shrink-0`} />
+                    {isOpen ? <span className="min-w-0 truncate text-sm text-white">Achievements</span> : null}
                   </NavLink>
 
                   <NavLink
                     to="/category-management"
                     onClick={() => {
+                      setManagementOpen(false)
                       if (window.innerWidth < 768 && isOpen) toggleSidebar()
                     }}
                     className={({ isActive }) =>
-                      `group relative flex min-h-[40px] items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-all duration-200 ${navTone} ${
+                      `group relative flex min-h-[40px] min-w-0 items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-all duration-200 ${navTone} ${
                         isActive ? navActiveTone : 'border-l-2 border-transparent'
-                      }`
+                      } ${!isOpen ? 'justify-center px-2' : ''}`
                     }
                   >
-                    <Tags size={18} className={navIconTone} />
-                    <span className={getNavLabelClass(t('Categories'))}>{t('Categories')}</span>
+                    <Tags size={18} className={`${navIconTone} shrink-0`} />
+                    {isOpen ? <span className="min-w-0 truncate text-sm text-white">{t('Categories')}</span> : null}
                   </NavLink>
 
                   <NavLink
                     to="/committee-management"
                     onClick={() => {
+                      setManagementOpen(false)
                       if (window.innerWidth < 768 && isOpen) toggleSidebar()
                     }}
                     className={({ isActive }) =>
-                      `group relative flex min-h-[40px] items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-all duration-200 ${navTone} ${
+                      `group relative flex min-h-[40px] min-w-0 items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-all duration-200 ${navTone} ${
                         isActive ? navActiveTone : 'border-l-2 border-transparent'
-                      }`
+                      } ${!isOpen ? 'justify-center px-2' : ''}`
                     }
                   >
-                    <Users size={18} className={navIconTone} />
-                    <span className={getNavLabelClass(t('Committee Management'))}>{t('Committee Management')}</span>
+                    <Users size={18} className={`${navIconTone} shrink-0`} />
+                    {isOpen ? (
+                      <span className="min-w-0 truncate text-sm text-white">{t('Committee Management')}</span>
+                    ) : null}
                   </NavLink>
                 </div>
               )}
