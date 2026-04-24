@@ -586,7 +586,7 @@ function EventLocationPicker({ address, location, onAddressInput, onLocationSele
       <div className="relative">
         <label htmlFor="event-location-address" className="block text-sm text-white/80 mb-2">Address</label>
         <div className="relative">
-          <MapPin size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/45" />
+          <MapPin size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-black/100" />
           <input
             id="event-location-address"
             name="address"
@@ -783,7 +783,7 @@ function AssignMembersPicker({ allMembers, selectedIds, onChange, label = 'Assig
     <div className="space-y-2" ref={panelRef}>
       <label htmlFor={inputId} className="block text-sm text-white/80 mb-2">{label}</label>
       <div className="relative">
-        <Users size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/45" />
+        <Users size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[black]" />
         <input
           id={inputId}
           name="memberSearch"
@@ -2942,7 +2942,7 @@ function Calendar({ listOnly = false }) {
 	                      <div className="relative">
                         <SelectedCategoryIcon
                           size={16}
-                          className={`absolute left-3 top-1/2 -translate-y-1/2 ${selectedCategoryMeta?.text || 'text-white/45'} ${selectedCategoryMeta?.iconClass || ''}`}
+                          className={`absolute left-3 top-1/2 -translate-y-1/2 ${selectedCategoryMeta?.text || 'text-[black]'} ${selectedCategoryMeta?.iconClass || ''}`}
                         />
 	                        <select
                             id="event-form-category"
@@ -3005,7 +3005,7 @@ function Calendar({ listOnly = false }) {
 	                    selectedIds={formData.assignedMemberIds}
 	                    onChange={nextIds => setFormData({ ...formData, assignedMemberIds: nextIds })}
 	                    label="Committee member (Assigned)"
-	                    placeholder="Search and select members to assign/notify..."
+	                    placeholder="Search member"
 	                  />
 
 	                </div>
