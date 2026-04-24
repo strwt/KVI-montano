@@ -385,7 +385,6 @@ function Members() {
       <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
         <div>
           <h2 className="text-2xl font-bold text-gray-800 dark:text-zinc-100">User Management</h2>
-          <p className="text-sm text-gray-500 dark:text-zinc-400">Manage users by role</p>
         </div>
       </div>
 

@@ -124,9 +124,7 @@ function Donations() {
       <div className="mx-auto w-full max-w-6xl">
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-white">Donations</h2>
-            <p className="text-sm text-white/70">Donation submissions from the landing page.</p>
-          </div>
+            <h2 className="text-2xl font-bold text-white">Donations</h2>          </div>
           <button
             type="button"
             onClick={loadDonations}
