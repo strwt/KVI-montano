@@ -189,6 +189,62 @@ const resolveIconKey = (value) => {
   return 'tags'
 }
 
+const CATEGORY_ICON_SEEDS = {
+  environmental: 'leaf',
+  relief_operation: 'hand_heart',
+  fire_response: 'flame',
+  water_distribution: 'droplets',
+  blood_letting: 'heart_pulse',
+  notes: 'file_text',
+  medical: 'heart_pulse',
+  donations: 'hand_heart',
+  uncategorized: 'tags',
+}
+
+const guessIconKeyForCategory = (value) => {
+  const key = toCategoryKey(value)
+  if (!key) return 'tags'
+
+  const seeded = CATEGORY_ICON_SEEDS[key]
+  if (seeded) return seeded
+
+  if (key.includes('fire')) return 'flame'
+  if (key.includes('water')) return 'droplets'
+  if (key.includes('blood')) return 'heart_pulse'
+  if (key.includes('medical') || key.includes('health')) return 'heart_pulse'
+  if (key.includes('relief') || key.includes('rescue') || key.includes('donat') || key.includes('aid')) return 'hand_heart'
+  if (key.includes('environment') || key.includes('tree') || key.includes('mangrove') || key.includes('cleanup') || key.includes('plant')) return 'leaf'
+  if (key.includes('note') || key.includes('report') || key.includes('doc') || key.includes('file')) return 'file_text'
+  if (key.includes('activity') || key.includes('training')) return 'activity'
+
+  return 'tags'
+}
+
+const CATEGORY_COLOR_PALETTE = [
+  '#f59e0b', // amber-500
+  '#eab308', // yellow-500
+  '#f97316', // orange-500
+  '#ef4444', // red-500
+  '#ec4899', // pink-500
+  '#8b5cf6', // violet-500
+  '#6366f1', // indigo-500
+  '#3b82f6', // blue-500
+  '#0ea5e9', // sky-500
+  '#06b6d4', // cyan-500
+  '#14b8a6', // teal-500
+  '#10b981', // emerald-500
+  '#22c55e', // green-500
+]
+
+const guessColorForCategory = (value) => {
+  const key = toCategoryKey(value)
+  if (!key) return '#facc15'
+  const seeded = CATEGORY_COLOR_SEEDS[key]
+  if (seeded) return seeded
+  const pick = CATEGORY_COLOR_PALETTE[hashInt(key) % CATEGORY_COLOR_PALETTE.length]
+  return pick || '#facc15'
+}
+
 const normalizeHexColor = (value) => {
   const raw = String(value || '').trim()
   if (!raw) return ''
@@ -219,26 +275,29 @@ function CategoryManagement() {
     [categories]
   )
 
-  const SelectedCategoryIcon = useMemo(
-    () => ICON_BY_KEY[resolveIconKey(categoryIconKey)] || Tags,
-    [categoryIconKey]
-  )
-
   const [categoryName, setCategoryName] = useState('')
-  const [categoryIconKey, setCategoryIconKey] = useState('tags')
-  const [categoryColor, setCategoryColor] = useState('#facc15')
   const [fields, setFields] = useState([{ fieldId: null, fieldName: '', fieldType: '' }])
   const [editingCategory, setEditingCategory] = useState(null)
   const [originalFields, setOriginalFields] = useState([])
   const [formError, setFormError] = useState('')
   const [saveState, setSaveState] = useState('idle')
 
+  const activeColor = useMemo(() => {
+    const forced = normalizeHexColor(editingCategory?.color)
+    if (editingCategory?.id && forced) return forced
+    return normalizeHexColor(guessColorForCategory(categoryName)) || '#facc15'
+  }, [categoryName, editingCategory])
+
+  const activeIconKey = useMemo(() => {
+    const rawEditingKey = String(editingCategory?.iconKey || '').trim()
+    if (editingCategory?.id && rawEditingKey && ICON_BY_KEY[rawEditingKey]) return rawEditingKey
+    return resolveIconKey(guessIconKeyForCategory(categoryName))
+  }, [categoryName, editingCategory])
+
   const canUseSupabase = Boolean(supabase)
 
   const resetForm = () => {
     setCategoryName('')
-    setCategoryIconKey('tags')
-    setCategoryColor('#facc15')
     setFields([{ fieldId: null, fieldName: '', fieldType: '' }])
     setEditingCategory(null)
     setOriginalFields([])
@@ -270,8 +329,6 @@ function CategoryManagement() {
       color: normalizeHexColor(category?.color) || '#facc15',
     })
     setCategoryName(titleCaseFromKey(category.name) || category.name)
-    setCategoryIconKey(resolveIconKey(category?.icon_key || category?.iconKey))
-    setCategoryColor(normalizeHexColor(category?.color) || '#facc15')
     try {
       const loaded = await loadCategoryFields(category.id)
       const mapped = loaded.map(row => ({
@@ -322,8 +379,8 @@ function CategoryManagement() {
     const key = toCategoryKey(categoryName)
     if (!key) return { ok: false, message: 'Category name is required.' }
 
-    const iconKey = resolveIconKey(categoryIconKey)
-    const color = normalizeHexColor(categoryColor)
+    const iconKey = resolveIconKey(activeIconKey)
+    const color = normalizeHexColor(activeColor)
 
     const cleanedFields = (Array.isArray(fields) ? fields : [])
       .map(entry => ({
@@ -355,7 +412,7 @@ function CategoryManagement() {
     }
 
     return { ok: true, key, fields: cleanedFields, iconKey, color }
-  }, [categoryColor, categoryIconKey, categoryName, fields, isAdmin])
+  }, [activeColor, activeIconKey, categoryName, fields, isAdmin])
 
   const handleAddFieldRow = () => {
     setFields(prev => [...(Array.isArray(prev) ? prev : []), { fieldId: null, fieldName: '', fieldType: '' }])
@@ -679,47 +736,6 @@ function CategoryManagement() {
               placeholder={t('e.g., Mangrove Planting')}
               className="w-full rounded-xl border border-neutral-300 bg-white px-4 py-2 text-[14px] text-black focus:border-yellow-300 focus:outline-none dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
             />
-          </div>
-
-          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="space-y-2">
-              <label className="block text-[14px] font-medium text-black dark:text-zinc-100">{t('Icon')}</label>
-              <div className="flex items-center gap-3">
-                <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white">
-                  <SelectedCategoryIcon size={18} className="text-yellow-500" />
-                </span>
-                <select
-                  value={categoryIconKey}
-                  onChange={e => setCategoryIconKey(e.target.value)}
-                  className="h-10 w-full rounded-xl border border-neutral-300 bg-white px-3 text-[14px] text-black focus:border-yellow-300 focus:outline-none dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
-                >
-                  {ICON_OPTIONS.map(option => (
-                    <option key={option.key} value={option.key}>
-                      {t(option.label)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="block text-[14px] font-medium text-black dark:text-zinc-100">{t('Color')}</label>
-              <div className="flex items-center gap-3">
-                <input
-                  type="color"
-                  value={normalizeHexColor(categoryColor) || '#facc15'}
-                  onChange={e => setCategoryColor(e.target.value)}
-                  className="h-10 w-14 cursor-pointer rounded-xl border border-slate-200 bg-white p-1"
-                  aria-label={t('Category color')}
-                />
-                <input
-                  value={categoryColor}
-                  onChange={e => setCategoryColor(e.target.value)}
-                  placeholder="#facc15"
-                  className="h-10 w-full rounded-xl border border-neutral-300 bg-white px-3 text-[14px] text-black focus:border-yellow-300 focus:outline-none dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
-                />
-              </div>
-            </div>
           </div>
 
           <div className="mt-6 flex items-center justify-between">

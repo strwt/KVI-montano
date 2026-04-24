@@ -551,20 +551,13 @@ function NavBar({ navigate }) {
               </button>
             </div>
           </div>
-          <div className="flex gap-3 pt-4 mt-2 border-t border-white/8">
+          <div className="flex pt-4 mt-2 border-t border-white/8">
             <button
               type="button"
               onClick={() => navigate('/login')}
-              className="flex-1 text-sm py-2.5 rounded-xl border border-white/20 text-white font-semibold hover:bg-white/8 transition-colors"
+              className="w-full text-sm py-2.5 rounded-xl border border-white/20 text-white font-semibold hover:bg-white/8 transition-colors"
             >
               Login
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate('/recruitment')}
-              className="flex-1 text-sm py-2.5 rounded-xl bg-yellow-400 text-slate-900 font-semibold hover:bg-yellow-300 transition-colors"
-            >
-              Join Us
             </button>
           </div>
         </div>
