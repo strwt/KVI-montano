@@ -432,13 +432,9 @@ export default function AchievementsManagement() {
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
               <h2 className="text-[32px] font-semibold leading-tight text-white">Achievements</h2>
-              <p className="text-[14px] text-white/70">Add latest news and milestone updates shown on the landing page.</p>
               <div className="flex flex-wrap gap-2 pt-3">
                 <span className="rounded-lg border border-yellow-300/30 bg-yellow-300/10 px-3 py-1 text-[14px] text-yellow-200">
                   {items.length} total item{items.length === 1 ? '' : 's'}
-                </span>
-                <span className="rounded-lg border border-white/15 bg-[#1d4ed8]/25 px-3 py-1 text-[14px] text-white/85">
-                  Latest first
                 </span>
               </div>
             </div>
@@ -578,8 +574,6 @@ export default function AchievementsManagement() {
           >
             <div className="mb-3 flex items-center justify-between">
               <div>
-                <h3 className="text-[24px] font-semibold text-white">Latest</h3>
-                <p className="mt-1 text-sm text-white/70">Recent achievements already published to the feed.</p>
               </div>
             </div>
 
