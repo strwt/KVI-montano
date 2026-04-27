@@ -768,13 +768,16 @@ function LatestNewsImageGallery({ imageUrls }) {
 
   if (urls.length === 0) return null
 
+  const previewUrls = urls.slice(0, 3)
+  const remainingCount = Math.max(0, urls.length - previewUrls.length)
+
   return (
     <div className="mb-5">
       <div className="flex justify-center gap-3 overflow-x-auto pb-2 landing-scrollbar">
-        {urls.map((url, index) => (
+        {previewUrls.map((url, index) => (
           <div
             key={`${url}-${index}`}
-            className="h-52 w-72 shrink-0 overflow-hidden rounded-2xl bg-slate-100 sm:h-64 sm:w-[420px]"
+            className="relative h-52 w-72 shrink-0 overflow-hidden rounded-2xl bg-slate-100 sm:h-64 sm:w-[420px]"
           >
             <img
               src={url}
@@ -783,6 +786,11 @@ function LatestNewsImageGallery({ imageUrls }) {
               draggable={false}
               className="h-full w-full object-cover"
             />
+            {index === previewUrls.length - 1 && remainingCount > 0 ? (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/45 text-lg font-bold text-white">
+                +{remainingCount}
+              </div>
+            ) : null}
           </div>
         ))}
       </div>
@@ -1761,7 +1769,7 @@ function Landing() {
                       : ''
                   const images = normalizeAchievementImagePaths(item?.image_paths)
                   const imageUrls = images.map(resolveAchievementImage).filter(Boolean)
-                  const previewImageUrls = imageUrls.slice(0, 2)
+                  const previewImageUrls = imageUrls.slice(0, 3)
                   const remainingImageCount = Math.max(0, imageUrls.length - previewImageUrls.length)
 
                   return (

@@ -736,7 +736,7 @@ export default function AchievementsManagement() {
                     } else {
                       setError('')
                     }
-                    setFiles(nextFiles)
+                    setFiles(nextFiles.slice(0, MAX_FILES))
                   }}
                   className="sr-only"
                 />
@@ -943,7 +943,7 @@ export default function AchievementsManagement() {
                         } else {
                           setEditError('')
                         }
-                        setEditFiles(nextFiles)
+                        setEditFiles(nextFiles.slice(0, MAX_FILES))
                       }}
                       className="sr-only"
                     />
