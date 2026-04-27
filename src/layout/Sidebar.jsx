@@ -3,7 +3,7 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { LayoutDashboard, Calendar, ChevronLeft, ChevronRight, Users, FileText, ClipboardCheck, LogOut, Tags, Settings, ChevronDown, ChevronUp, HandHeart } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useI18n } from '../i18n/useI18n'
-import { useConfirm } from '../context/ConfirmContext'
+import { useConfirm } from '../context/useConfirm'
 
 function Sidebar({ isOpen, toggleSidebar }) {
   const { user, logout } = useAuth()
@@ -94,7 +94,6 @@ function Sidebar({ isOpen, toggleSidebar }) {
                   type="button"
                   onClick={() => {
                     navigate('/profile')
-                    if (window.innerWidth < 768 && isOpen) toggleSidebar()
                   }}
                   className={`w-20 h-20 rounded-full flex items-center justify-center overflow-hidden transition-colors ${avatarTone} ${utilityBtnTone}`}
                   aria-label={t('Profile')}
@@ -127,7 +126,6 @@ function Sidebar({ isOpen, toggleSidebar }) {
               type="button"
               onClick={() => {
                 navigate('/profile')
-                if (window.innerWidth < 768 && isOpen) toggleSidebar()
               }}
               className={`w-full flex items-center justify-center p-2 rounded-lg transition-colors ${utilityBtnTone}`}
             >
@@ -148,9 +146,6 @@ function Sidebar({ isOpen, toggleSidebar }) {
             <NavLink
               key={item.to}
               to={item.to}
-              onClick={() => {
-                if (window.innerWidth < 768 && isOpen) toggleSidebar()
-              }}
               className={({ isActive }) =>
                 `group relative flex min-h-[48px] items-center gap-2.5 rounded-lg px-3 py-3 transition-all duration-200 ${navTone} ${
                   isActive ? navActiveTone : 'border-l-2 border-transparent'
@@ -194,10 +189,6 @@ function Sidebar({ isOpen, toggleSidebar }) {
                 >
                   <NavLink
                     to="/members"
-                    onClick={() => {
-                      setManagementOpen(false)
-                      if (window.innerWidth < 768 && isOpen) toggleSidebar()
-                    }}
                     className={({ isActive }) =>
                       `group relative flex min-h-[40px] min-w-0 items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-all duration-200 ${navTone} ${
                         isActive ? navActiveTone : 'border-l-2 border-transparent'
@@ -212,10 +203,6 @@ function Sidebar({ isOpen, toggleSidebar }) {
 
                   <NavLink
                     to="/achievements"
-                    onClick={() => {
-                      setManagementOpen(false)
-                      if (window.innerWidth < 768 && isOpen) toggleSidebar()
-                    }}
                     className={({ isActive }) =>
                       `group relative flex min-w-0 items-center gap-3 rounded-lg px-4 py-2 text-sm transition-all duration-200 ${navTone} ${
                         isActive ? navActiveTone : 'border-l-2 border-transparent'
@@ -228,10 +215,6 @@ function Sidebar({ isOpen, toggleSidebar }) {
 
                   <NavLink
                     to="/category-management"
-                    onClick={() => {
-                      setManagementOpen(false)
-                      if (window.innerWidth < 768 && isOpen) toggleSidebar()
-                    }}
                     className={({ isActive }) =>
                       `group relative flex min-h-[40px] min-w-0 items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-all duration-200 ${navTone} ${
                         isActive ? navActiveTone : 'border-l-2 border-transparent'
@@ -244,10 +227,6 @@ function Sidebar({ isOpen, toggleSidebar }) {
 
                   <NavLink
                     to="/committee-management"
-                    onClick={() => {
-                      setManagementOpen(false)
-                      if (window.innerWidth < 768 && isOpen) toggleSidebar()
-                    }}
                     className={({ isActive }) =>
                       `group relative flex min-h-[40px] min-w-0 items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-all duration-200 ${navTone} ${
                         isActive ? navActiveTone : 'border-l-2 border-transparent'

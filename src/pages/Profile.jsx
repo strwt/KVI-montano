@@ -194,7 +194,7 @@ function Profile() {
                   ref={panelRef}
                   role="menu"
                   aria-label={t('Profile actions')}
-                  className="absolute right-0 top-12 z-30 w-60 overflow-hidden rounded-2xl border border-slate-200 bg-white p-2.5 text-black"
+                  className="absolute right-0 top-12 z-30 w-60 overflow-hidden rounded-2xl border border-slate-200 bg-[white] p-2.5 text-black"
                   onMouseEnter={clearAutoCloseTimeout}
                   onMouseLeave={scheduleAutoClose}
                   style={{
@@ -267,7 +267,6 @@ function Profile() {
               <p className="mb-2 text-xs uppercase tracking-[0.16em] text-cyan-100">{t('Identity')}</p>
               <p className="text-sm text-white/70">{t('Member ID')}</p>
               <p className="text-lg font-semibold text-white">{user?.idNumber || 'N/A'}</p>
-              <p className="mt-2 text-xs text-white/60">{t('This profile is secured and accessible only to authorized users.')}</p>
             </div>
           </div>
         </div>
@@ -288,7 +287,7 @@ function Profile() {
           {profileFields.map((field) => (
             <div
               key={field.label}
-              className="group rounded-2xl border border-white/10 px-4 py-3.5 transition-colors hover:border-white/20"
+              className="group rounded-2xl border border-[white] px-4 py-3.5 transition-colors hover:border-white/20"
               style={{
                 background: 'linear-gradient(145deg, rgba(14,116,144,0.24), rgba(30,64,175,0.18) 52%, rgba(96,165,250,0.16))',
               }}

@@ -43,7 +43,6 @@ const THEME = {
 const NAV_LINKS = [
   { label: 'Home', href: '#home' },
   { label: 'Programs', href: '#services' },
-  { label: 'Contact Us', href: '#contact' },
 ]
 
 const SPONSOR_LOGOS = [
@@ -769,38 +768,23 @@ function LatestNewsImageGallery({ imageUrls }) {
 
   if (urls.length === 0) return null
 
-  const [heroUrl, ...restUrls] = urls
-
   return (
     <div className="mb-5">
-      <div className="mx-auto w-full max-w-4xl">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="overflow-hidden rounded-2xl bg-slate-100 sm:col-span-2">
-            <div className="relative h-64 w-full sm:h-80 md:h-[420px]">
-              <img
-                src={heroUrl}
-                alt=""
-                loading="lazy"
-                draggable={false}
-                className="absolute inset-0 block h-full w-full rounded-2xl bg-white object-contain"
-              />
-            </div>
+      <div className="flex justify-center gap-3 overflow-x-auto pb-2 landing-scrollbar">
+        {urls.map((url, index) => (
+          <div
+            key={`${url}-${index}`}
+            className="h-52 w-72 shrink-0 overflow-hidden rounded-2xl bg-slate-100 sm:h-64 sm:w-[420px]"
+          >
+            <img
+              src={url}
+              alt=""
+              loading="lazy"
+              draggable={false}
+              className="h-full w-full object-cover"
+            />
           </div>
-
-          {restUrls.map((url, index) => (
-            <div key={`${url}-${index}`} className="overflow-hidden rounded-2xl bg-slate-100">
-              <div className="relative h-40 w-full sm:h-48 md:h-56">
-                <img
-                  src={url}
-                  alt=""
-                  loading="lazy"
-                  draggable={false}
-                  className="absolute inset-0 block h-full w-full rounded-2xl object-cover"
-                />
-              </div>
-            </div>
-          ))}
-        </div>
+        ))}
       </div>
     </div>
   )
@@ -1776,21 +1760,43 @@ function Landing() {
                       ? occurredAt.toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
                       : ''
                   const images = normalizeAchievementImagePaths(item?.image_paths)
-                  const imageUrl = images[0] ? resolveAchievementImage(images[0]) : ''
+                  const imageUrls = images.map(resolveAchievementImage).filter(Boolean)
+                  const previewImageUrls = imageUrls.slice(0, 2)
+                  const remainingImageCount = Math.max(0, imageUrls.length - previewImageUrls.length)
 
                   return (
                     <article
                       key={item.id}
                       className="group flex shrink-0 w-[260px] sm:w-[280px] flex-col rounded-3xl border border-slate-200 bg-white text-left transition-transform hover:-translate-y-0.5"
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setSelectedNewsItem(item)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault()
+                          setSelectedNewsItem(item)
+                        }
+                      }}
                     >
                       <div className="h-36 w-full overflow-hidden rounded-t-3xl border-b border-slate-200 bg-slate-100">
-                        {imageUrl ? (
-                          <img
-                            src={imageUrl}
-                            alt=""
-                            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
-                            loading="lazy"
-                          />
+                        {previewImageUrls.length > 0 ? (
+                          <div className="flex h-full items-stretch gap-2 p-2">
+                            {previewImageUrls.map((url, index) => (
+                              <div key={`${url}-${index}`} className="relative h-full flex-1 overflow-hidden rounded-2xl bg-slate-200">
+                                <img
+                                  src={url}
+                                  alt=""
+                                  loading="lazy"
+                                  className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                                />
+                                {index === previewImageUrls.length - 1 && remainingImageCount > 0 ? (
+                                  <div className="absolute inset-0 flex items-center justify-center bg-black/45 text-sm font-bold text-white">
+                                    +{remainingImageCount}
+                                  </div>
+                                ) : null}
+                              </div>
+                            ))}
+                          </div>
                         ) : (
                           <div className="flex h-full w-full items-center justify-center text-xs text-slate-500">No image</div>
                         )}
@@ -1812,13 +1818,19 @@ function Landing() {
                             </div>
                           </>
                         ) : null}
-                        <button
-                          type="button"
-                          className="mt-auto inline-flex w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-none transition-colors hover:bg-slate-50"
-                          onClick={() => setSelectedNewsItem(item)}
-                        >
-                          Read More
-                        </button>
+                        <div className="mt-4 flex items-center justify-end">
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              navigate(`/news/${item.id}`)
+                            }}
+                            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
+                          >
+                            Read more
+                            <ArrowRight size={14} />
+                          </button>
+                        </div>
                       </div>
                     </article>
                   )
@@ -2307,6 +2319,23 @@ function Landing() {
                   No description.
                 </div>
               )}
+
+              {selectedNewsItem?.id ? (
+                <div className="mt-5 flex items-center justify-end">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const id = selectedNewsItem.id
+                      setSelectedNewsItem(null)
+                      navigate(`/news/${id}`)
+                    }}
+                    className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
+                  >
+                    Read more
+                    <ArrowRight size={16} />
+                  </button>
+                </div>
+              ) : null}
             </div>
           </div>
         </div>
@@ -2344,9 +2373,7 @@ function Landing() {
 
             {/* Contact Us */}
             <div className="flex flex-col items-start text-left">
-              <h4 className="text-xs font-bold text-slate-700 font-heading mb-3 tracking-widest uppercase">
-                Contact Us
-              </h4>
+              
               <div className="space-y-4 text-sm text-slate-600 max-w-sm">
                 <p className="leading-relaxed flex flex-wrap items-baseline justify-start gap-x-2">
                   <span className="text-slate-700 shrink-0">Contact number:</span>

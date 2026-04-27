@@ -754,12 +754,7 @@ function AdminAttendance() {
     <div className="animate-fade-in space-y-6">
       <section className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-[0_12px_30px_rgba(0,0,0,0.25)] backdrop-blur-md">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-[14px] uppercase tracking-[0.12em] text-white/70">Attendance</p>
-            <h1 className="text-[28px] font-semibold text-white">Attendance Management</h1>
-            <p className="text-[14px] text-white/70">
-              Track member presence, absences, and admin adjustments.
-            </p>
+          <div>            <h1 className="text-[28px] font-semibold text-white">Attendance Management</h1>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <label className="text-sm text-white/70" htmlFor="attendance-date">

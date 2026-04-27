@@ -3,7 +3,7 @@ import { Activity, Droplets, FileText, Flame, HandHeart, HeartPulse, Leaf, Plus,
 import { useAuth } from '../context/AuthContext'
 import { useI18n } from '../i18n/useI18n'
 import { supabase } from '../lib/supabaseClient'
-import { useConfirm } from '../context/ConfirmContext'
+import { useConfirm } from '../context/useConfirm'
 
 const normalizeCategoryKey = value =>
   String(value || '')
@@ -693,7 +693,6 @@ function CategoryManagement() {
           <div className="space-y-1">
             <h1 className="text-[28px] font-semibold leading-tight text-white">{t('Category Management')}</h1>
             <p className="text-[14px] text-white/70">
-              {t('Create categories with strict typed custom fields for safe reporting.')}
             </p>
           </div>
         </div>

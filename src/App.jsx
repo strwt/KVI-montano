@@ -23,7 +23,7 @@ import CategoryManagement from './pages/CategoryManagement'
 import CommitteeManagement from './pages/CommitteeManagement'
 import ChatbotWidget from './components/ChatbotWidget'
 import { AuthProvider, useAuth } from './context/AuthContext'
-import { ConfirmProvider } from './context/ConfirmContext'
+import { ConfirmProvider } from './context/ConfirmProvider'
 import './index.css'
 
 function AuthPendingState({ title = 'Loading your session...' }) {

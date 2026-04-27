@@ -21,7 +21,7 @@ import { useI18n } from '../i18n/useI18n'
 import { supabase } from '../lib/supabaseClient'
 import { fetchSupabaseEvents, invalidateSupabaseEventsCache, isSupabaseEnabled } from '../lib/supabaseEvents'
 import { fetchMyNotifications } from '../lib/supabaseNotifications'
-import { useConfirm } from '../context/ConfirmContext'
+import { useConfirm } from '../context/useConfirm'
 
 const normalizeCategoryKey = value =>
   String(value || '')

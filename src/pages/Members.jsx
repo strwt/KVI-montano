@@ -20,7 +20,7 @@ import {
   EyeOff,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { useConfirm } from '../context/ConfirmContext'
+import { useConfirm } from '../context/useConfirm'
 import { useNavigate } from 'react-router-dom'
 import dayjs from 'dayjs'
 
@@ -61,7 +61,6 @@ function Members() {
   const [formError, setFormError] = useState('')
   const [recruitmentActionError, setRecruitmentActionError] = useState('')
   const [selectedMemberIds, setSelectedMemberIds] = useState(() => new Set())
-  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
   const [bulkDeleteBusy, setBulkDeleteBusy] = useState(false)
   const [bulkDeleteError, setBulkDeleteError] = useState('')
   const selectAllRef = useRef(null)
@@ -115,10 +114,6 @@ function Members() {
 
   const pendingRecruitments = useMemo(
     () => recruitments.filter(item => item.status === 'pending'),
-    [recruitments]
-  )
-  const processedRecruitments = useMemo(
-    () => recruitments.filter(item => item.status !== 'pending'),
     [recruitments]
   )
 
@@ -232,7 +227,6 @@ function Members() {
       setBulkDeleteError(result.message || 'Unable to delete members.')
       return
     }
-    setShowBulkDeleteModal(false)
     setSelectedMemberIds(new Set())
   }
 
@@ -385,7 +379,6 @@ function Members() {
       <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
         <div>
           <h2 className="text-2xl font-bold text-gray-800 dark:text-zinc-100">User Management</h2>
-          <p className="text-sm text-gray-500 dark:text-zinc-400">Manage users by role</p>
         </div>
       </div>
 
@@ -907,60 +900,26 @@ function Members() {
               <span className="text-xs text-white/70">Selected: {selectedCount}</span>
               <button
                 type="button"
-                onClick={() => {
+                onClick={async () => {
+                  if (selectedCount === 0 || bulkDeleteBusy) return
                   setBulkDeleteError('')
-                  setShowBulkDeleteModal(true)
+                  const ok = await confirm({
+                    title: 'Delete selected members?',
+                    description: `You are about to delete ${selectedCount} member${selectedCount === 1 ? '' : 's'}. This action cannot be undone.`,
+                    confirmText: 'Delete',
+                    cancelText: 'Cancel',
+                    danger: true,
+                  })
+                  if (!ok) return
+                  await handleBulkDelete()
                 }}
-                disabled={selectedCount === 0}
+                disabled={selectedCount === 0 || bulkDeleteBusy}
                 className="rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(220,38,38,0.28)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Delete selected
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {isAdmin && showBulkDeleteModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-[white] p-5 text-white shadow-2xl space-y-4 animate-fade-in-up">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-[black]">Delete Selected Members</h3>
-            </div>
-
-            {bulkDeleteError && <p className="text-sm text-red-600">{bulkDeleteError}</p>}
-
-            <div className="rounded-lg border border-red-200 bg-[black] dark:bg-red p-4 space-y-2">
-              <p className="text-sm text-red-700 dark:text-[yellow]">
-                You are about to delete <span className="font-semibold">{selectedCount}</span> member{selectedCount === 1 ? '' : 's'}.
-              </p>
-              <p className="text-xs text-red-700 dark:text-[yellow]">
-                This action permanently removes the selected accounts and cannot be undone.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  if (bulkDeleteBusy) return
-                  setShowBulkDeleteModal(false)
-                  setBulkDeleteError('')
-                }}
-                className="rounded-lg border border-white/15 bg-[black] px-4 py-2 text-sm font-semibold text-[white] shadow-sm backdrop-blur-md transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={bulkDeleteBusy}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleBulkDelete}
-                className="rounded-lg border border-red-300/30 bg-[red] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-500/30 disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={bulkDeleteBusy || selectedCount === 0}
-              >
-                Confirm Delete
-              </button>
-            </div>
+            {bulkDeleteError ? <p className="mt-2 text-xs text-red-200">{bulkDeleteError}</p> : null}
           </div>
         </div>
       )}
