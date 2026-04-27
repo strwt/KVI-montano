@@ -2274,52 +2274,6 @@ function Calendar({ listOnly = false }) {
                     )}
 	              </select>
 	            </div>
-
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => updateCategoryRoute('all')}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
-                  selectedCategoryKey === 'all'
-                    ? 'bg-red-600 border-red-600 text-white'
-                    : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                All
-              </button>
-	              {filterCategoryKeys.map(categoryKey => (
-	                <button
-	                  key={categoryKey}
-	                  type="button"
-	                  onClick={() => updateCategoryRoute(categoryKey)}
-	                  className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
-	                    selectedCategoryKey === categoryKey
-	                      ? 'bg-red-600 border-red-600 text-white'
-	                      : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
-	                  }`}
-	                >
-	                  {categoryLabelByKey[categoryKey] || CATEGORY_CONFIG[categoryKey]?.label || titleCaseFromKey(categoryKey)}
-	                </button>
-	              ))}
-	              {additionalCategoryKeys.map(categoryKey => {
-	                const label = categoryLabelByKey[categoryKey] || titleCaseFromKey(categoryKey)
-	                return (
-	                  <button
-	                    key={categoryKey}
-	                    type="button"
-	                    onClick={() => updateCategoryRoute(categoryKey)}
-	                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
-	                      selectedCategoryKey === categoryKey
-	                        ? 'bg-red-600 border-red-600 text-white'
-	                        : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
-	                    }`}
-	                  >
-	                    {label}
-	                  </button>
-	                )
-	              })}
-	            </div>
-
             <div className="space-y-3 max-h-[68vh] overflow-y-auto pr-1">
               {allFilteredItems.map(item => {
                 const isExpanded = expandedItemId === item.id
