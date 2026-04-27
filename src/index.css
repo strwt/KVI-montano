@@ -256,6 +256,296 @@ body {
   outline-color: #facc15 !important;
 }
 
+.calendar-done-modal,
+.calendar-done-modal-header,
+.calendar-done-modal-body {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+  text-shadow: none !important;
+  filter: none !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.calendar-done-modal *,
+.calendar-done-modal *::before,
+.calendar-done-modal *::after {
+  filter: none !important;
+  text-shadow: none !important;
+}
+
+.calendar-done-card {
+  background-color: #f9fafb !important;
+  color: #111827 !important;
+  border-color: #e5e7eb !important;
+  text-shadow: none !important;
+  filter: none !important;
+}
+
+.calendar-done-chip {
+  background-color: #ffffff !important;
+  color: #374151 !important;
+  border-color: #e5e7eb !important;
+}
+
+.calendar-done-modal h1,
+.calendar-done-modal h2,
+.calendar-done-modal h3,
+.calendar-done-modal h4,
+.calendar-done-modal p,
+.calendar-done-modal span,
+.calendar-done-modal label,
+.calendar-done-modal button,
+.calendar-done-modal li,
+.calendar-done-modal strong {
+  text-shadow: none !important;
+  filter: none !important;
+  opacity: 1 !important;
+}
+
+.calendar-done-modal h1,
+.calendar-done-modal h2,
+.calendar-done-modal h3,
+.calendar-done-modal h4,
+.calendar-done-modal .text-gray-900,
+.calendar-done-modal .text-gray-800,
+.calendar-done-modal .text-gray-700 {
+  color: #111827 !important;
+}
+
+.calendar-done-modal .text-gray-600,
+.calendar-done-modal .text-gray-500,
+.calendar-done-modal .text-gray-400,
+.calendar-done-modal .text-slate-500,
+.calendar-done-modal .text-slate-400 {
+  color: #4b5563 !important;
+}
+
+.calendar-done-modal input,
+.calendar-done-modal select,
+.calendar-done-modal textarea {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+  border-color: #d1d5db !important;
+  box-shadow: none !important;
+}
+
+.calendar-done-modal input::placeholder,
+.calendar-done-modal textarea::placeholder {
+  color: #6b7280 !important;
+  opacity: 1 !important;
+}
+
+.calendar-done-modal [class*='bg-white'] {
+  background-color: #ffffff !important;
+}
+
+.calendar-done-modal [class*='bg-gray-50'] {
+  background-color: #f9fafb !important;
+}
+
+.calendar-done-modal [class*='bg-gray-100'] {
+  background-color: #f3f4f6 !important;
+}
+
+.calendar-done-modal [class*='text-gray-900'],
+.calendar-done-modal [class*='text-gray-800'],
+.calendar-done-modal [class*='text-gray-700'],
+.calendar-done-modal [class*='text-slate-900'],
+.calendar-done-modal [class*='text-slate-800'],
+.calendar-done-modal [class*='text-slate-700'] {
+  color: #111827 !important;
+}
+
+.calendar-done-modal [class*='text-gray-600'],
+.calendar-done-modal [class*='text-gray-500'],
+.calendar-done-modal [class*='text-gray-400'],
+.calendar-done-modal [class*='text-slate-600'],
+.calendar-done-modal [class*='text-slate-500'],
+.calendar-done-modal [class*='text-slate-400'] {
+  color: #4b5563 !important;
+}
+
+.calendar-done-modal [class*='border-gray-100'],
+.calendar-done-modal [class*='border-gray-200'],
+.calendar-done-modal [class*='border-gray-300'],
+.calendar-done-modal [class*='border-slate-100'],
+.calendar-done-modal [class*='border-slate-200'],
+.calendar-done-modal [class*='border-slate-300'] {
+  border-color: #d1d5db !important;
+}
+
+.calendar-done-modal button {
+  box-shadow: none !important;
+}
+
+.calendar-done-modal button[class*='bg-white'],
+.calendar-done-modal button[class*='bg-gray-100'],
+.calendar-done-modal button[class*='bg-transparent'],
+.calendar-done-modal .bg-white {
+  background-color: #ffffff !important;
+}
+
+.calendar-done-modal button[class*='text-gray-'],
+.calendar-done-modal button[class*='text-slate-'],
+.calendar-done-modal button[class*='text-yellow-'] {
+  color: #374151 !important;
+}
+
+.calendar-done-modal button[class*='border-gray-'],
+.calendar-done-modal button[class*='border-yellow-'] {
+  border-color: #d1d5db !important;
+}
+
+.calendar-done-modal button:hover[class*='bg-white'],
+.calendar-done-modal button:hover[class*='bg-gray-100'],
+.calendar-done-modal button:hover[class*='bg-transparent'] {
+  background-color: #f9fafb !important;
+}
+
+.calendar-done-modal button.bg-green-600,
+.calendar-done-modal button.bg-blue-600,
+.calendar-done-modal button.bg-red-600 {
+  color: #ffffff !important;
+}
+
+.calendar-done-modal button.bg-green-600 {
+  background-color: #16a34a !important;
+}
+
+.calendar-done-modal button.bg-blue-600 {
+  background-color: #2563eb !important;
+}
+
+.calendar-done-modal button.bg-red-600 {
+  background-color: #dc2626 !important;
+}
+
+.calendar-done-modal button.hover\:bg-green-700:hover {
+  background-color: #15803d !important;
+}
+
+.calendar-done-modal button.hover\:bg-blue-700:hover {
+  background-color: #1d4ed8 !important;
+}
+
+.calendar-done-modal button.hover\:bg-red-700:hover {
+  background-color: #b91c1c !important;
+}
+
+.dark .calendar-done-modal,
+.dark .calendar-done-modal-header,
+.dark .calendar-done-modal-body {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+}
+
+.dark .calendar-done-modal *,
+.dark .calendar-done-modal *::before,
+.dark .calendar-done-modal *::after {
+  filter: none !important;
+  text-shadow: none !important;
+}
+
+.dark .calendar-done-card {
+  background-color: #f9fafb !important;
+  color: #111827 !important;
+  border-color: #e5e7eb !important;
+}
+
+.dark .calendar-done-chip {
+  background-color: #ffffff !important;
+  color: #374151 !important;
+  border-color: #e5e7eb !important;
+}
+
+.dark .calendar-done-modal h1,
+.dark .calendar-done-modal h2,
+.dark .calendar-done-modal h3,
+.dark .calendar-done-modal h4,
+.dark .calendar-done-modal .text-gray-900,
+.dark .calendar-done-modal .text-gray-800,
+.dark .calendar-done-modal .text-gray-700 {
+  color: #111827 !important;
+}
+
+.dark .calendar-done-modal .text-gray-600,
+.dark .calendar-done-modal .text-gray-500,
+.dark .calendar-done-modal .text-gray-400,
+.dark .calendar-done-modal .text-slate-500,
+.dark .calendar-done-modal .text-slate-400 {
+  color: #4b5563 !important;
+}
+
+.dark .calendar-done-modal [class*='bg-white'] {
+  background-color: #ffffff !important;
+}
+
+.dark .calendar-done-modal [class*='bg-gray-50'] {
+  background-color: #f9fafb !important;
+}
+
+.dark .calendar-done-modal [class*='bg-gray-100'] {
+  background-color: #f3f4f6 !important;
+}
+
+.dark .calendar-done-modal [class*='text-gray-900'],
+.dark .calendar-done-modal [class*='text-gray-800'],
+.dark .calendar-done-modal [class*='text-gray-700'],
+.dark .calendar-done-modal [class*='text-slate-900'],
+.dark .calendar-done-modal [class*='text-slate-800'],
+.dark .calendar-done-modal [class*='text-slate-700'] {
+  color: #111827 !important;
+}
+
+.dark .calendar-done-modal [class*='text-gray-600'],
+.dark .calendar-done-modal [class*='text-gray-500'],
+.dark .calendar-done-modal [class*='text-gray-400'],
+.dark .calendar-done-modal [class*='text-slate-600'],
+.dark .calendar-done-modal [class*='text-slate-500'],
+.dark .calendar-done-modal [class*='text-slate-400'] {
+  color: #4b5563 !important;
+}
+
+.dark .calendar-done-modal [class*='border-gray-100'],
+.dark .calendar-done-modal [class*='border-gray-200'],
+.dark .calendar-done-modal [class*='border-gray-300'],
+.dark .calendar-done-modal [class*='border-slate-100'],
+.dark .calendar-done-modal [class*='border-slate-200'],
+.dark .calendar-done-modal [class*='border-slate-300'] {
+  border-color: #d1d5db !important;
+}
+
+.dark .calendar-done-modal button[class*='bg-white'],
+.dark .calendar-done-modal button[class*='bg-gray-100'],
+.dark .calendar-done-modal button[class*='bg-transparent'],
+.dark .calendar-done-modal .bg-white {
+  background-color: #ffffff !important;
+}
+
+.dark .calendar-done-modal button[class*='text-gray-'],
+.dark .calendar-done-modal button[class*='text-slate-'],
+.dark .calendar-done-modal button[class*='text-yellow-'] {
+  color: #374151 !important;
+}
+
+.dark .calendar-done-modal button[class*='border-gray-'],
+.dark .calendar-done-modal button[class*='border-yellow-'] {
+  border-color: #d1d5db !important;
+}
+
+.dark .calendar-done-modal button:hover[class*='bg-white'],
+.dark .calendar-done-modal button:hover[class*='bg-gray-100'],
+.dark .calendar-done-modal button:hover[class*='bg-transparent'] {
+  background-color: #f9fafb !important;
+}
+
+.dark .calendar-done-modal button.bg-green-600,
+.dark .calendar-done-modal button.bg-blue-600,
+.dark .calendar-done-modal button.bg-red-600 {
+  color: #ffffff !important;
+}
+
 .dark .dashboard-chart-axis {
   stroke: #374151 !important;
 }

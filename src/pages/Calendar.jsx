@@ -2191,36 +2191,1016 @@ function Calendar({ listOnly = false }) {
     )
   }
 
-  const getMonthColor = () => 'from-red-500 to-red-600'
+  const getMonthColor = () => 'from-yellow-400 to-amber-500'
 
   const getCategoryLabel = category => {
     const key = canonicalizeOperationKey(normalizeCategoryKey(category))
     return categoryLabelByKey[key] || CATEGORY_CONFIG[key]?.label || titleCaseFromKey(key) || 'Uncategorized'
   }
-  const selectedCategoryListMeta = selectedCategoryKey !== 'all' ? CATEGORY_META[selectedCategoryKey] : null
+
+  const getEventMemberContext = item => {
+    const storedMemberLabels = String(item.membersInvolve || '')
+      .split(',')
+      .map(value => value.trim())
+      .filter(Boolean)
+    const involvedMembers = Array.isArray(item.assignedMemberIds)
+      ? item.assignedMemberIds.map((memberId, index) => {
+          const id = String(memberId)
+          const member = memberById[id] || involvedProfilesById[id] || null
+          const storedLabel = storedMemberLabels[index] || ''
+          const label = String(member?.idNumber || '').trim() || member?.name || storedLabel || 'Unknown member'
+          return { id, member, label }
+        })
+      : []
+
+    return {
+      involvedMembers,
+      membersInvolveText:
+        involvedMembers.length > 0 ? involvedMembers.map(entry => entry.label).join(', ') : (item.membersInvolve || ''),
+    }
+  }
+
+  const openAssignedMemberDetail = (entry) => {
+    if (!entry) return
+
+    if (entry.member) {
+      setSelectedMember(entry.member)
+      return
+    }
+
+    const fallbackLabel = String(entry.label || '').trim()
+    if (!fallbackLabel) return
+
+    setSelectedMember({
+      id: entry.id || fallbackLabel,
+      name: fallbackLabel,
+      idNumber: fallbackLabel,
+      contactNumber: '',
+      bloodType: '',
+      memberSince: '',
+      committee: '',
+      status: 'Unavailable',
+      role: 'member',
+      profileImage: '',
+    })
+  }
+
+  const renderEventListItem = (item, options = {}) => {
+    const isExpanded = expandedItemId === item.id
+    const { involvedMembers, membersInvolveText } = getEventMemberContext(item)
+    const themed = Boolean(options.dashboardTheme)
+
+    return (
+      <div
+        key={item.id}
+        ref={el => {
+          eventRefs.current[item.id] = el
+        }}
+        className={`layout-glow rounded-xl border transition-all duration-500 ${
+          themed
+            ? highlightedEventId === item.id
+              ? 'border-cyan-300 bg-white shadow-[0_20px_36px_rgba(8,47,73,0.22)] ring-2 ring-cyan-200'
+              : 'border-slate-200 bg-white shadow-[0_14px_28px_rgba(15,23,42,0.12)]'
+            : highlightedEventId === item.id
+              ? 'border-red-400 bg-[#ffffff] ring-2 ring-red-300 shadow-lg shadow-red-100'
+              : 'border-slate-200 bg-[#ffffff]'
+        }`}
+      >
+        <div
+          onClick={() =>
+            setExpandedItemId(prev => {
+              const next = prev === item.id ? null : item.id
+              if (next === item.id) markEventSeen(item.id)
+              return next
+            })
+          }
+          className={`w-full cursor-pointer p-4 text-left ${themed ? 'bg-transparent' : ''}`}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <span className={`text-xs uppercase tracking-wide ${themed ? 'text-sky-700' : 'text-slate-500'}`}>{getCategoryLabel(item.category)}</span>
+              {item.branch && <span className={`ml-2 text-xs font-medium ${themed ? 'text-blue-700' : 'text-red-600'}`}>{item.branch}</span>}
+              <span className={`ml-2 inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold ${item.status === 'done' ? 'border-green-200 bg-green-100 text-green-700' : 'border-red-200 bg-red-100 text-red-700'}`}>
+                {item.status === 'done' ? 'Done' : 'On-going'}
+              </span>
+              {isAssignedToCurrentUser(item) && (
+                <span className="ml-2 inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
+                  Assigned to you
+                </span>
+              )}
+              <h4 className="mt-1 truncate font-semibold text-slate-900">{item.title}</h4>
+              <p className="mt-1 text-sm text-slate-500">{dayjs(item.dateTime).format('MMMM D, YYYY h:mm A')}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              {canManageEvents && (
+                <button
+                  onClick={e => {
+                    e.stopPropagation()
+                    confirmDeleteEvent(item.id)
+                  }}
+                  className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                >
+                  <Trash2 size={16} />
+                </button>
+              )}
+              <span className="text-xs text-slate-500">{isExpanded ? 'Hide' : 'Expand'}</span>
+            </div>
+          </div>
+        </div>
+
+        {isExpanded && (
+          <div className="border-t border-slate-200 px-4 pb-4 pt-3 text-sm text-slate-700">
+            <div className={item.address ? 'grid grid-cols-1 items-start gap-3 lg:grid-cols-2' : 'grid grid-cols-1 gap-3'}>
+              <div className="min-w-0 space-y-3">
+                <p>{item.content || 'No content provided.'}</p>
+                {renderDoneDetails(item)}
+                <div className="flex items-center gap-2 text-slate-600">
+                  <Clock size={14} />
+                  <span>{dayjs(item.dateTime).format('h:mm A')}</span>
+                </div>
+                <div className="flex items-center gap-2 text-slate-600">
+                  <User size={14} />
+                  <span>{item.createdBy || 'Unknown creator'}</span>
+                </div>
+                {item.address && (
+                  <div className="flex items-start gap-2 text-slate-600">
+                    <MapPin size={14} className="mt-0.5" />
+                    <span>{item.address}</span>
+                  </div>
+                )}
+                {involvedMembers.length === 0 && membersInvolveText ? (
+                  <div className="flex items-start gap-2 text-slate-600">
+                    <Users size={14} className="mt-0.5" />
+                    <span className="min-w-0 truncate">Members Involve: {membersInvolveText}</span>
+                  </div>
+                ) : null}
+                {Array.isArray(item.assignedMemberIds) && item.assignedMemberIds.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {involvedMembers.map(entry =>
+                      <button
+                        key={entry.id}
+                        type="button"
+                        onClick={e => {
+                          e.stopPropagation()
+                          openAssignedMemberDetail(entry)
+                        }}
+                        className={`rounded-full border px-2 py-1 text-xs transition-colors ${
+                          themed
+                            ? 'border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100'
+                            : 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100'
+                        }`}
+                        title={entry.member?.name || entry.label}
+                      >
+                        {entry.label}
+                      </button>
+                    )}
+                  </div>
+                )}
+                {canManageEvents && (
+                  <div className="flex items-center gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={e => {
+                        e.stopPropagation()
+                        void openMarkDoneForm(item)
+                      }}
+                      className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                        themed
+                          ? 'rounded-xl bg-yellow-400 text-slate-900 shadow-[0_8px_24px_rgba(250,204,21,0.28)] hover:bg-yellow-300'
+                          : item.status === 'done'
+                            ? 'rounded-md bg-blue-600 text-white hover:bg-blue-700'
+                            : 'rounded-md bg-green-600 text-white hover:bg-green-700'
+                      }`}
+                    >
+                      {item.status === 'done' ? 'Edit Done Details' : 'Mark as Done'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={e => {
+                        e.stopPropagation()
+                        openEventForEdit(item)
+                      }}
+                      className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                        themed
+                          ? 'rounded-xl border border-yellow-300 bg-white text-slate-900 hover:bg-yellow-50'
+                          : 'rounded-md bg-red-600 text-white hover:bg-red-700'
+                      }`}
+                    >
+                      Update
+                    </button>
+                  </div>
+                )}
+              </div>
+              {item.address && (
+                <div className="w-full min-w-0 overflow-hidden">
+                  <ReadOnlyEventMap address={item.address} location={item.location || null} />
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  const renderSharedOverlays = () => (
+    <>
+      {canManageEvents && showEventForm && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-3 sm:p-4">
+          <div
+            className="relative isolate w-full max-w-3xl animate-fade-in-up max-h-[92vh] overflow-y-auto rounded-3xl border border-white/20 shadow-2xl"
+            style={{
+              background: 'linear-gradient(145deg, rgba(14,116,144,0.88), rgba(30,64,175,0.84) 52%, rgba(59,130,246,0.78))',
+              boxShadow: '0 24px 70px rgba(8,47,73,0.34), inset 0 1px 0 rgba(255,255,255,0.14)',
+              backdropFilter: 'blur(20px)',
+            }}
+          >
+            <div
+              className="sticky top-0 z-50 flex items-center justify-between rounded-t-3xl border-b p-4 sm:p-5"
+              style={{
+                background: 'linear-gradient(180deg, rgba(14,116,144,0.96), rgba(30,64,175,0.9))',
+                borderColor: 'rgba(255,255,255,0.12)',
+                backdropFilter: 'blur(18px)',
+              }}
+            >
+              <div>
+                <h3 className="text-lg font-semibold" style={{ color: '#f8fafc' }}>{editingEventId ? 'Update Event' : 'Create New Event'}</h3>
+                <p className="mt-1 text-sm" style={{ color: 'rgba(226,232,240,0.78)' }}>Enter the event details in the same mirrored glass style as the recruitment form.</p>
+              </div>
+              <button
+                onClick={() => {
+                  resetForm()
+                  setShowEventForm(false)
+                }}
+                className="rounded-lg p-2 transition-colors hover:bg-white/10"
+                style={{ color: 'rgba(226,232,240,0.82)' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddEvent} className="p-4 sm:p-6 space-y-5">
+              {formError && <p className="rounded-lg border border-red-400/40 bg-red-500/20 p-3 text-sm text-red-100">{formError}</p>}
+
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-[0_12px_30px_rgba(2,8,23,0.22)] backdrop-blur-md sm:p-5">
+                <h4 className="text-sm font-semibold text-white uppercase tracking-wide mb-3">Category</h4>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 gap-4">
+                    <div>
+                      <label htmlFor="event-form-category" className="block text-sm text-white/80 mb-2">Category</label>
+                      <div className="relative">
+                        <SelectedCategoryIcon
+                          size={16}
+                          className={`absolute left-3 top-1/2 -translate-y-1/2 ${selectedCategoryMeta?.text || 'text-[black]'} ${selectedCategoryMeta?.iconClass || ''}`}
+                        />
+                        <select
+                          id="event-form-category"
+                          name="category"
+                          value={formData.category}
+                          onChange={e => setFormData({ ...formData, category: e.target.value })}
+                          className="w-full pl-10 pr-4 py-3 border border-white/20 bg-white/10 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                          required
+                        >
+                          <option value="" disabled>
+                            Select category
+                          </option>
+                          {createCategoryKeys.map(category => (
+                            <option key={category} value={category}>
+                              {categoryLabelByKey[category] || titleCaseFromKey(category)}
+                            </option>
+                          ))}
+                          {!createCategoryKeys.includes(formData.category) &&
+                            formData.category &&
+                            (CATEGORY_CONFIG[formData.category] || categoryLabelByKey[formData.category]) && (
+                              <option value={formData.category}>
+                                {CATEGORY_CONFIG[formData.category]?.label || categoryLabelByKey[formData.category]}
+                              </option>
+                            )}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label htmlFor="event-form-content" className="block text-sm text-white/80 mb-2">Content</label>
+                    <textarea
+                      id="event-form-content"
+                      name="content"
+                      value={formData.content}
+                      onChange={e => setFormData({ ...formData, content: e.target.value })}
+                      rows={3}
+                      className="w-full px-4 py-3 border border-white/20 bg-white/10 text-white placeholder-white/40 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label htmlFor="event-form-date-time" className="block text-sm text-white/80 mb-2">Date and Time</label>
+                      <input
+                        id="event-form-date-time"
+                        name="dateTime"
+                        type="datetime-local"
+                        value={formData.dateTime}
+                        onChange={e => setFormData({ ...formData, dateTime: e.target.value })}
+                        className="w-full px-4 py-3 border border-white/20 bg-white/10 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <AssignMembersPicker
+                    allMembers={assignableMembers}
+                    selectedIds={formData.assignedMemberIds}
+                    onChange={nextIds => setFormData({ ...formData, assignedMemberIds: nextIds })}
+                    label="Committee member (Assigned)"
+                    placeholder="Search member"
+                  />
+                </div>
+              </div>
+
+              <div className="relative isolate z-0 rounded-2xl border border-white/10 bg-white/5 p-4 shadow-[0_12px_30px_rgba(2,8,23,0.22)] backdrop-blur-md sm:p-5">
+                <h4 className="text-sm font-semibold text-white uppercase tracking-wide mb-3">Location</h4>
+                <EventLocationPicker
+                  address={formData.address}
+                  location={formData.location}
+                  onAddressInput={value =>
+                    setFormData(prev => ({
+                      ...prev,
+                      address: value,
+                      location: null,
+                    }))
+                  }
+                  onLocationSelect={({ address, location }) =>
+                    setFormData(prev => ({
+                      ...prev,
+                      address,
+                      location,
+                    }))
+                  }
+                />
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                <button
+                  type="submit"
+                  className="flex-1 px-6 py-3 rounded-lg bg-gradient-to-r from-yellow-400 to-amber-300 text-slate-950 font-semibold hover:from-yellow-300 hover:to-amber-200 transition-colors shadow-[0_16px_34px_rgba(250,204,21,0.28)]"
+                >
+                  {editingEventId ? 'Save Changes' : 'Save Event'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    resetForm()
+                    setShowEventForm(false)
+                  }}
+                  className="px-6 py-3 rounded-lg border border-white/15 bg-white/5 text-white hover:bg-white/10 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {canManageEvents && showDoneForm && markDoneEvent && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-3 sm:p-4">
+          <div className="calendar-done-modal w-full max-w-2xl max-h-[92vh] overflow-y-auto rounded-2xl border border-gray-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.18)] animate-fade-in-up">
+            <div className="calendar-done-modal-header sticky top-0 z-10 flex items-center justify-between rounded-t-2xl border-b border-gray-200 bg-white p-4 sm:p-5">
+              <div className="flex items-center gap-2">
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${markDoneEvent.status === 'done' ? 'bg-blue-100' : 'bg-green-100'}`}>
+                  <MarkDoneIcon size={16} className={markDoneEvent.status === 'done' ? 'text-blue-700' : 'text-green-700'} />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-800">
+                  {markDoneEvent.status === 'done' ? 'Update Done Details' : 'Mark Event as Done'}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDoneForm(false)
+                  setMarkDoneEventId(null)
+                  setDoneFormError('')
+                  setDoneTypedCategoryId('')
+                  setDoneTypedCategoryFields([])
+                  setDoneTypedFieldValues({})
+                  setDoneTypedFieldsLoading(false)
+                  setShowDoneTypedFieldPicker(false)
+                  setDoneTypedFieldToAdd('')
+                  setVisibleDoneTypedFieldIds([])
+                }}
+                className="rounded-lg p-2 transition-colors hover:bg-slate-100"
+              >
+                <X size={20} className="text-gray-500" />
+              </button>
+            </div>
+
+            <form onSubmit={handleMarkDone} className="calendar-done-modal-body p-4 sm:p-6 space-y-5">
+              {doneFormError && <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">{doneFormError}</p>}
+
+              <div className="calendar-done-card rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-2">
+                <p className="text-sm font-semibold text-gray-800">Location</p>
+                <p className="text-sm text-gray-700">{markDoneEvent.address || 'No address provided'}</p>
+                {markDoneEvent.location ? (
+                  <ReadOnlyEventMap address={markDoneEvent.address} location={markDoneEvent.location} />
+                ) : null}
+              </div>
+
+              <div className="calendar-done-card rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-semibold text-gray-800">Committee member</p>
+                  <span className="text-xs text-gray-500">
+                    {Array.isArray(doneContributorMemberIds) ? doneContributorMemberIds.length : 0} selected
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label htmlFor="done-contributor-search" className="block text-sm font-medium text-gray-700 mb-2">Search member</label>
+                    <Input
+                      id="done-contributor-search"
+                      name="doneContributorSearch"
+                      value={doneContributorSearch}
+                      onChange={e => setDoneContributorSearch(e.target.value)}
+                      placeholder="Search by name, email, ID number, or committee..."
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <p className="text-xs text-gray-500 mb-2">Select members who contributed to this event.</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
+                      {contributorMembers.map(member => {
+                        const id = String(member.id)
+                        const checked = Array.isArray(doneContributorMemberIds) && doneContributorMemberIds.includes(id)
+                        return (
+                          <label
+                            key={id}
+                            className="calendar-done-chip flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggleContributorMember(member.id)}
+                              className="h-4 w-4"
+                            />
+                            <span className="min-w-0 truncate">{member.name}</span>
+                          </label>
+                        )
+                      })}
+                      {contributorMembers.length === 0 && (
+                        <p className="text-sm text-gray-500">No matching members found.</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <Label>Partners</Label>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    className="rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                    onClick={() => setDonePartners(prev => [...(Array.isArray(prev) ? prev : []), ''])}
+                  >
+                    + Add row
+                  </Button>
+                </div>
+                <div className="space-y-2">
+                  {(Array.isArray(donePartners) ? donePartners : ['']).map((value, index) => (
+                    <div key={`done-partner-${index}`} className="flex items-center gap-2">
+                      <Input
+                        value={value}
+                        onChange={e => {
+                          const next = [...donePartners]
+                          next[index] = e.target.value
+                          setDonePartners(next)
+                        }}
+                        placeholder={`Partner ${index + 1}`}
+                      />
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="outline"
+                        className="rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50"
+                        onClick={() => {
+                          const next = donePartners.filter((_, i) => i !== index)
+                          setDonePartners(next.length ? next : [''])
+                        }}
+                        aria-label="Remove partner"
+                      >
+                        <X size={16} />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500">Saved as pipe-separated values.</p>
+              </div>
+
+              {Array.isArray(doneTypedCategoryFields) && doneTypedCategoryFields.length > 0 && (
+                <div className="calendar-done-card rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold text-gray-800">Activity Fields</p>
+                    <div className="flex items-center gap-2">
+                      {doneTypedFieldsLoading && <span className="text-xs text-gray-500">Loading...</span>}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowDoneTypedFieldPicker(prev => !prev)
+                          setDoneFormError('')
+                        }}
+                        className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                        disabled={!supabaseEnabled}
+                      >
+                        + Add field
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const allIds = (Array.isArray(doneTypedCategoryFields) ? doneTypedCategoryFields : [])
+                            .map(field => String(field?.id || '').trim())
+                            .filter(Boolean)
+                          setVisibleDoneTypedFieldIds(allIds)
+                          setDoneFormError('')
+                        }}
+                        className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                        disabled={!supabaseEnabled}
+                      >
+                        Add all
+                      </button>
+                    </div>
+                  </div>
+
+                  {showDoneTypedFieldPicker && (
+                    <div className="grid grid-cols-1 md:grid-cols-[1fr_140px] gap-3 rounded-lg border border-gray-200 bg-white p-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Saved inputs</label>
+                        <select
+                          value={doneTypedFieldToAdd}
+                          onChange={e => setDoneTypedFieldToAdd(e.target.value)}
+                          className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <option value="">Select a field</option>
+                          {doneTypedCategoryFields.map(field => {
+                            const fieldId = String(field?.id || '').trim()
+                            const fieldName = String(field?.field_name || '').trim()
+                            const fieldType = String(field?.field_type || '').trim()
+                            if (!fieldId || !fieldName || !fieldType) return null
+                            const showTypeSuffix = fieldType !== 'text' && fieldType !== 'number'
+                            return (
+                              <option key={fieldId} value={fieldId}>
+                                {fieldName}{showTypeSuffix ? ` (${fieldType})` : ''}
+                              </option>
+                            )
+                          })}
+                        </select>
+                      </div>
+                      <div className="flex items-end justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowDoneTypedFieldPicker(false)
+                            setDoneTypedFieldToAdd('')
+                          }}
+                          className="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleAddVisibleDoneTypedField}
+                          className="px-3 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                          disabled={!doneTypedFieldToAdd}
+                        >
+                          Add
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {doneTypedCategoryFields
+                      .filter(field => {
+                        const fieldId = String(field?.id || '').trim()
+                        if (!fieldId) return false
+                        return (Array.isArray(visibleDoneTypedFieldIds) ? visibleDoneTypedFieldIds : []).includes(fieldId)
+                      })
+                      .map(field => {
+                        const fieldId = String(field?.id || '').trim()
+                        const fieldName = String(field?.field_name || '').trim()
+                        const fieldType = String(field?.field_type || '').trim()
+                        if (!fieldId || !fieldName || !fieldType) return null
+                        const value = doneTypedFieldValues?.[fieldId]
+                        const inputId = `done-typed-${fieldId}`
+
+                        return (
+                          <div key={fieldId}>
+                            <label htmlFor={inputId} className="block text-sm font-medium text-gray-700 mb-2">
+                              {fieldName}
+                            </label>
+                            {fieldType === 'boolean' ? (
+                              <label className="flex h-10 w-full items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900">
+                                <input
+                                  id={inputId}
+                                  type="checkbox"
+                                  checked={Boolean(value)}
+                                  className="h-4 w-4"
+                                  onChange={e =>
+                                    setDoneTypedFieldValues(prev => ({
+                                      ...(prev && typeof prev === 'object' ? prev : {}),
+                                      [fieldId]: Boolean(e.target.checked),
+                                    }))
+                                  }
+                                />
+                                <span>Yes</span>
+                              </label>
+                            ) : fieldType === 'date' ? (
+                              <Input
+                                id={inputId}
+                                type="date"
+                                value={String(value ?? '')}
+                                onChange={e =>
+                                  setDoneTypedFieldValues(prev => ({
+                                    ...(prev && typeof prev === 'object' ? prev : {}),
+                                    [fieldId]: e.target.value,
+                                  }))
+                                }
+                                required
+                              />
+                            ) : fieldType === 'number' ? (
+                              <Input
+                                id={inputId}
+                                type="number"
+                                value={String(value ?? '')}
+                                onChange={e =>
+                                  setDoneTypedFieldValues(prev => ({
+                                    ...(prev && typeof prev === 'object' ? prev : {}),
+                                    [fieldId]: e.target.value,
+                                  }))
+                                }
+                                required
+                              />
+                            ) : (
+                              <Input
+                                id={inputId}
+                                value={String(value ?? '')}
+                                onChange={e =>
+                                  setDoneTypedFieldValues(prev => ({
+                                    ...(prev && typeof prev === 'object' ? prev : {}),
+                                    [fieldId]: e.target.value,
+                                  }))
+                                }
+                                required
+                              />
+                            )}
+                          </div>
+                        )
+                      })}
+                    {(Array.isArray(visibleDoneTypedFieldIds) ? visibleDoneTypedFieldIds : []).length === 0 && (
+                      <p className="text-xs text-gray-500 md:col-span-2">
+                        Click &quot;+ Add field&quot; to show one of the saved inputs for this category.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {(!Array.isArray(doneTypedCategoryFields) || doneTypedCategoryFields.length === 0) && markDoneCategoryConfig && markDoneCategoryConfig.fields.length > 0 ? (
+                <div className="calendar-done-card rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3">
+                  <p className="text-sm font-semibold text-gray-800">Activity Fields</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {markDoneCategoryConfig.fields.map(field => {
+                      if (!isDoneFieldVisible(markDoneCategoryKey, field)) return null
+                      const fieldValue = doneFields[markDoneCategoryKey]?.[field.key]
+                      const colSpan = field.type === 'text' || field.type === 'list_text' ? 'md:col-span-2' : ''
+                      const domSafeCategoryKey = String(markDoneCategoryKey || 'category').replace(/[^a-z0-9_-]/gi, '-')
+                      const domSafeFieldKey = String(field.key || 'field').replace(/[^a-z0-9_-]/gi, '-')
+                      const fieldIdBase = `done-field-${domSafeCategoryKey}-${domSafeFieldKey}`
+                      const fieldNameBase = String(field.key || 'field')
+                      const labelForId = field.type === 'list_text' || field.type === 'list_select' ? `${fieldIdBase}-0` : fieldIdBase
+                      return (
+                        <div key={field.key} className={colSpan}>
+                          <label htmlFor={labelForId} className="block text-sm font-medium text-gray-700 mb-2">{field.label}</label>
+                          {field.type === 'list_text' ? (
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-xs text-gray-500">Add multiple entries</span>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="secondary"
+                                  className="rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                                  onClick={() =>
+                                    updateDoneListField(markDoneCategoryKey, field.key, prev => [...prev, ''])
+                                  }
+                                >
+                                  + Add row
+                                </Button>
+                              </div>
+                              <div className="space-y-2">
+                                {(Array.isArray(fieldValue) ? fieldValue : ['']).map((value, index) => (
+                                  <div key={`done-${field.key}-${index}`} className="flex items-center gap-2">
+                                    <Input
+                                      id={`${fieldIdBase}-${index}`}
+                                      name={`${fieldNameBase}[${index}]`}
+                                      value={value}
+                                      onChange={e =>
+                                        updateDoneListField(markDoneCategoryKey, field.key, prev => {
+                                          const next = [...prev]
+                                          next[index] = e.target.value
+                                          return next
+                                        })
+                                      }
+                                      placeholder={`${field.label} ${index + 1}`}
+                                    />
+                                    <Button
+                                      type="button"
+                                      size="icon"
+                                      variant="outline"
+                                      className="rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50"
+                                      onClick={() =>
+                                        updateDoneListField(markDoneCategoryKey, field.key, prev =>
+                                          prev.filter((_, i) => i !== index)
+                                        )
+                                      }
+                                      aria-label="Remove row"
+                                    >
+                                      <X size={16} />
+                                    </Button>
+                                  </div>
+                                ))}
+                              </div>
+                              <p className="text-xs text-gray-500">Saved as pipe-separated values.</p>
+                            </div>
+                          ) : field.type === 'list_select' ? (
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-xs text-gray-500">Add multiple entries</span>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="secondary"
+                                  className="rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                                  onClick={() =>
+                                    updateDoneListField(markDoneCategoryKey, field.key, prev => [...prev, ''])
+                                  }
+                                >
+                                  + Add row
+                                </Button>
+                              </div>
+                              <div className="space-y-2">
+                                {(Array.isArray(fieldValue) ? fieldValue : ['']).map((value, index) => (
+                                  <div key={`done-${field.key}-${index}`} className="flex items-center gap-2">
+                                    <select
+                                      id={`${fieldIdBase}-${index}`}
+                                      name={`${fieldNameBase}[${index}]`}
+                                      value={value}
+                                      onChange={e =>
+                                        updateDoneListField(markDoneCategoryKey, field.key, prev => {
+                                          const next = [...prev]
+                                          next[index] = e.target.value
+                                          return next
+                                        })
+                                      }
+                                      className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                      <option value="">Select</option>
+                                      {(field.options || []).map(optionValue => (
+                                        <option key={optionValue} value={optionValue}>
+                                          {optionValue}
+                                        </option>
+                                      ))}
+                                    </select>
+                                    <Button
+                                      type="button"
+                                      size="icon"
+                                      variant="outline"
+                                      className="rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50"
+                                      onClick={() =>
+                                        updateDoneListField(markDoneCategoryKey, field.key, prev =>
+                                          prev.filter((_, i) => i !== index)
+                                        )
+                                      }
+                                      aria-label="Remove row"
+                                    >
+                                      <X size={16} />
+                                    </Button>
+                                  </div>
+                                ))}
+                              </div>
+                              <p className="text-xs text-gray-500">Saved as pipe-separated values.</p>
+                            </div>
+                          ) : field.type === 'select' ? (
+                            <select
+                              id={fieldIdBase}
+                              name={fieldNameBase}
+                              value={doneFields[markDoneCategoryKey]?.[field.key] ?? ''}
+                              onChange={e => handleDoneFieldChange(markDoneCategoryKey, field.key, e.target.value)}
+                              className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:cursor-not-allowed disabled:opacity-50"
+                              required
+                            >
+                              <option value="">Select</option>
+                              {(field.options || []).map(optionValue => (
+                                <option key={optionValue} value={optionValue}>
+                                  {optionValue}
+                                </option>
+                              ))}
+                            </select>
+                          ) : field.type === 'number' ? (
+                            <Input
+                              id={fieldIdBase}
+                              name={fieldNameBase}
+                              type="number"
+                              min={field.min}
+                              step={field.step}
+                              value={doneFields[markDoneCategoryKey]?.[field.key] ?? ''}
+                              onChange={e => handleDoneFieldChange(markDoneCategoryKey, field.key, e.target.value)}
+                              required
+                            />
+                          ) : (
+                            <Input
+                              id={fieldIdBase}
+                              name={fieldNameBase}
+                              value={doneFields[markDoneCategoryKey]?.[field.key] ?? ''}
+                              onChange={e => handleDoneFieldChange(markDoneCategoryKey, field.key, e.target.value)}
+                              required
+                            />
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDoneForm(false)
+                    setMarkDoneEventId(null)
+                    setDoneFormError('')
+                    setDoneTypedCategoryId('')
+                    setDoneTypedCategoryFields([])
+                    setDoneTypedFieldValues({})
+                    setDoneTypedFieldsLoading(false)
+                    setShowDoneTypedFieldPicker(false)
+                    setDoneTypedFieldToAdd('')
+                    setVisibleDoneTypedFieldIds([])
+                  }}
+                  className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className={`px-4 py-2 rounded-lg text-white transition-colors ${
+                    markDoneEvent.status === 'done' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700'
+                  }`}
+                >
+                  {markDoneEvent.status === 'done' ? 'Save Done Details' : 'Mark Done'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {selectedMember ? (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[70] p-4">
+          <div
+            className="w-full max-w-md rounded-2xl border border-white/20 p-6 shadow-2xl"
+            style={{
+              background: 'linear-gradient(145deg, rgba(14,116,144,0.88), rgba(30,64,175,0.84) 52%, rgba(59,130,246,0.78))',
+              boxShadow: '0 24px 70px rgba(8,47,73,0.34), inset 0 1px 0 rgba(255,255,255,0.14)',
+              backdropFilter: 'blur(20px)',
+            }}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold tracking-[0.2em] uppercase text-cyan-100">Member</p>
+                <h3 className="mt-2 truncate text-xl font-bold text-white">{selectedMember.name || '—'}</h3>
+                <p className="mt-1 truncate text-sm text-slate-200">{selectedMember.idNumber || '—'}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedMember(null)}
+                className="rounded-lg p-2 text-slate-200 transition-colors hover:bg-white/10 hover:text-white"
+                aria-label="Close member"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="mt-4 flex justify-center">
+              <div className="h-24 w-24 overflow-hidden rounded-2xl border border-white/15 bg-white/10">
+                {selectedMember.profileImage ? (
+                  <img
+                    src={selectedMember.profileImage}
+                    alt={selectedMember.name || 'Member'}
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-xs text-slate-200">No image</div>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-5 rounded-xl border border-white/15 bg-white/10 p-4 backdrop-blur-md">
+              <div className="grid grid-cols-1 gap-3 text-sm">
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-slate-200">Contact</span>
+                  <span className="tabular-nums text-white">{selectedMember.contactNumber || '—'}</span>
+                </div>
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-slate-200">Blood type</span>
+                  <span className="text-white">{selectedMember.bloodType || '—'}</span>
+                </div>
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-slate-200">Member since</span>
+                  <span className="text-white">{formatMemberSince(selectedMember.memberSince) || '—'}</span>
+                </div>
+                {selectedMember.role !== 'admin' && (selectedMember.committeeRole || selectedMember.committee_role) !== 'OIC' ? (
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="text-slate-200">Committee</span>
+                    <span className="text-white">{selectedMember.committee || '—'}</span>
+                  </div>
+                ) : null}
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-slate-200">Status</span>
+                  <span className="text-white">{selectedMember.status || selectedMember.accountStatus || '—'}</span>
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setSelectedMember(null)}
+              className="mt-5 w-full rounded-xl border border-white/15 bg-white/10 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/15"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {pendingConfirmation && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4">
+          <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-red-100 p-6 animate-fade-in-up">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Confirmation</h3>
+            <p className="text-sm text-gray-600 mb-6">
+              {pendingConfirmation.type === 'update'
+                ? 'Are you sure you want to update this event?'
+                : 'Are you sure you want to delete this event? This action cannot be undone.'}
+            </p>
+            <div className="flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setPendingConfirmation(null)}
+                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmAction}
+                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  )
   const listHeading = selectedCategoryKey === 'all' ? 'All Events' : `${selectedCategoryLabel} Events`
 
   if (listOnly) {
     return (
-      <div className="animate-fade-in max-w-7xl 2xl:max-w-[1500px] mx-auto">
-        <div className="relative overflow-hidden rounded-2xl border border-red-600 bg-white p-6 sm:p-7 shadow-lg mb-6">
-          <div className="absolute -right-20 -top-20 h-48 w-48 rounded-full bg-red-500/10 blur-3xl" />
+      <div className="relative isolate animate-fade-in rounded-[30px] p-3 sm:p-4">
+        <div className="fixed inset-0 -z-10 bg-[#4169E1]" />
+        <div className="mx-auto max-w-7xl rounded-[26px] bg-[#4169E1] p-1.5 2xl:max-w-[1500px]">
+        <div className="relative mb-6 overflow-hidden rounded-2xl border border-white/10 bg-[#4169E1] p-6 shadow-[0_12px_30px_rgba(0,0,0,0.25)] backdrop-blur-md sm:p-7">
+          <div className="absolute -right-16 -top-16 h-44 w-44 rounded-full bg-yellow-400/15 blur-3xl" />
+          <div className="absolute -left-10 bottom-0 h-36 w-36 rounded-full bg-cyan-300/12 blur-3xl" />
           <div className="relative">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="text-2xl font-bold text-gray-900">{listHeading}</h2>
+              <h2 className="text-2xl font-bold text-white">{listHeading}</h2>
               <button
                 type="button"
                 onClick={() => navigate(-1)}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-yellow-400 px-4 py-2.5 text-sm font-semibold text-slate-900 transition-all duration-200 hover:-translate-y-0.5 hover:bg-yellow-300"
+                style={{ boxShadow: '0 8px 24px rgba(250,204,21,0.35)' }}
               >
                 <ChevronLeft size={16} />
                 Back
               </button>
             </div>
-            <p className="text-sm text-gray-600 mt-1">All months, newest to oldest</p>
+            <p className="mt-1 text-sm text-white/70">All months, newest to oldest</p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               {selectedCategoryKey !== 'all' && (
-                <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-semibold bg-white ${selectedCategoryListMeta?.text || 'text-gray-700'} border-red-200`}>
+                <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-semibold text-white">
                   Active Category: {selectedCategoryLabel}
                 </span>
               )}
@@ -2228,7 +3208,7 @@ function Calendar({ listOnly = false }) {
                 <button
                   type="button"
                   onClick={() => updateCategoryRoute('all')}
-                  className="inline-flex items-center gap-1 px-3 py-1 rounded-full border border-gray-200 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                  className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-white/15"
                 >
                   <X size={12} />
                   Remove Filter
@@ -2238,20 +3218,20 @@ function Calendar({ listOnly = false }) {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-xl overflow-hidden layout-glow animate-fade-in-up border border-red-600">
-          <div className="p-4 sm:p-6 md:p-7 space-y-5">
+        <div className="layout-glow animate-fade-in-up overflow-hidden rounded-2xl border border-white/10 bg-[#4169E1] p-1.5 shadow-[0_12px_24px_rgba(15,23,42,0.16)]">
+          <div className="space-y-5 rounded-[18px] bg-white p-4 sm:p-6 md:p-7">
             <div className="flex flex-col lg:flex-row gap-4">
               <input
                 type="text"
                 placeholder="Search events by title, content, address, or category..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
+                className="flex-1 rounded-xl border border-white/20 bg-white px-4 py-3 text-slate-900 shadow-sm transition-all placeholder:text-slate-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-cyan-300"
               />
 	              <select
 	                value={selectedCategoryKey}
 	                onChange={e => updateCategoryRoute(e.target.value)}
-	                className="lg:w-64 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
+	                className="lg:w-64 rounded-xl border border-white/20 bg-white px-4 py-3 text-slate-900 shadow-sm transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-cyan-300"
 	              >
 	                <option value="all">All Categories</option>
 	                {filterCategoryKeys.map(category => (
@@ -2274,175 +3254,20 @@ function Calendar({ listOnly = false }) {
                     )}
 	              </select>
 	            </div>
-            <div className="space-y-3 max-h-[68vh] overflow-y-auto pr-1">
-              {allFilteredItems.map(item => {
-                const isExpanded = expandedItemId === item.id
-                const storedMemberLabels = String(item.membersInvolve || '')
-                  .split(',')
-                  .map(value => value.trim())
-                  .filter(Boolean)
-                const involvedMembers = Array.isArray(item.assignedMemberIds)
-                  ? item.assignedMemberIds.map((memberId, index) => {
-                      const id = String(memberId)
-                      const member = memberById[id] || involvedProfilesById[id] || null
-                      const storedLabel = storedMemberLabels[index] || ''
-                      const label = String(member?.idNumber || '').trim() || member?.name || storedLabel || 'Unknown member'
-                      return { id, member, label }
-                    })
-                  : []
-                const membersInvolveText =
-                  involvedMembers.length > 0 ? involvedMembers.map(entry => entry.label).join(', ') : (item.membersInvolve || '')
-                return (
-                  <div
-                    key={item.id}
-                    ref={el => {
-                      eventRefs.current[item.id] = el
-                    }}
-                    className={`layout-glow rounded-xl border bg-[#ffffff] transition-all duration-500 ${
-                      highlightedEventId === item.id
-                        ? 'border-red-400 ring-2 ring-red-300 shadow-lg shadow-red-100'
-                        : 'border-slate-200'
-                    }`}
-                  >
-                    <div
-                      onClick={() =>
-                        setExpandedItemId(prev => {
-                          const next = prev === item.id ? null : item.id
-                          if (next === item.id) markEventSeen(item.id)
-                          return next
-                        })
-                      }
-                      className="w-full p-4 text-left cursor-pointer"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1 min-w-0">
-                          <span className="text-xs uppercase tracking-wide text-slate-500">{getCategoryLabel(item.category)}</span>
-                          {item.branch && <span className="ml-2 text-xs text-red-600 font-medium">{item.branch}</span>}
-                          <span className={`ml-2 inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold border ${item.status === 'done' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-red-100 text-red-700 border-red-200'}`}>
-                            {item.status === 'done' ? 'Done' : 'On-going'}
-                          </span>
-                          {isAssignedToCurrentUser(item) && (
-                            <span className="ml-2 inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
-                              Assigned to you
-                            </span>
-                          )}
-                          {isAssignedToCurrentUser(item) && (
-                            <span className="ml-2 inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
-                              Assigned to you
-                            </span>
-                          )}
-                          <h4 className="font-semibold text-slate-900 mt-1 truncate">{item.title}</h4>
-                          <p className="text-sm text-slate-500 mt-1">{dayjs(item.dateTime).format('MMMM D, YYYY h:mm A')}</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {canManageEvents && (
-                            <button
-                              onClick={e => {
-                                e.stopPropagation()
-                                confirmDeleteEvent(item.id)
-                              }}
-                              className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          )}
-                          <span className="text-xs text-slate-500">{isExpanded ? 'Hide' : 'Expand'}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {isExpanded && (
-                      <div className="px-4 pb-4 border-t border-slate-200 pt-3 text-sm text-slate-700">
-                        <div className="grid grid-cols-1 gap-3 items-start">
-	                          <div className="min-w-0 space-y-3">
-	                            <p>{item.content || 'No content provided.'}</p>
-	                            {renderDoneDetails(item)}
-	                            <div className="flex items-center gap-2 text-slate-600">
-	                              <Clock size={14} />
-	                              <span>{dayjs(item.dateTime).format('h:mm A')}</span>
-	                            </div>
-                            <div className="flex items-center gap-2 text-slate-600">
-                              <User size={14} />
-                              <span>{item.createdBy || 'Unknown creator'}</span>
-                            </div>
-                            {item.address && (
-                              <div className="flex items-start gap-2 text-slate-600">
-                                <MapPin size={14} className="mt-0.5" />
-                                <span>{item.address}</span>
-                              </div>
-                            )}
-                            {involvedMembers.length === 0 && membersInvolveText ? (
-                              <div className="flex items-start gap-2 text-slate-600">
-                                <Users size={14} className="mt-0.5" />
-                                <span className="min-w-0 truncate">Members Involve: {membersInvolveText}</span>
-                              </div>
-                            ) : null}
-                            {Array.isArray(item.assignedMemberIds) && item.assignedMemberIds.length > 0 && (
-                              <div className="flex flex-wrap gap-2">
-                                {involvedMembers.map(entry =>
-                                  entry.member ? (
-                                    <button
-                                      key={entry.id}
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation()
-                                        setSelectedMember(entry.member)
-                                      }}
-                                      className="px-2 py-1 bg-red-50 border border-red-200 rounded-full text-xs text-red-700 hover:bg-red-100 transition-colors"
-                                      title={entry.member.name || entry.label}
-                                    >
-                                      {entry.label}
-                                    </button>
-                                  ) : (
-                                    <span key={entry.id} className="px-2 py-1 bg-red-50 border border-red-200 rounded-full text-xs text-red-700">
-                                      {entry.label}
-                                    </span>
-                                  )
-                                )}
-                              </div>
-                            )}
-                            {canManageEvents && (
-                              <div className="pt-2 flex items-center gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() => void openMarkDoneForm(item)}
-                                  className={`px-3 py-1.5 rounded-md text-white text-xs font-medium transition-colors ${
-                                    item.status === 'done' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700'
-                                  }`}
-                                >
-                                  {item.status === 'done' ? 'Edit Done Details' : 'Mark as Done'}
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => openEventForEdit(item)}
-                                  className="px-3 py-1.5 rounded-md bg-red-600 text-white text-xs font-medium hover:bg-red-700 transition-colors"
-                                >
-                                  Update
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                          {item.address && (
-                            <div className="w-full min-w-0 overflow-hidden">
-                              <ReadOnlyEventMap address={item.address} location={item.location || null} />
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
+            <div className="max-h-[68vh] space-y-3 overflow-y-auto rounded-2xl border border-slate-200/80 bg-white p-3 pr-2 shadow-[0_12px_24px_rgba(15,23,42,0.08)]">
+              {allFilteredItems.map(item => renderEventListItem(item))}
 
               {allFilteredItems.length === 0 && (
                 <div className="text-center py-12">
-                  <CalendarIcon size={48} className="mx-auto text-gray-300 mb-4" />
+                  <CalendarIcon size={48} className="mx-auto mb-4 text-gray-300" />
                   <p className="text-gray-500">No events found for this filter.</p>
                 </div>
               )}
             </div>
           </div>
         </div>
+        </div>
+        {renderSharedOverlays()}
       </div>
     )
   }
@@ -2524,7 +3349,7 @@ function Calendar({ listOnly = false }) {
               }}
               className={`layout-glow relative h-full min-h-[170px] sm:min-h-[190px] text-left rounded-xl p-6 border transition-all transform overflow-hidden ${
                 month.hasEvents
-                  ? 'bg-[#ffffff] shadow-md border-red-200 hover:shadow-xl hover:border-red-300 hover:-translate-y-1'
+                  ? 'bg-[#ffffff] shadow-md border-yellow-200 hover:shadow-xl hover:border-yellow-300 hover:-translate-y-1'
                   : 'bg-[#ffffff] shadow-sm border-slate-200 opacity-70 hover:opacity-90'
               }`}
             >
@@ -2548,7 +3373,7 @@ function Calendar({ listOnly = false }) {
                   </div>
                   <span
                     className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      month.hasEvents ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'
+                      month.hasEvents ? 'bg-yellow-100 text-yellow-800' : 'bg-slate-100 text-slate-600'
                     }`}
                   >
                     {month.items.length}
@@ -2577,7 +3402,7 @@ function Calendar({ listOnly = false }) {
                           }}
                         >
                            <p className="text-[11px] text-slate-500 truncate">
-                             <span className="font-semibold text-red-700">{categoryLabel}</span> | {dayjs(item.dateTime).format('MMM D, YYYY')}
+                             <span className="font-semibold text-yellow-700">{categoryLabel}</span> | {dayjs(item.dateTime).format('MMM D, YYYY')}
                            </p>
 	                          <div className="flex items-center justify-end gap-2">
 	                            <div className="flex items-center gap-1">
@@ -3007,503 +3832,7 @@ function Calendar({ listOnly = false }) {
         </div>
       )}
 
-		      {canManageEvents && showDoneForm && markDoneEvent && (
-		        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-3 sm:p-4">
-		          <div className="w-full max-w-2xl max-h-[92vh] overflow-y-auto rounded-2xl bg-white border border-red-100 shadow-2xl animate-fade-in-up">
-	            <div className="flex items-center justify-between p-4 sm:p-5 border-b border-gray-200 sticky top-0 bg-white z-10 rounded-t-2xl">
-	              <div className="flex items-center gap-2">
-	                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${markDoneEvent.status === 'done' ? 'bg-blue-100' : 'bg-green-100'}`}>
-	                  <MarkDoneIcon size={16} className={markDoneEvent.status === 'done' ? 'text-blue-700' : 'text-green-700'} />
-	                </div>
-	                <h3 className="text-lg font-semibold text-gray-800">
-	                  {markDoneEvent.status === 'done' ? 'Update Done Details' : 'Mark Event as Done'}
-	                </h3>
-	              </div>
-	              <button
-	                type="button"
-	                onClick={() => {
-                  setShowDoneForm(false)
-                  setMarkDoneEventId(null)
-                  setDoneFormError('')
-                  setDoneTypedCategoryId('')
-                  setDoneTypedCategoryFields([])
-                  setDoneTypedFieldValues({})
-                  setDoneTypedFieldsLoading(false)
-                  setShowDoneTypedFieldPicker(false)
-                  setDoneTypedFieldToAdd('')
-                  setVisibleDoneTypedFieldIds([])
-                }}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <X size={20} className="text-gray-500" />
-              </button>
-            </div>
-
-		            <form onSubmit={handleMarkDone} className="p-4 sm:p-6 space-y-5">
-		              {doneFormError && <p className="text-sm text-red-600">{doneFormError}</p>}
-
-		              <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-2">
-		                <p className="text-sm font-semibold text-gray-800">Location</p>
-		                <p className="text-sm text-gray-700">{markDoneEvent.address || 'No address provided'}</p>
-		                {markDoneEvent.location ? (
-		                  <ReadOnlyEventMap address={markDoneEvent.address} location={markDoneEvent.location} />
-		                ) : null}
-		              </div>
-
-		              <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3">
-		                <div className="flex items-center justify-between gap-2">
-		                  <p className="text-sm font-semibold text-gray-800">Committee member</p>
-		                  <span className="text-xs text-gray-500">
-		                    {Array.isArray(doneContributorMemberIds) ? doneContributorMemberIds.length : 0} selected
-		                  </span>
-		                </div>
-		                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-  		                  <div>
-		                    <label htmlFor="done-contributor-search" className="block text-sm font-medium text-gray-700 mb-2">Search member</label>
-		                    <Input
-                          id="done-contributor-search"
-                          name="doneContributorSearch"
-		                      value={doneContributorSearch}
-		                      onChange={e => setDoneContributorSearch(e.target.value)}
-		                      placeholder="Search by name, email, ID number, or committee..."
-		                    />
-		                  </div>
-		                  <div className="md:col-span-2">
-		                    <p className="text-xs text-gray-500 mb-2">Select members who contributed to this event.</p>
-		                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
-		                      {contributorMembers.map(member => {
-		                        const id = String(member.id)
-		                        const checked = Array.isArray(doneContributorMemberIds) && doneContributorMemberIds.includes(id)
-		                        return (
-		                          <label
-		                            key={id}
-		                            className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700"
-		                          >
-		                            <input
-		                              type="checkbox"
-		                              checked={checked}
-		                              onChange={() => toggleContributorMember(member.id)}
-		                              className="h-4 w-4"
-		                            />
-		                            <span className="min-w-0 truncate">{member.name}</span>
-		                          </label>
-		                        )
-		                      })}
-		                      {contributorMembers.length === 0 && (
-		                        <p className="text-sm text-gray-500">No matching members found.</p>
-		                      )}
-		                    </div>
-		                  </div>
-		                </div>
-		              </div>
-
-		              <div className="space-y-2">
-		                <div className="flex items-center justify-between gap-2">
-		                  <Label>Partners</Label>
-		                  <Button
-	                    type="button"
-	                    size="sm"
-	                    variant="secondary"
-	                    onClick={() => setDonePartners(prev => [...(Array.isArray(prev) ? prev : []), ''])}
-	                  >
-	                    + Add row
-	                  </Button>
-	                </div>
-	                <div className="space-y-2">
-	                  {(Array.isArray(donePartners) ? donePartners : ['']).map((value, index) => (
-	                    <div key={`done-partner-${index}`} className="flex items-center gap-2">
-	                      <Input
-	                        value={value}
-	                        onChange={e => {
-	                          const next = [...donePartners]
-	                          next[index] = e.target.value
-	                          setDonePartners(next)
-	                        }}
-	                        placeholder={`Partner ${index + 1}`}
-	                      />
-	                      <Button
-	                        type="button"
-	                        size="icon"
-	                        variant="outline"
-	                        onClick={() => {
-	                          const next = donePartners.filter((_, i) => i !== index)
-	                          setDonePartners(next.length ? next : [''])
-	                        }}
-	                        aria-label="Remove partner"
-	                      >
-	                        <X size={16} />
-	                      </Button>
-	                    </div>
-	                  ))}
-	                </div>
- 	                <p className="text-xs text-gray-500">Saved as pipe-separated values.</p>
- 	              </div>
-
-                  {Array.isArray(doneTypedCategoryFields) && doneTypedCategoryFields.length > 0 && (
-                    <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-semibold text-gray-800">Activity Fields</p>
-                        <div className="flex items-center gap-2">
-                          {doneTypedFieldsLoading && <span className="text-xs text-gray-500">Loading...</span>}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setShowDoneTypedFieldPicker(prev => !prev)
-                              setDoneFormError('')
-                            }}
-                            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
-                            disabled={!supabaseEnabled}
-                          >
-                            + Add field
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const allIds = (Array.isArray(doneTypedCategoryFields) ? doneTypedCategoryFields : [])
-                                .map(field => String(field?.id || '').trim())
-                                .filter(Boolean)
-                              setVisibleDoneTypedFieldIds(allIds)
-                              setDoneFormError('')
-                            }}
-                            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
-                            disabled={!supabaseEnabled}
-                          >
-                            Add all
-                          </button>
-                        </div>
-                      </div>
-
-                      {showDoneTypedFieldPicker && (
-                        <div className="grid grid-cols-1 md:grid-cols-[1fr_140px] gap-3 rounded-lg border border-gray-200 bg-white p-3">
-                          <div>
-                            <label className="block text-xs font-medium text-gray-700 mb-1">Saved inputs</label>
-                            <select
-                              value={doneTypedFieldToAdd}
-                              onChange={e => setDoneTypedFieldToAdd(e.target.value)}
-                              className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                              <option value="">Select a field</option>
-                              {doneTypedCategoryFields.map(field => {
-                                const fieldId = String(field?.id || '').trim()
-                                const fieldName = String(field?.field_name || '').trim()
-                                const fieldType = String(field?.field_type || '').trim()
-                                if (!fieldId || !fieldName || !fieldType) return null
-                                const showTypeSuffix = fieldType !== 'text' && fieldType !== 'number'
-                                return (
-                                  <option key={fieldId} value={fieldId}>
-                                    {fieldName}{showTypeSuffix ? ` (${fieldType})` : ''}
-                                  </option>
-                                )
-                              })}
-                            </select>
-                          </div>
-                          <div className="flex items-end justify-end gap-2">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setShowDoneTypedFieldPicker(false)
-                                setDoneTypedFieldToAdd('')
-                              }}
-                              className="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
-                            >
-                              Cancel
-                            </button>
-                            <button
-                              type="button"
-                              onClick={handleAddVisibleDoneTypedField}
-                              className="px-3 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
-                              disabled={!doneTypedFieldToAdd}
-                            >
-                              Add
-                            </button>
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {doneTypedCategoryFields
-                          .filter(field => {
-                            const fieldId = String(field?.id || '').trim()
-                            if (!fieldId) return false
-                            return (Array.isArray(visibleDoneTypedFieldIds) ? visibleDoneTypedFieldIds : []).includes(fieldId)
-                          })
-                          .map(field => {
-                          const fieldId = String(field?.id || '').trim()
-                          const fieldName = String(field?.field_name || '').trim()
-                          const fieldType = String(field?.field_type || '').trim()
-                          if (!fieldId || !fieldName || !fieldType) return null
-                          const value = doneTypedFieldValues?.[fieldId]
-                          const inputId = `done-typed-${fieldId}`
-                          const colSpan = ''
-
-                          return (
-                            <div key={fieldId} className={colSpan}>
-                              <label htmlFor={inputId} className="block text-sm font-medium text-gray-700 mb-2">
-                                {fieldName}
-                              </label>
-                              {fieldType === 'boolean' ? (
-                                <label className="flex h-10 w-full items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900">
-                                  <input
-                                    id={inputId}
-                                    type="checkbox"
-                                    checked={Boolean(value)}
-                                    className="h-4 w-4"
-                                    onChange={e =>
-                                      setDoneTypedFieldValues(prev => ({
-                                        ...(prev && typeof prev === 'object' ? prev : {}),
-                                        [fieldId]: Boolean(e.target.checked),
-                                      }))
-                                    }
-                                  />
-                                  <span>Yes</span>
-                                </label>
-                              ) : fieldType === 'date' ? (
-                                <Input
-                                  id={inputId}
-                                  type="date"
-                                  value={String(value ?? '')}
-                                  onChange={e =>
-                                    setDoneTypedFieldValues(prev => ({
-                                      ...(prev && typeof prev === 'object' ? prev : {}),
-                                      [fieldId]: e.target.value,
-                                    }))
-                                  }
-                                  required
-                                />
-                              ) : fieldType === 'number' ? (
-                                <Input
-                                  id={inputId}
-                                  type="number"
-                                  value={String(value ?? '')}
-                                  onChange={e =>
-                                    setDoneTypedFieldValues(prev => ({
-                                      ...(prev && typeof prev === 'object' ? prev : {}),
-                                      [fieldId]: e.target.value,
-                                    }))
-                                  }
-                                  required
-                                />
-                              ) : (
-                                <Input
-                                  id={inputId}
-                                  value={String(value ?? '')}
-                                  onChange={e =>
-                                    setDoneTypedFieldValues(prev => ({
-                                      ...(prev && typeof prev === 'object' ? prev : {}),
-                                      [fieldId]: e.target.value,
-                                    }))
-                                  }
-                                  required
-                                />
-                              )}
-                            </div>
-                          )
-                        })}
-                        {(Array.isArray(visibleDoneTypedFieldIds) ? visibleDoneTypedFieldIds : []).length === 0 && (
-                          <p className="text-xs text-gray-500 md:col-span-2">
-                            Click &quot;+ Add field&quot; to show one of the saved inputs for this category.
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-		              {(!Array.isArray(doneTypedCategoryFields) || doneTypedCategoryFields.length === 0) && markDoneCategoryConfig && markDoneCategoryConfig.fields.length > 0 ? (
-		                <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3">
-		                  <p className="text-sm font-semibold text-gray-800">Activity Fields</p>
-		                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-		                    {markDoneCategoryConfig.fields.map(field => {
-		                      if (!isDoneFieldVisible(markDoneCategoryKey, field)) return null
-		                      const fieldValue = doneFields[markDoneCategoryKey]?.[field.key]
-		                      const colSpan = field.type === 'text' || field.type === 'list_text' ? 'md:col-span-2' : ''
-                          const domSafeCategoryKey = String(markDoneCategoryKey || 'category').replace(/[^a-z0-9_-]/gi, '-')
-                          const domSafeFieldKey = String(field.key || 'field').replace(/[^a-z0-9_-]/gi, '-')
-                          const fieldIdBase = `done-field-${domSafeCategoryKey}-${domSafeFieldKey}`
-                          const fieldNameBase = String(field.key || 'field')
-                          const labelForId = field.type === 'list_text' || field.type === 'list_select' ? `${fieldIdBase}-0` : fieldIdBase
-		                      return (
-		                      <div key={field.key} className={colSpan}>
-		                        <label htmlFor={labelForId} className="block text-sm font-medium text-gray-700 mb-2">{field.label}</label>
-		                        {field.type === 'list_text' ? (
-		                          <div className="space-y-2">
-		                            <div className="flex items-center justify-between gap-2">
-		                              <span className="text-xs text-gray-500">Add multiple entries</span>
-		                              <Button
-		                                type="button"
-		                                size="sm"
-		                                variant="secondary"
-		                                onClick={() =>
-		                                  updateDoneListField(markDoneCategoryKey, field.key, prev => [...prev, ''])
-		                                }
-		                              >
-		                                + Add row
-		                              </Button>
-		                            </div>
-		                            <div className="space-y-2">
-		                              {(Array.isArray(fieldValue) ? fieldValue : ['']).map((value, index) => (
-		                                <div key={`done-${field.key}-${index}`} className="flex items-center gap-2">
-		                                  <Input
-                                        id={`${fieldIdBase}-${index}`}
-                                        name={`${fieldNameBase}[${index}]`}
-		                                    value={value}
-		                                    onChange={e =>
-		                                      updateDoneListField(markDoneCategoryKey, field.key, prev => {
-		                                        const next = [...prev]
-		                                        next[index] = e.target.value
-		                                        return next
-		                                      })
-		                                    }
-		                                    placeholder={`${field.label} ${index + 1}`}
-		                                  />
-		                                  <Button
-		                                    type="button"
-		                                    size="icon"
-		                                    variant="outline"
-		                                    onClick={() =>
-		                                      updateDoneListField(markDoneCategoryKey, field.key, prev =>
-		                                        prev.filter((_, i) => i !== index)
-		                                      )
-		                                    }
-		                                    aria-label="Remove row"
-		                                  >
-		                                    <X size={16} />
-		                                  </Button>
-		                                </div>
-		                              ))}
-		                            </div>
-		                            <p className="text-xs text-gray-500">Saved as pipe-separated values.</p>
-		                          </div>
-		                        ) : field.type === 'list_select' ? (
-		                          <div className="space-y-2">
-		                            <div className="flex items-center justify-between gap-2">
-		                              <span className="text-xs text-gray-500">Add multiple entries</span>
-		                              <Button
-		                                type="button"
-		                                size="sm"
-		                                variant="secondary"
-		                                onClick={() =>
-		                                  updateDoneListField(markDoneCategoryKey, field.key, prev => [...prev, ''])
-		                                }
-		                              >
-		                                + Add row
-		                              </Button>
-		                            </div>
-		                            <div className="space-y-2">
-		                              {(Array.isArray(fieldValue) ? fieldValue : ['']).map((value, index) => (
-		                                <div key={`done-${field.key}-${index}`} className="flex items-center gap-2">
-		                                  <select
-                                        id={`${fieldIdBase}-${index}`}
-                                        name={`${fieldNameBase}[${index}]`}
-		                                    value={value}
-		                                    onChange={e =>
-		                                      updateDoneListField(markDoneCategoryKey, field.key, prev => {
-		                                        const next = [...prev]
-		                                        next[index] = e.target.value
-		                                        return next
-		                                      })
-		                                    }
-		                                    className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:cursor-not-allowed disabled:opacity-50"
-		                                  >
-		                                    <option value="">Select</option>
-		                                    {(field.options || []).map(optionValue => (
-		                                      <option key={optionValue} value={optionValue}>
-		                                        {optionValue}
-		                                      </option>
-		                                    ))}
-		                                  </select>
-		                                  <Button
-		                                    type="button"
-		                                    size="icon"
-		                                    variant="outline"
-		                                    onClick={() =>
-		                                      updateDoneListField(markDoneCategoryKey, field.key, prev =>
-		                                        prev.filter((_, i) => i !== index)
-		                                      )
-		                                    }
-		                                    aria-label="Remove row"
-		                                  >
-		                                    <X size={16} />
-		                                  </Button>
-		                                </div>
-		                              ))}
-		                            </div>
-		                            <p className="text-xs text-gray-500">Saved as pipe-separated values.</p>
-		                          </div>
-		                        ) : field.type === 'select' ? (
-		                          <select
-                                id={fieldIdBase}
-                                name={fieldNameBase}
-		                            value={doneFields[markDoneCategoryKey]?.[field.key] ?? ''}
-		                            onChange={e => handleDoneFieldChange(markDoneCategoryKey, field.key, e.target.value)}
-		                            className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:cursor-not-allowed disabled:opacity-50"
-		                            required
-		                          >
-		                            <option value="">Select</option>
-		                            {(field.options || []).map(optionValue => (
-		                              <option key={optionValue} value={optionValue}>
-		                                {optionValue}
-		                              </option>
-		                            ))}
-		                          </select>
-		                        ) : field.type === 'number' ? (
-		                          <Input
-                                id={fieldIdBase}
-                                name={fieldNameBase}
-		                            type="number"
-		                            min={field.min}
-		                            step={field.step}
-		                            value={doneFields[markDoneCategoryKey]?.[field.key] ?? ''}
-		                            onChange={e => handleDoneFieldChange(markDoneCategoryKey, field.key, e.target.value)}
-		                            required
-		                          />
-		                        ) : (
-		                          <Input
-                                id={fieldIdBase}
-                                name={fieldNameBase}
-		                            value={doneFields[markDoneCategoryKey]?.[field.key] ?? ''}
-		                            onChange={e => handleDoneFieldChange(markDoneCategoryKey, field.key, e.target.value)}
-		                            required
-		                          />
-		                        )}
-		                      </div>
-		                      )
-		                    })}
-		                  </div>
-		                </div>
-		              ) : null}
-
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowDoneForm(false)
-                    setMarkDoneEventId(null)
-                    setDoneFormError('')
-                    setDoneTypedCategoryId('')
-                    setDoneTypedCategoryFields([])
-                    setDoneTypedFieldValues({})
-                    setDoneTypedFieldsLoading(false)
-                    setShowDoneTypedFieldPicker(false)
-                    setDoneTypedFieldToAdd('')
-                    setVisibleDoneTypedFieldIds([])
-                  }}
-                  className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
-                >
-                  Cancel
-                </button>
-	                <button
-	                  type="submit"
-	                  className={`px-4 py-2 rounded-lg text-white transition-colors ${
-	                    markDoneEvent.status === 'done' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700'
-	                  }`}
-	                >
-	                  {markDoneEvent.status === 'done' ? 'Save Done Details' : 'Mark Done'}
-	                </button>
-	              </div>
-	            </form>
-	          </div>
-	        </div>
-	      )}
+      {renderSharedOverlays()}
 
       {selectedMember ? (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[70] p-4">
