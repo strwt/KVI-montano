@@ -43,7 +43,6 @@ const THEME = {
 const NAV_LINKS = [
   { label: 'Home', href: '#home' },
   { label: 'Programs', href: '#services' },
-  { label: 'Contact Us', href: '#contact' },
 ]
 
 const SPONSOR_LOGOS = [
@@ -2374,9 +2373,7 @@ function Landing() {
 
             {/* Contact Us */}
             <div className="flex flex-col items-start text-left">
-              <h4 className="text-xs font-bold text-slate-700 font-heading mb-3 tracking-widest uppercase">
-                Contact Us
-              </h4>
+              
               <div className="space-y-4 text-sm text-slate-600 max-w-sm">
                 <p className="leading-relaxed flex flex-wrap items-baseline justify-start gap-x-2">
                   <span className="text-slate-700 shrink-0">Contact number:</span>
