@@ -189,7 +189,6 @@ function CommitteeManagement() {
       <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
         <div>
           <h2 className="text-2xl font-bold text-white">Committee Management</h2>
-          <p className="text-sm text-white/70">Add, edit, or delete committees</p>
         </div>
       </div>
 
