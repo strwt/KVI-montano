@@ -413,7 +413,7 @@ function EditAccount() {
             <div className="flex justify-end gap-2 mt-6">
               <button
                 onClick={() => navigate('/profile')}
-                className="px-4 py-2.5 bg-zinc-200 text-zinc-700 rounded-lg hover:bg-zinc-300 transition-colors font-medium"
+                className="px-4 py-2.5 bg-[black] text-[white] rounded-lg hover:bg-zinc-300  transition-colors font-medium"
               >
                 Cancel
               </button>
