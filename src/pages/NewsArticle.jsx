@@ -150,11 +150,11 @@ export default function NewsArticle() {
     >
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.14),transparent_26%),radial-gradient(circle_at_top_right,rgba(250,204,21,0.14),transparent_20%)]" />
-        <div className="relative mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="relative mx-auto max-w-[92rem] px-4 py-8 sm:px-6 lg:px-8 2xl:max-w-[112rem]">
           <button
             type="button"
             onClick={() => navigate('/landing')}
-            className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/5 px-4 py-2 text-sm font-semibold text-white shadow-none transition-colors hover:bg-white/10"
+            className="inline-flex items-center gap-2 rounded-xl bg-yellow-400 px-4 py-2 text-sm font-semibold text-slate-900 shadow-[0_10px_24px_rgba(250,204,21,0.28)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-yellow-300"
           >
             <ArrowLeft size={16} />
             Back to Landing Page
