@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
@@ -130,12 +130,6 @@ export default function WhoWeAre({ mode = 'overview' }) {
       ? 'Read the latest articles, achievements, and updates from KUSGAN Volunteers Inc.'
       : 'Read the overview and historical foundation of KUSGAN.'
 
-  const topNavItems = useMemo(() => ([
-    { key: 'overview', label: 'Overview', to: '/who-we-are/overview' },
-    { key: 'mission-vision', label: 'Mission & Vision', to: '/who-we-are/mission-vision' },
-    { key: 'news', label: 'News', to: '/who-we-are/news' },
-  ]), [])
-
   return (
     <div
       className="min-h-screen px-4 py-8 text-white sm:px-6 lg:px-8"
@@ -150,24 +144,6 @@ export default function WhoWeAre({ mode = 'overview' }) {
           <ArrowLeft size={15} />
           Back to Landing
         </button>
-
-        <div className="mb-8 flex flex-wrap gap-3">
-          {topNavItems.map((item) => (
-            <button
-              key={item.key}
-              type="button"
-              onClick={() => navigate(item.to)}
-              className={`rounded-xl border px-4 py-2.5 text-sm font-semibold transition-all ${
-                mode === item.key
-                  ? 'border-yellow-300/35 bg-yellow-400/15 text-yellow-100'
-                  : 'border-white/15 bg-white/8 text-white/80 hover:bg-white/12 hover:text-white'
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-
         <SectionHeader title={pageTitle} subtitle={pageSubtitle} />
 
         {mode === 'overview' && (

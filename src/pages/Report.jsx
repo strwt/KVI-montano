@@ -1,6 +1,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import dayjs from 'dayjs'
+import { useNavigate } from 'react-router-dom'
 import {
   Activity,
   Flame,
@@ -195,6 +196,15 @@ const resolveEventDate = event => {
   return dayjs(raw)
 }
 
+const getEventMatchKey = event => {
+  const baseId = event?.id
+  if (baseId !== undefined && baseId !== null && String(baseId).trim()) return `id:${baseId}`
+  const dateValue = event?.dateTime || event?.date || ''
+  const title = event?.title || ''
+  const category = event?.category || ''
+  return `fallback:${dateValue}|${title}|${category}`
+}
+
 const toNumber = value => {
   const parsed = Number(value)
   return Number.isFinite(parsed) ? parsed : 0
@@ -284,6 +294,7 @@ const getFieldValue = (event, key, fallbackKeys = []) => {
 
 	function Report() {
   const { user, categories } = useAuth()
+  const navigate = useNavigate()
   const supabaseEnabled = isSupabaseEnabled()
 	  const [events, setEvents] = useState([])
 		  const [typedStats, setTypedStats] = useState({ loading: false, error: '', byCategory: {} })
@@ -1388,7 +1399,25 @@ const getFieldValue = (event, key, fallbackKeys = []) => {
 			                          const dateLabel = event?._date?.isValid?.() ? event._date.format('YYYY-MM-DD') : ''
 			                          return (
 			                            <tr key={`row-${categoryKey}-${event.id}`} className="text-slate-700 align-top">
-			                              <td className="py-2 pr-4 font-medium text-slate-900">{event.title || '-'}</td>
+			                              <td className="py-2 pr-4 font-medium text-slate-900">
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          navigate('/calendar', {
+                                            state: {
+                                              focusEventId: event.id,
+                                              focusEventKey: getEventMatchKey(event),
+                                              forceFocusEvent: true,
+                                              scrollToEvent: true,
+                                            },
+                                          })
+                                        }
+                                        className="text-left transition-colors hover:underline"
+                                        style={{ color: categoryColor }}
+                                      >
+                                        {event.title || '-'}
+                                      </button>
+                                    </td>
 			                              <td className="py-2 pr-4 whitespace-nowrap">{dateLabel || '-'}</td>
 			                              {numericKeys.map(key => (
 			                                <td key={`cell-${categoryKey}-${event.id}-${key}`} className="py-2 pr-4 whitespace-nowrap">

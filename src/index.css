@@ -256,6 +256,72 @@ body {
   outline-color: #facc15 !important;
 }
 
+.calendar-done-summary {
+  background-color: rgba(240, 253, 244, 0.85);
+  border-color: #bbf7d0;
+  color: #14532d;
+}
+
+.calendar-done-summary-title {
+  color: #166534;
+}
+
+.calendar-done-summary-label {
+  color: #4b5563;
+}
+
+.calendar-done-summary-chip {
+  background-color: #ffffff;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+}
+
+.calendar-done-summary-field {
+  background-color: #ffffff;
+  border: 1px solid #bbf7d0;
+}
+
+.calendar-done-summary-meta {
+  color: #6b7280;
+}
+
+.calendar-done-summary-value {
+  color: #1f2937;
+}
+
+.dark .calendar-done-summary {
+  background-color: rgba(240, 253, 244, 0.92) !important;
+  border-color: #86efac !important;
+  color: #14532d !important;
+}
+
+.dark .calendar-done-summary-title {
+  color: #166534 !important;
+}
+
+.dark .calendar-done-summary-label {
+  color: #4b5563 !important;
+}
+
+.dark .calendar-done-summary-chip {
+  background-color: #ffffff !important;
+  border-color: #86efac !important;
+  color: #166534 !important;
+}
+
+.dark .calendar-done-summary-field {
+  background-color: #ffffff !important;
+  border-color: #86efac !important;
+}
+
+.dark .calendar-done-summary-meta {
+  color: #6b7280 !important;
+}
+
+.dark .calendar-done-summary-value {
+  color: #1f2937 !important;
+}
+
 .calendar-done-modal,
 .calendar-done-modal-header,
 .calendar-done-modal-body {
@@ -421,6 +487,17 @@ body {
   background-color: #dc2626 !important;
 }
 
+.calendar-done-modal .form-primary-yellow {
+  background-color: #facc15 !important;
+  color: #111827 !important;
+  box-shadow: 0 8px 24px rgba(250, 204, 21, 0.35) !important;
+}
+
+.calendar-done-modal .form-primary-yellow:hover {
+  background-color: #fbbf24 !important;
+  color: #111827 !important;
+}
+
 .calendar-done-modal button.hover\:bg-green-700:hover {
   background-color: #15803d !important;
 }
@@ -544,6 +621,17 @@ body {
 .dark .calendar-done-modal button.bg-blue-600,
 .dark .calendar-done-modal button.bg-red-600 {
   color: #ffffff !important;
+}
+
+.dark .calendar-done-modal .form-primary-yellow {
+  background-color: #facc15 !important;
+  color: #111827 !important;
+  box-shadow: 0 8px 24px rgba(250, 204, 21, 0.35) !important;
+}
+
+.dark .calendar-done-modal .form-primary-yellow:hover {
+  background-color: #fbbf24 !important;
+  color: #111827 !important;
 }
 
 .dark .dashboard-chart-axis {

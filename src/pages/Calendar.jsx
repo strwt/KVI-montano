@@ -586,7 +586,7 @@ function EventLocationPicker({ address, location, onAddressInput, onLocationSele
       <div className="relative">
         <label htmlFor="event-location-address" className="block text-sm text-white/80 mb-2">Address</label>
         <div className="relative">
-          <MapPin size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-black/100" />
+          <MapPin size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-yellow-600" />
           <input
             id="event-location-address"
             name="address"
@@ -629,13 +629,13 @@ function EventLocationPicker({ address, location, onAddressInput, onLocationSele
             required
             autoComplete="street-address"
           />
-          {isSearching && <Loader2 size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/45 animate-spin" />}
+          {isSearching && <Loader2 size={16} className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-yellow-600" />}
         </div>
         {showSuggestions && (isSearching || suggestions.length > 0 || searchHint) && (
-          <div className="absolute z-20 mt-1 w-full max-h-56 overflow-y-auto rounded-xl border border-white/20 bg-slate-950/95 shadow-lg backdrop-blur-xl">
-            {isSearching && <p className="px-3 py-2 text-sm text-white/65">Searching...</p>}
+          <div className="absolute z-20 mt-1 w-full max-h-56 overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-lg">
+            {isSearching && <p className="px-3 py-2 text-sm text-gray-500">Searching...</p>}
             {!isSearching && suggestions.length === 0 && searchHint && (
-              <p className="px-3 py-2 text-sm text-white/65">{searchHint}</p>
+              <p className="px-3 py-2 text-sm text-gray-500">{searchHint}</p>
             )}
             {!isSearching &&
               suggestions.map((item, index) => (
@@ -644,8 +644,8 @@ function EventLocationPicker({ address, location, onAddressInput, onLocationSele
                   type="button"
                   onMouseEnter={() => setActiveSuggestionIndex(index)}
                   onClick={() => selectSuggestion(item)}
-                  className={`w-full text-left px-3 py-2 text-sm border-b border-white/10 last:border-b-0 transition-colors ${
-                    activeSuggestionIndex === index ? 'bg-red-500/18 text-red-100' : 'text-white/80 hover:bg-white/10'
+                  className={`w-full border-b border-gray-100 px-3 py-2 text-left text-sm transition-colors last:border-b-0 ${
+                    activeSuggestionIndex === index ? 'bg-yellow-50 text-gray-900' : 'text-gray-800 hover:bg-gray-50'
                   }`}
                 >
                   {renderHighlightedAddress(item.display_name, address)}
@@ -781,9 +781,9 @@ function AssignMembersPicker({ allMembers, selectedIds, onChange, label = 'Assig
 
   return (
     <div className="space-y-2" ref={panelRef}>
-      <label htmlFor={inputId} className="block text-sm text-white/80 mb-2">{label}</label>
+      <label htmlFor={inputId} className="mb-2 block text-sm font-medium text-gray-700">{label}</label>
       <div className="relative">
-        <Users size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[black]" />
+        <Users size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-yellow-600" />
         <input
           id={inputId}
           name="memberSearch"
@@ -796,12 +796,12 @@ function AssignMembersPicker({ allMembers, selectedIds, onChange, label = 'Assig
             setOpen(true)
           }}
           placeholder={placeholder}
-          className="w-full rounded-lg border border-white/20 bg-white/10 pl-10 pr-4 py-3 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-red-500"
+          className="w-full rounded-lg border border-gray-300 bg-white pl-10 pr-4 py-3 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500"
         />
         {open && (
-          <div className="absolute z-20 mt-1 w-full max-h-56 overflow-y-auto rounded-xl border border-white/20 bg-slate-950/95 shadow-lg backdrop-blur-xl">
+          <div className="absolute z-20 mt-1 w-full max-h-56 overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-lg">
             {filteredMembers.length === 0 && (
-              <p className="px-3 py-2 text-sm text-white/65">No members found.</p>
+              <p className="px-3 py-2 text-sm text-gray-500">No members found.</p>
             )}
             {filteredMembers.map(member => {
               const checked = selectedIds.includes(member.id)
@@ -810,17 +810,17 @@ function AssignMembersPicker({ allMembers, selectedIds, onChange, label = 'Assig
                   key={member.id}
                   type="button"
                   onClick={() => toggleMember(member.id)}
-                  className={`w-full text-left px-3 py-2 text-sm border-b border-white/10 last:border-b-0 flex items-center justify-between ${
-                    checked ? 'bg-red-500/18 text-red-100' : 'hover:bg-white/10 text-white/80'
+                  className={`flex w-full items-center justify-between border-b border-gray-100 px-3 py-2 text-left text-sm last:border-b-0 ${
+                    checked ? 'bg-yellow-50 text-gray-900' : 'text-gray-800 hover:bg-gray-50'
                   }`}
                 >
                   <span className="truncate pr-3">
                     {member.name}
-                    <span className="ml-2 text-xs text-white/45">
+                    <span className="ml-2 text-xs text-gray-500">
                       {member.committee ? `${member.committee}` : ''}{member.branch ? ` / ${member.branch}` : ''}
                     </span>
                   </span>
-                  {checked && <Check size={14} />}
+                  {checked && <Check size={14} className="text-yellow-600" />}
                 </button>
               )
             })}
@@ -2129,15 +2129,15 @@ function Calendar({ listOnly = false }) {
     if (!showAny) return null
 
     return (
-      <div className="rounded-xl border border-green-200 bg-green-50/50 p-4 space-y-3">
-        <p className="text-sm font-semibold text-green-800">Done Details</p>
+      <div className="calendar-done-summary rounded-xl border p-4 space-y-3">
+        <p className="calendar-done-summary-title text-sm font-semibold">Done Details</p>
 
         {partners.length > 0 && (
           <div className="space-y-1">
-            <p className="text-xs font-semibold text-gray-600">Partners</p>
+            <p className="calendar-done-summary-label text-xs font-semibold">Partners</p>
             <div className="flex flex-wrap gap-2">
               {partners.map(partner => (
-                <span key={partner} className="px-2 py-1 bg-white border border-green-200 rounded-full text-xs text-green-800">
+                <span key={partner} className="calendar-done-summary-chip px-2 py-1 rounded-full text-xs">
                   {partner}
                 </span>
               ))}
@@ -2147,10 +2147,10 @@ function Calendar({ listOnly = false }) {
 
         {contributorNames.length > 0 && (
           <div className="space-y-1">
-            <p className="text-xs font-semibold text-gray-600">Contributors</p>
+            <p className="calendar-done-summary-label text-xs font-semibold">Contributors</p>
             <div className="flex flex-wrap gap-2">
               {contributorNames.map(name => (
-                <span key={name} className="px-2 py-1 bg-white border border-green-200 rounded-full text-xs text-green-800">
+                <span key={name} className="calendar-done-summary-chip px-2 py-1 rounded-full text-xs">
                   {name}
                 </span>
               ))}
@@ -2160,10 +2160,10 @@ function Calendar({ listOnly = false }) {
 
         {tokens.length > 0 && (
           <div className="space-y-1">
-            <p className="text-xs font-semibold text-gray-600">Tokens</p>
+            <p className="calendar-done-summary-label text-xs font-semibold">Tokens</p>
             <div className="flex flex-wrap gap-2">
               {tokens.map((token, idx) => (
-                <span key={`${token}-${idx}`} className="px-2 py-1 bg-white border border-green-200 rounded-full text-xs text-green-800">
+                <span key={`${token}-${idx}`} className="calendar-done-summary-chip px-2 py-1 rounded-full text-xs">
                   {token}
                 </span>
               ))}
@@ -2179,9 +2179,9 @@ function Calendar({ listOnly = false }) {
                 const value = item.categoryData?.[field.key]
                 if (value === undefined || value === null || String(value).trim() === '') return null
                 return (
-                  <div key={field.key} className="px-3 py-2 rounded bg-white border border-green-200">
-                    <p className="text-xs text-gray-500">{field.label}</p>
-                    <p className="font-medium text-gray-800">{String(value)}</p>
+                  <div key={field.key} className="calendar-done-summary-field px-3 py-2 rounded">
+                    <p className="calendar-done-summary-meta text-xs">{field.label}</p>
+                    <p className="calendar-done-summary-value font-medium">{String(value)}</p>
                   </div>
                 )
               })}
@@ -2407,60 +2407,50 @@ function Calendar({ listOnly = false }) {
     <>
       {canManageEvents && showEventForm && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-3 sm:p-4">
-          <div
-            className="relative isolate w-full max-w-3xl animate-fade-in-up max-h-[92vh] overflow-y-auto rounded-3xl border border-white/20 shadow-2xl"
-            style={{
-              background: 'linear-gradient(145deg, rgba(14,116,144,0.88), rgba(30,64,175,0.84) 52%, rgba(59,130,246,0.78))',
-              boxShadow: '0 24px 70px rgba(8,47,73,0.34), inset 0 1px 0 rgba(255,255,255,0.14)',
-              backdropFilter: 'blur(20px)',
-            }}
-          >
-            <div
-              className="sticky top-0 z-50 flex items-center justify-between rounded-t-3xl border-b p-4 sm:p-5"
-              style={{
-                background: 'linear-gradient(180deg, rgba(14,116,144,0.96), rgba(30,64,175,0.9))',
-                borderColor: 'rgba(255,255,255,0.12)',
-                backdropFilter: 'blur(18px)',
-              }}
-            >
+          <div className="calendar-done-modal relative isolate w-full max-w-3xl animate-fade-in-up max-h-[92vh] overflow-y-auto rounded-2xl border border-gray-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.18)]">
+            <div className="calendar-done-modal-header sticky top-0 z-50 flex items-center justify-between rounded-t-2xl border-b border-gray-200 bg-white p-4 sm:p-5">
               <div>
-                <h3 className="text-lg font-semibold" style={{ color: '#f8fafc' }}>{editingEventId ? 'Update Event' : 'Create New Event'}</h3>
-                <p className="mt-1 text-sm" style={{ color: 'rgba(226,232,240,0.78)' }}>Enter the event details in the same mirrored glass style as the recruitment form.</p>
+                <div className="flex items-center gap-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-yellow-100">
+                    <CalendarIcon size={16} className="text-yellow-700" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-800">{editingEventId ? 'Update Event' : 'Create New Event'}</h3>
+                </div>
+                <p className="mt-1 text-sm text-gray-500">Enter the event details below.</p>
               </div>
               <button
                 onClick={() => {
                   resetForm()
                   setShowEventForm(false)
                 }}
-                className="rounded-lg p-2 transition-colors hover:bg-white/10"
-                style={{ color: 'rgba(226,232,240,0.82)' }}
+                className="rounded-lg p-2 transition-colors hover:bg-slate-100"
               >
-                <X size={20} />
+                <X size={20} className="text-gray-500" />
               </button>
             </div>
 
-            <form onSubmit={handleAddEvent} className="p-4 sm:p-6 space-y-5">
-              {formError && <p className="rounded-lg border border-red-400/40 bg-red-500/20 p-3 text-sm text-red-100">{formError}</p>}
+            <form onSubmit={handleAddEvent} className="calendar-done-modal-body p-4 sm:p-6 space-y-5">
+              {formError && <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-600">{formError}</p>}
 
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-[0_12px_30px_rgba(2,8,23,0.22)] backdrop-blur-md sm:p-5">
-                <h4 className="text-sm font-semibold text-white uppercase tracking-wide mb-3">Category</h4>
+              <div className="calendar-done-card rounded-xl border border-gray-200 bg-gray-50 p-4 sm:p-5">
+                <h4 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-800">Category</h4>
                 <div className="space-y-4">
-                  <div className="grid grid-cols-1 gap-4">
-                    <div>
-                      <label htmlFor="event-form-category" className="block text-sm text-white/80 mb-2">Category</label>
-                      <div className="relative">
+  	                <div className="grid grid-cols-1 gap-4">
+  	                    <div>
+	                      <label htmlFor="event-form-category" className="mb-2 block text-sm font-medium text-gray-700">Category</label>
+	                      <div className="relative">
                         <SelectedCategoryIcon
                           size={16}
-                          className={`absolute left-3 top-1/2 -translate-y-1/2 ${selectedCategoryMeta?.text || 'text-[black]'} ${selectedCategoryMeta?.iconClass || ''}`}
+                          className={`absolute left-3 top-1/2 -translate-y-1/2 text-yellow-600 ${selectedCategoryMeta?.iconClass || ''}`}
                         />
-                        <select
-                          id="event-form-category"
-                          name="category"
-                          value={formData.category}
-                          onChange={e => setFormData({ ...formData, category: e.target.value })}
-                          className="w-full pl-10 pr-4 py-3 border border-white/20 bg-white/10 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                          required
-                        >
+	                        <select
+                            id="event-form-category"
+                            name="category"
+	                          value={formData.category}
+	                          onChange={e => setFormData({ ...formData, category: e.target.value })}
+	                          className="w-full rounded-lg border border-gray-300 bg-white py-3 pl-10 pr-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500"
+	                          required
+		                        >
                           <option value="" disabled>
                             Select category
                           </option>
@@ -2482,27 +2472,27 @@ function Calendar({ listOnly = false }) {
                   </div>
 
                   <div>
-                    <label htmlFor="event-form-content" className="block text-sm text-white/80 mb-2">Content</label>
+                    <label htmlFor="event-form-content" className="mb-2 block text-sm font-medium text-gray-700">Content</label>
                     <textarea
                       id="event-form-content"
                       name="content"
                       value={formData.content}
                       onChange={e => setFormData({ ...formData, content: e.target.value })}
                       rows={3}
-                      className="w-full px-4 py-3 border border-white/20 bg-white/10 text-white placeholder-white/40 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                      className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500"
                     />
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label htmlFor="event-form-date-time" className="block text-sm text-white/80 mb-2">Date and Time</label>
+                      <label htmlFor="event-form-date-time" className="mb-2 block text-sm font-medium text-gray-700">Date and Time</label>
                       <input
                         id="event-form-date-time"
                         name="dateTime"
                         type="datetime-local"
                         value={formData.dateTime}
                         onChange={e => setFormData({ ...formData, dateTime: e.target.value })}
-                        className="w-full px-4 py-3 border border-white/20 bg-white/10 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                        className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500"
                         required
                       />
                     </div>
@@ -2517,8 +2507,8 @@ function Calendar({ listOnly = false }) {
                 </div>
               </div>
 
-              <div className="relative isolate z-0 rounded-2xl border border-white/10 bg-white/5 p-4 shadow-[0_12px_30px_rgba(2,8,23,0.22)] backdrop-blur-md sm:p-5">
-                <h4 className="text-sm font-semibold text-white uppercase tracking-wide mb-3">Location</h4>
+              <div className="calendar-done-card relative isolate z-0 rounded-xl border border-gray-200 bg-gray-50 p-4 sm:p-5">
+                <h4 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-800">Location</h4>
                 <EventLocationPicker
                   address={formData.address}
                   location={formData.location}
@@ -2542,7 +2532,7 @@ function Calendar({ listOnly = false }) {
               <div className="flex flex-col sm:flex-row gap-3 pt-2">
                 <button
                   type="submit"
-                  className="flex-1 px-6 py-3 rounded-lg bg-gradient-to-r from-yellow-400 to-amber-300 text-slate-950 font-semibold hover:from-yellow-300 hover:to-amber-200 transition-colors shadow-[0_16px_34px_rgba(250,204,21,0.28)]"
+                  className="form-primary-yellow flex-1 rounded-lg px-6 py-3 font-semibold transition-colors"
                 >
                   {editingEventId ? 'Save Changes' : 'Save Event'}
                 </button>
@@ -2552,7 +2542,7 @@ function Calendar({ listOnly = false }) {
                     resetForm()
                     setShowEventForm(false)
                   }}
-                  className="px-6 py-3 rounded-lg border border-white/15 bg-white/5 text-white hover:bg-white/10 transition-colors"
+                  className="rounded-lg border border-gray-300 px-6 py-3 text-gray-700 transition-colors hover:bg-gray-50"
                 >
                   Cancel
                 </button>
@@ -3674,58 +3664,48 @@ function Calendar({ listOnly = false }) {
 
       {canManageEvents && showEventForm && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-3 sm:p-4">
-          <div
-            className="relative isolate w-full max-w-3xl animate-fade-in-up max-h-[92vh] overflow-y-auto rounded-3xl border border-white/20 shadow-2xl"
-            style={{
-              background: 'linear-gradient(145deg, rgba(14,116,144,0.88), rgba(30,64,175,0.84) 52%, rgba(59,130,246,0.78))',
-              boxShadow: '0 24px 70px rgba(8,47,73,0.34), inset 0 1px 0 rgba(255,255,255,0.14)',
-              backdropFilter: 'blur(20px)',
-            }}
-          >
-            <div
-              className="sticky top-0 z-50 flex items-center justify-between rounded-t-3xl border-b p-4 sm:p-5"
-              style={{
-                background: 'linear-gradient(180deg, rgba(14,116,144,0.96), rgba(30,64,175,0.9))',
-                borderColor: 'rgba(255,255,255,0.12)',
-                backdropFilter: 'blur(18px)',
-              }}
-            >
+          <div className="calendar-done-modal relative isolate w-full max-w-3xl animate-fade-in-up max-h-[92vh] overflow-y-auto rounded-2xl border border-gray-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.18)]">
+            <div className="calendar-done-modal-header sticky top-0 z-50 flex items-center justify-between rounded-t-2xl border-b border-gray-200 bg-white p-4 sm:p-5">
               <div>
-                <h3 className="text-lg font-semibold" style={{ color: '#f8fafc' }}>{editingEventId ? 'Update Event' : 'Create New Event'}</h3>
-                <p className="mt-1 text-sm" style={{ color: 'rgba(226,232,240,0.78)' }}>Enter the event details in the same mirrored glass style as the recruitment form.</p>
+                <div className="flex items-center gap-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-yellow-100">
+                    <CalendarIcon size={16} className="text-yellow-700" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-800">{editingEventId ? 'Update Event' : 'Create New Event'}</h3>
+                </div>
+                <p className="mt-1 text-sm text-gray-500">Enter the event details below.</p>
               </div>
               <button
                 onClick={() => {
                   resetForm()
                   setShowEventForm(false)
                 }}
-                className="rounded-lg p-2 transition-colors hover:bg-white/10"
-                style={{ color: 'rgba(226,232,240,0.82)' }}
+                className="rounded-lg p-2 transition-colors hover:bg-slate-100"
               >
-                <X size={20} />
+                <X size={20} className="text-gray-500" />
               </button>
             </div>
 
-            <form onSubmit={handleAddEvent} className="p-4 sm:p-6 space-y-5">
-              {formError && <p className="rounded-lg border border-red-400/40 bg-red-500/20 p-3 text-sm text-red-100">{formError}</p>}
+            <form onSubmit={handleAddEvent} className="calendar-done-modal-body p-4 sm:p-6 space-y-5">
+              {formError && <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-600">{formError}</p>}
 
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-[0_12px_30px_rgba(2,8,23,0.22)] backdrop-blur-md sm:p-5">
-                <h4 className="text-sm font-semibold text-white uppercase tracking-wide mb-3">Category</h4>
+              <div className="calendar-done-card rounded-xl border border-gray-200 bg-gray-50 p-4 sm:p-5">
+                <h4 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-800">Category</h4>
                 <div className="space-y-4">
   	                  <div className="grid grid-cols-1 gap-4">
   	                    <div>
-	                      <label htmlFor="event-form-category" className="block text-sm text-white/80 mb-2">Category</label>
+	                      <label htmlFor="event-form-category" className="mb-2 block text-sm font-medium text-gray-700">Category</label>
 	                      <div className="relative">
                         <SelectedCategoryIcon
                           size={16}
-                          className={`absolute left-3 top-1/2 -translate-y-1/2 ${selectedCategoryMeta?.text || 'text-[black]'} ${selectedCategoryMeta?.iconClass || ''}`}
+                          className={`absolute left-3 top-1/2 -translate-y-1/2 text-yellow-600 ${selectedCategoryMeta?.iconClass || ''}`}
                         />
 	                        <select
                             id="event-form-category"
                             name="category"
 	                          value={formData.category}
 	                          onChange={e => setFormData({ ...formData, category: e.target.value })}
-	                          className="w-full pl-10 pr-4 py-3 border border-white/20 bg-white/10 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+	                          className="w-full rounded-lg border border-gray-300 bg-white py-3 pl-10 pr-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500"
 	                          required
 		                        >
 		                          <option value="" disabled>
@@ -3751,27 +3731,27 @@ function Calendar({ listOnly = false }) {
 	                  {/* Partners + Activity fields are collected when marking an event as Done. */}
 
                   <div>
-                    <label htmlFor="event-form-content" className="block text-sm text-white/80 mb-2">Content</label>
+                    <label htmlFor="event-form-content" className="mb-2 block text-sm font-medium text-gray-700">Content</label>
                     <textarea
                       id="event-form-content"
                       name="content"
                       value={formData.content}
                       onChange={e => setFormData({ ...formData, content: e.target.value })}
                       rows={3}
-                      className="w-full px-4 py-3 border border-white/20 bg-white/10 text-white placeholder-white/40 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                      className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500"
                     />
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label htmlFor="event-form-date-time" className="block text-sm text-white/80 mb-2">Date and Time</label>
+                      <label htmlFor="event-form-date-time" className="mb-2 block text-sm font-medium text-gray-700">Date and Time</label>
                       <input
                         id="event-form-date-time"
                         name="dateTime"
                         type="datetime-local"
                         value={formData.dateTime}
                         onChange={e => setFormData({ ...formData, dateTime: e.target.value })}
-                        className="w-full px-4 py-3 border border-white/20 bg-white/10 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                        className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500"
                         required
                       />
                     </div>
@@ -3787,8 +3767,8 @@ function Calendar({ listOnly = false }) {
 	                </div>
 	              </div>
 
-              <div className="relative isolate z-0 rounded-2xl border border-white/10 bg-white/5 p-4 shadow-[0_12px_30px_rgba(2,8,23,0.22)] backdrop-blur-md sm:p-5">
-                <h4 className="text-sm font-semibold text-white uppercase tracking-wide mb-3">Location</h4>
+              <div className="calendar-done-card relative isolate z-0 rounded-xl border border-gray-200 bg-gray-50 p-4 sm:p-5">
+                <h4 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-800">Location</h4>
                 <EventLocationPicker
                   address={formData.address}
                   location={formData.location}
@@ -3812,7 +3792,7 @@ function Calendar({ listOnly = false }) {
               <div className="flex flex-col sm:flex-row gap-3 pt-2">
                 <button
                   type="submit"
-                  className="flex-1 px-6 py-3 rounded-lg bg-gradient-to-r from-yellow-400 to-amber-300 text-slate-950 font-semibold hover:from-yellow-300 hover:to-amber-200 transition-colors shadow-[0_16px_34px_rgba(250,204,21,0.28)]"
+                  className="form-primary-yellow flex-1 rounded-lg px-6 py-3 font-semibold transition-colors"
                 >
                   {editingEventId ? 'Save Changes' : 'Save Event'}
                 </button>
@@ -3822,7 +3802,7 @@ function Calendar({ listOnly = false }) {
                     resetForm()
                     setShowEventForm(false)
                   }}
-                  className="px-6 py-3 rounded-lg border border-white/15 bg-white/5 text-white hover:bg-white/10 transition-colors"
+                  className="rounded-lg border border-gray-300 px-6 py-3 text-gray-700 transition-colors hover:bg-gray-50"
                 >
                   Cancel
                 </button>
@@ -3947,4 +3927,3 @@ function Calendar({ listOnly = false }) {
 }
 
 export default Calendar
-

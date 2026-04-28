@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowLeft, Mail, Calendar, User, Trash2, Eye, EyeOff, Shield } from 'lucide-react'
+import { ArrowLeft, Mail, Calendar, User, Trash2, Eye, EyeOff, Shield, X } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate, useParams } from 'react-router-dom'
 
@@ -381,20 +381,27 @@ function MemberDetail() {
       )}
 
       {showUpdateModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 overflow-y-auto">
-          <div className="min-h-full w-full p-4 flex items-start justify-center">
-            <div
-              className="max-h-[calc(100vh-2rem)] w-full max-w-md overflow-y-auto rounded-xl border border-white/20 p-6 shadow-2xl animate-fade-in"
-              style={{
-                background: 'linear-gradient(145deg, rgba(14,116,144,0.88), rgba(30,64,175,0.84) 52%, rgba(59,130,246,0.78))',
-                boxShadow: '0 24px 70px rgba(8,47,73,0.34), inset 0 1px 0 rgba(255,255,255,0.14)',
-                backdropFilter: 'blur(20px)',
-              }}
-            >
-            <h3 className="mb-4 text-lg font-semibold text-white">Update Member</h3>
-            <form onSubmit={handleUpdateMember} className="space-y-4">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50">
+          <div className="flex min-h-full w-full items-start justify-center p-4 sm:items-center">
+            <div className="calendar-done-modal w-full max-w-md rounded-2xl border border-gray-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.18)] animate-fade-in">
+            <div className="calendar-done-modal-header sticky top-0 z-10 flex items-center justify-between rounded-t-2xl border-b border-gray-200 bg-white p-4 sm:p-5">
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-yellow-100">
+                  <User size={16} className="text-yellow-700" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-800">Update Member</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowUpdateModal(false)}
+                className="rounded-lg p-2 transition-colors hover:bg-slate-100"
+              >
+                <X size={18} className="text-gray-500" />
+              </button>
+            </div>
+            <form onSubmit={handleUpdateMember} className="calendar-done-modal-body space-y-4 p-4 sm:p-6">
               <div>
-                <label htmlFor="update-member-id-number" className="mb-1 block text-sm font-medium text-white/85">ID Number</label>
+                <label htmlFor="update-member-id-number" className="mb-1 block text-sm font-medium text-gray-700">ID Number</label>
                 <input
                   id="update-member-id-number"
                   name="idNumber"
@@ -402,12 +409,12 @@ function MemberDetail() {
                   required
                   value={editForm.idNumber}
                   onChange={(e) => setEditForm({ ...editForm, idNumber: e.target.value })}
-                  className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500"
                   autoComplete="off"
                 />
               </div>
               <div>
-                <label htmlFor="update-member-name" className="mb-1 block text-sm font-medium text-white/85">Name</label>
+                <label htmlFor="update-member-name" className="mb-1 block text-sm font-medium text-gray-700">Name</label>
                 <input
                   id="update-member-name"
                   name="name"
@@ -415,12 +422,12 @@ function MemberDetail() {
                   required
                   value={editForm.name}
                   onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                  className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500"
                   autoComplete="name"
                 />
               </div>
               <div>
-                <label htmlFor="update-member-email" className="mb-1 block text-sm font-medium text-white/85">Email</label>
+                <label htmlFor="update-member-email" className="mb-1 block text-sm font-medium text-gray-700">Email</label>
                 <input
                   id="update-member-email"
                   name="email"
@@ -428,76 +435,76 @@ function MemberDetail() {
                   required
                   value={editForm.email}
                   onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                  className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500"
                   autoComplete="email"
                 />
               </div>
               <div>
-                <label htmlFor="update-member-address" className="mb-1 block text-sm font-medium text-white/85">Address</label>
+                <label htmlFor="update-member-address" className="mb-1 block text-sm font-medium text-gray-700">Address</label>
                 <input
                   id="update-member-address"
                   name="address"
                   type="text"
                   value={editForm.address}
                   onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
-                  className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500"
                   autoComplete="street-address"
                 />
               </div>
               <div>
-                <label htmlFor="update-member-contact-number" className="mb-1 block text-sm font-medium text-white/85">Contact Number</label>
+                <label htmlFor="update-member-contact-number" className="mb-1 block text-sm font-medium text-gray-700">Contact Number</label>
                 <input
                   id="update-member-contact-number"
                   name="contactNumber"
                   type="text"
                   value={editForm.contactNumber}
                   onChange={(e) => setEditForm({ ...editForm, contactNumber: e.target.value })}
-                  className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500"
                   autoComplete="tel"
                 />
               </div>
-              <div className="border-t border-white/15 pt-2">
-                <p className="text-sm font-medium text-white">In Case of Emergency</p>
-                <p className="text-xs text-white/65">Emergency contact details for this member.</p>
+              <div className="calendar-done-card rounded-xl border border-gray-200 bg-gray-50 p-4">
+                <p className="text-sm font-medium text-gray-800">In Case of Emergency</p>
+                <p className="text-xs text-gray-500">Emergency contact details for this member.</p>
               </div>
               <div>
-                <label htmlFor="update-member-emergency-number" className="mb-1 block text-sm font-medium text-white/85">Emergency Number</label>
+                <label htmlFor="update-member-emergency-number" className="mb-1 block text-sm font-medium text-gray-700">Emergency Number</label>
                 <input
                   id="update-member-emergency-number"
                   name="emergencyContactNumber"
                   type="tel"
                   value={editForm.emergencyContactNumber}
                   onChange={(e) => setEditForm({ ...editForm, emergencyContactNumber: e.target.value })}
-                  className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500"
                   autoComplete="tel"
                 />
               </div>
               <div>
-                <label htmlFor="update-member-emergency-name" className="mb-1 block text-sm font-medium text-white/85">Emergency Contact Name</label>
+                <label htmlFor="update-member-emergency-name" className="mb-1 block text-sm font-medium text-gray-700">Emergency Contact Name</label>
                 <input
                   id="update-member-emergency-name"
                   name="emergencyContactName"
                   type="text"
                   value={editForm.emergencyContactName}
                   onChange={(e) => setEditForm({ ...editForm, emergencyContactName: e.target.value })}
-                  className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500"
                   autoComplete="name"
                 />
               </div>
               <div>
-                <label htmlFor="update-member-emergency-relationship" className="mb-1 block text-sm font-medium text-white/85">Relationship</label>
+                <label htmlFor="update-member-emergency-relationship" className="mb-1 block text-sm font-medium text-gray-700">Relationship</label>
                 <input
                   id="update-member-emergency-relationship"
                   name="emergencyContactRelationship"
                   type="text"
                   value={editForm.emergencyContactRelationship}
                   onChange={(e) => setEditForm({ ...editForm, emergencyContactRelationship: e.target.value })}
-                  className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500"
                   autoComplete="off"
                 />
               </div>
               <div>
-                <label htmlFor="update-member-type" className="mb-1 block text-sm font-medium text-white/85">Type</label>
+                <label htmlFor="update-member-type" className="mb-1 block text-sm font-medium text-gray-700">Type</label>
                 <select
                   id="update-member-type"
                   name="type"
@@ -520,7 +527,7 @@ function MemberDetail() {
                     })
                   }}
                   disabled={!isAdmin || (isSelf && member?.role === 'admin')}
-                  className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-60"
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-60"
                 >
                   <option value="member">Member</option>
                   <option value="oic">OIC</option>
@@ -529,13 +536,13 @@ function MemberDetail() {
               </div>
               {editForm.type === 'member' ? (
                 <div>
-                  <label htmlFor="update-member-committee" className="mb-1 block text-sm font-medium text-white/85">Committee</label>
+                  <label htmlFor="update-member-committee" className="mb-1 block text-sm font-medium text-gray-700">Committee</label>
                   <select
                     id="update-member-committee"
                     name="committee"
                     value={editForm.committee}
                     onChange={(e) => setEditForm({ ...editForm, committee: e.target.value })}
-                    className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500"
                   >
                     <option value="">Select committee</option>
                     {(Array.isArray(committees) ? committees : []).map(name => (
@@ -547,13 +554,13 @@ function MemberDetail() {
                 </div>
               ) : null}
               <div>
-                <label htmlFor="update-member-blood-type" className="mb-1 block text-sm font-medium text-white/85">Blood Type</label>
+                <label htmlFor="update-member-blood-type" className="mb-1 block text-sm font-medium text-gray-700">Blood Type</label>
                 <select
                   id="update-member-blood-type"
                   name="bloodType"
                   value={editForm.bloodType}
                   onChange={(e) => setEditForm({ ...editForm, bloodType: e.target.value })}
-                  className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500"
                 >
                   <option value="">Select Blood Type</option>
                   {BLOOD_TYPE_OPTIONS.map(type => (
@@ -565,11 +572,11 @@ function MemberDetail() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <label htmlFor="update-member-insurance-status" className="mb-1 block text-sm font-medium text-white/85">
+                  <label htmlFor="update-member-insurance-status" className="mb-1 block text-sm font-medium text-gray-700">
                     Insurance Status
                   </label>
                   <div className="relative">
-                    <Shield size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60" />
+                    <Shield size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-yellow-600" />
                     <select
                       id="update-member-insurance-status"
                       name="insuranceStatus"
@@ -582,7 +589,7 @@ function MemberDetail() {
                           insuranceYear: next === 'Insured' ? prev.insuranceYear : '',
                         }))
                       }}
-                      className="w-full rounded-lg border border-white/20 bg-white/10 py-2 pl-10 pr-3 text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                      className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-10 pr-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500"
                     >
                       <option value="N/A">Not Insured</option>
                       <option value="Insured">Insured</option>
@@ -590,7 +597,7 @@ function MemberDetail() {
                   </div>
                 </div>
                 <div>
-                  <label htmlFor="update-member-insurance-year" className="mb-1 block text-sm font-medium text-white/85">
+                  <label htmlFor="update-member-insurance-year" className="mb-1 block text-sm font-medium text-gray-700">
                     Insurance Year
                   </label>
                   <input
@@ -602,39 +609,39 @@ function MemberDetail() {
                     value={editForm.insuranceYear}
                     onChange={(e) => setEditForm({ ...editForm, insuranceYear: e.target.value })}
                     disabled={editForm.insuranceStatus !== 'Insured'}
-                    className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-60"
+                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-60"
                   />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label htmlFor="update-member-status" className="mb-1 block text-sm font-medium text-white/85">Status</label>
+                  <label htmlFor="update-member-status" className="mb-1 block text-sm font-medium text-gray-700">Status</label>
                   <select
                     id="update-member-status"
                     name="status"
                     value={editForm.status}
                     onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
-                    className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500"
                   >
                     <option value="active">Active</option>
                     <option value="inactive">Inactive</option>
                   </select>
                 </div>
                 <div>
-                  <label htmlFor="update-member-since" className="mb-1 block text-sm font-medium text-white/85">Member Since</label>
+                  <label htmlFor="update-member-since" className="mb-1 block text-sm font-medium text-gray-700">Member Since</label>
                   <input
                     id="update-member-since"
                     name="memberSince"
                     type="date"
                     value={editForm.memberSince}
                     onChange={(e) => setEditForm({ ...editForm, memberSince: e.target.value })}
-                    className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500"
                   />
                 </div>
               </div>
 
               <div>
-                <label htmlFor="update-member-new-password" className="mb-1 block text-sm font-medium text-white/85">
+                <label htmlFor="update-member-new-password" className="mb-1 block text-sm font-medium text-gray-700">
                   New Password (optional)
                 </label>
                 <div className="relative">
@@ -644,14 +651,14 @@ function MemberDetail() {
                     type={showNewPassword ? 'text' : 'password'}
                     value={editForm.newPassword}
                     onChange={(e) => setEditForm({ ...editForm, newPassword: e.target.value })}
-                    className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 pr-10 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-red-500"
+                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 pr-10 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500"
                     autoComplete="new-password"
                     placeholder="Leave blank to keep current password"
                   />
                   <button
                     type="button"
                     onClick={() => setShowNewPassword(prev => !prev)}
-                    className="absolute inset-y-0 right-0 flex items-center px-3 text-white/60 hover:text-white"
+                    className="absolute inset-y-0 right-0 flex items-center px-3 text-yellow-600 hover:text-yellow-700"
                     aria-label={showNewPassword ? 'Hide password' : 'Show password'}
                   >
                     {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -660,7 +667,7 @@ function MemberDetail() {
               </div>
 
               <div className="md:col-span-2">
-                <label className="mb-2 block text-sm font-medium text-white/85">
+                <label className="mb-2 block text-sm font-medium text-gray-700">
                   Profile Image Preview
                 </label>
                 <div
@@ -676,7 +683,7 @@ function MemberDetail() {
               </div>
 
               <div>
-                <label htmlFor="update-member-image" className="mb-1 block text-sm font-medium text-white/85">
+                <label htmlFor="update-member-image" className="mb-1 block text-sm font-medium text-gray-700">
                   Profile Image (optional)
                 </label>
                 <div
@@ -707,7 +714,7 @@ function MemberDetail() {
                 <button
                   type="button"
                   onClick={() => setShowUpdateModal(false)}
-                  className="rounded-lg border border-white/15 bg-white/10 px-4 py-2 text-white transition-colors hover:bg-white/15"
+                  className="rounded-lg border border-gray-300 px-4 py-2 text-gray-700 transition-colors hover:bg-gray-50"
                 >
                   Cancel
                 </button>
@@ -724,8 +731,7 @@ function MemberDetail() {
                   </button>
                   <button
                     type="submit"
-                    className="inline-flex items-center justify-center rounded-xl bg-yellow-400 px-6 py-3 text-sm font-semibold text-slate-900 transition-all duration-200 hover:-translate-y-0.5 hover:bg-yellow-300"
-                    style={{ boxShadow: '0 8px 24px rgba(250,204,21,0.35)' }}
+                    className="form-primary-yellow inline-flex items-center justify-center rounded-lg px-6 py-3 text-sm font-semibold transition-colors"
                   >
                     Save Changes
                   </button>
