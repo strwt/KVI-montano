@@ -880,6 +880,7 @@ function Calendar({ listOnly = false }) {
     assignedMemberIds: [],
   })
   const [searchQuery, setSearchQuery] = useState('')
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState('all')
   const [selectedDateFilter, setSelectedDateFilter] = useState('')
   const [doneFields, setDoneFields] = useState(getDefaultDynamicFields())
   const [donePartners, setDonePartners] = useState([''])
@@ -1330,49 +1331,36 @@ function Calendar({ listOnly = false }) {
   const filteredItems = useMemo(() => {
     if (!selectedMonth) return []
     return selectedMonth.items.filter(item => {
-      const searchLower = searchQuery.toLowerCase()
-      const matchesSearch =
-        !searchQuery ||
-        item.title?.toLowerCase().includes(searchLower) ||
-        item.content?.toLowerCase().includes(searchLower) ||
-        item.address?.toLowerCase().includes(searchLower) ||
-        item.membersInvolve?.toLowerCase().includes(searchLower) ||
-        item.branch?.toLowerCase().includes(searchLower) ||
-        item.category?.toLowerCase().includes(searchLower)
+      const matchesSearch = matchesEventSearch(item, searchQuery)
       const activeCategoryKey = selectedCategoryKey === 'all' ? null : selectedCategoryKey
       const itemCategoryKey = canonicalizeOperationKey(normalizeCategoryKey(item.category))
       const matchesCategory = selectedCategoryKey === 'all' || itemCategoryKey === activeCategoryKey
       const matchesDate = !selectedDateFilter || dayjs(item.dateTime).format('YYYY-MM-DD') === selectedDateFilter
-      return matchesSearch && matchesCategory && matchesDate
+      const matchesStatus = matchesStatusFilter(item, selectedStatusFilter)
+      return matchesSearch && matchesCategory && matchesDate && matchesStatus
     }).sort((a, b) => {
       if ((a.status === 'done') !== (b.status === 'done')) return a.status === 'done' ? 1 : -1
       return dayjs(b.dateTime).valueOf() - dayjs(a.dateTime).valueOf()
     })
-  }, [selectedMonth, searchQuery, selectedCategoryKey, selectedDateFilter])
+  }, [selectedMonth, searchQuery, selectedCategoryKey, selectedDateFilter, selectedStatusFilter])
 
   const allFilteredItems = useMemo(() => {
     return events
       .filter(item => item.dateTime && dayjs(item.dateTime).isValid())
       .filter(item => {
-        const searchLower = searchQuery.toLowerCase()
-        const matchesSearch =
-          !searchQuery ||
-          item.title?.toLowerCase().includes(searchLower) ||
-          item.content?.toLowerCase().includes(searchLower) ||
-          item.address?.toLowerCase().includes(searchLower) ||
-          item.membersInvolve?.toLowerCase().includes(searchLower) ||
-          item.branch?.toLowerCase().includes(searchLower) ||
-          item.category?.toLowerCase().includes(searchLower)
+        const matchesSearch = matchesEventSearch(item, searchQuery)
         const activeCategoryKey = selectedCategoryKey === 'all' ? null : selectedCategoryKey
         const itemCategoryKey = canonicalizeOperationKey(normalizeCategoryKey(item.category))
         const matchesCategory = selectedCategoryKey === 'all' || itemCategoryKey === activeCategoryKey
-        return matchesSearch && matchesCategory
+        const matchesStatus = matchesStatusFilter(item, selectedStatusFilter)
+        const matchesDate = !selectedDateFilter || dayjs(item.dateTime).format('YYYY-MM-DD') === selectedDateFilter
+        return matchesSearch && matchesCategory && matchesStatus && matchesDate
       })
       .sort((a, b) => {
         if ((a.status === 'done') !== (b.status === 'done')) return a.status === 'done' ? 1 : -1
         return dayjs(b.dateTime).valueOf() - dayjs(a.dateTime).valueOf()
       })
-  }, [events, searchQuery, selectedCategoryKey])
+  }, [events, searchQuery, selectedCategoryKey, selectedDateFilter, selectedStatusFilter])
 
   const allMonthsWithEvents = useMemo(() => {
     return ALL_MONTHS.map(month => {
@@ -2191,7 +2179,39 @@ function Calendar({ listOnly = false }) {
     )
   }
 
-  const getMonthColor = () => 'from-yellow-400 to-amber-500'
+const getMonthColor = () => 'from-yellow-400 to-amber-500'
+
+function matchesEventSearch(item, query) {
+  const searchLower = String(query || '').trim().toLowerCase()
+  if (!searchLower) return true
+
+  const dateValue = item?.dateTime && dayjs(item.dateTime).isValid() ? dayjs(item.dateTime) : null
+  const searchableParts = [
+    item?.title,
+    item?.content,
+    item?.address,
+    item?.membersInvolve,
+    item?.branch,
+    item?.category,
+    item?.status === 'done' ? 'done completed finished' : 'on-going ongoing in progress',
+    dateValue ? dateValue.format('YYYY-MM-DD') : '',
+    dateValue ? dateValue.format('MMMM D, YYYY') : '',
+    dateValue ? dateValue.format('MMM D, YYYY') : '',
+    dateValue ? dateValue.format('MMMM D YYYY') : '',
+    dateValue ? dateValue.format('MMM D YYYY') : '',
+  ]
+    .map(value => String(value || '').toLowerCase())
+    .filter(Boolean)
+
+  return searchableParts.some(value => value.includes(searchLower))
+}
+
+function matchesStatusFilter(item, selectedStatusFilter) {
+  if (selectedStatusFilter === 'all') return true
+  if (selectedStatusFilter === 'done') return item?.status === 'done'
+  if (selectedStatusFilter === 'ongoing') return item?.status !== 'done'
+  return true
+}
 
   const getCategoryLabel = category => {
     const key = canonicalizeOperationKey(normalizeCategoryKey(category))
@@ -3213,11 +3233,20 @@ function Calendar({ listOnly = false }) {
             <div className="flex flex-col lg:flex-row gap-4">
               <input
                 type="text"
-                placeholder="Search events by title, content, address, or category..."
+                placeholder="Search events by title, status, date, address, or category..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 className="flex-1 rounded-xl border border-white/20 bg-white px-4 py-3 text-slate-900 shadow-sm transition-all placeholder:text-slate-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-cyan-300"
               />
+	              <select
+	                value={selectedStatusFilter}
+	                onChange={e => setSelectedStatusFilter(e.target.value)}
+	                className="lg:w-52 rounded-xl border border-white/20 bg-white px-4 py-3 text-slate-900 shadow-sm transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-cyan-300"
+	              >
+	                <option value="all">All Status</option>
+	                <option value="ongoing">On-going</option>
+	                <option value="done">Done</option>
+	              </select>
 	              <select
 	                value={selectedCategoryKey}
 	                onChange={e => updateCategoryRoute(e.target.value)}
@@ -3243,7 +3272,24 @@ function Calendar({ listOnly = false }) {
                       <option value={selectedCategoryKey}>{selectedCategoryLabel}</option>
                     )}
 	              </select>
-	            </div>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <input
+                  type="date"
+                  value={selectedDateFilter}
+                  onChange={e => setSelectedDateFilter(e.target.value)}
+                  className="lg:w-52 rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 shadow-sm transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-cyan-300"
+                />
+                {selectedDateFilter ? (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDateFilter('')}
+                    className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50"
+                  >
+                    Clear Date
+                  </button>
+                ) : null}
+              </div>
+            </div>
             <div className="max-h-[68vh] space-y-3 overflow-y-auto rounded-2xl border border-slate-200/80 bg-white p-3 pr-2 shadow-[0_12px_24px_rgba(15,23,42,0.08)]">
               {allFilteredItems.map(item => renderEventListItem(item))}
 
@@ -3459,11 +3505,20 @@ function Calendar({ listOnly = false }) {
             <div className="flex flex-col sm:flex-row gap-4">
               <input
                 type="text"
-                placeholder="Search events by title, content, address, or category..."
+                placeholder="Search events by title, status, date, address, or category..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 className="flex-1 rounded-lg border border-white/15 bg-white/10 px-4 py-3 text-white shadow-sm backdrop-blur-sm transition-all placeholder:text-white/45 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-red-500"
               />
+              <select
+                value={selectedStatusFilter}
+                onChange={e => setSelectedStatusFilter(e.target.value)}
+                className="sm:w-52 rounded-lg border border-white/15 bg-white/10 px-4 py-3 text-white shadow-sm backdrop-blur-sm transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-red-500"
+              >
+                <option value="all">All Status</option>
+                <option value="ongoing">On-going</option>
+                <option value="done">Done</option>
+              </select>
               <select
                 value={selectedCategoryKey}
                 onChange={e => updateCategoryRoute(e.target.value)}
@@ -3489,22 +3544,24 @@ function Calendar({ listOnly = false }) {
                     <option value={selectedCategoryKey}>{selectedCategoryLabel}</option>
                   )}
               </select>
-            </div>
-            {selectedDateFilter && (
-              <div className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/5 px-3 py-2 backdrop-blur-sm">
-                <p className="text-sm text-red-700">
-                  Showing events for {dayjs(selectedDateFilter).format('MMMM D, YYYY')}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setSelectedDateFilter('')}
-                  className="rounded border border-white/15 bg-white/10 px-2 py-1 text-xs text-white transition-colors hover:bg-white/15"
-                >
-                  Clear Date Filter
-                </button>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <input
+                  type="date"
+                  value={selectedDateFilter}
+                  onChange={e => setSelectedDateFilter(e.target.value)}
+                  className="sm:w-52 rounded-lg border border-white/15 bg-white/10 px-4 py-3 text-white shadow-sm backdrop-blur-sm transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-red-500"
+                />
+                {selectedDateFilter ? (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDateFilter('')}
+                    className="rounded border border-white/15 bg-white/10 px-3 py-3 text-sm text-white transition-colors hover:bg-white/15"
+                  >
+                    Clear Date
+                  </button>
+                ) : null}
               </div>
-            )}
-
+            </div>
             <div className="max-h-[62vh] space-y-3 overflow-y-auto rounded-2xl border border-white/10 bg-white/5 p-3 pr-2 backdrop-blur-md">
             {filteredItems.map(item => {
               const isExpanded = expandedItemId === item.id

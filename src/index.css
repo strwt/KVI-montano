@@ -634,6 +634,92 @@ body {
   color: #111827 !important;
 }
 
+.notification-panel {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+.notification-panel-header {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+.notification-panel-body {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+.notification-panel [class*='bg-white'] {
+  background-color: #ffffff !important;
+}
+
+.notification-panel [class*='bg-yellow-50'] {
+  background-color: #fefce8 !important;
+}
+
+.notification-panel [class*='hover:bg-slate-50']:hover {
+  background-color: #f8fafc !important;
+}
+
+.notification-panel .text-slate-900 {
+  color: #0f172a !important;
+}
+
+.notification-panel .text-slate-700 {
+  color: #334155 !important;
+}
+
+.notification-panel .text-slate-600 {
+  color: #475569 !important;
+}
+
+.notification-panel .text-slate-500 {
+  color: #64748b !important;
+}
+
+.dark .notification-panel {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+.dark .notification-panel-header {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+.dark .notification-panel-body {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+.dark .notification-panel [class*='bg-white'] {
+  background-color: #ffffff !important;
+}
+
+.dark .notification-panel [class*='bg-yellow-50'] {
+  background-color: #fefce8 !important;
+}
+
+.dark .notification-panel [class*='hover:bg-slate-50']:hover {
+  background-color: #f8fafc !important;
+}
+
+.dark .notification-panel .text-slate-900 {
+  color: #0f172a !important;
+}
+
+.dark .notification-panel .text-slate-700 {
+  color: #334155 !important;
+}
+
+.dark .notification-panel .text-slate-600 {
+  color: #475569 !important;
+}
+
+.dark .notification-panel .text-slate-500 {
+  color: #64748b !important;
+}
+
 .dark .dashboard-chart-axis {
   stroke: #374151 !important;
 }

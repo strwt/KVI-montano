@@ -538,7 +538,7 @@ function Dashboard() {
 
   return (
     <div className="animate-fade-in space-y-6 text-white">
-      <section className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-6 shadow-[0_12px_30px_rgba(0,0,0,0.25)] backdrop-blur-md">
+      <section className="relative z-30 overflow-visible rounded-2xl border border-white/10 bg-white/5 p-6 shadow-[0_12px_30px_rgba(0,0,0,0.25)] backdrop-blur-md">
         <div className="absolute -right-16 -top-16 h-44 w-44 rounded-full bg-yellow-400/15 blur-3xl" />
         <div className="relative z-10 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="space-y-2">
@@ -573,9 +573,9 @@ function Dashboard() {
                 {notificationsOpen && (
                   <div
                     data-notification-panel
-                    className="absolute right-0 top-12 z-20 w-[320px] rounded-2xl border border-slate-200 bg-white text-slate-900 shadow-[0_16px_30px_rgba(15,23,42,0.18)]"
+                    className="notification-panel absolute right-0 top-12 z-[80] w-[320px] overflow-hidden rounded-2xl border border-slate-200 bg-white text-slate-900 shadow-[0_16px_30px_rgba(15,23,42,0.18)]"
                   >
-                    <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+                    <div className="notification-panel-header flex items-center justify-between rounded-t-2xl border-b border-slate-200 bg-white px-4 py-3">
                       <h3 className="text-sm font-semibold text-slate-900">
                         {t('Notifications')}
                       </h3>
@@ -583,20 +583,18 @@ function Dashboard() {
                         <span className="rounded-full border border-yellow-400/40 bg-yellow-400/15 px-2 py-0.5 text-[11px] font-semibold text-yellow-700">
                           {unreadCount} {t('unread')}
                         </span>
-                        {unreadCount === 0 && (
-                          <button
-                            type="button"
-                            onClick={() => setNotificationsOpen(false)}
-                            className="inline-flex h-7 w-7 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-700"
-                            aria-label={t('Close notifications')}
-                            title={t('Close notifications')}
-                          >
-                            <X size={14} />
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => setNotificationsOpen(false)}
+                          className="inline-flex h-7 w-7 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                          aria-label={t('Close notifications')}
+                          title={t('Close notifications')}
+                        >
+                          <X size={14} />
+                        </button>
                       </div>
                     </div>
-                    <div className="overflow-visible">
+                    <div className="notification-panel-body rounded-b-2xl bg-white">
                       {visibleNotifications.map((notification, index) => {
                         const hasValidDate = notification.dateTime && dayjs(notification.dateTime).isValid()
                         return (
@@ -616,7 +614,7 @@ function Dashboard() {
                             role="button"
                             tabIndex={0}
                             className={`flex w-full items-start gap-3 border-b border-slate-200 px-4 py-3 text-left transition-colors hover:bg-slate-50 ${
-                              notification.readAt ? '' : 'bg-yellow-50/60'
+                              notification.readAt ? 'bg-white' : 'bg-yellow-50'
                             }`}
                           >
                             <div className="min-w-0 flex-1">
@@ -653,7 +651,7 @@ function Dashboard() {
                         )
                       })}
                       {visibleNotifications.length === 0 && (
-                        <p className="px-4 py-6 text-center text-[13px] text-white/70">
+                        <p className="bg-white px-4 py-6 text-center text-[13px] text-slate-500">
                           {t('No notifications yet.')}
                         </p>
                       )}
