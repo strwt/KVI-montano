@@ -245,7 +245,7 @@ function Login() {
                 ID Number
               </label>
               <div className="relative text-black">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 text-black" size={18} />
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 text-yellow-500" size={18} />
                 <input
                   id="login-id-number"
                   name="idNumber"
@@ -253,7 +253,7 @@ function Login() {
                   value={idNumber}
                   onChange={(e) => setIdNumber(e.target.value)}
                   disabled={isLoading || postLoginWaiting}
-                  className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
+                  className="w-full rounded-lg border border-gray-300 bg-white py-3 pl-10 pr-4 text-gray-900 placeholder:text-gray-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-red-500 transition-all"
                   placeholder="Enter your ID number"
                   autoComplete="username"
                   required
@@ -270,7 +270,7 @@ function Login() {
                 Password
               </label>
               <div className="relative text-black">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-black" size={18} />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-yellow-500" size={18} />
                 <input
                   id="login-password"
                   name="password"
@@ -278,7 +278,7 @@ function Login() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={isLoading || postLoginWaiting}
-                  className="w-full pl-10 pr-12 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
+                  className="w-full rounded-lg border border-gray-300 bg-white py-3 pl-10 pr-12 text-gray-900 placeholder:text-gray-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-red-500 transition-all"
                   placeholder="Enter your password"
                   autoComplete="current-password"
                   required
@@ -288,7 +288,7 @@ function Login() {
                   onClick={() => setShowPassword(!showPassword)}
                   disabled={isLoading || postLoginWaiting}
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-black transition-colors hover:text-black/80 disabled:opacity-60"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-yellow-500 transition-colors hover:text-yellow-400 disabled:opacity-60"
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { CalendarCheck, ClipboardList, Clock, Users } from 'lucide-react'
+import { CalendarCheck, ClipboardCheck, Clock, UserCheck, UserX, Users } from 'lucide-react'
 import dayjs from 'dayjs'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabaseClient'
 import { isSupabaseEnabled, mapEventRowToEvent } from '../lib/supabaseEvents'
@@ -47,8 +48,18 @@ const saveOutbox = (items) => {
   localStorage.setItem(LOGIN_ACTIVITY_OUTBOX_KEY, JSON.stringify(items))
 }
 
+const getEventMatchKey = event => {
+  const baseId = event?.id
+  if (baseId !== undefined && baseId !== null && String(baseId).trim()) return `id:${baseId}`
+  const dateValue = event?.dateTime || event?.date || ''
+  const title = event?.title || ''
+  const category = event?.category || ''
+  return `fallback:${dateValue}|${title}|${category}`
+}
+
 function Attendance() {
   const { user, categories } = useAuth()
+  const navigate = useNavigate()
   const supabaseEnabled = isSupabaseEnabled()
   const [localLoginActivity, setLocalLoginActivity] = useState(getStoredLoginActivity)
   const [supabaseLoginActivity, setSupabaseLoginActivity] = useState([])
@@ -412,15 +423,16 @@ function Attendance() {
   }
 
   return (
-    <div className="animate-fade-in space-y-6">
-      <section className="rounded-2xl border border-yellow-300/50 bg-white/80 p-6 shadow-[0_12px_30px_rgba(0,0,0,0.08)] backdrop-blur-md dark:border-yellow-400/50 dark:bg-zinc-900/70">
+    <div className="relative isolate animate-fade-in space-y-6 text-white">
+      <div className="fixed inset-0 -z-10 bg-[#4169E1]" />
+      <section className="rounded-2xl border border-white/10 bg-[#4169E1]/80 p-6 shadow-[0_12px_30px_rgba(0,0,0,0.25)] backdrop-blur-md">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-[14px] uppercase tracking-[0.12em] text-neutral-500 dark:text-neutral-300">Attendance</p>
-            <h1 className="text-[28px] font-semibold text-neutral-900 dark:text-zinc-100">
+            <p className="text-[14px] uppercase tracking-[0.12em] text-white/70">Attendance</p>
+            <h1 className="text-[28px] font-semibold text-white">
               {user?.name || 'Member'} Attendance Summary
             </h1>
-            <p className="text-[14px] text-neutral-500 dark:text-neutral-300">
+            <p className="text-[14px] text-white/70">
               {dayjs().format('MMMM YYYY')}
             </p>
           </div>
@@ -429,7 +441,7 @@ function Attendance() {
               type="button"
               onClick={markOnline} 
               disabled={!userId}
-              className="inline-flex items-center gap-2 rounded-xl border border-emerald-600 bg-emerald-600 px-5 py-2 text-[14px] font-semibold text-white transition-all duration-200 hover:scale-[1.02] hover:bg-emerald-700"
+              className="inline-flex items-center gap-2 rounded-xl border border-yellow-300/30 bg-yellow-400 px-5 py-2 text-[14px] font-semibold text-slate-900 transition-all duration-200 hover:scale-[1.02] hover:bg-yellow-300"
             >
               <CalendarCheck size={16} />
               Time In
@@ -438,7 +450,7 @@ function Attendance() {
             <button
               type="button"
               onClick={markOffline}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-500 bg-slate-700 px-4 py-2 text-[13px] font-semibold text-white transition-all duration-200 hover:bg-slate-800"
+              className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-4 py-2 text-[13px] font-semibold text-white transition-all duration-200 hover:bg-white/15"
             >
               Time Out
             </button>
@@ -447,30 +459,39 @@ function Attendance() {
       </section>
 
       <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <div className="rounded-2xl border border-yellow-300/50 bg-white/80 p-4 shadow-sm backdrop-blur-md dark:border-yellow-400/50 dark:bg-zinc-900/70">
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">Present Days</p>
-          <p className="text-2xl font-semibold text-neutral-900 dark:text-zinc-100">{presentCount}</p>
+        <div className="rounded-2xl border border-white/10 bg-[#4169E1]/70 p-4 shadow-[0_10px_20px_rgba(0,0,0,0.25)] backdrop-blur-md">
+          <div className="flex items-center gap-2 text-emerald-200">
+            <UserCheck size={18} />
+            <p className="text-sm font-semibold">Present Days</p>
+          </div>
+          <p className="mt-2 text-2xl font-semibold text-white">{presentCount}</p>
         </div>
-        <div className="rounded-2xl border border-yellow-300/50 bg-white/80 p-4 shadow-sm backdrop-blur-md dark:border-yellow-400/50 dark:bg-zinc-900/70">
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">Absent Days</p>
-          <p className="text-2xl font-semibold text-neutral-900 dark:text-zinc-100">{absentCount}</p>
+        <div className="rounded-2xl border border-white/10 bg-[#4169E1]/70 p-4 shadow-[0_10px_20px_rgba(0,0,0,0.25)] backdrop-blur-md">
+          <div className="flex items-center gap-2 text-white/70">
+            <UserX size={18} />
+            <p className="text-sm font-semibold">Absent Days</p>
+          </div>
+          <p className="mt-2 text-2xl font-semibold text-white">{absentCount}</p>
         </div>
-        <div className="rounded-2xl border border-yellow-300/50 bg-white/80 p-4 shadow-sm backdrop-blur-md dark:border-yellow-400/50 dark:bg-zinc-900/70">
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">Assigned Activities</p>
-          <p className="text-2xl font-semibold text-neutral-900 dark:text-zinc-100">{assignedEvents.length}</p>
+        <div className="rounded-2xl border border-white/10 bg-[#4169E1]/70 p-4 shadow-[0_10px_20px_rgba(0,0,0,0.25)] backdrop-blur-md">
+          <div className="flex items-center gap-2 text-yellow-200">
+            <Users size={18} />
+            <p className="text-sm font-semibold">Assigned Activities</p>
+          </div>
+          <p className="mt-2 text-2xl font-semibold text-white">{assignedEvents.length}</p>
         </div>
       </section>
 
       <section className="grid grid-cols-1 gap-4">
-        <article className="rounded-2xl border border-yellow-300/50 bg-white/80 p-5 shadow-[0_10px_20px_rgba(0,0,0,0.08)] backdrop-blur-md dark:border-yellow-400/50 dark:bg-zinc-900/70">
+        <article className="rounded-2xl border border-white/10 bg-[#4169E1]/70 p-5 shadow-[0_10px_20px_rgba(0,0,0,0.25)] backdrop-blur-md">
           <div className="mb-4 flex items-center gap-2">
-            <ClipboardList size={18} className="text-yellow-500" />
-            <h2 className="text-[20px] font-semibold text-neutral-900 dark:text-zinc-100">Monthly Attendance</h2>
+            <ClipboardCheck size={18} className="text-yellow-300" />
+            <h2 className="text-[20px] font-semibold text-white">Monthly Attendance</h2>
           </div>
-          <div className="rounded-2xl border border-neutral-200 bg-white/60 p-3 sm:p-4 dark:border-zinc-700 dark:bg-zinc-950/20">
+          <div className="rounded-2xl bg-[#ffffff] p-3 shadow-[0_10px_30px_rgba(15,23,42,0.06)] sm:p-4">
             <div className="overflow-x-auto">
               <div className="min-w-[560px] sm:min-w-[720px] md:min-w-[840px] lg:min-w-[980px]">
-                <div className="grid grid-cols-7 gap-2 sm:gap-2.5 lg:gap-3 text-center text-[11px] sm:text-xs lg:text-sm font-semibold text-neutral-500 dark:text-neutral-400">
+                <div className="grid grid-cols-7 gap-2 text-center text-[11px] font-semibold text-slate-600 sm:gap-2.5 sm:text-xs lg:gap-3 lg:text-sm">
                   {WEEKDAY_LABELS.map(label => (
                     <div key={label}>{label}</div>
                   ))}
@@ -491,12 +512,12 @@ function Attendance() {
                   : null
 
                 const tone = cell.status === 'Present'
-                  ? 'border-emerald-200 bg-emerald-50/70 dark:border-emerald-800/50 dark:bg-emerald-950/30'
-                  : 'border-neutral-200 bg-neutral-50/70 dark:border-zinc-700 dark:bg-zinc-950/20'
+                  ? 'border-emerald-200 bg-emerald-50/70'
+                  : 'border-slate-200 bg-slate-50/70'
 
                 const badgeTone = cell.status === 'Present'
-                  ? 'border-emerald-200 bg-emerald-100 text-emerald-700 dark:border-emerald-800/50 dark:bg-emerald-900/40 dark:text-emerald-200'
-                  : 'border-neutral-200 bg-neutral-100 text-neutral-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200'
+                  ? 'border-emerald-200 bg-emerald-100 text-emerald-700'
+                  : 'border-slate-200 bg-slate-100 text-slate-700'
 
                 const titleParts = [`${cell.label}: ${cell.status}`]
                 if (timeInLabel) titleParts.push(`In: ${timeInLabel}`)
@@ -506,18 +527,18 @@ function Attendance() {
                   <div
                     key={cell.dateKey || `day-${index}`}
                     className={`flex h-[84px] sm:h-[100px] lg:h-[120px] min-w-0 flex-col justify-between overflow-hidden rounded-xl border p-2 sm:p-2.5 lg:p-3 ${tone} ${
-                      isToday ? 'ring-2 ring-yellow-400 ring-offset-2 ring-offset-white dark:ring-offset-zinc-900' : ''
+                      isToday ? 'ring-2 ring-yellow-400 ring-offset-2 ring-offset-white' : ''
                     }`}
                     title={titleParts.join(' | ')}
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <span className="text-xs sm:text-sm font-semibold text-neutral-900 dark:text-zinc-100">{dayNumber}</span>
+                      <span className="text-xs font-semibold text-slate-900 sm:text-sm">{dayNumber}</span>
                       <span className={`inline-flex max-w-[64px] sm:max-w-[80px] lg:max-w-[92px] truncate rounded-full border px-2 py-0.5 text-[10px] sm:text-xs font-semibold ${badgeTone}`}>
                         {cell.status}
                       </span>
                     </div>
                     {(timeInLabel || timeOutLabel) ? (
-                      <div className="min-w-0 space-y-0.5 sm:space-y-1 text-[10px] sm:text-xs text-neutral-600 dark:text-neutral-300">
+                      <div className="min-w-0 space-y-0.5 text-[10px] text-slate-600 sm:space-y-1 sm:text-xs">
                         {timeInLabel && (
                           <div className="flex min-w-0 items-center gap-1">
                             <Clock size={12} className="shrink-0" />
@@ -532,7 +553,7 @@ function Attendance() {
                         )}
                       </div>
                     ) : (
-                      <span className="text-[10px] sm:text-xs text-neutral-500 dark:text-neutral-400">No record</span>
+                      <span className="text-[10px] text-slate-500 sm:text-xs">No record</span>
                     )}
                   </div>
                 )
@@ -543,17 +564,31 @@ function Attendance() {
           </div>
         </article>
 
-        <article className="rounded-2xl border border-yellow-300/50 bg-white/80 p-5 shadow-[0_10px_20px_rgba(0,0,0,0.08)] backdrop-blur-md dark:border-yellow-400/50 dark:bg-zinc-900/70">
+        <article className="rounded-2xl border border-white/10 bg-[#4169E1]/70 p-5 shadow-[0_10px_20px_rgba(0,0,0,0.25)] backdrop-blur-md">
           <div className="mb-4 flex items-center gap-2">
-            <Users size={18} className="text-yellow-500" />
-            <h2 className="text-[20px] font-semibold text-neutral-900 dark:text-zinc-100">Assigned Activities</h2>
+            <Users size={18} className="text-yellow-300" />
+            <h2 className="text-[20px] font-semibold text-white">Assigned Activities</h2>
           </div>
           <div className="max-h-[420px] overflow-y-auto space-y-2 pr-1">
             {assignedEvents.map((event, index) => (
-              <div key={`${event.id || 'event'}-${index}`} className="rounded-xl border border-yellow-200 bg-yellow-50/40 p-3">
-                <p className="text-sm font-semibold text-neutral-900">{event.title || 'Untitled Event'}</p>
-                <p className="text-xs text-neutral-500 mt-1">{dayjs(event.dateTime).format('MMM D, YYYY h:mm A')}</p>
-                <p className="text-xs text-neutral-500 mt-1">Category: {getCategoryLabel(event.category || 'notes')}</p>
+              <button
+                type="button"
+                key={`${event.id || 'event'}-${index}`}
+                onClick={() =>
+                  navigate('/calendar', {
+                    state: {
+                      focusEventId: event.id,
+                      focusEventKey: getEventMatchKey(event),
+                      forceFocusEvent: true,
+                      scrollToEvent: true,
+                    },
+                  })
+                }
+                className="w-full rounded-xl border border-slate-200 bg-[#ffffff] p-3 text-left transition-colors hover:bg-slate-50"
+              >
+                <p className="text-sm font-semibold text-slate-900">{event.title || 'Untitled Event'}</p>
+                <p className="mt-1 text-xs text-slate-500">{dayjs(event.dateTime).format('MMM D, YYYY h:mm A')}</p>
+                <p className="mt-1 text-xs text-slate-500">Category: {getCategoryLabel(event.category || 'notes')}</p>
                 <span className={`mt-2 inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
                   event.status === 'done'
                     ? 'border-green-200 bg-green-50 text-green-700'
@@ -561,10 +596,10 @@ function Attendance() {
                 }`}>
                   {event.status === 'done' ? 'Done' : 'On-going'}
                 </span>
-              </div>
+              </button>
             ))}
             {assignedEvents.length === 0 && (
-              <p className="text-sm text-neutral-500">No assigned activities yet.</p>
+              <p className="text-sm text-white/70">No assigned activities yet.</p>
             )}
           </div>
         </article>
