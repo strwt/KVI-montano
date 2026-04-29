@@ -172,7 +172,7 @@ export default function NewsArticle() {
             ) : item ? (
               <article className="space-y-6 rounded-[22px] border border-slate-200 bg-white p-6 shadow-[0_24px_70px_rgba(8,47,73,0.12)] md:p-8">
                 <header className="space-y-4">
-                  <h1 className="max-w-3xl text-3xl font-bold leading-tight text-slate-900 md:text-4xl">
+                  <h1 className="w-full max-w-none text-3xl font-bold leading-tight text-slate-900 md:text-4xl">
                     {String(item?.title || '').trim() || 'Untitled'}
                   </h1>
                   <div className="flex flex-wrap gap-3 text-sm text-slate-500">

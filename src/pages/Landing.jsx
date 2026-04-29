@@ -306,12 +306,12 @@ function NavBar({ navigate }) {
         </button>
 
         {/* Desktop nav */}
-        <nav className="hidden md:flex items-center gap-7 absolute left-1/2 -translate-x-1/2">
+        <nav className="hidden md:flex items-center gap-15 absolute left-1/2 -translate-x-1/2">
           {NAV_LINKS.map(link => (
             <a
               key={link.label}
               href={link.href}
-              className="text-sm font-bold text-white-400 hover:text-white transition-colors duration-200 relative group"
+              className="text-base font-bold text-white-400 hover:text-white transition-colors duration-200 relative group"
             >
               {link.label}
               <span className="absolute -bottom-0.5 left-0 w-0 h-px bg-yellow-400 group-hover:w-full transition-all duration-300 rounded-full" />
@@ -327,7 +327,7 @@ function NavBar({ navigate }) {
             <button
               type="button"
               onClick={() => setManagementOpen(true)}
-              className={`group relative inline-flex items-center gap-1 text-sm font-bold transition-colors duration-200 ${
+              className={`group relative inline-flex items-center gap-1 text-base font-bold transition-colors duration-200 ${
                 managementOpen ? 'text-white' : 'text-white-400 hover:text-white'
               }`}
               aria-expanded={managementOpen}
@@ -393,7 +393,7 @@ function NavBar({ navigate }) {
             <button
               type="button"
               onClick={() => setWhoWeAreOpen(true)}
-              className={`group relative inline-flex items-center gap-1 text-sm font-bold transition-colors duration-200 ${
+              className={`group relative inline-flex items-center gap-1 text-base font-bold transition-colors duration-200 ${
                 whoWeAreOpen ? 'text-white' : 'text-white-400 hover:text-white'
               }`}
               aria-expanded={whoWeAreOpen}
@@ -1694,8 +1694,8 @@ function Landing() {
 
         <div className="relative max-w-4xl mx-auto px-4 sm:px-6 text-center">
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white font-heading leading-tight mb-4">
-            Ready to Make a<br />
-            <span style={{ color: THEME.yellowText }}>Difference?</span>
+            Be part of us<br />
+            <span style={{ color: THEME.yellowText }}>Join now</span>
           </h2>
           <p className="text-base sm:text-lg max-w-lg mx-auto mb-10 leading-relaxed" style={{ color: 'rgba(248, 240, 240, 0.88)' }}>
             Join KUSGAN and become part of a growing community dedicated to meaningful action and lasting impact.
@@ -1709,7 +1709,7 @@ function Landing() {
               style={{ boxShadow: '0 16px 48px rgba(0,0,0,0.4)' }}
             >
               <Handshake size={18} />
-              Join Us Today
+              Join now
             </button>
             <button
               type="button"
@@ -1728,7 +1728,7 @@ function Landing() {
       </section>
 
       {/* ── SERVICES ── */}
-      <section id="services" data-reveal className="reveal-on-scroll relative pt-20 pb-28 sm:pt-24 sm:pb-36">
+      <section id="services" data-reveal className="reveal-on-scroll relative pt-20 pb-10 sm:pt-24 sm:pb-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <SectionHeader
             title="Our Programs"
@@ -1744,7 +1744,7 @@ function Landing() {
 
       {/* —— LATEST NEWS —— */}
             {/* -- LATEST NEWS -- */}
-      <section data-reveal className="reveal-on-scroll relative pb-28 sm:pb-36">
+      <section data-reveal className="reveal-on-scroll relative pt-20 pb-28 sm:pt-24 sm:pb-36">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <SectionHeader title="Latest News" subtitle="Recent achievements and updates from KUSGAN Volunteers Inc." />
 
@@ -1775,7 +1775,7 @@ function Landing() {
                   return (
                     <article
                       key={item.id}
-                      className="group flex shrink-0 w-[260px] sm:w-[280px] flex-col rounded-3xl border border-slate-200 bg-white text-left transition-transform hover:-translate-y-0.5"
+                      className="group flex min-h-[420px] shrink-0 w-[260px] sm:min-h-[460px] sm:w-[280px] flex-col rounded-3xl border border-slate-200 bg-white text-left transition-transform hover:-translate-y-0.5"
                       role="button"
                       tabIndex={0}
                       onClick={() => setSelectedNewsItem(item)}
@@ -1786,7 +1786,7 @@ function Landing() {
                         }
                       }}
                     >
-                      <div className="h-36 w-full overflow-hidden rounded-t-3xl border-b border-slate-200 bg-slate-100">
+                      <div className="h-44 sm:h-48 w-full overflow-hidden rounded-t-3xl border-b border-slate-200 bg-slate-100">
                         {previewImageUrls.length > 0 ? (
                           <div className="flex h-full items-stretch gap-2 p-2">
                             {previewImageUrls.map((url, index) => (
