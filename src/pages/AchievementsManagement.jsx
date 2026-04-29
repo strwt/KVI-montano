@@ -828,25 +828,20 @@ export default function AchievementsManagement() {
           onClick={() => setExpandedId(null)}
         >
           <div
-            className="w-screen max-w-4xl overflow-hidden rounded-3xl border border-white/15 shadow-2xl"
-            style={{
-              background: 'rgba(4,18,33,0.82)',
-              backdropFilter: 'blur(22px)',
-              boxShadow: '0 35px 80px rgba(0,0,0,0.65)',
-            }}
+            className="calendar-done-modal w-screen max-w-4xl overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.18)]"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="flex items-start justify-between gap-4 border-b border-white/10 p-5 sm:p-6">
+            <div className="calendar-done-modal-header flex items-start justify-between gap-4 border-b border-gray-200 bg-white p-5 sm:p-6">
               <div className="min-w-0">
-                <p className="text-xs font-semibold tracking-[0.2em] uppercase text-white/60">Achievement</p>
-                <h3 className="mt-2 truncate text-xl font-semibold text-white">
+                <p className="text-xs font-semibold tracking-[0.2em] uppercase text-gray-500">Achievement</p>
+                <h3 className="mt-2 truncate text-xl font-semibold text-gray-800">
                   {String(expandedItem?.title || '').trim() || 'Untitled'}
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setExpandedId(null)}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/15 bg-white/5 text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-700"
                 aria-label="Close"
                 title="Close"
               >
@@ -854,51 +849,51 @@ export default function AchievementsManagement() {
               </button>
             </div>
 
-            <div className="max-h-[75vh] overflow-y-auto p-5 sm:p-6">
-              <div className="rounded-2xl border border-white/15 bg-white/10 p-4">
+            <div className="calendar-done-modal-body max-h-[75vh] overflow-y-auto p-5 sm:p-6">
+              <div className="calendar-done-card rounded-2xl border border-gray-200 bg-gray-50 p-4">
                 {editError ? (
-                  <div className="mb-3 rounded-xl border border-red-300/30 bg-red-500/10 px-3 py-2 text-sm text-red-100">
+                  <div className="mb-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
                     {editError}
                   </div>
                 ) : null}
 
                 <div className="grid gap-3 md:grid-cols-2">
-                  <label className="text-sm text-white/85">
+                  <label className="text-sm font-medium text-gray-700">
                     Title
                     <input
                       value={editDraft?.title ?? ''}
                       onChange={(e) => setEditDraft((prev) => ({ ...(prev || {}), title: e.target.value }))}
-                      className="mt-1 w-full rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-white/50 outline-none focus:border-white/25"
+                      className="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-red-500"
                       placeholder="Achievement title"
                     />
                   </label>
 
-                  <label className="text-sm text-white/85">
+                  <label className="text-sm font-medium text-gray-700">
                     Date & time
                     <input
                       type="datetime-local"
                       value={editDraft?.occurredAt ?? ''}
                       onChange={(e) => setEditDraft((prev) => ({ ...(prev || {}), occurredAt: e.target.value }))}
-                      className="mt-1 w-full rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-sm text-white outline-none focus:border-white/25"
+                      className="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-red-500"
                     />
                   </label>
 
-                  <label className="text-sm text-white/85 md:col-span-2">
+                  <label className="text-sm font-medium text-gray-700 md:col-span-2">
                     Location
                     <input
                       value={editDraft?.location ?? ''}
                       onChange={(e) => setEditDraft((prev) => ({ ...(prev || {}), location: e.target.value }))}
-                      className="mt-1 w-full rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-white/50 outline-none focus:border-white/25"
+                      className="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-red-500"
                       placeholder="Location"
                     />
                   </label>
 
-                  <label className="text-sm text-white/85 md:col-span-2">
+                  <label className="text-sm font-medium text-gray-700 md:col-span-2">
                     Description
                     <textarea
                       value={editDraft?.description ?? ''}
                       onChange={(e) => setEditDraft((prev) => ({ ...(prev || {}), description: e.target.value }))}
-                      className="mt-1 min-h-[110px] w-full resize-none rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-white/50 outline-none focus:border-white/25"
+                      className="mt-1 min-h-[110px] w-full resize-none rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-red-500"
                       placeholder="Description"
                     />
                   </label>
@@ -912,12 +907,12 @@ export default function AchievementsManagement() {
                   />
                 ) : null}
 
-                <div className="mt-4 rounded-2xl border border-white/15 bg-white/10 p-4">
-                  <p className="text-sm font-semibold text-white/90">Add images</p>
-                  <p className="mt-1 text-xs text-white/60">Up to {MAX_FILES} images only.</p>
+                <div className="mt-4 rounded-2xl border border-gray-200 bg-white p-4">
+                  <p className="text-sm font-semibold text-gray-800">Add images</p>
+                  <p className="mt-1 text-xs text-gray-500">Up to {MAX_FILES} images only.</p>
 
                   <div className="mt-3">
-                    <div className="flex min-h-[56px] items-center gap-3 rounded-2xl border border-white/15 bg-white/10 px-3 py-3 text-white shadow-sm">
+                    <div className="flex min-h-[56px] items-center gap-3 rounded-2xl border border-gray-200 bg-white px-3 py-3 text-gray-700 shadow-sm">
                       <label
                         className={`inline-flex cursor-pointer items-center justify-center rounded-xl bg-yellow-400 px-4 py-2 text-sm font-semibold text-slate-900 shadow-[0_8px_24px_rgba(250,204,21,0.35)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-yellow-300 ${
                           editSaving ? 'pointer-events-none opacity-70' : ''
@@ -926,7 +921,7 @@ export default function AchievementsManagement() {
                       >
                         Choose Files
                       </label>
-                      <span className="min-w-0 truncate text-sm text-white/75">
+                      <span className="min-w-0 truncate text-sm text-gray-600">
                         {editFiles.length ? `${editFiles.length} file(s) selected` : 'No file chosen'}
                       </span>
                     </div>
@@ -954,7 +949,7 @@ export default function AchievementsManagement() {
                       {editFilePreviews.map((entry) => (
                         <div
                           key={entry.url}
-                          className="h-20 w-20 overflow-hidden rounded-2xl border border-white/15 bg-white/10 shadow-sm"
+                          className="h-20 w-20 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm"
                         >
                           <img src={entry.url} alt="Preview" className="h-full w-full object-cover" />
                         </div>
@@ -967,7 +962,7 @@ export default function AchievementsManagement() {
                   <button
                     type="button"
                     onClick={handleSaveEdit}
-                    className="inline-flex h-10 items-center justify-center rounded-xl bg-yellow-300 px-4 text-sm font-semibold text-slate-900 shadow-[0_10px_26px_rgba(250,204,21,0.35)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-yellow-200 disabled:cursor-not-allowed disabled:opacity-70"
+                    className="inline-flex h-10 items-center justify-center rounded-xl bg-yellow-400 px-4 text-sm font-semibold text-slate-900 shadow-[0_10px_26px_rgba(250,204,21,0.35)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-70"
                     disabled={editSaving}
                   >
                     {editSaving ? 'Saving…' : 'Save'}
