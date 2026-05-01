@@ -35,6 +35,7 @@ import {
   insertSupabaseEvent,
   isSupabaseEnabled,
   markSupabaseEventDone,
+  setSupabaseEventsCache,
   updateSupabaseEvent,
 } from '../lib/supabaseEvents'
 import { insertAssignmentNotifications } from '../lib/supabaseNotifications'
@@ -896,6 +897,7 @@ function Calendar({ listOnly = false }) {
   const [visibleDoneTypedFieldIds, setVisibleDoneTypedFieldIds] = useState([])
   const eventRefs = useRef({})
   const handledRedirectRef = useRef(false)
+  const eventsLoadedRef = useRef(false)
   const routeCategory = searchParams.get('category') || ''
   const selectedCategoryKey = useMemo(() => parseCategoryQueryKey(routeCategory), [routeCategory])
 
@@ -924,6 +926,7 @@ function Calendar({ listOnly = false }) {
       const { data } = await fetchSupabaseEvents({ force: true })
       if (!active) return
       setEvents(data)
+      eventsLoadedRef.current = true
     }
 
     void load()
@@ -932,6 +935,11 @@ function Calendar({ listOnly = false }) {
       active = false
     }
   }, [supabaseEnabled, user?.id])
+
+  useEffect(() => {
+    if (!eventsLoadedRef.current) return
+    setSupabaseEventsCache(events)
+  }, [events])
 
   useEffect(() => {
     if (user?.role !== 'admin') return
