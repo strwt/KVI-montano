@@ -124,16 +124,6 @@ const SERVICES = [
   },
 ]
 
-const SERVICE_BY_KEY = SERVICES.reduce((acc, service) => {
-  acc[service.key] = service
-  return acc
-}, {})
-
-const COMPLETED_ACTIVITY_CATEGORY_ALIASES = {
-  relief_operation: 'relief',
-  fire_response: 'fire',
-}
-
 const PROGRAM_SLIDES = {
   environmental: [
     '/Programs/environmental.jpg',
@@ -604,20 +594,6 @@ function SectionHeader({ eyebrow, title, subtitle, centered = false }) {
   )
 }
 
-const formatLandingDate = (value) => {
-  const raw = String(value || '').trim()
-  if (!raw) return ''
-
-  const parsed = new Date(raw)
-  if (Number.isNaN(parsed.getTime())) return raw
-
-  return parsed.toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  })
-}
-
 const getYearsActive = (now = new Date()) => {
   const current = now instanceof Date ? now : new Date(now)
   if (Number.isNaN(current.getTime())) return 0
@@ -626,20 +602,6 @@ const getYearsActive = (now = new Date()) => {
   const anniversaryThisYear = new Date(current.getFullYear(), FOUNDING_DATE.getMonth(), FOUNDING_DATE.getDate())
   if (current < anniversaryThisYear) years -= 1
   return Math.max(0, years)
-}
-
-const splitDelimitedValues = (value) => {
-  if (Array.isArray(value)) {
-    return value.map(item => String(item || '').trim()).filter(Boolean)
-  }
-
-  const raw = String(value || '').trim()
-  if (!raw) return []
-
-  return raw
-    .split('|')
-    .map(item => String(item || '').trim())
-    .filter(Boolean)
 }
 
 const HoverSlideshow = forwardRef(function HoverSlideshow({ images, alt, className, intervalMs = 900, isActive = false }, ref) {
@@ -764,139 +726,6 @@ function ProgramCard({ service, reverse }) {
   )
 }
 
-function CompletedActivityCard({ event }) {
-  const categoryKey = String(event?.category || '').trim()
-  const programKey = COMPLETED_ACTIVITY_CATEGORY_ALIASES[categoryKey] || categoryKey
-  const service = SERVICE_BY_KEY[programKey] || null
-  const slides = PROGRAM_SLIDES[programKey] || []
-  const iconBg = service?.iconBg || 'rgba(255,255,255,0.08)'
-  const iconColor = service?.iconColor || '#fde68a'
-  const Icon = service?.icon || Activity
-
-  const title = String(event?.title || '').trim() || service?.title || 'Completed Activity'
-  const description = String(event?.content || '').trim()
-  const completedAt = formatLandingDate(event?.completedAt || event?.dateTime || event?.createdAt)
-  const location = String(event?.location || event?.address || '').trim()
-  const partners = splitDelimitedValues(event?.categoryData?.partners)
-  const contributorCount = splitDelimitedValues(event?.categoryData?.contributorMemberIds).length
-
-  return (
-    <article
-      className="group flex h-full flex-col overflow-hidden rounded-3xl border border-white/12 bg-white/5 backdrop-blur-xl transition-transform duration-300 ease-out hover:-translate-y-1 hover:border-white/20 hover:bg-white/7"
-      style={{
-        boxShadow: '0 18px 42px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.12)',
-      }}
-    >
-      <div className="relative min-h-[220px] sm:min-h-[250px]">
-        {slides.length ? (
-          <HoverSlideshow
-            images={slides}
-            alt={title}
-            className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
-            intervalMs={1200}
-            isActive={false}
-          />
-        ) : (
-          <div
-            className="absolute inset-0 flex items-end p-5"
-            style={{
-              background: `linear-gradient(145deg, ${service?.accent || '#1b7ff2'}33 0%, rgba(4,18,33,0.92) 100%)`,
-            }}
-          >
-            <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 backdrop-blur-sm">
-              <div
-                className="flex h-12 w-12 items-center justify-center rounded-2xl"
-                style={{ background: iconBg, color: iconColor }}
-              >
-                <Icon size={22} />
-              </div>
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/60">Completed</p>
-                <p className="text-sm font-semibold text-white">{service?.title || 'Activity'}</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div
-          className="absolute inset-0"
-          style={{
-            background: 'linear-gradient(180deg, rgba(4,18,33,0.05) 0%, rgba(4,18,33,0.15) 45%, rgba(4,18,33,0.9) 100%)',
-          }}
-        />
-
-        <div className="absolute left-4 right-4 bottom-4 flex items-end justify-between gap-3">
-          <div className="min-w-0">
-            <span
-              className="inline-flex max-w-full items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/90"
-              style={{
-                background: 'rgba(0,0,0,0.28)',
-                borderColor: 'rgba(255,255,255,0.15)',
-              }}
-            >
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-              Done Activity
-            </span>
-          </div>
-          {completedAt ? (
-            <span className="rounded-full border border-white/15 bg-black/25 px-3 py-1 text-[11px] font-semibold text-white/80 backdrop-blur-sm">
-              {completedAt}
-            </span>
-          ) : null}
-        </div>
-      </div>
-
-      <div className="flex flex-1 flex-col p-5 sm:p-6">
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: service?.accent || THEME.yellowText }}>
-            {service?.title || title}
-          </p>
-          {location ? (
-            <span className="truncate rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] font-semibold text-white/70">
-              {location}
-            </span>
-          ) : null}
-        </div>
-
-        <h3 className="mt-3 text-xl font-bold text-white font-heading leading-tight line-clamp-2">
-          {title}
-        </h3>
-
-        {description ? (
-          <p className="mt-3 text-sm leading-6 text-white/75 line-clamp-4">
-            {description}
-          </p>
-        ) : (
-          <p className="mt-3 text-sm leading-6 text-white/55">
-            No additional description was provided for this activity.
-          </p>
-        )}
-
-        <div className="mt-5 flex flex-wrap gap-2">
-          {partners.slice(0, 3).map(partner => (
-            <span
-              key={partner}
-              className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold text-white/75"
-            >
-              {partner}
-            </span>
-          ))}
-          {partners.length > 3 ? (
-            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold text-white/60">
-              +{partners.length - 3} partners
-            </span>
-          ) : null}
-          {contributorCount > 0 ? (
-            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold text-white/75">
-              {contributorCount} contributors
-            </span>
-          ) : null}
-        </div>
-      </div>
-    </article>
-  )
-}
-
 function OrgPersonCard({ person, large = false, size = 'normal' }) {
   const Icon = person.icon
   const position = person.position || person.role
@@ -1004,7 +833,7 @@ function Landing() {
   const [publicCommitteesLoaded, setPublicCommitteesLoaded] = useState(false)
   const [publicVolunteerCount, setPublicVolunteerCount] = useState(null)
   const [committeeDragging, setCommitteeDragging] = useState(false)
-  const [completedActivities, setCompletedActivities] = useState([])
+  const [completedActivityCount, setCompletedActivityCount] = useState(0)
   const [completedActivitiesLoading, setCompletedActivitiesLoading] = useState(false)
   const [latestNewsItems, setLatestNewsItems] = useState([])
   const [latestNewsLoading, setLatestNewsLoading] = useState(false)
@@ -1151,15 +980,11 @@ function Landing() {
       cachedEvents = getSupabaseEventsCache()
     }
 
-    const mapped = (Array.isArray(cachedEvents) ? cachedEvents : [])
+    const count = (Array.isArray(cachedEvents) ? cachedEvents : [])
       .filter(event => String(event?.status || '').trim().toLowerCase() === 'done')
-      .sort((a, b) => {
-        const aTime = new Date(a.completedAt || a.dateTime || a.createdAt || 0).getTime()
-        const bTime = new Date(b.completedAt || b.dateTime || b.createdAt || 0).getTime()
-        return bTime - aTime
-      })
+      .length
 
-    setCompletedActivities(mapped)
+    setCompletedActivityCount(count)
     setCompletedActivitiesLoading(false)
   }
 
@@ -1418,7 +1243,6 @@ function Landing() {
         ? Math.max(publicVolunteerCount, savedVolunteerCount)
         : savedVolunteerCount
     const volunteerValue = supabaseEnabled && publicVolunteerCount === null && volunteerCount === 0 ? '...' : String(volunteerCount)
-    const completedActivityCount = Array.isArray(completedActivities) ? completedActivities.length : 0
     const activityValue = supabaseEnabled && completedActivitiesLoading && completedActivityCount === 0 ? '...' : String(completedActivityCount)
     const yearsActiveValue = String(getYearsActive())
 
@@ -1428,7 +1252,7 @@ function Landing() {
       { label: 'Committees', value: committeeValue, icon: LayoutGrid },
       { label: 'Years Active', value: yearsActiveValue, icon: CalendarDays },
     ]
-  }, [completedActivities, completedActivitiesLoading, publicCommitteesLoaded, publicVolunteerCount, savedCommitteeCount, savedVolunteerCount, supabaseEnabled])
+  }, [completedActivityCount, completedActivitiesLoading, publicCommitteesLoaded, publicVolunteerCount, savedCommitteeCount, savedVolunteerCount, supabaseEnabled])
 
   const contextMemberPeople = useMemo(() => {
     const members = getAllMembers ? getAllMembers() : []
@@ -2002,29 +1826,6 @@ function Landing() {
             ))}
           </div>
 
-          <div className="mt-16 sm:mt-20">
-            <SectionHeader
-              eyebrow="Activities"
-              title="Completed Activities"
-              subtitle="All done activities recorded in the system are shown here."
-            />
-
-            {completedActivitiesLoading ? (
-              <div className="rounded-3xl border border-white/12 bg-white/5 p-6 text-center text-sm text-white/70 backdrop-blur-xl">
-                Loading completed activities...
-              </div>
-            ) : completedActivities.length === 0 ? (
-              <div className="rounded-3xl border border-white/12 bg-white/5 p-6 text-center text-sm text-white/70 backdrop-blur-xl">
-                No completed activities yet.
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
-                {completedActivities.map(event => (
-                  <CompletedActivityCard key={event.id} event={event} />
-                ))}
-              </div>
-            )}
-          </div>
         </div>
       </section>
 
