@@ -2,7 +2,7 @@ import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState }
 import { useNavigate } from 'react-router-dom'
 import { KUSGAN_VOLUNTEERS } from '../data/kusganVolunteers'
 import { supabase } from '../lib/supabaseClient'
-import { isSupabaseEnabled } from '../lib/supabaseEvents'
+import { fetchSupabaseEvents, getSupabaseEventsCache, isSupabaseEnabled } from '../lib/supabaseEvents'
 import { useAuth } from '../context/AuthContext'
 import {
   LogIn,
@@ -32,6 +32,7 @@ const DONATION_BANK_NAME = 'BDO Unibank, Inc.'
 const DONATION_ACCOUNT_NAME = 'Kusgan Volunteers Inc.'
 const DONATION_ACCOUNT_NUMBER = '003168018017'
 const DONATION_NOTIFICATION_EMAIL = 'kusganvolunteersinc@gmail.com'
+const FOUNDING_DATE = new Date('2020-11-07T00:00:00')
 
 const THEME = {
   // Royal blue palette (keeps enough contrast for white text)
@@ -595,6 +596,16 @@ function SectionHeader({ eyebrow, title, subtitle, centered = false }) {
   )
 }
 
+const getYearsActive = (now = new Date()) => {
+  const current = now instanceof Date ? now : new Date(now)
+  if (Number.isNaN(current.getTime())) return 0
+
+  let years = current.getFullYear() - FOUNDING_DATE.getFullYear()
+  const anniversaryThisYear = new Date(current.getFullYear(), FOUNDING_DATE.getMonth(), FOUNDING_DATE.getDate())
+  if (current < anniversaryThisYear) years -= 1
+  return Math.max(0, years)
+}
+
 const HoverSlideshow = forwardRef(function HoverSlideshow({ images, alt, className, intervalMs = 900, isActive = false }, ref) {
   const [activeIndex, setActiveIndex] = useState(0)
   const [disabledImages, setDisabledImages] = useState([])
@@ -822,7 +833,10 @@ function Landing() {
   const [donationSubmitError, setDonationSubmitError] = useState('')
   const [publicCommittees, setPublicCommittees] = useState([])
   const [publicCommitteesLoaded, setPublicCommitteesLoaded] = useState(false)
+  const [publicVolunteerCount, setPublicVolunteerCount] = useState(null)
   const [committeeDragging, setCommitteeDragging] = useState(false)
+  const [completedActivityCount, setCompletedActivityCount] = useState(0)
+  const [completedActivitiesLoading, setCompletedActivitiesLoading] = useState(false)
   const [latestNewsItems, setLatestNewsItems] = useState([])
   const [latestNewsLoading, setLatestNewsLoading] = useState(false)
   const [latestNewsPage, setLatestNewsPage] = useState(1)
@@ -961,6 +975,21 @@ function Landing() {
     return []
   }
 
+  const loadCompletedActivities = async () => {
+    let cachedEvents = getSupabaseEventsCache()
+    if (cachedEvents.length === 0 && supabaseEnabled && supabase) {
+      await fetchSupabaseEvents({ force: true })
+      cachedEvents = getSupabaseEventsCache()
+    }
+
+    const count = (Array.isArray(cachedEvents) ? cachedEvents : [])
+      .filter(event => String(event?.status || '').trim().toLowerCase() === 'done')
+      .length
+
+    setCompletedActivityCount(count)
+    setCompletedActivitiesLoading(false)
+  }
+
   const selectedNewsImages = useMemo(() => {
     if (!selectedNewsItem) return []
     const paths = normalizeAchievementImagePaths(selectedNewsItem?.image_paths)
@@ -1011,6 +1040,21 @@ function Landing() {
     void loadLatestNews(1)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supabaseEnabled])
+
+  useEffect(() => {
+    setCompletedActivitiesLoading(true)
+    void loadCompletedActivities()
+
+    const refreshCompletedActivities = () => void loadCompletedActivities()
+    window.addEventListener('kusgan-supabase-events-cache-updated', refreshCompletedActivities)
+    window.addEventListener('storage', refreshCompletedActivities)
+
+    return () => {
+      window.removeEventListener('kusgan-supabase-events-cache-updated', refreshCompletedActivities)
+      window.removeEventListener('storage', refreshCompletedActivities)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     if (!selectedNewsItem) return undefined
@@ -1107,6 +1151,7 @@ function Landing() {
     if (!isSupabaseEnabled()) return undefined
 
     let active = true
+    let channel = null
 
     const load = async () => {
       setPublicCommitteesLoaded(false)
@@ -1142,8 +1187,26 @@ function Landing() {
 
     void load()
 
+    try {
+      channel = supabase
+        .channel('landing-committee-stats')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'committees' }, () => {
+          void load()
+        })
+        .subscribe()
+    } catch {
+      // ignore
+    }
+
     return () => {
       active = false
+      if (channel) {
+        try {
+          supabase.removeChannel(channel)
+        } catch {
+          // ignore
+        }
+      }
     }
   }, [supabaseEnabled])
 
@@ -1162,15 +1225,36 @@ function Landing() {
     return unique.size
   }, [committees, publicCommittees])
 
+  const savedVolunteerCount = useMemo(() => {
+    const members = getAllMembers ? getAllMembers() : []
+    const admins = getAdmins ? getAdmins() : []
+    const people = [...(Array.isArray(members) ? members : []), ...(Array.isArray(admins) ? admins : [])]
+    const unique = new Set(
+      people
+        .map(member => String(member?.id || member?.idNumber || member?.id_number || member?.name || '').trim())
+        .filter(Boolean)
+    )
+
+    return unique.size
+  }, [getAdmins, getAllMembers])
+
   const stats = useMemo(() => {
     const committeeValue = supabaseEnabled && !publicCommitteesLoaded ? '...' : String(savedCommitteeCount)
+    const volunteerCount =
+      typeof publicVolunteerCount === 'number'
+        ? Math.max(publicVolunteerCount, savedVolunteerCount)
+        : savedVolunteerCount
+    const volunteerValue = supabaseEnabled && publicVolunteerCount === null && volunteerCount === 0 ? '...' : String(volunteerCount)
+    const activityValue = supabaseEnabled && completedActivitiesLoading && completedActivityCount === 0 ? '...' : String(completedActivityCount)
+    const yearsActiveValue = String(getYearsActive())
+
     return [
-      { label: 'Volunteers', value: '100+', icon: Users },
-      { label: 'Activities', value: '150+', icon: FolderCheck },
+      { label: 'Volunteers', value: volunteerValue, icon: Users },
+      { label: 'Activities', value: activityValue, icon: FolderCheck },
       { label: 'Committees', value: committeeValue, icon: LayoutGrid },
-      { label: 'Years Active', value: '5', icon: CalendarDays },
+      { label: 'Years Active', value: yearsActiveValue, icon: CalendarDays },
     ]
-  }, [publicCommitteesLoaded, savedCommitteeCount, supabaseEnabled])
+  }, [completedActivityCount, completedActivitiesLoading, publicCommitteesLoaded, publicVolunteerCount, savedCommitteeCount, savedVolunteerCount, supabaseEnabled])
 
   const contextMemberPeople = useMemo(() => {
     const members = getAllMembers ? getAllMembers() : []
@@ -1269,7 +1353,9 @@ function Landing() {
 	          return
         }
         if (isMounted) {
-          setKusganVolunteerPeople(normalizePeople(data))
+          const people = normalizePeople(data)
+          setKusganVolunteerPeople(people)
+          setPublicVolunteerCount(people.length)
           landingMembersLoadedRef.current = true
           setLandingMembersLoading(false)
         }
@@ -1741,6 +1827,7 @@ function Landing() {
               <ProgramCard key={service.key} service={service} reverse={index % 2 === 1} />
             ))}
           </div>
+
         </div>
       </section>
 

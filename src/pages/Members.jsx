@@ -24,8 +24,6 @@ import { useConfirm } from '../context/useConfirm'
 import { useNavigate } from 'react-router-dom'
 import dayjs from 'dayjs'
 
-/* eslint-disable react-hooks/set-state-in-effect */
-
 const ROLE_OPTIONS = [
   { value: 'member', label: 'Member' },
   { value: 'oic', label: 'OIC' },
@@ -33,10 +31,42 @@ const ROLE_OPTIONS = [
 ]
 
 const ROLE_FILTER_OPTIONS = [
+  { value: 'all_users', label: 'All Users' },
   { value: 'member', label: 'Member' },
   { value: 'admin', label: 'Admin' },
 ]
 const BLOOD_TYPE_OPTIONS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
+
+let jsPdfLoaderPromise = null
+const loadJsPdf = () => {
+  if (typeof window === 'undefined') return Promise.resolve(null)
+  if (window.jspdf?.jsPDF) return Promise.resolve(window.jspdf.jsPDF)
+  if (jsPdfLoaderPromise) return jsPdfLoaderPromise
+
+  jsPdfLoaderPromise = new Promise((resolve, reject) => {
+    const existing = document.getElementById('jspdf-cdn')
+    if (existing && window.jspdf?.jsPDF) {
+      resolve(window.jspdf.jsPDF)
+      return
+    }
+
+    if (!existing) {
+      const script = document.createElement('script')
+      script.id = 'jspdf-cdn'
+      script.src = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js'
+      script.async = true
+      script.onload = () => resolve(window.jspdf?.jsPDF || null)
+      script.onerror = () => reject(new Error('Failed to load PDF library'))
+      document.body.appendChild(script)
+      return
+    }
+
+    existing.addEventListener('load', () => resolve(window.jspdf?.jsPDF || null))
+    existing.addEventListener('error', () => reject(new Error('Failed to load PDF library')))
+  })
+
+  return jsPdfLoaderPromise
+}
 
 function Members() {
   const {
@@ -54,7 +84,7 @@ function Members() {
   const navigate = useNavigate()
   const confirm = useConfirm()
   const [searchQuery, setSearchQuery] = useState('')
-  const [roleFilter, setRoleFilter] = useState('member')
+  const [roleFilter, setRoleFilter] = useState('all_users')
   const [committeeFilter, setCommitteeFilter] = useState('all')
   const [insuranceFilter, setInsuranceFilter] = useState('all')
   const [currentPage, setCurrentPage] = useState(1)
@@ -63,6 +93,7 @@ function Members() {
   const [selectedMemberIds, setSelectedMemberIds] = useState(() => new Set())
   const [bulkDeleteBusy, setBulkDeleteBusy] = useState(false)
   const [bulkDeleteError, setBulkDeleteError] = useState('')
+  const [exportingPdf, setExportingPdf] = useState(false)
   const selectAllRef = useRef(null)
   const [newMemberImagePreviewUrl, setNewMemberImagePreviewUrl] = useState('')
   const [newMemberImageFile, setNewMemberImageFile] = useState(null)
@@ -142,12 +173,25 @@ function Members() {
   }, [committeeFilter, committeeOptions])
 
   useEffect(() => {
-    if (roleFilter === 'member') return
+    if (roleFilter === 'member' || roleFilter === 'all_users') return
     if (committeeFilter === 'all') return
     setCommitteeFilter('all')
   }, [committeeFilter, roleFilter])
 
-  const visibleUsers = roleFilter === 'admin' ? admins : members
+  const visibleUsers = useMemo(() => {
+    if (roleFilter === 'admin') return admins
+    if (roleFilter === 'member') return members
+
+    const combined = [...members, ...admins]
+    const seen = new Set()
+    return combined.filter(member => {
+      const id = String(member?.id || '').trim() || String(member?.email || '').trim()
+      if (!id) return true
+      if (seen.has(id)) return false
+      seen.add(id)
+      return true
+    })
+  }, [admins, members, roleFilter])
 
   const filteredMembers = visibleUsers.filter(member => {
     const memberCommitteeRole = member?.committeeRole || member?.committee_role || 'Member'
@@ -157,7 +201,8 @@ function Members() {
       member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (member.email || member.idNumber || '').toLowerCase().includes(searchQuery.toLowerCase())
     const matchesCommittee =
-      roleFilter !== 'member' ||
+      roleFilter === 'admin' ||
+      roleFilter === 'all_users' ||
       committeeFilter === 'all' ||
       member.committee === committeeFilter
     const normalizedInsurance = String(member?.insuranceStatus || '').trim().toLowerCase()
@@ -213,6 +258,99 @@ function Members() {
       }
       return next
     })
+  }
+
+  const handleExportMembersPdf = async () => {
+    if (!isAdmin || exportingPdf) return
+    setExportingPdf(true)
+
+    try {
+      const JsPDF = await loadJsPdf()
+      if (!JsPDF) throw new Error('PDF generator unavailable')
+
+      const doc = new JsPDF({ unit: 'pt', format: 'a4' })
+      const pageWidth = doc.internal.pageSize.getWidth()
+      const margin = 36
+      const tableWidth = pageWidth - margin * 2
+      let y = 42
+
+      doc.setFontSize(18)
+      doc.text('User Management', margin, y)
+      y += 18
+      doc.setFontSize(10)
+      doc.text(`Generated: ${dayjs().format('YYYY-MM-DD HH:mm:ss')}`, margin, y)
+      y += 14
+      doc.text(`Role: ${roleFilter === 'all_users' ? 'All Users' : (roleFilter === 'member' ? 'Members' : 'Admins')}`, margin, y)
+      y += 14
+      doc.text(`Committee: ${roleFilter === 'admin' ? 'N/A' : (committeeFilter === 'all' ? 'All' : committeeFilter)}`, margin, y)
+      y += 14
+      doc.text(`Insurance: ${insuranceFilter === 'all' ? 'All' : (insuranceFilter === 'insured' ? 'Insured' : 'Not Insured')}`, margin, y)
+      y += 14
+      doc.text(`Search: ${searchQuery.trim() || 'All'}`, margin, y)
+      y += 18
+
+      const columns = [
+        { label: 'Name', width: 104, value: member => member.name || 'N/A' },
+        {
+          label: 'Type',
+          width: 52,
+          value: member => {
+            const memberCommitteeRole = member?.committeeRole || member?.committee_role || 'Member'
+            return memberCommitteeRole === 'OIC' ? 'OIC' : (member.role === 'admin' ? 'Admin' : 'Member')
+          },
+        },
+        { label: 'ID', width: 74, value: member => member.idNumber || 'N/A' },
+        { label: 'Email', width: 118, value: member => member.email || 'N/A' },
+        { label: 'Committee', width: 76, value: member => member.committee || 'N/A' },
+        { label: 'Contact', width: 82, value: member => member.contactNumber || 'N/A' },
+        { label: 'Blood', width: 54, value: member => member.bloodType || 'N/A' },
+        { label: 'Status', width: 64, value: member => member.insuranceStatus || 'N/A' },
+      ]
+
+      const scale = tableWidth / columns.reduce((sum, col) => sum + col.width, 0)
+      const scaledColumns = columns.map(col => ({ ...col, width: col.width * scale }))
+
+      const renderHeader = () => {
+        doc.setFillColor(245, 245, 245)
+        doc.rect(margin, y, tableWidth, 18, 'F')
+        let x = margin + 4
+        scaledColumns.forEach(col => {
+          doc.text(col.label, x, y + 12)
+          x += col.width
+        })
+        y += 22
+      }
+
+      doc.setFontSize(8)
+      renderHeader()
+
+      filteredMembers.forEach(member => {
+        const rowValues = scaledColumns.map(col => doc.splitTextToSize(String(col.value(member) || ''), col.width - 8))
+        const rowHeight = Math.max(...rowValues.map(parts => parts.length * 10)) + 6
+
+        if (y + rowHeight > 800) {
+          doc.addPage()
+          y = 42
+          renderHeader()
+        }
+
+        doc.rect(margin, y, tableWidth, rowHeight)
+        let x = margin + 4
+        rowValues.forEach((parts, idx) => {
+          parts.forEach((line, lineIndex) => {
+            doc.text(line, x, y + 11 + lineIndex * 10)
+          })
+          x += scaledColumns[idx].width
+        })
+        y += rowHeight
+      })
+
+      doc.save(`users_${dayjs().format('YYYYMMDD_HHmmss')}.pdf`)
+    } catch (error) {
+      alert(error?.message || 'Failed to generate PDF.')
+    } finally {
+      setExportingPdf(false)
+    }
   }
 
 
@@ -800,8 +938,8 @@ function Members() {
       )}
 
       <div className="mb-4 rounded-2xl border border-white/10 bg-white/5 p-4 shadow-[0_10px_20px_rgba(0,0,0,0.25)] backdrop-blur-md">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-          <div className="relative">
+        <div className="space-y-3">
+          <div className="relative w-full">
             <Search
               className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-slate-700"
               size={18}
@@ -818,7 +956,8 @@ function Members() {
               className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-10 pr-4 text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
             />
           </div>
-          <div className="relative">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+            <div className="relative flex-1">
             <Filter
               className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-slate-700"
               size={18}
@@ -833,52 +972,61 @@ function Members() {
               }}
               className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-10 pr-4 text-slate-900 shadow-sm focus:border-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
             >
-              {ROLE_FILTER_OPTIONS.map(roleOption => (
-                <option key={roleOption.value} value={roleOption.value}>
-                  {roleOption.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          {roleFilter === 'member' ? (
-            <div>
-              <select
-                value={committeeFilter}
-                onChange={e => {
-                  setCurrentPage(1)
-                  setCommitteeFilter(e.target.value)
-                }}
-                className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2 text-slate-900 shadow-sm focus:border-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
-              >
-                <option value="all">All Committees</option>
-                {committeeOptions.map(committee => (
-                  <option key={committee} value={committee}>
-                    {committee}
+                {ROLE_FILTER_OPTIONS.map(roleOption => (
+                  <option key={roleOption.value} value={roleOption.value}>
+                    {roleOption.label}
                   </option>
                 ))}
               </select>
             </div>
-          ) : (
-            <div />
-          )}
-          <div className="relative">
-            <Shield
-              className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-slate-700"
-              size={18}
-              strokeWidth={2.25}
-            />
-            <select
-              value={insuranceFilter}
-              onChange={e => {
-                setCurrentPage(1)
-                setInsuranceFilter(e.target.value)
-              }}
-              className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-10 pr-4 text-slate-900 shadow-sm focus:border-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
-            >
-              <option value="all">All Insurance</option>
-              <option value="insured">Insured</option>
-              <option value="not_insured">Not Insured</option>
-            </select>
+            {roleFilter !== 'admin' ? (
+              <div className="flex-1">
+                <select
+                  value={committeeFilter}
+                  onChange={e => {
+                    setCurrentPage(1)
+                    setCommitteeFilter(e.target.value)
+                  }}
+                  className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2 text-slate-900 shadow-sm focus:border-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
+                >
+                  <option value="all">All Committees</option>
+                  {committeeOptions.map(committee => (
+                    <option key={committee} value={committee}>
+                      {committee}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : null}
+            <div className="relative flex-1">
+              <Shield
+                className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-slate-700"
+                size={18}
+                strokeWidth={2.25}
+              />
+              <select
+                value={insuranceFilter}
+                onChange={e => {
+                  setCurrentPage(1)
+                  setInsuranceFilter(e.target.value)
+                }}
+                className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-10 pr-4 text-slate-900 shadow-sm focus:border-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
+              >
+                <option value="all">All Insurance</option>
+                <option value="insured">Insured</option>
+                <option value="not_insured">Not Insured</option>
+              </select>
+            </div>
+            <div className="flex-1">
+              <button
+                type="button"
+                onClick={handleExportMembersPdf}
+                disabled={exportingPdf || filteredMembers.length === 0}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-yellow-300/30 bg-yellow-400 px-4 py-2 text-sm font-semibold text-slate-900 transition-all duration-200 hover:scale-[1.01] hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {exportingPdf ? 'Exporting PDF...' : 'Export PDF'}
+              </button>
+            </div>
           </div>
         </div>
       </div>

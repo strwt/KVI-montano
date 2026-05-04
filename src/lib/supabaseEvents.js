@@ -4,12 +4,61 @@ import { isSupabaseConfigured, supabase } from './supabaseClient'
 export const isSupabaseEnabled = () => Boolean(isSupabaseConfigured && supabase)
 
 const EVENTS_CACHE_TTL_MS = 10_000
+const EVENTS_CACHE_STORAGE_KEY = 'kusgan_supabase_events_cache_v1'
 let eventsCache = { at: 0, data: [] }
 let eventsInflight = null
+
+const readPersistedEventsCache = () => {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return []
+    const raw = window.localStorage.getItem(EVENTS_CACHE_STORAGE_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed?.data) ? parsed.data : []
+  } catch {
+    return []
+  }
+}
+
+const persistEventsCache = (data) => {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return
+    window.localStorage.setItem(
+      EVENTS_CACHE_STORAGE_KEY,
+      JSON.stringify({ at: Date.now(), data: Array.isArray(data) ? data : [] })
+    )
+    window.dispatchEvent(new Event('kusgan-supabase-events-cache-updated'))
+  } catch {
+    // ignore
+  }
+}
 
 export const invalidateSupabaseEventsCache = () => {
   eventsCache = { at: 0, data: [] }
   eventsInflight = null
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.removeItem(EVENTS_CACHE_STORAGE_KEY)
+    }
+  } catch {
+    // ignore
+  }
+}
+
+export const setSupabaseEventsCache = (data) => {
+  const mapped = Array.isArray(data) ? data : []
+  eventsCache = { at: Date.now(), data: mapped }
+  persistEventsCache(mapped)
+}
+
+export const getSupabaseEventsCache = () => {
+  if (eventsCache.at && Array.isArray(eventsCache.data)) return eventsCache.data
+  const persisted = readPersistedEventsCache()
+  if (persisted.length > 0) {
+    eventsCache = { at: Date.now(), data: persisted }
+    return persisted
+  }
+  return []
 }
 
 const normalizeEventCategoryKey = (value) =>
@@ -86,7 +135,7 @@ export const fetchSupabaseEvents = async (options = {}) => {
 
     if (error) return { data: [], error }
     const mapped = Array.isArray(data) ? data.map(mapEventRowToEvent).filter(Boolean) : []
-    eventsCache = { at: Date.now(), data: mapped }
+    setSupabaseEventsCache(mapped)
     return { data: mapped, error: null }
   })().finally(() => {
     eventsInflight = null
