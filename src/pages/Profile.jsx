@@ -162,7 +162,7 @@ function Profile() {
 
             <div
               ref={menuRef}
-              className="relative self-start flex items-center gap-2"
+              className="relative self-start flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:items-center"
               onMouseEnter={clearAutoCloseTimeout}
               onMouseLeave={() => {
                 if (showEditOptions) scheduleAutoClose()
@@ -182,7 +182,7 @@ function Profile() {
                 }}
                 aria-label={t('Profile actions')}
                 ref={triggerRef}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-yellow-400 px-6 py-3 text-sm font-semibold text-slate-900 transition-all duration-200 hover:-translate-y-0.5 hover:bg-yellow-300"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-yellow-400 px-6 py-3 text-sm font-semibold text-slate-900 transition-all duration-200 hover:-translate-y-0.5 hover:bg-yellow-300 sm:w-auto"
                 style={{ boxShadow: '0 8px 24px rgba(250,204,21,0.35)' }}
               >
                 <Edit2 size={16} />
@@ -194,7 +194,7 @@ function Profile() {
                   ref={panelRef}
                   role="menu"
                   aria-label={t('Profile actions')}
-                  className="absolute right-0 top-12 z-30 w-60 overflow-hidden rounded-2xl border border-slate-200 bg-[white] p-2.5 text-black"
+                  className="relative z-30 mt-2 w-full overflow-hidden rounded-2xl border border-slate-200 bg-[white] p-2.5 text-black sm:absolute sm:right-0 sm:top-12 sm:mt-0 sm:w-60"
                   onMouseEnter={clearAutoCloseTimeout}
                   onMouseLeave={scheduleAutoClose}
                   style={{
