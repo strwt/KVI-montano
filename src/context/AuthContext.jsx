@@ -1137,8 +1137,7 @@ export function AuthProvider({ children }) {
 		      if (!data) {
 		        return {
 		          success: false,
-		          message:
-		            'No account found for that ID number. Ask an admin to set your ID number in the profiles table, then try again.',
+		          message: 'Wrong Username or Password.',
 		        }
 		      }
 		      emailForAuth = String(data || '').trim().toLowerCase()
@@ -1151,8 +1150,7 @@ export function AuthProvider({ children }) {
 		      if (!emailForAuth) {
 		        return {
 		          success: false,
-		          message:
-		            'No account found for that ID number. Ask an admin to set your ID number in the profiles table, then try again.',
+		          message: 'Wrong Username or Password.',
 		        }
 		      }
 		    } catch (error) {
@@ -1176,7 +1174,7 @@ export function AuthProvider({ children }) {
               return { success: false, message: 'Email not confirmed yet. Please confirm your email and try again.' }
             }
             if (/invalid login credentials/i.test(msg)) {
-              return { success: false, message: 'Invalid ID number or password.' }
+              return { success: false, message: 'Wrong Username or Password.' }
             }
             return { success: false, message: msg || 'Login failed.' }
           }

@@ -23,6 +23,8 @@ import {
   X,
   ArrowRight,
   ChevronDown,
+  Phone,
+  Mail,
 } from 'lucide-react'
 
 const HERO_IMAGE = '/kvi.png'
@@ -2384,13 +2386,15 @@ function Landing() {
               
               <div className="space-y-4 text-sm text-slate-600 max-w-sm">
                 <p className="leading-relaxed flex flex-wrap items-baseline justify-start gap-x-2">
-                  <span className="text-slate-700 shrink-0">Contact number:</span>
+                  <Phone size={16} className="text-slate-700 shrink-0" aria-hidden="true" />
+                  <span className="sr-only">Contact number:</span>
                   <a href="tel:09676651777" className="hover:text-slate-900 transition-colors tabular-nums">
                     09676651777
                   </a>
                 </p>
                 <p className="leading-relaxed flex flex-wrap items-baseline justify-start gap-x-2">
-                  <span className="text-slate-700 shrink-0">Email:</span>
+                  <Mail size={16} className="text-slate-700 shrink-0" aria-hidden="true" />
+                  <span className="sr-only">Email:</span>
                   <a
                     href="mailto:kusganvolunteersinc@gmail.com"
                     className="hover:text-slate-900 transition-colors break-all min-w-0"

@@ -1428,7 +1428,7 @@ const getFieldValue = (event, key, fallbackKeys = []) => {
 			                          )
 			                        })}
 			                        {numericKeys.length > 0 && (
-			                          <tr className="font-semibold text-neutral-900 dark:text-zinc-100">
+			                          <tr className="font-semibold text-[black]">
 			                            <td className="pt-3 pr-4" colSpan={2}>Totals</td>
 			                            {numericKeys.map(key => (
 			                              <td key={`total-${categoryKey}-${key}`} className="pt-3 pr-4 whitespace-nowrap">{formatNumber(totals[key])}</td>

@@ -150,11 +150,11 @@ const buildCategoryColorMap = (keys = []) => {
 }
 
 const FIELD_TYPES = [
-  { value: 'text', label: 'Text' },
   { value: 'number', label: 'Number' },
 ]
 
 const LEGACY_FIELD_TYPES = [
+  { value: 'text', label: 'Text (Legacy)' },
   { value: 'date', label: 'Date (Legacy)' },
   { value: 'boolean', label: 'Boolean (Legacy)' },
 ]
@@ -276,7 +276,7 @@ function CategoryManagement() {
   )
 
   const [categoryName, setCategoryName] = useState('')
-  const [fields, setFields] = useState([{ fieldId: null, fieldName: '', fieldType: '' }])
+  const [fields, setFields] = useState([{ fieldId: null, fieldName: '', fieldType: 'number' }])
   const [editingCategory, setEditingCategory] = useState(null)
   const [originalFields, setOriginalFields] = useState([])
   const [formError, setFormError] = useState('')
@@ -298,7 +298,7 @@ function CategoryManagement() {
 
   const resetForm = () => {
     setCategoryName('')
-    setFields([{ fieldId: null, fieldName: '', fieldType: '' }])
+    setFields([{ fieldId: null, fieldName: '', fieldType: 'number' }])
     setEditingCategory(null)
     setOriginalFields([])
     setFormError('')
@@ -334,13 +334,13 @@ function CategoryManagement() {
       const mapped = loaded.map(row => ({
         fieldId: row.id,
         fieldName: row.field_name,
-        fieldType: row.field_type,
+        fieldType: row.field_type || 'number',
       }))
-      setFields(mapped.length ? mapped : [{ fieldId: null, fieldName: '', fieldType: '' }])
+      setFields(mapped.length ? mapped : [{ fieldId: null, fieldName: '', fieldType: 'number' }])
       setOriginalFields(mapped)
     } catch (error) {
       setFormError(error?.message ? String(error.message) : 'Unable to load category fields.')
-      setFields([{ fieldId: null, fieldName: '', fieldType: '' }])
+      setFields([{ fieldId: null, fieldName: '', fieldType: 'number' }])
       setOriginalFields([])
     }
   }
@@ -415,7 +415,7 @@ function CategoryManagement() {
   }, [activeColor, activeIconKey, categoryName, fields, isAdmin])
 
   const handleAddFieldRow = () => {
-    setFields(prev => [...(Array.isArray(prev) ? prev : []), { fieldId: null, fieldName: '', fieldType: '' }])
+    setFields(prev => [...(Array.isArray(prev) ? prev : []), { fieldId: null, fieldName: '', fieldType: 'number' }])
   }
 
   const handleRemoveFieldRow = async (index) => {
@@ -436,7 +436,7 @@ function CategoryManagement() {
     setFields(prev => {
       const next = Array.isArray(prev) ? [...prev] : []
       next.splice(index, 1)
-      return next.length ? next : [{ fieldId: null, fieldName: '', fieldType: '' }]
+      return next.length ? next : [{ fieldId: null, fieldName: '', fieldType: 'number' }]
     })
   }
 
@@ -513,33 +513,68 @@ function CategoryManagement() {
           if (!nextFieldsById.has(fieldId)) removedFieldIds.push(fieldId)
         })
 
-        const ensureFieldNotUsed = async (fieldId) => {
+        const getFieldUsageCount = async (fieldId) => {
           const { count, error } = await supabase
             .from('activity_values')
             .select('id', { count: 'exact', head: true })
             .eq('field_id', fieldId)
           if (error) throw error
-          const usedCount = Number(count || 0)
-          if (usedCount > 0) throw new Error('Cannot modify or delete a field that already has saved activity values.')
+          return Number(count || 0)
         }
 
-        // Delete removed fields (only if not used).
+        const confirmFieldDataLoss = async ({ fieldName, actionLabel, usedCount }) => {
+          const safeCount = Number(usedCount || 0)
+          if (safeCount <= 0) return true
+          return confirm({
+            title: t('Confirm'),
+            description: `The field "${String(fieldName || '').trim() || 'Untitled'}" already has ${safeCount} saved value${safeCount === 1 ? '' : 's'}. ${actionLabel} will remove those saved values. Continue?`,
+            confirmText: t('Continue'),
+            cancelText: t('Cancel'),
+            danger: true,
+          })
+        }
+
+        // Delete removed fields (warn if it will delete existing values).
         for (const fieldId of removedFieldIds) {
-          await ensureFieldNotUsed(fieldId)
+          const original = originalById.get(fieldId)
+          const usedCount = await getFieldUsageCount(fieldId)
+          const ok = await confirmFieldDataLoss({
+            fieldName: original?.fieldName,
+            usedCount,
+            actionLabel: 'Deleting this field',
+          })
+          if (!ok) throw new Error('Delete canceled.')
           const { error } = await supabase.from('category_fields').delete().eq('id', fieldId)
           if (error) throw error
         }
 
-        // Update existing fields (name/type changes only if not used).
+        // Update existing fields (renames are safe; type changes clear existing values when confirmed).
         for (const entry of validatedPayload.fields.filter(item => item.fieldId)) {
           const fieldId = String(entry.fieldId)
           const original = originalById.get(fieldId)
           if (!original) continue
-          const changed =
-            normalizeFieldKey(original.fieldName) !== normalizeFieldKey(entry.fieldName) ||
-            String(original.fieldType) !== String(entry.fieldType)
-          if (!changed) continue
-          await ensureFieldNotUsed(fieldId)
+          const nameChanged = normalizeFieldKey(original.fieldName) !== normalizeFieldKey(entry.fieldName)
+          const typeChanged = String(original.fieldType) !== String(entry.fieldType)
+          if (!nameChanged && !typeChanged) continue
+
+          if (typeChanged) {
+            const usedCount = await getFieldUsageCount(fieldId)
+            const ok = await confirmFieldDataLoss({
+              fieldName: original?.fieldName,
+              usedCount,
+              actionLabel: 'Changing the field type',
+            })
+            if (!ok) throw new Error('Update canceled.')
+
+            if (usedCount > 0) {
+              const { error: deleteValuesError } = await supabase
+                .from('activity_values')
+                .delete()
+                .eq('field_id', fieldId)
+              if (deleteValuesError) throw deleteValuesError
+            }
+          }
+
           const { error } = await supabase
             .from('category_fields')
             .update({ field_name: entry.fieldName, field_type: entry.fieldType })
@@ -708,11 +743,7 @@ function CategoryManagement() {
               <h2 className="text-[20px] font-semibold text-black dark:text-zinc-100">
                 {editingCategory ? t('Edit Category') : t('New Category')}
               </h2>
-              {editingCategory && (
-                <span className="rounded-full border border-yellow-300/30 bg-yellow-400/10 px-2 py-0.5 text-[11px] font-semibold text-yellow-200">
-                  {t('Editing')}
-                </span>
-              )}
+              
             </div>
           </div>
 
@@ -753,7 +784,7 @@ function CategoryManagement() {
             {fields.map((field, index) => (
               <div
                 key={`field-${index}`}
-                className="grid gap-2 rounded-2xl border border-slate-200 bg-[#ffffff] p-3 md:grid-cols-[1fr_160px_44px]"
+                className="grid gap-2 rounded-2xl border border-slate-200 bg-[#ffffff] p-3 md:grid-cols-[1fr_44px]"
               >
                 <div className="space-y-1">
                   <label className="block text-[12px] font-medium text-slate-700">
@@ -765,31 +796,6 @@ function CategoryManagement() {
                     placeholder={t('e.g., Seedling Count')}
                     className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-[13px] text-black focus:border-yellow-300 focus:outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
                   />
-                </div>
-                <div className="space-y-1">
-                  <label className="block text-[12px] font-medium text-slate-700">
-                    {t('Type')}
-                  </label>
-                  <select
-                    value={field.fieldType}
-                    onChange={e => handleChangeField(index, { fieldType: e.target.value })}
-                    className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-[13px] text-black focus:border-yellow-300 focus:outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
-                  >
-                    <option value="">{t('Select type')}</option>
-                    {field.fieldType && !FIELD_TYPES.some(type => type.value === field.fieldType) ? (
-                      <option value={field.fieldType} disabled>
-                        {(
-                          LEGACY_FIELD_TYPES.find(type => type.value === field.fieldType)?.label ||
-                          `${String(field.fieldType).toUpperCase()} (Legacy)`
-                        )}
-                      </option>
-                    ) : null}
-                    {FIELD_TYPES.map(type => (
-                      <option key={type.value} value={type.value}>
-                        {t(type.label)}
-                      </option>
-                    ))}
-                  </select>
                 </div>
                 <div className="flex items-end justify-end">
                   <button

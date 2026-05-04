@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { User, Lock, Eye, EyeOff, ArrowLeft, UserPlus } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
@@ -18,6 +18,8 @@ function Login() {
   const [isLoading, setIsLoading] = useState(false)
   const [postLoginWaiting, setPostLoginWaiting] = useState(false)
   const [postLoginSlow, setPostLoginSlow] = useState(false)
+  const promoVideoRef = useRef(null)
+  const promoVideoRestartTimeoutRef = useRef(null)
   const { login, supabaseEnabled, supabaseConfigError, user, loading, authResolved } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -51,6 +53,30 @@ function Login() {
     const timeoutId = window.setTimeout(() => setPostLoginSlow(true), 12_000)
     return () => window.clearTimeout(timeoutId)
   }, [postLoginWaiting])
+
+  useEffect(() => {
+    return () => {
+      if (promoVideoRestartTimeoutRef.current) {
+        window.clearTimeout(promoVideoRestartTimeoutRef.current)
+        promoVideoRestartTimeoutRef.current = null
+      }
+    }
+  }, [])
+
+  const handlePromoVideoEnded = () => {
+    if (promoVideoRestartTimeoutRef.current) window.clearTimeout(promoVideoRestartTimeoutRef.current)
+
+    promoVideoRestartTimeoutRef.current = window.setTimeout(() => {
+      const el = promoVideoRef.current
+      if (!el) return
+      try {
+        el.currentTime = 0
+      } catch {
+        // ignore
+      }
+      void el.play?.().catch(() => {})
+    }, 1500)
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -173,42 +199,55 @@ function Login() {
         />
       </div>
 
-      <div className="relative w-full max-w-md">
-        {/* Logo/Brand Section */}
-        <div className="text-center mb-8 animate-fade-in">
-          <div className="w-20 h-20 mx-auto mb-4 bg-white rounded-full shadow-lg flex items-center justify-center">
-            <img
-              src="/kvi.png"
-              alt="KUSGAN logo"
-              className="w-16 h-16 object-contain"
-            />
-          </div>
-          <h1 className="text-3xl font-bold text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.55)]">
-            KUSGAN Volunteer
-          </h1>
-          <p
-            className="mt-2 text-sm font-medium text-white/80 drop-shadow-[0_2px_8px_rgba(0,0,0,0.55)]"
-          >
-            Community Service under Cares Department
-          </p>
-        </div>
+      <div className="relative w-full max-w-6xl mx-auto grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-10">
+        {/* Visual Panel */}
+        <aside
+          className="relative overflow-hidden rounded-3xl border border-white/15 bg-white/5 shadow-[0_24px_70px_rgba(0,0,0,0.45)]"
+          style={{
+            boxShadow: '0 24px 70px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.12)',
+          }}
+        >
+          <video
+            ref={promoVideoRef}
+            className="absolute inset-0 h-full w-full object-cover"
+            src="/kusgan-animation/kusgan%20animation.mp4"
+            autoPlay
+            muted
+            playsInline
+            onEnded={handlePromoVideoEnded}
+          />
+        </aside>
 
         {/* Login Form */}
         <div
-          className="backdrop-blur-2xl rounded-2xl shadow-2xl p-8 border border-white/20"
+          className="rounded-3xl border border-white/20 bg-white/10 p-6 shadow-2xl backdrop-blur-2xl sm:p-8"
           style={{
             background: 'linear-gradient(145deg, rgba(255,255,255,0.18), rgba(255,255,255,0.04))',
             boxShadow: '0 24px 70px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.25)',
           }}
         >
+          {/* Logo/Brand Section */}
+          <div className="mb-6 flex items-center gap-3">
+            <div className="h-12 w-12 rounded-2xl bg-white p-2 shadow-lg">
+              <img src="/kvi.png" alt="KUSGAN logo" className="h-full w-full object-contain" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.55)]">
+                KUSGAN Volunteers Inc.
+              </p>
+              <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-yellow-200/90">
+                Cares Department
+              </p>
+            </div>
+          </div>
           <div className="flex flex-wrap items-center justify-between gap-2 mb-5">
             <button
               type="button"
               onClick={() => navigate('/landing')}
-              className="inline-flex items-center gap-2 text-xs text-white/70 hover:text-white"
+              className="inline-flex items-center gap-2 text-xs text-[yellow] hover:text-white"
             >
               <ArrowLeft size={14} />
-              Back to Landing
+              Back
             </button>
             <button
               type="button"
